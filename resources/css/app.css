@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
+    background-color: #f0f2f5;
+    color: #1e293b;
+  }
+}
+
+/* Custom scrollbar styles for the Entire System (Light ERP Theme & Shortened Track) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  margin-left: 8px;
+  margin-right: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: #64748b;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Custom scrollbar for Modals & Specific Panels */
+.modal-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.modal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.modal-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Animation cảnh báo thiếu hàng: CHỈ nhấp nháy màu nền đỏ đậm nét, chữ KHÔNG bị nháy mờ */
+@keyframes pulse-bg-red {
+  0%, 100% {
+    background-color: #fecaca;
+  }
+  50% {
+    background-color: #f87171;
+  }
+}
+
+.animate-pulse-bg-red {
+  animation: pulse-bg-red 1.8s ease-in-out infinite !important;
+}
+
+tr.animate-pulse-bg-red > td {
+  animation: pulse-bg-red 1.8s ease-in-out infinite !important;
+}
+
+/* ========================================================================= */
+/* GIỚI HẠN CHIỀU CAO TẤT CẢ CÁC MODAL KHÔNG VƯỢT QUÁ CHIỀU CAO MÀN HÌNH     */
+/* ========================================================================= */
+.fixed.inset-0 > div:not(.toast-container):not(.floating-menu):not(.dropdown-menu) {
+  max-height: calc(100vh - 2rem);
+  max-height: 92vh;
+}
+
+@media print {
+  .fixed.inset-0 > div {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
+
+

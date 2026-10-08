@@ -1,0 +1,11 @@
+{
+  "name": "Hệ Thống Quản Trị ERP Điện Nước & Ống Nhựa PVC",
+  "description": "Phần mềm quản trị toàn diện doanh nghiệp thương mại ống nhựa PVC, phụ kiện PVC và thiết bị điện nước: Kho 3000+ mã, POS, GPS chấm công & chăm sóc đại lý, công nợ hạn mức, quy trình duyệt online, xe vận tải, KPI và luồng công việc.",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
