@@ -263,15 +263,12 @@
             <!-- Left: Company Logo & Brand -->
             <div class="flex items-center gap-3.5">
                 <a href="{{ url('/dashboard') }}" class="flex items-center gap-2.5 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-xs hover:bg-white/15 transition-all">
-                    <div class="h-9 w-9 rounded-xl bg-white p-1 flex items-center justify-center shadow-xs shrink-0 ring-1 ring-white/30">
-                        <img src="{{ asset('images/logo.png') }}" alt="Logo Đại Sơn" class="h-full w-full object-contain">
+                    <div class="h-9 px-2 rounded-xl bg-white flex items-center justify-center shadow-xs shrink-0 ring-1 ring-white/30">
+                        <img src="{{ asset('images/logo.png') }}?v={{ time() }}" alt="Logo Đại Sơn" class="h-7 w-auto object-contain">
                     </div>
                     <div class="flex flex-col">
                         <span class="font-extrabold text-white tracking-wide text-xs sm:text-sm flex items-center gap-1.5">
-                            ĐẠI SƠN ERP
-                            <span class="px-1.5 py-0.2 rounded text-[9px] bg-amber-400/20 text-amber-300 font-bold border border-amber-400/40">
-                                TIỀN PHONG
-                            </span>
+                            ĐẠI ĐẠI SƠN ERP
                         </span>
                         <span class="text-[10px] text-slate-300 font-medium tracking-tight">
                             Hệ Thống Phân Phối Máy Lọc Nước & Thiết Bị Xử Lý Nước
