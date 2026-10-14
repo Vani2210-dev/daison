@@ -44,4 +44,32 @@ class Warehouse extends Model
             ->withPivot('stock_quantity', 'reserved_quantity', 'location')
             ->withTimestamps();
     }
+
+    /**
+     * Tự động đồng bộ các kho xe lưu động từ bảng vehicles
+     */
+    public static function syncVehicleWarehouses()
+    {
+        $vehicles = Vehicle::with('driver')->get();
+        foreach ($vehicles as $v) {
+            self::updateOrCreate(
+                ['code' => 'KHO-XE-' . $v->plate_number],
+                [
+                    'name'         => 'Kho Xe ' . $v->plate_number . ($v->driver ? ' (' . $v->driver->name . ')' : ''),
+                    'type'         => 'Kho xe lưu động',
+                    'manager_name' => $v->driver?->name ?? 'Tài xế',
+                    'address'      => 'Xe BKS ' . $v->plate_number,
+                    'is_active'    => true,
+                ]
+            );
+        }
+    }
+
+    /**
+     * Scope lấy các kho xe lưu động
+     */
+    public function scopeVehicleWarehouses($query)
+    {
+        return $query->where('type', 'Kho xe lưu động');
+    }
 }

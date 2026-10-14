@@ -155,9 +155,8 @@
                 <div class="flex items-center gap-3">
                     <h1 class="text-2xl font-black text-slate-900 tracking-tight">Đơn hàng</h1>
                     <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200">ERP Form Standard</span>
-                    <span x-show="formData.order_type === 'borrow'" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-purple-100 text-purple-800 border border-purple-300">🤝 Đơn vay mượn hàng</span>
                     <span x-show="formData.order_type === 'backorder' || formData.status === 'Giao sau'" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-300">📋 Đơn giao sau</span>
-                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold" :class="formData.status === 'Báo giá' ? 'bg-amber-100 text-amber-800 border border-amber-300' : (formData.status === 'Vay mượn' ? 'bg-purple-100 text-purple-800 border border-purple-300' : (formData.status === 'Giao sau' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'))" x-text="formData.status"></span>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold" :class="formData.status === 'Báo giá' ? 'bg-amber-100 text-amber-800 border border-amber-300' : (formData.status === 'Giao sau' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300')" x-text="formData.status"></span>
                 </div>
                 <p class="text-xs text-slate-500 mt-1">
                     Quản lý đơn hàng theo quy trình: Báo giá &bull; Chốt đơn &bull; Soạn hàng &bull; Đang vận chuyển &bull; Đã giao &bull; Hủy
@@ -178,29 +177,29 @@
             <!-- Row 1: 6 columns (lg:grid-cols-12) -->
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-12 gap-4">
                 <!-- Mã chứng từ -->
-                <div :class="formData.order_type === 'borrow' ? 'lg:col-span-3' : 'lg:col-span-2'">
+                <div class="lg:col-span-2">
                     <label class="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1">MÃ CHỨNG TỪ</label>
                     <input type="text" readonly :value="formData.order_code || 'TỰ SINH KHI LƯU'" class="w-full px-3 py-2 bg-slate-100/80 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 cursor-not-allowed select-none">
                 </div>
 
                 <!-- Ngày chứng từ -->
-                <div :class="formData.order_type === 'borrow' ? 'lg:col-span-3' : 'lg:col-span-2'">
+                <div class="lg:col-span-2">
                     <label class="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1">NGÀY CHỨNG TỪ</label>
                     <div class="relative">
                         <input type="date" x-model="formData.order_date" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none">
                     </div>
                 </div>
 
-                <!-- Ngày soạn hàng (Ẩn khi là Đơn vay mượn) -->
-                <div x-show="formData.order_type !== 'borrow'" class="lg:col-span-2">
+                <!-- Ngày soạn hàng -->
+                <div class="lg:col-span-2">
                     <label class="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1">NGÀY SOẠN HÀNG</label>
                     <div class="relative">
                         <input type="date" x-model="formData.picking_date" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none">
                     </div>
                 </div>
 
-                <!-- Ngày giao hàng (Ẩn khi là Đơn vay mượn) -->
-                <div x-show="formData.order_type !== 'borrow'" class="lg:col-span-2">
+                <!-- Ngày giao hàng -->
+                <div class="lg:col-span-2">
                     <label class="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1">NGÀY GIAO HÀNG</label>
                     <div class="relative">
                         <input type="date" x-model="formData.delivery_date" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none">
@@ -208,39 +207,26 @@
                 </div>
 
                 <!-- Loại đơn hàng -->
-                <div :class="formData.order_type === 'borrow' ? 'lg:col-span-3' : 'lg:col-span-2'">
+                <div class="lg:col-span-2">
                     <label class="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1">LOẠI ĐƠN HÀNG</label>
                     <select x-model="formData.order_type" @change="handleOrderTypeChange()" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none">
                         <option value="normal">🛒 Bình thường</option>
                         <option value="project">📦 Công trình / dự án</option>
                         <option value="wholesale">🚚 Xuất đại lý</option>
-                        <option value="borrow">🤝 Đơn vay mượn hàng</option>
                         <option value="backorder">📋 Đơn giao sau (nợ hàng)</option>
                     </select>
-                    <template x-if="formData.order_type === 'borrow'">
-                        <div class="mt-1 text-[10px] text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded border border-purple-200 flex items-center gap-1">
-                            <i class="fa-solid fa-handshake"></i>
-                            <span>Vay mượn từ KH (Không KM)</span>
-                        </div>
-                    </template>
                 </div>
 
                 <!-- Tình trạng đơn -->
-                <div :class="formData.order_type === 'borrow' ? 'lg:col-span-3' : 'lg:col-span-2'">
+                <div class="lg:col-span-2">
                     <label class="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1">TÌNH TRẠNG ĐƠN</label>
-                    <template x-if="formData.order_type === 'borrow'">
-                        <div class="py-2 px-3 bg-purple-600 text-white font-black rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs">
-                            <i class="fa-solid fa-handshake"></i>
-                            <span>Vay mượn</span>
-                        </div>
-                    </template>
                     <template x-if="formData.order_type === 'backorder' || formData.status === 'Giao sau'">
                         <div class="py-2 px-3 bg-amber-600 text-white font-black rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs">
                             <i class="fa-solid fa-clipboard-list"></i>
                             <span>Giao sau</span>
                         </div>
                     </template>
-                    <template x-if="formData.order_type !== 'borrow' && formData.order_type !== 'backorder' && formData.status !== 'Giao sau'">
+                    <template x-if="formData.order_type !== 'backorder' && formData.status !== 'Giao sau'">
                         <div>
                             <template x-if="['Báo giá', 'Chốt đơn'].includes(formData.status)">
                                 <div class="grid grid-cols-2 gap-1.5">
@@ -259,7 +245,6 @@
                                     <option value="Báo giá">📋 Báo giá</option>
                                     <option value="Chốt đơn">🤝 Chốt đơn</option>
                                     <option value="Giao sau">📋 Giao sau</option>
-                                    <option value="Vay mượn">🤝 Vay mượn</option>
                                     <option value="Soạn hàng">📦 Soạn hàng</option>
                                     <option value="Kiểm hàng">🛡️ Kiểm hàng</option>
                                     <option value="Đang vận chuyển">🚚 Đang vận chuyển</option>
@@ -275,7 +260,7 @@
             <!-- Row 2: 3 columns (Top aligned, labels & inputs perfectly level) -->
             <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
                 <!-- Khách hàng (Chọn từ danh sách đại lý / khách hàng kèm phím mũi tên Lên/Xuống + Enter) -->
-                <div :class="formData.order_type === 'borrow' ? 'lg:col-span-12' : 'lg:col-span-6'" 
+                <div class="lg:col-span-6" 
                      x-data="{ 
                          openDealerDropdown: false, 
                          dealerSearch: '', 
@@ -377,18 +362,38 @@
                     </div>
                 </div>
 
-                <!-- Kho dự kiến xuất (Ẩn khi là Đơn vay mượn) -->
-                <div x-show="formData.order_type !== 'borrow'" class="lg:col-span-3">
-                    <label class="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1">KHO DỰ KIẾN XUẤT</label>
-                    <select x-model="formData.warehouse" @change="onWarehouseChange()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer shadow-2xs hover:border-slate-400 transition-colors">
-                        <template x-for="wh in warehousesCatalog" :key="wh.id">
-                            <option :value="wh.name" x-text="wh.name + (wh.code ? ' (' + wh.code + ')' : '')"></option>
-                        </template>
+                <!-- Kho dự kiến xuất -->
+                <div class="lg:col-span-3">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-[11px] font-bold text-slate-500 tracking-wide uppercase">KHO DỰ KIẾN XUẤT</label>
+                        @if($isDriverUser ?? false)
+                            <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                <i class="fa-solid fa-truck text-[9px] text-emerald-600"></i>
+                                <span>Kho trên xe của bạn</span>
+                            </span>
+                        @endif
+                    </div>
+                    <select x-model="formData.warehouse" 
+                            @change="onWarehouseChange()" 
+                            class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer shadow-2xs hover:border-slate-400 transition-colors {{ ($isDriverUser ?? false) ? 'bg-slate-100 cursor-not-allowed text-slate-500 opacity-90' : '' }}"
+                            {{ ($isDriverUser ?? false) ? 'disabled' : '' }}>
+                        <option value="">-- Chọn kho xuất hàng --</option>
+                        @foreach($warehouses as $wh)
+                            <option value="{{ $wh->name }}">
+                                {{ $wh->name }} {{ !empty($wh->code) ? "({$wh->code})" : '' }}
+                            </option>
+                        @endforeach
                     </select>
+                    @if($isDriverUser ?? false)
+                        <p class="text-[10.5px] text-emerald-700 mt-1 flex items-center gap-1 font-semibold">
+                            <i class="fa-solid fa-lock text-[9.5px]"></i>
+                            <span>Lái xe chỉ được xuất bán từ kho trên xe của mình.</span>
+                        </p>
+                    @endif
                 </div>
 
-                <!-- Loại giá (Ẩn khi là Đơn vay mượn) -->
-                <div x-show="formData.order_type !== 'borrow'" class="lg:col-span-3">
+                <!-- Loại giá -->
+                <div class="lg:col-span-3">
                     <div class="flex items-center justify-between mb-1">
                         <label class="text-[11px] font-bold text-slate-500 tracking-wide uppercase">LOẠI GIÁ</label>
                         <span class="text-[11px] text-sky-600 font-medium" x-text="items.filter(it => it.product_id && it.checked !== false).length + ' dòng đồng bộ'"></span>
@@ -401,8 +406,8 @@
                 </div>
             </div>
 
-            <!-- Badge / Card hiển thị công nợ & hạn mức tín dụng khách hàng (Ẩn khi là Đơn vay mượn vì không tính tiền) -->
-            <div x-show="getSelectedDealer() && formData.order_type !== 'borrow'" x-cloak class="p-2.5 rounded-xl border text-[11px] transition-all"
+            <!-- Badge / Card hiển thị công nợ & hạn mức tín dụng khách hàng -->
+            <div x-show="getSelectedDealer()" x-cloak class="p-2.5 rounded-xl border text-[11px] transition-all"
                  :class="isDebtOverLimit() ? 'bg-rose-50 border-rose-300 text-rose-900 ring-1 ring-rose-200 shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-700'">
                 <div class="flex items-center justify-between gap-2 flex-wrap">
                     <div class="flex items-center gap-3 flex-wrap">
@@ -482,7 +487,7 @@
                 </div>
             </div>
 
-            <!-- BANNER NHẮC GỢI Ý GỘP ĐƠN NỢ / VAY MƯỢN CỦA KHÁCH HÀNG -->
+            <!-- BANNER NHẮC GỢI Ý GỘP ĐƠN GIAO SAU (NỢ HÀNG) CỦA KHÁCH HÀNG -->
             <template x-if="pendingMergeOrders && pendingMergeOrders.length > 0 && !dismissedPendingAlert">
                 <div class="mb-4 bg-gradient-to-r from-indigo-50 via-purple-50 to-sky-50 border-2 border-indigo-300 rounded-2xl p-4 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in duration-200">
                     <div class="flex items-start gap-3">
@@ -495,14 +500,13 @@
                                     Gợi ý gộp đơn
                                 </span>
                                 <span class="font-extrabold text-indigo-950 text-sm">
-                                    Khách hàng có <span class="text-indigo-600 underline font-black text-base" x-text="pendingMergeOrders.length"></span> đơn nợ / vay mượn hàng chưa hoàn thành!
+                                    Khách hàng có <span class="text-indigo-600 underline font-black text-base" x-text="pendingMergeOrders.length"></span> đơn giao sau (nợ hàng) chưa hoàn thành!
                                 </span>
                             </div>
                             <div class="text-xs text-indigo-900 mt-1.5 flex flex-wrap items-center gap-2">
                                 <template x-for="pOrd in pendingMergeOrders" :key="pOrd.id">
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold shadow-2xs"
-                                          :class="pOrd.order_type === 'borrow' ? 'bg-purple-100 text-purple-900 border border-purple-300' : 'bg-amber-100 text-amber-900 border border-amber-300'">
-                                        <i class="fa-solid" :class="pOrd.order_type === 'borrow' ? 'fa-handshake text-purple-600' : 'fa-clipboard-list text-amber-600'"></i>
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold shadow-2xs bg-amber-100 text-amber-900 border border-amber-300">
+                                        <i class="fa-solid fa-clipboard-list text-amber-600"></i>
                                         <span class="font-bold font-mono" x-text="pOrd.order_code"></span>
                                         <span x-text="'(' + pOrd.type_label + ' - ' + pOrd.items_count + ' SP)'"></span>
                                     </span>
@@ -549,7 +553,7 @@
                                 </span>
                             </div>
                             <div class="text-xs text-rose-700 mt-1 leading-relaxed">
-                                Bạn có thể <strong>cắt tất cả theo SL bốc</strong>, <strong>tách tạo đơn giao sau (nợ hàng)</strong> hoặc <strong>tạo đơn vay mượn hàng</strong> cho các mặt hàng thiếu.
+                                Bạn có thể <strong>cắt tất cả theo SL bốc</strong> hoặc <strong>tách tạo đơn giao sau (nợ hàng)</strong> cho các mặt hàng thiếu.
                             </div>
                         </div>
                     </div>
@@ -572,16 +576,6 @@
                             <i class="fa-solid fa-boxes-packing" x-show="!backorderSaving"></i>
                             <span>Tạo đơn giao sau tổng (<span x-text="getShortageItems().length"></span> SP)</span>
                         </button>
-                        <!-- Nút Tạo Đơn Vay Mượn Tổng -->
-                        <button type="button" 
-                                @click="createBorrowOrderAll()" 
-                                :disabled="backorderSaving"
-                                class="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-                                title="Cắt đơn này theo số bốc và tự động tạo đơn vay mượn hàng để mượn đối tác / đại lý khác giao cho khách">
-                            <svg x-show="backorderSaving" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
-                            <i class="fa-solid fa-handshake" x-show="!backorderSaving"></i>
-                            <span>Tạo đơn vay mượn tổng (<span x-text="getShortageItems().length"></span> SP)</span>
-                        </button>
                     </div>
                 </div>
             </template>
@@ -601,15 +595,15 @@
                             </th>
                             <th class="py-2.5 px-3 font-bold min-w-[280px]">TÊN / MÃ SP</th>
                             <th class="py-2.5 px-2 text-center w-20">ĐVT</th>
-                            <th x-show="formData.order_type !== 'borrow'" class="py-2.5 px-2 text-right w-28">ĐƠN GIÁ</th>
+                            <th class="py-2.5 px-2 text-right w-28">ĐƠN GIÁ</th>
                             <th class="py-2.5 px-2 text-center w-16">SL</th>
-                            <!-- Cột Số Lượng Tặng (Ẩn khi vay mượn) -->
-                            <th x-show="formData.order_type !== 'borrow'" class="py-2.5 px-2 text-center w-24 bg-emerald-50/70 border-x border-slate-200">
+                            <!-- Cột Số Lượng Tặng -->
+                            <th class="py-2.5 px-2 text-center w-24 bg-emerald-50/70 border-x border-slate-200">
                                 <div class="text-emerald-800 font-bold">SL TẶNG</div>
                                 <div class="text-[9px] text-emerald-600 font-normal lowercase tracking-normal">(quà tặng)</div>
                             </th>
-                            <!-- Tiền chiết khấu cột (Ẩn khi vay mượn) -->
-                            <th x-show="formData.order_type !== 'borrow'" class="py-2 px-2 text-center w-52 bg-sky-50/60 border-r border-slate-200">
+                            <!-- Tiền chiết khấu cột -->
+                            <th class="py-2 px-2 text-center w-52 bg-sky-50/60 border-r border-slate-200">
                                 <div class="text-[11px] font-bold text-slate-700 uppercase">TIỀN CHIẾT KHẤU</div>
                                 <div class="mt-1 flex items-center justify-center">
                                     <div class="inline-flex items-center gap-1 bg-white border border-sky-300 rounded px-1.5 py-0.5 shadow-2xs hover:border-sky-400 focus-within:ring-1 focus-within:ring-sky-400 transition-all">
@@ -625,20 +619,20 @@
                                     </div>
                                 </div>
                             </th>
-                            <!-- VAT cột (Ẩn khi vay mượn) -->
-                            <th x-show="formData.order_type !== 'borrow'" class="py-2.5 px-2 text-center w-36 bg-sky-50/60 border-r border-slate-200">
+                            <!-- VAT cột -->
+                            <th class="py-2.5 px-2 text-center w-36 bg-sky-50/60 border-r border-slate-200">
                                 <div>VAT</div>
                                 <div class="text-[9px] text-slate-400 font-normal lowercase tracking-normal">(ăn theo sp chọn)</div>
                             </th>
-                            <!-- Cột SL Bốc: chỉ hiện khi đơn đang ở giai đoạn soạn hàng và không phải đơn vay mượn -->
-                            <template x-if="isPickingStage() && formData.order_type !== 'borrow'">
+                            <!-- Cột SL Bốc: chỉ hiện khi đơn đang ở giai đoạn soạn hàng -->
+                            <template x-if="isPickingStage()">
                                 <th class="py-2.5 px-2 text-center w-24 bg-orange-50/80 border-x border-slate-200">
                                     <div class="text-orange-700 font-bold">SL BỐC</div>
                                     <div class="text-[9px] text-orange-500 font-normal lowercase tracking-normal">(kho đã bốc)</div>
                                 </th>
                             </template>
-                            <th x-show="formData.order_type !== 'borrow'" class="py-2.5 px-3 text-right w-36">THÀNH TIỀN</th>
-                            <th x-show="formData.order_type !== 'borrow'" class="py-2.5 px-2 text-center w-28">LOẠI GIÁ</th>
+                            <th class="py-2.5 px-3 text-right w-36">THÀNH TIỀN</th>
+                            <th class="py-2.5 px-2 text-center w-28">LOẠI GIÁ</th>
                             <th class="py-2.5 px-2 text-center w-12"></th>
                         </tr>
                     </thead>
@@ -741,15 +735,15 @@
                                                                   x-text="'Tồn ' + (formData.warehouse ? '[' + formData.warehouse.replace(/\s*\(.*?\)/, '') + ']: ' : ': ') + formatNumber(getProductStockInWarehouse(p, formData.warehouse)) + ' ' + (p.unit || '') + ' (Tổng: ' + formatNumber(p.stock_quantity) + ')'"></span>
                                                         </div>
                                                     </div>
-                                                    <div x-show="formData.order_type !== 'borrow'" class="shrink-0 text-right">
+                                                    <div class="shrink-0 text-right">
                                                         <div class="font-black text-sky-700 text-xs" x-text="formatNumber(getProductPrice(p)) + ' đ'"></div>
                                                     </div>
                                                 </div>
                                             </template>
                                         </div>
                                     </div>
-                                    <!-- Hiển thị tồn kho khả dụng dưới ô tìm sản phẩm (Ẩn khi vay mượn) -->
-                                    <div x-show="item.product_id && formData.order_type !== 'borrow'" x-cloak class="mt-1 flex items-center gap-1.5 text-[10px] flex-wrap">
+                                    <!-- Hiển thị tồn kho khả dụng dưới ô tìm sản phẩm -->
+                                    <div x-show="item.product_id" x-cloak class="mt-1 flex items-center gap-1.5 text-[10px] flex-wrap">
                                         <span class="text-slate-400 font-medium" x-text="'Tồn tại ' + (formData.warehouse ? formData.warehouse.replace(/\s*\(.*?\)/, '') : 'kho') + ':'"></span>
                                         <span class="font-bold font-mono" :class="isItemOverStock(item) ? 'text-rose-600 font-black' : 'text-emerald-600'" x-text="formatNumber(getItemAvailableStockInUnit(item)) + ' ' + (item.unit || '')"></span>
                                         <span class="text-slate-300">&bull;</span>
@@ -778,8 +772,8 @@
                                     </template>
                                 </td>
 
-                                <!-- Đơn giá (Hỗ trợ phím ↑ ↓ để tăng/giảm giá, Ẩn khi vay mượn) -->
-                                <td x-show="formData.order_type !== 'borrow'" class="py-2 px-2 text-right align-top">
+                                <!-- Đơn giá (Hỗ trợ phím ↑ ↓ để tăng/giảm giá) -->
+                                <td class="py-2 px-2 text-right align-top">
                                     <template x-if="!item.isPromotionalGift">
                                         <div class="relative">
                                             <input type="text" 
@@ -856,8 +850,8 @@
                                     </template>
                                 </td>
 
-                                <!-- Cột Số Lượng Tặng (SL Tặng, Ẩn khi vay mượn) -->
-                                <td x-show="formData.order_type !== 'borrow'" class="py-2 px-2 text-center align-top bg-emerald-50/20 border-x border-slate-200">
+                                <!-- Cột Số Lượng Tặng (SL Tặng) -->
+                                <td class="py-2 px-2 text-center align-top bg-emerald-50/20 border-x border-slate-200">
                                     <template x-if="!item.isPromotionalGift">
                                         <div class="relative">
                                             <div class="flex items-center justify-center">
@@ -895,8 +889,8 @@
                                     </template>
                                 </td>
 
-                                <!-- Tiền chiết khấu (% mỗi dòng hoặc VNĐ, Ẩn khi vay mượn) -->
-                                <td x-show="formData.order_type !== 'borrow'" class="py-2 px-2 bg-sky-50/30 border-x border-slate-200 align-top">
+                                <!-- Tiền chiết khấu (% mỗi dòng hoặc VNĐ) -->
+                                <td class="py-2 px-2 bg-sky-50/30 border-x border-slate-200 align-top">
                                     <template x-if="!item.isPromotionalGift">
                                         <div>
                                             <div class="flex items-center gap-1.5 justify-between">
@@ -931,8 +925,8 @@
                                     </template>
                                 </td>
 
-                                <!-- VAT (ăn theo sản phẩm chọn, Ẩn khi vay mượn) -->
-                                <td x-show="formData.order_type !== 'borrow'" class="py-2 px-2 bg-sky-50/30 border-r border-slate-200 align-top">
+                                <!-- VAT (ăn theo sản phẩm chọn) -->
+                                <td class="py-2 px-2 bg-sky-50/30 border-r border-slate-200 align-top">
                                     <template x-if="!item.isPromotionalGift">
                                         <div class="flex items-center gap-1 justify-between">
                                             <div class="flex items-center gap-0.5">
@@ -947,8 +941,8 @@
                                     </template>
                                 </td>
 
-                                <!-- Cột SL Bốc (chỉ render khi đang ở giai đoạn soạn hàng và không phải vay mượn) -->
-                                <template x-if="isPickingStage() && formData.order_type !== 'borrow'">
+                                <!-- Cột SL Bốc: chỉ render khi đang ở giai đoạn soạn hàng -->
+                                <template x-if="isPickingStage()">
                                     <td class="py-2 px-2 text-center align-top bg-orange-50/20 border-x border-slate-200">
                                         <template x-if="!item.isPromotionalGift">
                                             <div>
@@ -977,8 +971,8 @@
                                     </td>
                                 </template>
 
-                                <!-- Thành tiền (Ẩn khi vay mượn) -->
-                                <td x-show="formData.order_type !== 'borrow'" class="py-2 px-3 text-right align-top">
+                                <!-- Thành tiền -->
+                                <td class="py-2 px-3 text-right align-top">
                                     <span class="font-bold text-xs block" :class="item.isPromotionalGift ? 'text-emerald-700' : 'text-slate-900'" x-text="formatNumber(item.amount) + ' đ'"></span>
                                     <!-- Hiển thị thiếu hàng dưới thành tiền khi có -->
                                     <template x-if="isItemShortage(item)">
@@ -989,8 +983,8 @@
                                     </template>
                                 </td>
 
-                                <!-- Loại giá (Ẩn khi vay mượn) -->
-                                <td x-show="formData.order_type !== 'borrow'" class="py-2 px-2 text-center align-top">
+                                <!-- Loại giá -->
+                                <td class="py-2 px-2 text-center align-top">
                                     <template x-if="!item.isPromotionalGift">
                                         <select x-model="item.price_type" @change="onItemPriceTypeChange(index)" class="w-full px-1.5 py-1.5 bg-slate-50 border border-slate-300 hover:border-slate-400 rounded-lg text-[11px] font-medium focus:bg-white focus:outline-none cursor-pointer shadow-2xs transition-colors">
                                             <template x-for="pt in priceTiersCatalog" :key="pt.id">
@@ -1035,18 +1029,18 @@
         <!-- 5. Footer / Summary Area -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-2">
             <!-- Left Column: Ghi chú & Alert Info -->
-            <div :class="formData.order_type === 'borrow' ? 'lg:col-span-8' : 'lg:col-span-7'" class="space-y-3">
+            <div class="lg:col-span-7 space-y-3">
                 <div>
                     <label class="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1">GHI CHÚ</label>
                     <textarea x-model="formData.notes" rows="3" placeholder="Nhập ghi chú đơn hàng, địa điểm giao hoặc điều khoản chiết khấu..." class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:border-sky-500 focus:outline-none"></textarea>
                 </div>
-                <div x-show="formData.order_type !== 'borrow'" class="px-3.5 py-2.5 bg-sky-50/70 border border-sky-200/60 rounded-xl text-xs text-sky-700 flex items-center gap-2">
+                <div class="px-3.5 py-2.5 bg-sky-50/70 border border-sky-200/60 rounded-xl text-xs text-sky-700 flex items-center gap-2">
                     <i class="fa-solid fa-circle-info text-sky-500"></i>
                     <span>Tiền VAT được tính trực tiếp trên đơn giá của từng sản phẩm.</span>
                 </div>
 
-                <!-- Khối Chương Trình Khuyến Mại & Chính Sách Ưu Đãi (Ẩn khi vay mượn hàng) -->
-                <div x-show="formData.order_type !== 'borrow'" class="rounded-xl border border-amber-200 bg-linear-to-br from-amber-50/80 via-white to-amber-50/30 p-3.5 space-y-2.5 shadow-2xs">
+                <!-- Khối Chương Trình Khuyến Mại & Chính Sách Ưu Đãi -->
+                <div class="rounded-xl border border-amber-200 bg-linear-to-br from-amber-50/80 via-white to-amber-50/30 p-3.5 space-y-2.5 shadow-2xs">
                     <div class="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-amber-200/70">
                         <div class="flex items-center gap-2">
                             <span class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs shadow-2xs font-bold">
@@ -1114,84 +1108,59 @@
                 </div>
             </div>
 
-            <!-- Right Column: Financial Calculations Summary or Borrow Summary -->
-            <div :class="formData.order_type === 'borrow' ? 'lg:col-span-4' : 'lg:col-span-5'" class="bg-slate-50/80 p-4 rounded-xl border border-slate-200/70 space-y-2.5 text-xs font-semibold">
-                <!-- Chế độ Đơn Vay Mượn Hàng: Chỉ hiển thị số lượng và thông tin mượn (không có tiền) -->
-                <template x-if="formData.order_type === 'borrow'">
-                    <div class="space-y-3">
-                        <div class="flex items-center gap-2 pb-2 border-b border-purple-200 text-purple-950 font-extrabold text-sm">
-                            <i class="fa-solid fa-handshake text-purple-600"></i>
-                            <span>TỔNG KẾT VAY MƯỢN HÀNG</span>
-                        </div>
-                        <div class="flex items-center justify-between text-slate-700 text-xs">
-                            <span>Số mặt hàng vay mượn:</span>
-                            <span class="font-bold text-slate-900" x-text="items.filter(it => it.name || it.sku || it.product_id).length + ' sản phẩm'"></span>
-                        </div>
-                        <div class="flex items-center justify-between text-slate-700 text-xs">
-                            <span>Tổng số lượng mượn:</span>
-                            <span class="font-black text-purple-700 text-lg font-mono" x-text="formatNumber(items.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0))"></span>
-                        </div>
-                        <div class="p-3 bg-purple-50 rounded-xl border border-purple-200 text-purple-800 text-[11px] leading-relaxed">
-                            <i class="fa-solid fa-circle-info mr-1 text-purple-600"></i>
-                            Đơn hàng vay mượn từ khách hàng / đại lý: không tính tiền, không áp dụng khuyến mại và không phát sinh công nợ.
-                        </div>
+            <!-- Right Column: Financial Calculations Summary -->
+            <div class="lg:col-span-5 bg-slate-50/80 p-4 rounded-xl border border-slate-200/70 space-y-2.5 text-xs font-semibold">
+                <div class="space-y-2.5">
+                    <div class="flex items-center justify-between text-slate-600">
+                        <span>Tiền hàng (chưa VAT)</span>
+                        <span class="font-bold text-slate-800" x-text="formatNumber(subtotalBeforeVat) + ' đ'"></span>
                     </div>
-                </template>
 
-                <!-- Chế độ Đơn Bán Hàng Thông Thường: Tính toán tiền hàng, thuế, chiết khấu -->
-                <template x-if="formData.order_type !== 'borrow'">
-                    <div class="space-y-2.5">
-                        <div class="flex items-center justify-between text-slate-600">
-                            <span>Tiền hàng (chưa VAT)</span>
-                            <span class="font-bold text-slate-800" x-text="formatNumber(subtotalBeforeVat) + ' đ'"></span>
-                        </div>
+                    <div class="flex items-center justify-between text-slate-600">
+                        <span>Tiền VAT</span>
+                        <span class="font-bold text-slate-800" x-text="formatNumber(totalVat) + ' đ'"></span>
+                    </div>
 
-                        <div class="flex items-center justify-between text-slate-600">
-                            <span>Tiền VAT</span>
-                            <span class="font-bold text-slate-800" x-text="formatNumber(totalVat) + ' đ'"></span>
-                        </div>
+                    <div class="flex items-center justify-between text-slate-600">
+                        <span>Tổng tiền (đã gồm VAT)</span>
+                        <span class="font-bold text-slate-900" x-text="formatNumber(totalWithVat) + ' đ'"></span>
+                    </div>
 
-                        <div class="flex items-center justify-between text-slate-600">
-                            <span>Tổng tiền (đã gồm VAT)</span>
-                            <span class="font-bold text-slate-900" x-text="formatNumber(totalWithVat) + ' đ'"></span>
-                        </div>
-
-                        <div class="flex items-center justify-between text-slate-600 pt-1">
-                            <span>Chiết khấu tổng (sau VAT)</span>
-                            <div class="flex items-center gap-1.5">
-                                <div class="flex items-center gap-0.5">
-                                    <input type="number" min="0" max="100" step="any" x-model.number="orderDiscountPercent" @input="onOrderDiscountPercentChange()" placeholder="%" class="w-12 px-1.5 py-1 bg-white border border-slate-200 rounded text-center text-xs focus:outline-none">
-                                    <span class="text-[10px] text-slate-400">%</span>
-                                </div>
-                                <div class="flex items-center gap-1">
-                                    <input type="text" inputmode="numeric" x-money="formData.discount_amount" @input="onOrderDiscountAmountChange()" placeholder="Tiền CK" class="w-28 px-2 py-1 bg-white border border-slate-200 rounded text-right text-xs font-bold focus:border-sky-500 focus:outline-none">
-                                    <span class="text-slate-400">đ</span>
-                                </div>
+                    <div class="flex items-center justify-between text-slate-600 pt-1">
+                        <span>Chiết khấu tổng (sau VAT)</span>
+                        <div class="flex items-center gap-1.5">
+                            <div class="flex items-center gap-0.5">
+                                <input type="number" min="0" max="100" step="any" x-model.number="orderDiscountPercent" @input="onOrderDiscountPercentChange()" placeholder="%" class="w-12 px-1.5 py-1 bg-white border border-slate-200 rounded text-center text-xs focus:outline-none">
+                                <span class="text-[10px] text-slate-400">%</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <input type="text" inputmode="numeric" x-money="formData.discount_amount" @input="onOrderDiscountAmountChange()" placeholder="Tiền CK" class="w-28 px-2 py-1 bg-white border border-slate-200 rounded text-right text-xs font-bold focus:border-sky-500 focus:outline-none">
+                                <span class="text-slate-400">đ</span>
                             </div>
                         </div>
-
-                        <div class="pt-3 border-t border-slate-200 flex items-center justify-between text-sm font-black text-slate-900">
-                            <span class="text-base text-slate-900">Thành tiền</span>
-                            <span class="text-xl text-sky-600 font-black" x-text="formatNumber(finalTotal) + ' đ'"></span>
-                        </div>
-
-                        <!-- Dòng công nợ dự kiến sau đơn -->
-                        <template x-if="getSelectedDealer()">
-                            <div class="pt-2 border-t border-dashed border-slate-200 text-xs">
-                                <div class="flex items-center justify-between" :class="isDebtOverLimit() ? 'text-rose-700 font-bold' : 'text-slate-600 font-medium'">
-                                    <span class="flex items-center gap-1">
-                                        <i :class="isDebtOverLimit() ? 'fa-solid fa-triangle-exclamation text-rose-500' : 'fa-solid fa-clock-rotate-left text-slate-400'"></i>
-                                        <span>Nợ dự kiến sau đơn:</span>
-                                    </span>
-                                    <span class="font-mono font-bold" :class="isDebtOverLimit() ? 'text-rose-700 font-black' : 'text-slate-800'" x-text="formatNumber(getProjectedDebt()) + ' đ'"></span>
-                                </div>
-                                <div x-show="isDebtOverLimit()" class="text-right text-[10px] text-rose-600 font-extrabold mt-0.5">
-                                    ⚠️ Vượt hạn mức: +<span x-text="formatNumber(getDebtExcessAmount()) + ' đ'"></span>
-                                </div>
-                            </div>
-                        </template>
                     </div>
-                </template>
+
+                    <div class="pt-3 border-t border-slate-200 flex items-center justify-between text-sm font-black text-slate-900">
+                        <span class="text-base text-slate-900">Thành tiền</span>
+                        <span class="text-xl text-sky-600 font-black" x-text="formatNumber(finalTotal) + ' đ'"></span>
+                    </div>
+
+                    <!-- Dòng công nợ dự kiến sau đơn -->
+                    <template x-if="getSelectedDealer()">
+                        <div class="pt-2 border-t border-dashed border-slate-200 text-xs">
+                            <div class="flex items-center justify-between" :class="isDebtOverLimit() ? 'text-rose-700 font-bold' : 'text-slate-600 font-medium'">
+                                <span class="flex items-center gap-1">
+                                    <i :class="isDebtOverLimit() ? 'fa-solid fa-triangle-exclamation text-rose-500' : 'fa-solid fa-clock-rotate-left text-slate-400'"></i>
+                                    <span>Nợ dự kiến sau đơn:</span>
+                                </span>
+                                <span class="font-mono font-bold" :class="isDebtOverLimit() ? 'text-rose-700 font-black' : 'text-slate-800'" x-text="formatNumber(getProjectedDebt()) + ' đ'"></span>
+                            </div>
+                            <div x-show="isDebtOverLimit()" class="text-right text-[10px] text-rose-600 font-extrabold mt-0.5">
+                                ⚠️ Vượt hạn mức: +<span x-text="formatNumber(getDebtExcessAmount()) + ' đ'"></span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
             </div>
         </div>
 
@@ -1266,17 +1235,6 @@
                         </div>
                     </button>
 
-                    <!-- Ưu tiên 3: Tạo đơn vay mượn -->
-                    <button type="button" @click="createBorrowOrder()"
-                            :disabled="backorderSaving"
-                            class="w-full flex items-start gap-3 p-4 bg-purple-50 hover:bg-purple-100 border-2 border-purple-300 rounded-xl text-left transition-all cursor-pointer group disabled:opacity-60">
-                        <div class="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 font-black text-base group-hover:scale-110 transition-transform">🤝</div>
-                        <div>
-                            <div class="font-black text-slate-800 text-sm">Tạo đơn vay mượn hàng</div>
-                            <div class="text-xs text-slate-500 mt-0.5">Cắt đơn này xuống bằng số đã bốc VÀ tạo đơn vay mượn mới cho phần thiếu (<span x-text="getShortageQty(shortageModal.item)" class="font-bold text-purple-700"></span> <span x-text="shortageModal.item.unit||''"></span>) để mượn đối tác / đại lý khác giao cho khách.</div>
-                        </div>
-                    </button>
-
                     <!-- Lựa chọn ÁP DỤNG TẤT CẢ khi có nhiều hơn 1 SP thiếu -->
                     <template x-if="getShortageItems().length > 1">
                         <div class="pt-2 border-t border-slate-200 space-y-2">
@@ -1284,7 +1242,7 @@
                                 <span>Hoặc áp dụng cho tất cả sản phẩm thiếu:</span>
                                 <span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-black" x-text="getShortageItems().length + ' SP'"></span>
                             </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 <button type="button" @click="cutAllToPickedQty()" :disabled="backorderSaving" class="px-2.5 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-bold text-xs rounded-xl border border-orange-300 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50">
                                     <i class="fa-solid fa-scissors text-xs"></i>
                                     <span>Cắt tất cả (<span x-text="getShortageItems().length"></span>)</span>
@@ -1292,10 +1250,6 @@
                                 <button type="button" @click="createBackOrderAll()" :disabled="backorderSaving" class="px-2.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50">
                                     <i class="fa-solid fa-boxes-packing text-xs"></i>
                                     <span>Đơn giao sau tổng</span>
-                                </button>
-                                <button type="button" @click="createBorrowOrderAll()" :disabled="backorderSaving" class="px-2.5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50">
-                                    <i class="fa-solid fa-handshake text-xs"></i>
-                                    <span>Đơn vay mượn tổng</span>
                                 </button>
                             </div>
                         </div>
@@ -1323,30 +1277,22 @@
         <div class="flex items-center gap-3 text-xs font-bold text-slate-600">
             <span class="uppercase tracking-wider" x-text="items.length + ' MẶT HÀNG'"></span>
             <span class="text-slate-300">|</span>
-            <template x-if="formData.order_type === 'borrow'">
-                <span class="px-2.5 py-1 rounded-lg bg-purple-100 text-purple-900 font-extrabold border border-purple-200 inline-flex items-center gap-1.5">
-                    <i class="fa-solid fa-handshake text-purple-600"></i>
-                    <span>Tổng SL mượn: <b class="font-mono text-sm" x-text="formatNumber(items.reduce((s, it) => s + (Number(it.quantity)||0), 0))"></b></span>
-                </span>
-            </template>
-            <template x-if="formData.order_type !== 'borrow'">
-                <div class="flex items-center gap-3">
-                    <span class="text-sm font-black text-sky-600" x-text="formatNumber(finalTotal) + ' đ'"></span>
-                    <!-- Badges cảnh báo nhanh ở thanh footer -->
-                    <template x-if="isDebtOverLimit()">
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1 animate-pulse">
-                            <i class="fa-solid fa-triangle-exclamation"></i>
-                            <span>Vượt nợ (+<span x-text="formatNumber(getDebtExcessAmount())"></span>)</span>
-                        </span>
-                    </template>
-                    <template x-if="getOverStockItems().length > 0">
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
-                            <i class="fa-solid fa-boxes-stacked"></i>
-                            <span>Thiếu kho (<span x-text="getOverStockItems().length"></span> SP)</span>
-                        </span>
-                    </template>
-                </div>
-            </template>
+            <div class="flex items-center gap-3">
+                <span class="text-sm font-black text-sky-600" x-text="formatNumber(finalTotal) + ' đ'"></span>
+                <!-- Badges cảnh báo nhanh ở thanh footer -->
+                <template x-if="isDebtOverLimit()">
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1 animate-pulse">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>Vượt nợ (+<span x-text="formatNumber(getDebtExcessAmount())"></span>)</span>
+                    </span>
+                </template>
+                <template x-if="getOverStockItems().length > 0">
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                        <span>Thiếu kho (<span x-text="getOverStockItems().length"></span> SP)</span>
+                    </span>
+                </template>
+            </div>
         </div>
 
         <!-- Right: Action Buttons -->
@@ -1444,7 +1390,7 @@
         </div>
     </div>
 
-    <!-- Modal Chi tiết và Gộp đơn Nợ / Vay mượn -->
+    <!-- Modal Chi tiết và Gộp đơn Giao sau (Nợ hàng) -->
     <div x-show="showMergeModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs" @click.self="showMergeModal = false">
         <div class="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <!-- Modal Header -->
@@ -1454,7 +1400,7 @@
                         <i class="fa-solid fa-code-merge text-sm"></i>
                     </div>
                     <div>
-                        <h3 class="font-extrabold text-slate-900 text-sm">Danh Sách Đơn Nợ & Vay Mượn Chờ Gộp</h3>
+                        <h3 class="font-extrabold text-slate-900 text-sm">Danh Sách Đơn Giao Sau (Nợ Hàng) Chờ Gộp</h3>
                         <p class="text-[11px] text-slate-500">Khách hàng: <span class="font-bold text-slate-800" x-text="formData.customer_name"></span></p>
                     </div>
                 </div>
@@ -1467,7 +1413,7 @@
             <div class="p-6 overflow-y-auto space-y-4 flex-1">
                 <template x-if="!pendingMergeOrders || pendingMergeOrders.length === 0">
                     <div class="text-center py-8 text-slate-400 italic">
-                        Không có đơn nợ hoặc đơn vay mượn nào cần gộp.
+                        Không có đơn nợ hàng nào cần gộp.
                     </div>
                 </template>
                 <template x-for="(pOrd, pIdx) in pendingMergeOrders" :key="pOrd.id">
@@ -1475,8 +1421,7 @@
                         <div class="flex items-center justify-between px-4 py-3 bg-slate-100/80 border-b border-slate-200">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="font-mono font-black text-slate-900 text-xs" x-text="pOrd.order_code"></span>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold"
-                                      :class="pOrd.order_type === 'borrow' ? 'bg-purple-100 text-purple-800' : 'bg-amber-100 text-amber-800'"
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800"
                                       x-text="pOrd.type_label"></span>
                                 <span class="text-[11px] text-slate-400" x-text="'Tạo ngày: ' + pOrd.created_at"></span>
                             </div>
@@ -1579,6 +1524,7 @@ function orderFormApp() {
         dismissedPendingAlert: false,
         dealersData: Object.freeze(_rawDealersData),
         warehousesCatalog: @json($warehouses ?? []),
+        isDriverUser: {{ ($isDriverUser ?? false) ? 'true' : 'false' }},
         productsCatalog: Object.freeze(_rawProductsCatalog),
         salesPoliciesCatalog: Object.freeze(_rawSalesPolicies),
         priceTiersCatalog: @json($priceTiers ?? []),
@@ -1598,7 +1544,7 @@ function orderFormApp() {
         tickets: [
             {
                 id: 1,
-                title: '{{ $order ? ($order->order_code ?: "Phiếu đơn hàng") : (request("order_type") === "borrow" ? "Đơn vay mượn mới" : (request("order_type") === "backorder" ? "Đơn giao sau mới" : "Phiếu mới 1")) }}',
+                title: '{{ $order ? ($order->order_code ?: "Phiếu đơn hàng") : (request("order_type") === "backorder" ? "Đơn giao sau mới" : "Phiếu mới 1") }}',
                 orderId: '{{ $order ? $order->id : "" }}',
                 orderDiscountPercent: 0,
                 bulkDiscountPercent: '',
@@ -1610,18 +1556,18 @@ function orderFormApp() {
                     id: '{{ $order ? $order->id : "" }}',
                     order_code: '{{ $order ? $order->order_code : "" }}',
                     order_date: '{{ $order && $order->created_at ? $order->created_at->format("Y-m-d") : date("Y-m-d") }}',
-                    delivery_date: '{{ $order ? ($order->delivery_date ? \Carbon\Carbon::parse($order->delivery_date)->format("Y-m-d") : "") : (request("order_type") === "borrow" ? "" : date("Y-m-d")) }}',
-                    picking_date: '{{ $order ? ($order->picking_date ? \Carbon\Carbon::parse($order->picking_date)->format("Y-m-d") : "") : (request("order_type") === "borrow" ? "" : date("Y-m-d")) }}',
+                    delivery_date: '{{ $order ? ($order->delivery_date ? \Carbon\Carbon::parse($order->delivery_date)->format("Y-m-d") : "") : date("Y-m-d") }}',
+                    picking_date: '{{ $order ? ($order->picking_date ? \Carbon\Carbon::parse($order->picking_date)->format("Y-m-d") : "") : date("Y-m-d") }}',
                     order_type: '{{ $order ? ($order->order_type ?? "normal") : (request("order_type") ?: "normal") }}',
                     dealer_id: '{{ $order ? $order->dealer_id : "" }}',
                     customer_name: '{{ $order ? addslashes($order->customer_name) : "" }}',
                     customer_phone: '{{ $order ? addslashes($order->customer_phone) : "" }}',
                     customer_address: '{{ $order ? addslashes($order->customer_address) : "" }}',
-                    dealer_tier: '{{ ($order && !empty($order->dealer_tier)) ? $order->dealer_tier : (request("order_type") === "borrow" ? "" : "Nguyên Giá") }}',
-                    warehouse: '{{ $order ? $order->warehouse : (request("order_type") === "borrow" ? "" : ($warehouses->first()?->name ?? "Kho Tổng Mê Linh (MQ)")) }}',
+                    dealer_tier: '{{ ($order && !empty($order->dealer_tier)) ? $order->dealer_tier : "Nguyên Giá" }}',
+                    warehouse: '{{ $order ? $order->warehouse : ($warehouses->first()?->name ?? "Kho Tổng Mê Linh (MQ)") }}',
                     payment_method: '{{ $order ? $order->payment_method : "Ghi nợ đại lý" }}',
-                    status: '{{ $order ? $order->status : (request("order_type") === "borrow" ? "Vay mượn" : (request("order_type") === "backorder" ? "Giao sau" : "Báo giá")) }}',
-                    notes: '{{ $order ? addslashes(str_replace(["\r", "\n"], ["", "\\n"], $order->notes)) : (request("order_type") === "borrow" ? "[ĐƠN VAY MƯỢN HÀNG] " : "") }}',
+                    status: '{{ $order ? $order->status : (request("order_type") === "backorder" ? "Giao sau" : "Báo giá") }}',
+                    notes: '{{ $order ? addslashes(str_replace(["\r", "\n"], ["", "\\n"], $order->notes)) : "" }}',
                     discount_amount: {{ $order ? (float)$order->discount_amount : 0 }},
                     tax_amount: {{ $order ? (float)$order->tax_amount : 0 }},
                     shortage_reported: {{ ($order && $order->shortage_reported) ? 'true' : 'false' }},
@@ -1652,7 +1598,7 @@ function orderFormApp() {
                     it.price_type = topTier;
                     it.appliedTierPolicy = topTier;
                 }
-                if (it.product_id && !it.isPromotionalGift && this.formData.order_type !== 'borrow') {
+                if (it.product_id && !it.isPromotionalGift) {
                     const prod = this.getProduct(it.product_id);
                     if (prod && prod.vat_rate !== undefined && prod.vat_rate !== null && prod.vat_rate !== '') {
                         it.vat_percent = Number(prod.vat_rate);
@@ -1664,6 +1610,7 @@ function orderFormApp() {
             if (this.formData.dealer_id || this.formData.customer_name || this.formData.customer_phone) {
                 this.checkPendingMergeOrders();
             }
+
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('print') === '1') {
                 this.$nextTick(() => {
@@ -1949,7 +1896,6 @@ function orderFormApp() {
         },
 
         isDebtOverLimit() {
-            if (this.formData.order_type === 'borrow') return false;
             const dealer = this.getSelectedDealer();
             if (!dealer) return false;
             const limit = Number(dealer.credit_limit || 0);
@@ -1958,7 +1904,6 @@ function orderFormApp() {
         },
 
         getDebtExcessAmount() {
-            if (this.formData.order_type === 'borrow') return 0;
             const dealer = this.getSelectedDealer();
             if (!dealer) return 0;
             const limit = Number(dealer.credit_limit || 0);
@@ -2034,7 +1979,6 @@ function orderFormApp() {
         },
 
         isItemOverStock(item) {
-            if (this.formData.order_type === 'borrow') return false;
             if (!item || !item.product_id) return false;
             const avail = this.getItemAvailableStockInUnit(item);
             const reqQty = (Number(item.quantity) || 0) + (Number(item.gift_quantity) || 0);
@@ -2042,7 +1986,6 @@ function orderFormApp() {
         },
 
         getItemOverStockQty(item) {
-            if (this.formData.order_type === 'borrow') return 0;
             if (!this.isItemOverStock(item)) return 0;
             const avail = this.getItemAvailableStockInUnit(item);
             const reqQty = (Number(item.quantity) || 0) + (Number(item.gift_quantity) || 0);
@@ -2050,7 +1993,6 @@ function orderFormApp() {
         },
 
         getOverStockItems() {
-            if (this.formData.order_type === 'borrow') return [];
             return (this.items || []).filter(it => it.product_id && this.isItemOverStock(it));
         },
 
@@ -2222,24 +2164,6 @@ function orderFormApp() {
             item.searchQuery = `[${p.sku}] ${p.name}`;
             item.unit = p.unit || 'cái';
 
-            if (this.formData.order_type === 'borrow') {
-                item.originalPrice = 0;
-                item.costPrice = 0;
-                item.unitPrice = 0;
-                item.discount_percent = 0;
-                item.discount_amount = 0;
-                item.vat_percent = 0;
-                item.vat_amount = 0;
-                item.gift_quantity = 0;
-                item.amount = 0;
-                item.appliedTierPolicy = 'Vay mượn';
-                item.price_type = 'Theo phiếu';
-                item.quantity = item.quantity > 0 ? item.quantity : 1;
-                this.updateLineTotal(index);
-                this.calculateTotals();
-                return;
-            }
-            
             item.originalPrice = Number(p.cost_price || 0);
             item.costPrice = Number(p.cost_price || 0);
 
@@ -2481,20 +2405,6 @@ function orderFormApp() {
         updateLineTotal(index, source = 'from_percent') {
             const it = this.items[index];
             if (it) {
-                if (this.formData.order_type === 'borrow') {
-                    it.unitPrice = 0;
-                    it.originalPrice = 0;
-                    it.costPrice = 0;
-                    it.discount_percent = 0;
-                    it.discount_amount = 0;
-                    it.vat_percent = 0;
-                    it.vat_amount = 0;
-                    it.gift_quantity = 0;
-                    it.amount = 0;
-                    this.calculateTotals();
-                    return;
-                }
-
                 const qty = Number(it.quantity) || 0;
                 const price = Number(it.unitPrice) || 0;
                 const lineBase = qty * price;
@@ -2775,26 +2685,6 @@ function orderFormApp() {
         },
 
         checkAndApplyPromotions(force = false) {
-            // Đơn vay mượn hàng: Là vay mượn từ khách hàng nên KHÔNG áp dụng bất kỳ chương trình khuyến mãi nào
-            if (this.formData.order_type === 'borrow') {
-                this.items = this.items.filter(it => !it.isPromotionalGift);
-                this.items.forEach(it => {
-                    if (it._autoPromoGift) {
-                        it.gift_quantity = 0;
-                        it._autoPromoGift = false;
-                    }
-                    if (it._autoPromoDiscount) {
-                        it.discount_percent = 0;
-                        it.discount_amount = 0;
-                        it._autoPromoDiscount = false;
-                    }
-                    it._appliedPromoPolicyId = null;
-                });
-                this.appliedPromotionNotices = [];
-                this.appliedPromoPolicyIds = [];
-                return;
-            }
-
             if (!this.autoApplyPromotions && !force) return;
             if (this._isApplyingPromotions) return;
             this._isApplyingPromotions = true;
@@ -3051,31 +2941,12 @@ function orderFormApp() {
         },
 
         handleOrderTypeChange() {
-            if (this.formData.order_type === 'borrow') {
-                this.formData.status = 'Vay mượn';
-                if (!this.formData.notes || !this.formData.notes.includes('[ĐƠN VAY MƯỢN HÀNG]')) {
-                    this.formData.notes = ('[ĐƠN VAY MƯỢN HÀNG] ' + (this.formData.notes || '')).trim();
-                }
-                this.items.forEach(it => {
-                    it.unitPrice = 0;
-                    it.originalPrice = 0;
-                    it.costPrice = 0;
-                    it.discount_percent = 0;
-                    it.discount_amount = 0;
-                    it.vat_percent = 0;
-                    it.vat_amount = 0;
-                    it.gift_quantity = 0;
-                    it.amount = 0;
-                    it.appliedTierPolicy = 'Vay mượn';
-                });
-                this.appliedPromotionNotices = [];
-                this.appliedPromoPolicyIds = [];
-            } else if (this.formData.order_type === 'backorder') {
+            if (this.formData.order_type === 'backorder') {
                 this.formData.status = 'Giao sau';
                 this.recalculateItemPrices();
                 this.checkAndApplyPromotions(true);
             } else {
-                if (this.formData.status === 'Vay mượn' || this.formData.status === 'Giao sau') {
+                if (this.formData.status === 'Giao sau') {
                     this.formData.status = 'Báo giá';
                 }
                 this.recalculateItemPrices();
@@ -3400,7 +3271,7 @@ function orderFormApp() {
                         }));
                     } catch(e) {}
 
-                    // Nếu có đơn nợ hoặc đơn vay mượn được gộp vào đơn này, cập nhật trạng thái đơn đó thành "Đã gộp đơn"
+                    // Nếu có đơn giao sau được gộp vào đơn này, cập nhật trạng thái đơn đó thành "Đã gộp đơn"
                     if (this.mergedOrderIds && this.mergedOrderIds.length > 0) {
                         try {
                             await fetch('/api/orders/mark-merged', {
@@ -3813,286 +3684,8 @@ function orderFormApp() {
             }
         },
 
-        // ─── Tạo đơn vay mượn hàng cho 1 sản phẩm ─────────────────
-        async createBorrowOrder() {
-            const { item, index } = this.shortageModal;
-            if (!item) return;
 
-            const shortage = this.getShortageQty(item);
-            if (shortage <= 0) {
-                alert('Sản phẩm này không bị thiếu!');
-                return;
-            }
 
-            const picked = Number(item.picked_qty || 0);
-            const needed = Number(item.quantity || 0) + Number(item.gift_quantity || 0);
-
-            const confirmMsg = 'Xác nhận tạo ĐƠN VAY MƯỢN cho sản phẩm: ' + (item.name || item.sku) + '?\n\n' +
-                '- Số lượng vay mượn bù giao: ' + shortage + ' ' + (item.unit || '') + '\n' +
-                '- Số lượng giữ lại ở đơn này: ' + picked + ' ' + (item.unit || '') + '\n\n' +
-                'Hệ thống sẽ cắt đơn này xuống bằng số đã bốc và tự động tạo đơn vay mượn mới (trạng thái Chốt đơn).';
-            if (!confirm(confirmMsg)) return;
-
-            this.backorderSaving = true;
-            try {
-                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-
-                // 1. Cắt SL đơn gốc và chuẩn bị lưu
-                const currentItems = JSON.parse(JSON.stringify(this.items || []));
-                currentItems[index].quantity = picked;
-                currentItems[index].gift_quantity = 0;
-                currentItems[index].shortage_reason = '';
-                currentItems[index].item_status = picked > 0 ? 'Đủ hàng' : 'Chờ bốc';
-                currentItems[index].is_picked = picked > 0;
-
-                const parentCode = this.formData.order_code || this.orderId || '';
-
-                const saveRes = await fetch('/api/orders/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token || '' },
-                    body: JSON.stringify({
-                        id: this.orderId || undefined,
-                        orderCode: this.formData.order_code || undefined,
-                        dealerName: this.formData.customer_name,
-                        customer_name: this.formData.customer_name,
-                        customerPhone: this.formData.customer_phone,
-                        address: this.formData.customer_address,
-                        warehouse: this.formData.warehouse,
-                        paymentMethod: this.formData.payment_method,
-                        payment_method: this.formData.payment_method,
-                        status: this.formData.status === 'Kho báo thiếu hàng' ? 'Soạn hàng' : this.formData.status,
-                        shortage_reported: false,
-                        shortageReported: false,
-                        notes: (this.formData.notes || '') + '\n[Đã tách phần thiếu sang đơn vay mượn lúc ' + new Date().toLocaleTimeString('vi-VN') + ']',
-                        subtotal: this.subtotal,
-                        totalAmount: this.totalAmount,
-                        items: currentItems.map(it => ({
-                            id: it.id || undefined,
-                            itemId: it.product_id, product_id: it.product_id,
-                            sku: it.sku, name: it.name, unit: it.unit,
-                            quantity: it.quantity, gift_quantity: Number(it.gift_quantity)||0,
-                            unitPrice: it.unitPrice, amount: it.amount,
-                            appliedTierPolicy: it.price_type || it.appliedTierPolicy,
-                            shortage_reason: '',
-                            item_status: Number(it.quantity) > 0 ? 'Đủ hàng' : 'Chờ bốc',
-                            is_picked: Number(it.quantity) > 0,
-                        }))
-                    })
-                });
-                const saveData = await saveRes.json();
-                if (!saveData.success && !saveRes.ok) throw new Error(saveData.message || 'Lỗi lưu đơn gốc');
-
-                // 2. Tạo đơn vay mượn mới
-                const borrowItems = [{
-                    itemId: item.product_id, product_id: item.product_id,
-                    sku: item.sku, name: item.name, unit: item.unit,
-                    quantity: shortage, gift_quantity: 0,
-                    unitPrice: item.unitPrice, amount: shortage * Number(item.unitPrice || 0),
-                    appliedTierPolicy: item.price_type || item.appliedTierPolicy,
-                }];
-
-                const borrowRes = await fetch('/api/orders/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token || '' },
-                    body: JSON.stringify({
-                        dealerName: this.formData.customer_name,
-                        customer_name: this.formData.customer_name,
-                        customerPhone: this.formData.customer_phone,
-                        address: this.formData.customer_address,
-                        warehouse: this.formData.warehouse,
-                        paymentMethod: this.formData.payment_method,
-                        payment_method: this.formData.payment_method,
-                        orderType: 'borrow',
-                        order_type: 'borrow',
-                        status: 'Vay mượn',
-                        deliveryDate: null,
-                        delivery_date: null,
-                        pickingDate: null,
-                        picking_date: null,
-                        notes: '[ĐƠN VAY MƯỢN HÀNG] Tách từ đơn gốc ' + parentCode + ' do kho thiếu hàng.\n' + (item.name || '') + ' mượn ' + shortage + ' ' + (item.unit || '') + ' để bù giao.',
-                        parentOrderCode: parentCode,
-                        items: borrowItems
-                    })
-                });
-                const borrowData = await borrowRes.json();
-
-                this.shortageModal.show = false;
-                if (borrowData.success || borrowRes.ok) {
-                    const newCode = borrowData.order?.order_code || borrowData.order_code || '';
-                    alert('✅ ĐÃ TẠO ĐƠN VAY MƯỢN THÀNH CÔNG' + (newCode ? ' (' + newCode + ')' : '') + '!\n\nĐã tạo đơn vay mượn cho ' + shortage + ' ' + (item.unit || '') + ' ' + (item.name || '') + '.\nĐơn gốc đã được cắt xuống ' + (picked > 0 ? picked : needed) + ' ' + (item.unit || '') + '.');
-                    window.location.href = '/orders';
-                } else {
-                    alert('Lưu đơn gốc thành công, nhưng tạo đơn vay mượn thất bại: ' + (borrowData.message || ''));
-                }
-            } catch (e) {
-                alert('Lỗi: ' + e.message);
-            } finally {
-                this.backorderSaving = false;
-            }
-        },
-
-        // ─── Tạo đơn vay mượn TỔNG cho TẤT CẢ sản phẩm thiếu ───────
-        async createBorrowOrderAll() {
-            const shortageList = this.getShortageItems();
-            if (shortageList.length === 0) {
-                alert('Không có sản phẩm nào đang bị thiếu!');
-                return;
-            }
-
-            const confirmMsg = 'Xác nhận tạo ĐƠN VAY MƯỢN HÀNG TỔNG cho toàn bộ ' + shortageList.length + ' sản phẩm bốc thiếu?\n\n' +
-                '- Đơn hiện tại sẽ tự động cắt số lượng theo số thực bốc và lưu lại.\n' +
-                '- Một đơn vay mượn mới (trạng thái Chốt đơn) sẽ tự động tạo cho toàn bộ phần thiếu này để đi mượn hàng bù.';
-            if (!confirm(confirmMsg)) return;
-
-            this.backorderSaving = true;
-            try {
-                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-
-                // 1. Chuẩn bị danh sách sản phẩm vay mượn
-                const borrowItems = [];
-                shortageList.forEach(it => {
-                    const shortage = this.getShortageQty(it);
-                    if (shortage > 0) {
-                        const price = Number(it.unitPrice || 0);
-                        const vat = Number(it.vat_percent || 10);
-                        borrowItems.push({
-                            itemId: it.product_id,
-                            product_id: it.product_id,
-                            sku: it.sku,
-                            name: it.name,
-                            unit: it.unit,
-                            quantity: shortage,
-                            gift_quantity: 0,
-                            unitPrice: price,
-                            originalPrice: it.originalPrice || price,
-                            costPrice: it.costPrice || 0,
-                            discount_percent: 0,
-                            discount_amount: 0,
-                            vat_percent: vat,
-                            vat_amount: Math.round((shortage * price) * (vat / 100)),
-                            amount: Math.round(shortage * price * (1 + vat / 100)),
-                            appliedTierPolicy: it.price_type || it.appliedTierPolicy || 'Theo phiếu',
-                        });
-                    }
-                });
-
-                if (borrowItems.length === 0) {
-                    alert('Không có sản phẩm nào có số lượng thiếu hợp lệ!');
-                    return;
-                }
-
-                // 2. Cắt các dòng thiếu trên đơn hiện tại
-                shortageList.forEach(sh => {
-                    const idx = this.items.findIndex(it => it === sh || (it.product_id && it.product_id === sh.product_id));
-                    if (idx >= 0) {
-                        const picked = Number(this.items[idx].picked_qty || 0);
-                        this.items[idx].quantity = picked;
-                        this.items[idx].gift_quantity = 0;
-                        this.items[idx].shortage_reason = '';
-                        this.items[idx].item_status = picked > 0 ? 'Đủ hàng' : 'Chờ bốc';
-                        this.items[idx].is_picked = picked > 0;
-                        this.updateLineTotal(idx);
-                    }
-                });
-                this.calculateTotals();
-
-                const currentItemsPayload = this.items
-                    .filter(it => (it.name || it.sku || it.product_id))
-                    .map(it => ({
-                        id: it.id || undefined,
-                        itemId: it.product_id, product_id: it.product_id,
-                        sku: it.sku, name: it.name, unit: it.unit,
-                        quantity: Number(it.quantity || 0),
-                        gift_quantity: Number(it.gift_quantity || 0),
-                        unitPrice: Number(it.unitPrice || 0),
-                        originalPrice: Number(it.originalPrice || it.unitPrice || 0),
-                        costPrice: Number(it.costPrice || 0),
-                        discount_percent: Number(it.discount_percent || 0),
-                        discount_amount: Number(it.discount_amount || 0),
-                        vat_percent: Number(it.vat_percent || 0),
-                        vat_amount: Number(it.vat_amount || 0),
-                        amount: Number(it.amount || 0),
-                        appliedTierPolicy: it.price_type || it.appliedTierPolicy || 'Theo phiếu',
-                        shortage_reason: '',
-                        item_status: Number(it.quantity) > 0 ? 'Đủ hàng' : 'Chờ bốc',
-                        is_picked: Number(it.quantity) > 0,
-                    }));
-
-                const parentCode = this.formData.order_code || this.orderId || '';
-
-                // 3. Lưu đơn gốc đã cắt
-                const saveRes = await fetch('/api/orders/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token || '' },
-                    body: JSON.stringify({
-                        id: this.orderId || undefined,
-                        orderCode: this.formData.order_code || undefined,
-                        dealerName: this.formData.customer_name,
-                        customer_name: this.formData.customer_name,
-                        customerPhone: this.formData.customer_phone,
-                        address: this.formData.customer_address,
-                        warehouse: this.formData.warehouse,
-                        paymentMethod: this.formData.payment_method,
-                        payment_method: this.formData.payment_method,
-                        status: this.formData.status === 'Kho báo thiếu hàng' ? 'Soạn hàng' : this.formData.status,
-                        shortage_reported: false,
-                        shortageReported: false,
-                        notes: (this.formData.notes || '') + '\n[Đã tách ' + borrowItems.length + ' SP thiếu sang đơn vay mượn lúc ' + new Date().toLocaleTimeString('vi-VN') + ']',
-                        subtotal: this.subtotal,
-                        totalAmount: this.totalAmount,
-                        items: currentItemsPayload
-                    })
-                });
-                const saveData = await saveRes.json();
-                if (!saveData.success && !saveRes.ok) {
-                    throw new Error(saveData.message || 'Lỗi khi cập nhật đơn gốc');
-                }
-
-                // 4. Lưu đơn vay mượn hàng mới
-                const borrowNotes = '[ĐƠN VAY MƯỢN HÀNG TỔNG] Tách từ đơn gốc ' + parentCode + ' do kho báo thiếu hàng:\n' +
-                    borrowItems.map(b => '- ' + b.name + ': thiếu ' + b.quantity + ' ' + (b.unit || '')).join('\n') +
-                    '\n(Đơn vay mượn hàng để bù giao cho đơn gốc)';
-
-                const borrowRes = await fetch('/api/orders/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token || '' },
-                    body: JSON.stringify({
-                        dealerName: this.formData.customer_name,
-                        customer_name: this.formData.customer_name,
-                        customerPhone: this.formData.customer_phone,
-                        address: this.formData.customer_address,
-                        warehouse: this.formData.warehouse,
-                        paymentMethod: this.formData.payment_method,
-                        payment_method: this.formData.payment_method,
-                        orderType: 'borrow',
-                        order_type: 'borrow',
-                        status: 'Vay mượn',
-                        deliveryDate: null,
-                        delivery_date: null,
-                        pickingDate: null,
-                        picking_date: null,
-                        notes: borrowNotes,
-                        parentOrderCode: parentCode,
-                        items: borrowItems
-                    })
-                });
-                const borrowData = await borrowRes.json();
-
-                if (this.shortageModal) this.shortageModal.show = false;
-                if (borrowData.success || borrowRes.ok) {
-                    const newCode = borrowData.order?.order_code || borrowData.order_code || '';
-                    alert('🎉 ĐÃ TẠO ĐƠN VAY MƯỢN TỔNG THÀNH CÔNG!\n\n1. Đơn gốc ' + parentCode + ' đã được cắt số lượng theo số thực bốc và lưu lại.\n2. Đã tự động tạo đơn vay mượn mới ' + (newCode ? 'MÃ: ' + newCode : '') + ' cho toàn bộ ' + borrowItems.length + ' sản phẩm thiếu.');
-                    window.location.href = '/orders';
-                } else {
-                    alert('Đơn gốc đã được cắt, nhưng tạo đơn vay mượn mới thất bại: ' + (borrowData.message || ''));
-                }
-            } catch (e) {
-                console.error(e);
-                alert('Lỗi: ' + e.message);
-            } finally {
-                this.backorderSaving = false;
-            }
-        },
 
         async printCurrentOrder(mode = 'standard') {
             let o = null;
@@ -4488,7 +4081,6 @@ function orderFormApp() {
             if (s.includes('bán lẻ') || s.includes('ban le') || s === 'bl') return 'BL';
             if (s.includes('nguyên giá') || s.includes('nguyen gia') || s === 'ng') return 'NG';
             if (s.includes('khuyến mại') || s.includes('tặng') || s === 'km') return 'KM';
-            if (s.includes('vay mượn') || s === 'vm') return 'VM';
 
             if (this.priceTiersCatalog && Array.isArray(this.priceTiersCatalog)) {
                 const found = this.priceTiersCatalog.find(pt => pt.name && pt.name.toLowerCase() === s);

@@ -17,8 +17,6 @@
         })->count(),
         'Giao sau' => \App\Models\Order::whereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng'])->count(),
         'Đơn nợ' => \App\Models\Order::whereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng'])->count(),
-        'Vay mượn' => \App\Models\Order::whereIn('status', ['Vay mượn', 'Đơn vay mượn'])->count(),
-        'Đơn vay mượn' => \App\Models\Order::whereIn('status', ['Vay mượn', 'Đơn vay mượn'])->count(),
         'Kiểm hàng' => \App\Models\Order::whereIn('status', ['Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng', 'Sẵn sàng xuất xe'])->count(),
         'Đang vận chuyển' => \App\Models\Order::whereIn('status', ['Đang vận chuyển', 'Đang giao hàng'])->count(),
         'Đã giao' => \App\Models\Order::whereIn('status', ['Đã giao', 'Giao thành công'])->count(),
@@ -87,12 +85,6 @@
                 <span>Xếp Xe & Tuyến Giao</span>
             </a>
 
-            <!-- Nút Tạo Đơn Vay Mượn -->
-            <a href="{{ url('/orders/create?order_type=borrow') }}" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-black rounded-xl text-xs transition-all shadow-md shadow-purple-600/20 flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95" title="Tạo đơn / phiếu vay mượn hàng mới từ đại lý, đối tác hoặc kho khác (Phím V)">
-                <i class="fa-solid fa-handshake"></i>
-                <span>+ Đơn vay mượn <kbd class="px-1.5 py-0.5 bg-purple-700/80 border border-purple-500 rounded text-[10px] text-white font-mono">V</kbd></span>
-            </a>
-
             <a href="{{ url('/orders/create') }}" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-black rounded-xl text-xs transition-all shadow-md shadow-sky-600/20 flex items-center gap-1.5 cursor-pointer" title="Lên đơn hàng mới (F8 hoặc N)">
                 <i class="fa-solid fa-plus"></i>
                 <span>+ Thêm mới <kbd class="px-1.5 py-0.5 bg-sky-700/80 border border-sky-500 rounded text-[10px] text-white font-mono">F8</kbd></span>
@@ -106,13 +98,12 @@
         
         <!-- Status Tabs (Pills) -->
         <div class="flex items-center gap-2 overflow-x-auto pb-1">
-            @foreach(['Tất cả', 'Báo giá', 'Chốt đơn', 'Soạn hàng', 'Đơn thiếu', 'Giao sau', 'Vay mượn', 'Kiểm hàng', 'Đang vận chuyển', 'Đã giao', 'Hủy'] as $pill)
+            @foreach(['Tất cả', 'Báo giá', 'Chốt đơn', 'Soạn hàng', 'Đơn thiếu', 'Giao sau', 'Kiểm hàng', 'Đang vận chuyển', 'Đã giao', 'Hủy'] as $pill)
                 @php
                     $isSel = (request('status') === $pill) 
                         || (!request('status') && $pill === 'Tất cả') 
                         || (request('status') === 'Soạn bốc' && $pill === 'Soạn hàng')
-                        || (in_array(request('status'), ['Đơn nợ', 'Nợ hàng', 'Đơn giao sau']) && $pill === 'Giao sau')
-                        || (in_array(request('status'), ['Đơn vay mượn']) && $pill === 'Vay mượn');
+                        || (in_array(request('status'), ['Đơn nợ', 'Nợ hàng', 'Đơn giao sau']) && $pill === 'Giao sau');
                     $badgeCount = $counts[$pill] ?? 0;
 
                     $pillClass = match($pill) {
@@ -122,9 +113,6 @@
                         'Giao sau', 'Đơn nợ' => $isSel 
                             ? 'bg-amber-600 text-white shadow-2xs ring-2 ring-amber-600/30 font-black' 
                             : ($badgeCount > 0 ? 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-300 font-bold' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'),
-                        'Vay mượn', 'Đơn vay mượn' => $isSel 
-                            ? 'bg-purple-600 text-white shadow-2xs ring-2 ring-purple-600/30 font-black' 
-                            : ($badgeCount > 0 ? 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-300 font-bold' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'),
                         default => $isSel 
                             ? 'bg-sky-600 text-white shadow-2xs ring-2 ring-sky-600/20' 
                             : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
@@ -133,7 +121,6 @@
                     $badgePillClass = match($pill) {
                         'Đơn thiếu' => $isSel ? 'bg-white/25 text-white' : ($badgeCount > 0 ? 'bg-rose-200 text-rose-800 font-black' : 'bg-slate-200 text-slate-600'),
                         'Giao sau', 'Đơn nợ' => $isSel ? 'bg-white/25 text-white' : ($badgeCount > 0 ? 'bg-amber-200 text-amber-900 font-black' : 'bg-slate-200 text-slate-600'),
-                        'Vay mượn', 'Đơn vay mượn' => $isSel ? 'bg-white/25 text-white' : ($badgeCount > 0 ? 'bg-purple-200 text-purple-900 font-black' : 'bg-slate-200 text-slate-600'),
                         default => $isSel ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-600'
                     };
                 @endphp
@@ -142,8 +129,6 @@
                         <i class="fa-solid fa-triangle-exclamation text-[11px] {{ $isSel ? 'text-white' : 'text-rose-600 animate-pulse' }}"></i>
                     @elseif(in_array($pill, ['Giao sau', 'Đơn nợ']) && $badgeCount > 0)
                         <i class="fa-solid fa-clipboard-list text-[11px] {{ $isSel ? 'text-white' : 'text-amber-600' }}"></i>
-                    @elseif(in_array($pill, ['Vay mượn', 'Đơn vay mượn']) && $badgeCount > 0)
-                        <i class="fa-solid fa-handshake text-[11px] {{ $isSel ? 'text-white' : 'text-purple-600' }}"></i>
                     @endif
                     <span>{{ $pill }}</span>
                     <span class="px-1.5 py-0.2 rounded-full text-[10px] font-black {{ $badgePillClass }}">
@@ -200,8 +185,8 @@
                 <label class="font-bold text-slate-500 text-[11px]">Trạng thái</label>
                 <select name="status" class="w-full p-2 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:outline-none focus:border-sky-500 bg-white cursor-pointer">
                     <option value="">Tất cả trạng thái</option>
-                    @foreach(['Báo giá', 'Chốt đơn', 'Soạn hàng', 'Đơn thiếu', 'Giao sau', 'Vay mượn', 'Kiểm hàng', 'Đang vận chuyển', 'Đã giao', 'Hủy'] as $st)
-                        <option value="{{ $st }}" {{ (request('status') === $st || (request('status') === 'Soạn bốc' && $st === 'Soạn hàng') || (in_array(request('status'), ['Đơn nợ', 'Nợ hàng', 'Đơn giao sau']) && $st === 'Giao sau') || (in_array(request('status'), ['Đơn vay mượn']) && $st === 'Vay mượn')) ? 'selected' : '' }}>{{ $st }}</option>
+                    @foreach(['Báo giá', 'Chốt đơn', 'Soạn hàng', 'Đơn thiếu', 'Giao sau', 'Kiểm hàng', 'Đang vận chuyển', 'Đã giao', 'Hủy'] as $st)
+                        <option value="{{ $st }}" {{ (request('status') === $st || (request('status') === 'Soạn bốc' && $st === 'Soạn hàng') || (in_array(request('status'), ['Đơn nợ', 'Nợ hàng', 'Đơn giao sau']) && $st === 'Giao sau')) ? 'selected' : '' }}>{{ $st }}</option>
                     @endforeach
                 </select>
             </div>
@@ -213,7 +198,6 @@
                     <option value="">Tất cả loại đơn</option>
                     <option value="normal" {{ request('order_type') === 'normal' ? 'selected' : '' }}>🛒 Thương mại</option>
                     <option value="project" {{ request('order_type') === 'project' ? 'selected' : '' }}>🏗️ Đơn dự án</option>
-                    <option value="borrow" {{ request('order_type') === 'borrow' ? 'selected' : '' }}>🤝 Đơn vay mượn</option>
                     <option value="backorder" {{ request('order_type') === 'backorder' ? 'selected' : '' }}>📋 Đơn giao sau (nợ hàng)</option>
                 </select>
             </div>
@@ -288,12 +272,9 @@
                             $creator = $order->order_creator ?: ($order->creator?->name ?? 'Admin KBTech');
                             $st = $order->status ?: 'Báo giá';
                             $isBackOrder = in_array($st, ['Giao sau', 'Đơn giao sau', 'Nợ hàng']) || ($order->order_type === 'backorder');
-                            $isBorrow = in_array($st, ['Vay mượn', 'Đơn vay mượn']) || ($order->order_type === 'borrow');
                             $rowClass = 'hover:bg-sky-50/50';
                             if ($order->shortage_reported) {
                                 $rowClass = 'bg-rose-50/60 hover:bg-rose-100/60 border-l-4 border-rose-500';
-                            } elseif ($isBorrow) {
-                                $rowClass = 'bg-purple-50/60 hover:bg-purple-100/60 border-l-4 border-purple-500';
                             } elseif ($isBackOrder) {
                                 $rowClass = 'bg-amber-50/60 hover:bg-amber-100/60 border-l-4 border-amber-500';
                             }
@@ -329,10 +310,6 @@
                                             </span>
                                         @endif
                                     </div>
-                                @elseif($isBorrow)
-                                    <span class="px-2.5 py-1 rounded-md bg-purple-100 text-purple-900 font-extrabold text-[11px] border border-purple-300 shadow-2xs shrink-0 inline-flex items-center gap-1" title="Đơn vay mượn hàng bù">
-                                        <span>🤝 Vay mượn</span>
-                                    </span>
                                 @elseif($isBackOrder)
                                     <span class="px-2.5 py-1 rounded-md bg-amber-100 text-amber-900 font-extrabold text-[11px] border border-amber-300 shadow-2xs shrink-0 inline-flex items-center gap-1" title="Đơn giao sau / nợ hàng">
                                         <span>📋 Giao sau</span>
@@ -400,7 +377,6 @@
                                                 'Báo giá' => ['bg' => 'bg-amber-50 text-amber-800 border-amber-300', 'icon' => '📋', 'label' => 'Báo giá', 'sub' => 'Phiếu báo giá'],
                                                 'Chốt đơn', 'Đã duyệt' => ['bg' => 'bg-blue-50 text-blue-800 border-blue-300', 'icon' => '🤝', 'label' => 'Chốt đơn', 'sub' => 'Đơn bán hàng'],
                                                 'Giao sau', 'Đơn giao sau', 'Nợ hàng' => ['bg' => 'bg-amber-50 text-amber-800 border-amber-300', 'icon' => '📋', 'label' => 'Giao sau', 'sub' => 'Đơn giao sau'],
-                                                'Vay mượn', 'Đơn vay mượn' => ['bg' => 'bg-purple-50 text-purple-800 border-purple-300', 'icon' => '🤝', 'label' => 'Vay mượn', 'sub' => 'Đơn vay mượn hàng'],
                                                 'Soạn hàng', 'Đang bốc hàng', 'Soạn bốc', 'Kho đang soạn' => ['bg' => 'bg-purple-50 text-purple-800 border-purple-300', 'icon' => '📦', 'label' => 'Soạn hàng', 'sub' => 'Đơn bán hàng'],
                                                 'Đã bốc xong', 'Kho đã xuất đủ' => ['bg' => 'bg-indigo-50 text-indigo-800 border-indigo-300', 'icon' => '📦', 'label' => 'Đã bốc xong', 'sub' => 'Đơn bán hàng'],
                                                 'Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng' => ['bg' => 'bg-teal-50 text-teal-800 border-teal-300', 'icon' => '🛡️', 'label' => 'Đang kiểm hàng', 'sub' => 'Đơn bán hàng'],
@@ -1040,12 +1016,6 @@
                                 <kbd class="px-2 py-0.5 bg-white border border-slate-300 rounded font-mono font-bold text-slate-700 shadow-2xs">N</kbd>
                             </div>
                         </div>
-                        <div class="flex items-center justify-between p-2 rounded-xl bg-purple-50/60 border border-purple-100">
-                            <span class="font-semibold text-purple-900">Tạo đơn vay mượn hàng</span>
-                            <div class="flex items-center gap-1">
-                                <kbd class="px-2 py-0.5 bg-white border border-purple-300 rounded font-mono font-bold text-purple-700 shadow-2xs">V</kbd>
-                            </div>
-                        </div>
                         <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
                             <span class="font-semibold text-slate-700">Nhảy nhanh vào ô tìm kiếm</span>
                             <div class="flex items-center gap-1">
@@ -1273,13 +1243,6 @@ function ordersIndexApp() {
             if (e.key === 'F8' || (e.key.toLowerCase() === 'n' && !isInput && !e.ctrlKey && !e.altKey && !e.metaKey)) {
                 e.preventDefault();
                 window.location.href = '{{ url("/orders/create") }}';
-                return;
-            }
-
-            // V (outside input): Create borrow order
-            if (e.key.toLowerCase() === 'v' && !isInput && !e.ctrlKey && !e.altKey && !e.metaKey) {
-                e.preventDefault();
-                window.location.href = '{{ url("/orders/create?order_type=borrow") }}';
                 return;
             }
 
@@ -1918,7 +1881,6 @@ function ordersIndexApp() {
             if (s.includes('bán lẻ') || s.includes('ban le') || s === 'bl') return 'BL';
             if (s.includes('nguyên giá') || s.includes('nguyen gia') || s === 'ng') return 'NG';
             if (s.includes('khuyến mại') || s.includes('tặng') || s === 'km') return 'KM';
-            if (s.includes('vay mượn') || s === 'vm') return 'VM';
 
             return str.toUpperCase();
         },

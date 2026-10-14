@@ -63,23 +63,37 @@ class DebtHandoverController extends Controller
         }
         $data = array_merge($request->all(), $raw);
 
-        $orderId = $data['order_id'] ?? ($data['orderId'] ?? null);
-        $orderCode = $data['order_code'] ?? ($data['orderCode'] ?? null);
+        $rawOrderIds = $data['order_ids'] ?? ($data['orderId'] ?? ($data['order_id'] ?? []));
+        if (!is_array($rawOrderIds)) {
+            $rawOrderIds = array_filter(array_map('trim', explode(',', (string)$rawOrderIds)));
+        }
+        $orderCode = trim((string)($data['order_code'] ?? ($data['orderCode'] ?? '')));
         $toUserId = $data['to_user_id'] ?? ($data['toUserId'] ?? null);
         $targetDealerId = $data['target_dealer_id'] ?? ($data['targetDealerId'] ?? null);
         $amount = (float)($data['amount'] ?? 0);
         $notes = $data['notes'] ?? '';
 
-        $order = null;
-        if ($orderId || $orderCode) {
-            $order = Order::where(function ($q) use ($orderId, $orderCode) {
-                if ($orderId) $q->where('id', $orderId)->orWhere('order_code', $orderId);
-                if ($orderCode) $q->orWhere('order_code', $orderCode);
-            })->first();
+        $orders = collect([]);
+        if (!empty($rawOrderIds) || $orderCode) {
+            $orders = Order::where(function ($q) use ($rawOrderIds, $orderCode) {
+                if (!empty($rawOrderIds)) {
+                    $q->whereIn('id', $rawOrderIds)->orWhereIn('order_code', $rawOrderIds);
+                }
+                if ($orderCode) {
+                    $codes = array_filter(array_map('trim', explode(',', $orderCode)));
+                    $q->orWhereIn('order_code', $codes);
+                }
+            })->get();
         }
 
-        if ($order && $amount <= 0) {
-            $amount = (float)($order->driver_debt_amount > 0 ? $order->driver_debt_amount : $order->total_amount);
+        $collectedOrderIds = $orders->pluck('id')->values()->toArray();
+        $collectedOrderCodes = $orders->pluck('order_code')->values()->join(', ');
+        $firstOrder = $orders->first();
+
+        if ($orders->isNotEmpty() && $amount <= 0) {
+            $amount = (float)$orders->sum(function ($o) {
+                return $o->driver_debt_amount > 0 ? $o->driver_debt_amount : $o->total_amount;
+            });
         }
 
         if ($amount <= 0) {
@@ -90,8 +104,9 @@ class DebtHandoverController extends Controller
         $fromUser = auth()->user();
         $fromUserId = $fromUser?->id;
         $fromUserName = $fromUser?->name ?? 'Người vận chuyển';
-        if ($order && $order->assigned_driver_id && $fromUserId != $order->assigned_driver_id && !$fromUser?->hasRole('admin')) {
-            $driverUser = User::find($order->assigned_driver_id);
+        $driverId = $orders->pluck('assigned_driver_id')->filter()->first();
+        if ($driverId && $fromUserId != $driverId && !$fromUser?->hasRole('admin')) {
+            $driverUser = User::find($driverId);
             if ($driverUser) {
                 $fromUserId = $driverUser->id;
                 $fromUserName = $driverUser->name;
@@ -118,8 +133,8 @@ class DebtHandoverController extends Controller
         $targetDealer = null;
         if ($targetDealerId) {
             $targetDealer = Dealer::find($targetDealerId);
-        } elseif ($order && $order->dealer_id) {
-            $targetDealer = Dealer::find($order->dealer_id);
+        } elseif ($firstOrder && $firstOrder->dealer_id) {
+            $targetDealer = Dealer::find($firstOrder->dealer_id);
             $targetDealerId = $targetDealer?->id;
         }
 
@@ -129,8 +144,9 @@ class DebtHandoverController extends Controller
         try {
             $handover = DebtHandover::create([
                 'code'               => $code,
-                'order_id'           => $order?->id,
-                'order_code'         => $order?->order_code ?? $orderCode,
+                'order_id'           => $firstOrder?->id,
+                'order_ids'          => !empty($collectedOrderIds) ? $collectedOrderIds : null,
+                'order_code'         => $collectedOrderCodes ?: ($orderCode ?: null),
                 'from_user_id'       => $fromUserId,
                 'from_user_name'     => $fromUserName,
                 'to_user_id'         => $toUser?->id,
@@ -139,17 +155,18 @@ class DebtHandoverController extends Controller
                 'target_dealer_id'   => $targetDealerId,
                 'target_dealer_name' => $targetDealer?->name,
                 'amount'             => $amount,
-                'handover_type'      => $order ? 'order_debt' : 'manual',
+                'handover_type'      => $orders->isNotEmpty() ? 'order_debt' : 'manual',
                 'status'             => 'pending',
                 'notes'              => $notes,
                 'created_by_id'      => auth()->id(),
             ]);
 
-            // Cập nhật trạng thái đơn hàng (nếu có)
-            if ($order) {
-                $order->notes = ($order->notes ? $order->notes . "\n" : '') .
-                    "[BÀN GIAO NỢ CHỜ DUYỆT]: {$fromUserName} đã gửi biên bản {$code} bàn giao " . number_format($amount, 0, ',', '.') . " đ cho [" . ($toUserName ?: $targetDealer?->name) . "].";
-                $order->save();
+            // Cập nhật trạng thái từng đơn hàng (nếu có)
+            foreach ($orders as $ord) {
+                $ordDebt = (float)($ord->driver_debt_amount > 0 ? $ord->driver_debt_amount : $ord->total_amount);
+                $ord->notes = ($ord->notes ? $ord->notes . "\n" : '') .
+                    "[BÀN GIAO NỢ CHỜ DUYỆT]: {$fromUserName} đã gửi biên bản {$code} bàn giao nợ " . number_format($ordDebt, 0, ',', '.') . " đ cho [" . ($toUserName ?: $targetDealer?->name) . "].";
+                $ord->save();
             }
 
             // Ghi Audit Log
@@ -158,19 +175,19 @@ class DebtHandoverController extends Controller
                 'performer_name'       => $fromUserName,
                 'user_id'              => auth()->id(),
                 'action'               => 'Lập Biên Bản Bàn Giao Công Nợ',
-                'module'               => 'Công Nợ & Bàn Giao',
+                'module'               => 'Công NỢ & Bàn Giao',
                 'target_document_code' => $code,
                 'field_name'           => 'Biên bản bàn giao nợ',
                 'old_value'            => 'Lái xe chịu trách nhiệm',
                 'new_value'            => 'Chờ xác nhận nhận nợ',
-                'notes'                => "{$fromUserName} bàn giao công nợ " . number_format($amount, 0, ',', '.') . " đ (Đơn " . ($order?->order_code ?? 'N/A') . ") cho [{$toUserName}].",
+                'notes'                => "{$fromUserName} bàn giao công nợ " . number_format($amount, 0, ',', '.') . " đ (" . ($collectedOrderCodes ?: 'N/A') . ") cho [{$toUserName}].",
             ]);
 
             // Gửi thông báo đến người nhận
             if ($toUser) {
                 Announcement::create([
                     'title'             => "📑 Yêu cầu nhận bàn giao công nợ: {$code} - " . number_format($amount, 0, ',', '.') . " đ",
-                    'content'           => "{$fromUserName} vừa gửi biên bản bàn giao công nợ số {$code} trị giá " . number_format($amount, 0, ',', '.') . " đ" . ($order ? " (Đơn hàng {$order->order_code})" : '') . " cho bạn.\nVui lòng vào mục Quản lý Công nợ để bấm 'Xác nhận nhận nợ' hoặc từ chối.",
+                    'content'           => "{$fromUserName} vừa gửi biên bản bàn giao công nợ số {$code} trị giá " . number_format($amount, 0, ',', '.') . " đ" . ($collectedOrderCodes ? " (Đơn hàng: {$collectedOrderCodes})" : '') . " cho bạn.\nVui lòng vào mục Quản lý Công nợ để bấm 'Xác nhận nhận nợ' hoặc từ chối.",
                     'author'            => $fromUserName,
                     'author_role'       => 'Người vận chuyển',
                     'priority'          => 'Quan trọng',
@@ -223,12 +240,24 @@ class DebtHandoverController extends Controller
             }
 
             // 2. Chuyển công nợ sang bên nhận:
-            // TH A: Sale đại lý phụ thuộc -> Ghi nợ trực tiếp vào Đại lý phụ thuộc
-            if ($handover->to_staff_type === 'dealer_sales' || $handover->target_dealer_id) {
-                $dealerId = $handover->target_dealer_id;
-                if (!$dealerId && $handover->to_user_id) {
-                    $dealerId = User::find($handover->to_user_id)?->dealer_id;
+            // Luôn ghi nhận nợ cho nhân viên nhận nợ (nếu có to_user_id)
+            $toUser = null;
+            if ($handover->to_user_id) {
+                $toUser = User::find($handover->to_user_id);
+                if ($toUser) {
+                    $toUser->current_debt = (float)$toUser->current_debt + $amount;
+                    $toUser->save();
                 }
+            }
+
+            // Nếu người nhận là Nhân viên Đại lý (thuộc đại lý) hoặc có gán Đại lý đích:
+            // -> Ghi nhận công nợ vào Đại lý đó đồng thời (theo quy tắc: nợ nhân viên đại lý đi kèm nợ đại lý)
+            $isDealerSales = ($handover->to_staff_type === 'dealer_sales') 
+                || !empty($handover->target_dealer_id) 
+                || ($toUser && (!empty($toUser->dealer_id) || $toUser->staff_type === 'dealer_sales'));
+
+            if ($isDealerSales) {
+                $dealerId = $handover->target_dealer_id ?: $toUser?->dealer_id;
                 if ($dealerId) {
                     $dealer = Dealer::find($dealerId);
                     if ($dealer) {
@@ -236,26 +265,33 @@ class DebtHandoverController extends Controller
                         $dealer->save();
                     }
                 }
-            } else {
-                // TH B: Sale công ty -> Ghi nợ vào công nợ của Sale công ty
-                if ($handover->to_user_id) {
-                    $toUser = User::find($handover->to_user_id);
-                    if ($toUser) {
-                        $toUser->current_debt = (float)$toUser->current_debt + $amount;
-                        $toUser->save();
-                    }
-                }
             }
 
-            // 3. Cập nhật đơn hàng (nếu có): giải phóng trách nhiệm lái xe
-            if ($handover->order_id) {
-                $order = Order::find($handover->order_id);
-                if ($order) {
-                    $order->driver_debt_amount = max(0, (float)$order->driver_debt_amount - $amount);
-                    $order->payment_status = 'Ghi nợ đại lý / Sale';
+            // 3. Cập nhật đơn hàng: chuyển quyền quản lý đơn & giải phóng trách nhiệm lái xe
+            $orderIds = $handover->order_ids ?: ($handover->order_id ? [$handover->order_id] : []);
+            if (!empty($orderIds)) {
+                $orders = Order::whereIn('id', $orderIds)->get();
+                foreach ($orders as $order) {
+                    $order->driver_debt_amount = 0;
+                    if ($toUser) {
+                        $order->sales_rep_id = $toUser->id;
+                    }
+                    if ($targetDealerId) {
+                        $order->dealer_id = $targetDealerId;
+                    } elseif ($toUser && $toUser->dealer_id) {
+                        $order->dealer_id = $toUser->dealer_id;
+                    }
                     $order->notes = ($order->notes ? $order->notes . "\n" : '') .
-                        "[ĐÃ XÁC NHẬN BÀN GIAO NỢ]: {$approverName} đã xác nhận nhận công nợ " . number_format($amount, 0, ',', '.') . " đ theo biên bản {$handover->code}.";
+                        "[ĐÃ XÁC NHẬN BÀN GIAO]: {$approverName} đã nhận bàn giao đơn hàng và công nợ " . number_format($order->total_amount, 0, ',', '.') . " đ theo biên bản {$handover->code}.";
                     $order->save();
+
+                    // Tự động tính toán lại công nợ đại lý & nhân viên đại lý
+                    if ($order->dealer_id) {
+                        $dl = Dealer::find($order->dealer_id) ?: Dealer::where('code', $order->dealer_id)->first();
+                        if ($dl) {
+                            $dl->recalculateCurrentDebt();
+                        }
+                    }
                 }
             }
 
@@ -321,9 +357,10 @@ class DebtHandoverController extends Controller
         ]);
 
         // Cập nhật ghi chú đơn hàng
-        if ($handover->order_id) {
-            $order = Order::find($handover->order_id);
-            if ($order) {
+        $orderIds = $handover->order_ids ?: ($handover->order_id ? [$handover->order_id] : []);
+        if (!empty($orderIds)) {
+            $orders = Order::whereIn('id', $orderIds)->get();
+            foreach ($orders as $order) {
                 $order->notes = ($order->notes ? $order->notes . "\n" : '') .
                     "[TỪ CHỐI BÀN GIAO NỢ]: {$rejecterName} đã từ chối nhận nợ biên bản {$handover->code}. Lý do: {$reason}";
                 $order->save();
@@ -422,6 +459,25 @@ class DebtHandoverController extends Controller
         $warehouseId = $data['warehouse_id'] ?? ($data['warehouseId'] ?? 1);
         $notes = $data['notes'] ?? 'Hàng lẻ bốc lên xe đi bán dạo';
 
+        // Tìm kho nguồn & kho xe lưu động trong bảng warehouses
+        $sourceWarehouse = Warehouse::find($warehouseId) ?: Warehouse::where('code', 'KHO-MQ-01')->first();
+        $sourceWhId = $sourceWarehouse?->id ?: 1;
+        $sourceWhName = $sourceWarehouse?->name ?: 'Kho Tổng Mê Linh';
+
+        // Tìm hoặc tạo kho xe tương ứng trong bảng warehouses
+        $targetVehicleWh = Warehouse::where('code', 'KHO-XE-' . $vehiclePlate)->first();
+        if (!$targetVehicleWh && $vehiclePlate) {
+            $targetVehicleWh = Warehouse::create([
+                'code'         => 'KHO-XE-' . $vehiclePlate,
+                'name'         => 'Kho Xe ' . $vehiclePlate . ' (' . $driver->name . ')',
+                'type'         => 'Kho xe lưu động',
+                'manager_name' => $driver->name,
+                'address'      => 'Xe BKS ' . $vehiclePlate,
+                'is_active'    => true,
+            ]);
+        }
+        $targetWhId = $targetVehicleWh?->id;
+
         DB::beginTransaction();
         try {
             $totalAmount = 0;
@@ -430,13 +486,27 @@ class DebtHandoverController extends Controller
                 'driver_id'     => $driver->id,
                 'driver_name'   => $driver->name,
                 'vehicle_plate' => $vehiclePlate,
-                'warehouse_id'  => $warehouseId,
-                'warehouse_name'=> 'Kho Tổng Mê Linh',
+                'warehouse_id'  => $sourceWhId,
+                'warehouse_name'=> $sourceWhName,
                 'dispatch_date' => now()->format('Y-m-d'),
                 'total_amount'  => 0,
                 'status'        => 'dispatched',
                 'notes'         => $notes,
                 'created_by_id' => auth()->id(),
+            ]);
+
+            // Dùng chung bảng inventory_transactions: Tạo phiếu Xuất Kho Xe (PXK-XE)
+            $invTx = \App\Models\InventoryTransaction::create([
+                'code'                 => $code,
+                'type'                 => 'export',
+                'warehouse_id'         => $sourceWhId,
+                'target_warehouse_id'  => $targetWhId,
+                'created_by_id'        => auth()->id() ?: 1,
+                'status'               => 'Hoàn thành',
+                'supplier_name'        => 'Lái xe: ' . $driver->name . ' (' . $vehiclePlate . ')',
+                'reference_order_code' => $vehiclePlate,
+                'total_amount'         => 0,
+                'notes'                => "[Xuất Hàng Lẻ Xe Lưu Động] " . $notes,
             ]);
 
             foreach ($items as $it) {
@@ -463,13 +533,42 @@ class DebtHandoverController extends Controller
                         'amount'               => $lineTotal,
                     ]);
 
-                    // Trừ kho thực tế
+                    // Dùng chung bảng inventory_transaction_items
+                    \App\Models\InventoryTransactionItem::create([
+                        'inventory_transaction_id' => $invTx->id,
+                        'product_id'               => $prod->id,
+                        'quantity'                 => $qty,
+                        'import_price'             => $price,
+                        'cost_price_at_transaction' => $price,
+                        'notes'                    => "Bốc hàng lẻ lên xe {$vehiclePlate}",
+                    ]);
+
+                    // Trừ tồn kho tổng
                     $prod->decrement('stock_quantity', $qty);
+
+                    // Trừ tồn kho tại kho xuất nguồn trong warehouse_stocks
+                    $srcStock = \App\Models\WarehouseStock::firstOrCreate(
+                        ['product_id' => $prod->id, 'warehouse_id' => $sourceWhId],
+                        ['stock_quantity' => 0, 'reserved_quantity' => 0]
+                    );
+                    $srcStock->decrement('stock_quantity', $qty);
+
+                    // CỘNG tồn kho vào Kho xe lưu động trong warehouse_stocks
+                    if ($targetWhId) {
+                        $carStock = \App\Models\WarehouseStock::firstOrCreate(
+                            ['product_id' => $prod->id, 'warehouse_id' => $targetWhId],
+                            ['stock_quantity' => 0, 'reserved_quantity' => 0, 'location' => 'Thùng xe ' . $vehiclePlate]
+                        );
+                        $carStock->increment('stock_quantity', $qty);
+                    }
                 }
             }
 
             $dispatch->total_amount = $totalAmount;
             $dispatch->save();
+
+            $invTx->total_amount = $totalAmount;
+            $invTx->save();
 
             // Tự động cộng tổng giá trị hàng này vào công nợ tài xế chịu trách nhiệm
             $driver->current_debt = (float)$driver->current_debt + $totalAmount;
@@ -484,8 +583,8 @@ class DebtHandoverController extends Controller
                 'module'               => 'Kho & Vận Tải',
                 'target_document_code' => $code,
                 'field_name'           => 'Phiếu xuất hàng lẻ',
-                'old_value'            => 'Tồn kho',
-                'new_value'            => 'Công nợ tài xế',
+                'old_value'            => 'Tồn kho tổng',
+                'new_value'            => 'Tồn kho xe & Công nợ tài xế',
                 'notes'                => "Bốc hàng lẻ lên xe {$vehiclePlate} cho Lái xe [{$driver->name}]. Tổng giá trị: " . number_format($totalAmount, 0, ',', '.') . " đ (ghi nợ tài xế).",
             ]);
 
@@ -493,8 +592,9 @@ class DebtHandoverController extends Controller
 
             return response()->json([
                 'success'  => true,
-                'message'  => "Đã lập phiếu xuất hàng lẻ {$code} thành công! Đã ghi nhận công nợ " . number_format($totalAmount, 0, ',', '.') . " đ cho tài xế {$driver->name}.",
+                'message'  => "Đã lập phiếu xuất hàng lẻ {$code} thành công! Đã tăng tồn kho xe {$vehiclePlate} và ghi nhận công nợ " . number_format($totalAmount, 0, ',', '.') . " đ cho tài xế {$driver->name}.",
                 'dispatch' => $dispatch->load('items'),
+                'tx_code'  => $invTx->code,
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();

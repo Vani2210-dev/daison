@@ -13,6 +13,7 @@ class DebtHandover extends Model
         'code',
         'order_id',
         'order_code',
+        'order_ids',
         'from_user_id',
         'from_user_name',
         'to_user_id',
@@ -33,6 +34,7 @@ class DebtHandover extends Model
     ];
 
     protected $casts = [
+        'order_ids'    => 'array',
         'amount'       => 'decimal:2',
         'confirmed_at' => 'datetime',
         'rejected_at'  => 'datetime',

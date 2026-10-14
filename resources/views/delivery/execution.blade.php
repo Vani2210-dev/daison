@@ -94,6 +94,16 @@
                     </div>
                 @endif
 
+                <!-- Button 0: Hàng Lẻ Xe (Bán dạo) -->
+                <button type="button" @click="showVanSaleItemsModal = true"
+                        class="px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-200 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                        title="Xem hàng lẻ / bán dạo bốc trên xe">
+                    <i class="fa-solid fa-truck-ramp-box text-emerald-400 text-xs"></i>
+                    <span>Hàng Lẻ Xe</span>
+                    <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px] font-black bg-emerald-500/30 text-emerald-200 border border-emerald-500/40"
+                          x-text="vanDispatches.length">0</span>
+                </button>
+
                 <!-- Button 1: Hàng Trả Về -->
                 <button type="button" @click="showReturnsModal = true"
                         class="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-200 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer">
@@ -434,6 +444,67 @@
             </button>
         </div>
 
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- KHỐI: HÀNG LẺ BÁN DẠO / LƯU ĐỘNG TRÊN XE CỦA BẠN (TÍNH NỢ XE)             -->
+    <!-- ========================================================================= -->
+    <div x-show="vanDispatches.length > 0"
+         class="rounded-3xl p-4 sm:p-5 bg-gradient-to-r from-emerald-950/80 via-slate-900 to-teal-950/80 border border-emerald-500/40 text-white shadow-xl space-y-3.5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-xl shadow-lg shadow-emerald-500/30 shrink-0">
+                    <i class="fa-solid fa-truck-ramp-box"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h3 class="font-black text-sm sm:text-base text-white tracking-tight">
+                            Hàng Lẻ Bán Dạo / Hàng Lưu Động Trên Xe
+                        </h3>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                              x-text="vanDispatches.length + ' phiếu bốc lên xe'"></span>
+                    </div>
+                    <p class="text-xs text-slate-300 mt-0.5">
+                        Hàng xuất lẻ bán dạo dọc tuyến đường do lái xe trực tiếp quản lý & chịu trách nhiệm công nợ
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                <div class="text-right">
+                    <span class="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">Tổng Giá Trị Nợ Hàng Xe</span>
+                    <span class="text-lg sm:text-xl font-black text-emerald-300 font-mono" x-text="formatNumber(totalVanSaleDebt) + ' đ'"></span>
+                </div>
+                <button type="button" @click="showVanSaleItemsModal = true"
+                        class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all shadow-md shadow-emerald-600/30 flex items-center gap-1.5 cursor-pointer active:scale-95">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span>Kiểm đếm hàng</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Bảng xem nhanh các mặt hàng trên xe -->
+        <div class="bg-slate-950/60 rounded-2xl p-3 border border-slate-800/80 overflow-x-auto text-xs">
+            <div class="flex items-center justify-between text-slate-400 text-[11px] font-bold uppercase mb-2 px-1">
+                <span>Danh mục mặt hàng lẻ trên thùng xe:</span>
+                <span class="text-emerald-400 font-mono" x-text="allVanItems.length + ' loại mặt hàng'"></span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                <template x-for="(it, iIdx) in allVanItems" :key="iIdx">
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 transition-colors">
+                        <div class="truncate mr-2">
+                            <p class="font-bold text-white text-xs truncate" x-text="it.name"></p>
+                            <p class="text-[10px] text-slate-400 font-mono" x-text="'Đơn vị: ' + (it.unit || 'cái') + ' | Giá bán: ' + formatNumber(it.unit_price) + ' đ'"></p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <span class="px-2 py-0.5 rounded-md font-mono font-black text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                  x-text="'SL: ' + it.quantity"></span>
+                            <p class="text-[11px] font-mono font-bold text-slate-300 mt-1" x-text="formatNumber(it.amount) + ' đ'"></p>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
     </div>
 
     <!-- ========================================================================= -->
@@ -1193,6 +1264,96 @@
         </div>
     </div>
 
+    <!-- ========================================================================= -->
+    <!-- MODAL: CHI TIẾT HÀNG LẺ LƯU ĐỘNG TRÊN XE (DÀNH CHO TÀI XẾ KIỂM ĐẾM)      -->
+    <!-- ========================================================================= -->
+    <div x-show="showVanSaleItemsModal" x-cloak
+         class="fixed inset-0 z-[9999] overflow-y-auto bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-slate-900 text-white rounded-3xl shadow-2xl border border-slate-800 w-full max-w-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+             @click.away="showVanSaleItemsModal = false">
+            
+            <!-- Modal Header -->
+            <div class="p-4 sm:p-5 border-b border-slate-800 bg-gradient-to-r from-emerald-900/80 via-slate-900 to-teal-900/80 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold text-lg">
+                        <i class="fa-solid fa-truck-ramp-box"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-black tracking-tight text-white">Kiểm Đếm Hàng Lẻ Lưu Động Trên Xe</h3>
+                        <p class="text-xs text-emerald-300 font-mono mt-0.5" x-text="'Xe: ' + (selectedVehicle?.plate_number || '{{ $selectedPlate ?? '' }}')"></p>
+                    </div>
+                </div>
+                <button type="button" @click="showVanSaleItemsModal = false" class="text-slate-400 hover:text-white transition-colors cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-4 sm:p-5 space-y-4 text-xs overflow-y-auto max-h-[75vh]">
+                
+                <div class="p-3 bg-emerald-950/40 rounded-2xl border border-emerald-500/30 flex items-center justify-between">
+                    <div>
+                        <span class="text-slate-400 text-[11px] block">Tổng tiền hàng lẻ nợ xe:</span>
+                        <span class="text-xl font-black font-mono text-emerald-400" x-text="formatNumber(totalVanSaleDebt) + ' đ'"></span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-slate-400 text-[11px] block">Tổng loại hàng:</span>
+                        <span class="text-sm font-bold text-white font-mono" x-text="allVanItems.length + ' sản phẩm'"></span>
+                    </div>
+                </div>
+
+                <!-- Danh sách từng phiếu bốc hàng -->
+                <div class="space-y-3">
+                    <template x-for="(vd, vIdx) in vanDispatches" :key="vd.id">
+                        <div class="bg-slate-950 rounded-2xl border border-slate-800 p-3.5 space-y-2.5">
+                            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono font-black text-xs text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30" x-text="vd.code"></span>
+                                    <span class="text-[11px] text-slate-400" x-text="'Ngày: ' + formatDate(vd.dispatch_date || vd.created_at)"></span>
+                                </div>
+                                <span class="font-mono font-black text-emerald-400 text-xs" x-text="formatNumber(vd.total_amount) + ' đ'"></span>
+                            </div>
+
+                            <p class="text-[11px] text-slate-400 italic" x-text="vd.notes ? 'Ghi chú: ' + vd.notes : 'Hàng bốc đi bán dạo lưu động'"></p>
+
+                            <!-- Bảng sản phẩm trong phiếu -->
+                            <div class="space-y-1.5">
+                                <template x-for="(it, iIdx) in (vd.items || [])" :key="iIdx">
+                                    <div class="flex items-center justify-between p-2 rounded-xl bg-slate-900 border border-slate-800/80 text-[11.5px]">
+                                        <div>
+                                            <span class="font-bold text-white" x-text="it.name"></span>
+                                            <span class="text-[10px] text-slate-400 block font-mono" x-text="'Đơn giá: ' + formatNumber(it.unit_price) + ' đ/' + (it.unit || 'cái')"></span>
+                                        </div>
+                                        <div class="text-right">
+                                            <span class="px-2 py-0.5 rounded font-mono font-black text-xs bg-slate-800 text-amber-300" x-text="'x ' + it.quantity"></span>
+                                            <span class="font-mono font-bold text-emerald-400 block text-xs mt-0.5" x-text="formatNumber(it.amount) + ' đ'"></span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div x-show="vanDispatches.length === 0" class="py-8 text-center text-slate-400 italic">
+                        Xe hiện chưa có hàng lẻ lưu động nào được bốc lên.
+                    </div>
+                </div>
+
+                <div class="p-3 bg-slate-800/60 rounded-2xl border border-slate-700/60 text-slate-300 text-[11px] leading-relaxed">
+                    💡 <strong>Hướng dẫn Lái xe:</strong> Khi bán lẻ dọc đường cho khách, bạn có thể thu tiền mặt hoặc đưa mã QR MBBank trên app cho khách chuyển khoản. Tiền thu được nộp về cùng tiền COD cuối ca.
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-3.5 bg-slate-950 border-t border-slate-800 flex items-center justify-end">
+                <button type="button" @click="showVanSaleItemsModal = false"
+                        class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition-colors cursor-pointer">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+
     </div>
 </div>
 
@@ -1205,7 +1366,9 @@
     "cashHandovers": @json($cashHandovers ?? []),
     "accountants": @json($accountants ?? []),
     "warehouseStaff": @json($warehouseStaff ?? []),
-    "warehouses": @json($warehouses ?? [])
+    "warehouses": @json($warehouses ?? []),
+    "driverVanDispatches": @json($driverVanDispatches ?? []),
+    "totalVanSaleDebt": {{ (float)($totalVanSaleDebt ?? 0) }}
 }
 </script>
 
@@ -1233,6 +1396,26 @@ function deliveryExecutionApp() {
         accountants: rawData.accountants || [],
         warehouseStaff: rawData.warehouseStaff || [],
         warehouses: rawData.warehouses || [],
+
+        // Hàng lẻ bán dạo trên xe
+        showVanSaleItemsModal: false,
+        vanDispatches: rawData.driverVanDispatches || [],
+        totalVanSaleDebt: Number(rawData.totalVanSaleDebt || 0),
+
+        get allVanItems() {
+            const list = [];
+            (this.vanDispatches || []).forEach(vd => {
+                (vd.items || []).forEach(it => {
+                    list.push({
+                        ...it,
+                        quantity: Number(it.quantity || 0),
+                        unit_price: Number(it.unit_price || 0),
+                        amount: Number(it.amount || ((it.quantity || 0) * (it.unit_price || 0)))
+                    });
+                });
+            });
+            return list;
+        },
 
         searchQuery: '',
         statusFilter: 'all',

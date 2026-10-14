@@ -58,7 +58,6 @@ class OrderController extends Controller
                 $orderCreatorName = $o->order_creator ?? $o->creator?->name ?? $o->salesRep?->name ?? null;
 
                 $isDebt = in_array($o->status, ['Giao sau', 'Đơn giao sau', 'Nợ hàng']) || ($o->order_type === 'backorder');
-                $isBorrow = in_array($o->status, ['Vay mượn', 'Đơn vay mượn']) || ($o->order_type === 'borrow');
                 $parentOrderCode = null;
                 if (preg_match('/(?:Tách từ đơn gốc|Đơn gốc)\s*[:]?\s*([A-Za-z0-9\-_]+)/u', $o->notes ?? '', $matches)) {
                     $parentOrderCode = trim($matches[1]);
@@ -430,6 +429,34 @@ class OrderController extends Controller
             ? (string)$data['assignedVehiclePlate'] 
             : (!empty($data['assigned_vehicle_plate']) ? (string)$data['assigned_vehicle_plate'] : ($order?->assigned_vehicle_plate ?? null));
 
+        // Ràng buộc kho cho Lái xe: Khi lái xe tạo đơn, bắt buộc chỉ được bán từ Kho Xe của họ
+        $isDriverCreator = $activeUser && ($activeUser->staff_type === 'driver' || $activeUser->department === 'Logistics' || (method_exists($activeUser, 'hasRole') && ($activeUser->hasRole('Fleet') || $activeUser->hasRole('Driver'))));
+        $warehouseName = $data['warehouse'] ?? ($data['warehouse_name'] ?? ($order?->warehouse ?? 'Kho Tổng Mê Linh (MQ)'));
+
+        if ($isDriverCreator) {
+            $assignedDriverId = $activeUser->id;
+            $driverVeh = \App\Models\Vehicle::where('driver_id', $activeUser->id)->first();
+            if (!$driverVeh) {
+                $recentDisp = \App\Models\VanSaleDispatch::where('driver_id', $activeUser->id)->latest('id')->first();
+                if ($recentDisp && $recentDisp->vehicle_plate) {
+                    $driverVeh = \App\Models\Vehicle::where('plate_number', $recentDisp->vehicle_plate)->first();
+                }
+            }
+            $vehiclePlate = $driverVeh?->plate_number ?? ($vehiclePlate ?: '29C-888.99');
+            $warehouseName = 'Kho Xe ' . $vehiclePlate . ' (' . $activeUser->name . ')';
+        } elseif (preg_match('/Kho Xe\s+([A-Z0-9\.\-]+)/ui', $warehouseName, $whMatches)) {
+            $parsedPlate = trim($whMatches[1]);
+            if (!$vehiclePlate) {
+                $vehiclePlate = $parsedPlate;
+            }
+            if (!$assignedDriverId) {
+                $vehObj = \App\Models\Vehicle::where('plate_number', $parsedPlate)->first();
+                if ($vehObj && $vehObj->driver_id) {
+                    $assignedDriverId = $vehObj->driver_id;
+                }
+            }
+        }
+
         $items = $data['items'] ?? null;
         $calculatedItemsSum = 0;
         if (is_array($items) && count($items) > 0) {
@@ -468,19 +495,9 @@ class OrderController extends Controller
         $notesPayload = (string) ($data['notes'] ?? ($order?->notes ?? ''));
         $isBackOrder = (($data['orderType'] ?? ($data['order_type'] ?? '')) === 'backorder') 
             || str_contains($notesPayload, '[ĐƠN NỢ HÀNG');
-        $isBorrowOrder = in_array($data['orderType'] ?? ($data['order_type'] ?? ''), ['borrow', 'loan'])
-            || str_contains($notesPayload, '[ĐƠN VAY MƯỢN HÀNG')
-            || (($data['status'] ?? ($order?->status ?? '')) === 'Vay mượn');
 
-        if ($isBorrowOrder) {
-            $subtotal = 0;
-            $discount = 0;
-            $tax = 0;
-            $total = 0;
-        }
-
-        $defaultPrefix = $isBorrowOrder ? 'DH-VM-' : ($isBackOrder ? 'DH-NO-' : 'DH-');
-        $resolvedOrderType = $isBorrowOrder ? 'borrow' : ($isBackOrder ? 'backorder' : ($data['orderType'] ?? ($data['order_type'] ?? ($order?->order_type ?? 'normal'))));
+        $defaultPrefix = $isBackOrder ? 'DH-NO-' : 'DH-';
+        $resolvedOrderType = $isBackOrder ? 'backorder' : ($data['orderType'] ?? ($data['order_type'] ?? ($order?->order_type ?? 'normal')));
 
         $orderAttributes = [
             'order_code'             => $orderCode ?: ($order ? $order->order_code : $defaultPrefix . date('Y') . '-' . rand(1000, 9999)),
@@ -490,17 +507,17 @@ class OrderController extends Controller
             'customer_name'          => $data['dealerName'] ?? ($data['customer_name'] ?? ($order?->customer_name ?? 'Khách lẻ')),
             'customer_phone'         => $data['customerPhone'] ?? ($data['customer_phone'] ?? ($order?->customer_phone ?? '')),
             'customer_address'       => $data['address'] ?? ($data['customer_address'] ?? ($order?->customer_address ?? '')),
-            'warehouse'              => $isBorrowOrder ? null : ($data['warehouse'] ?? ($data['warehouse_name'] ?? ($order?->warehouse ?? 'Kho Tổng Mê Linh (MQ)'))),
-            'delivery_date'          => $isBorrowOrder ? null : (array_key_exists('deliveryDate', $data) 
+            'warehouse'              => $data['warehouse'] ?? ($data['warehouse_name'] ?? ($order?->warehouse ?? 'Kho Tổng Mê Linh (MQ)')),
+            'delivery_date'          => array_key_exists('deliveryDate', $data) 
                 ? ($data['deliveryDate'] ?: null) 
                 : (array_key_exists('delivery_date', $data) 
                     ? ($data['delivery_date'] ?: null) 
-                    : ($order?->delivery_date ?? null))),
-            'picking_date'           => $isBorrowOrder ? null : (array_key_exists('pickingDate', $data) 
+                    : ($order?->delivery_date ?? null)),
+            'picking_date'           => array_key_exists('pickingDate', $data) 
                 ? ($data['pickingDate'] ?: null) 
                 : (array_key_exists('picking_date', $data) 
                     ? ($data['picking_date'] ?: null) 
-                    : ($order?->picking_date ?? null))),
+                    : ($order?->picking_date ?? null)),
             'order_type'             => $resolvedOrderType,
             'project_name'           => $data['projectName'] ?? ($data['project_name'] ?? null),
             'contract_number'        => $data['contractNumber'] ?? ($data['contract_number'] ?? null),
@@ -510,17 +527,13 @@ class OrderController extends Controller
             'has_returns'            => !empty($data['hasReturns']) || !empty($data['has_returns']),
             'total_returned_amount'  => (float) ($data['totalReturnedAmount'] ?? ($data['total_returned_amount'] ?? 0)),
             'return_slip_code'       => $data['returnSlipCode'] ?? ($data['return_slip_code'] ?? null),
-            'status'                 => (function() use ($data, $order, $isBorrowOrder, $isBackOrder) {
+            'status'                 => (function() use ($data, $order, $isBackOrder) {
                 if (!empty($data['status'])) {
                     if ($isBackOrder && in_array($data['status'], ['Chốt đơn', 'Báo giá', 'Giao sau', 'Nợ hàng'])) {
                         return 'Giao sau';
                     }
-                    if ($isBorrowOrder && in_array($data['status'], ['Chốt đơn', 'Báo giá', 'Vay mượn'])) {
-                        return 'Vay mượn';
-                    }
                     return $data['status'];
                 }
-                if ($isBorrowOrder) return 'Vay mượn';
                 if ($isBackOrder) return 'Giao sau';
                 return $order?->status ?? 'Báo giá';
             })(),
@@ -543,11 +556,10 @@ class OrderController extends Controller
             'failed_delivery_at'     => $data['failedDeliveryAt'] ?? ($data['failed_delivery_at'] ?? ($order?->failed_delivery_at ?? null)),
             'failed_delivery_by'     => $data['failedDeliveryBy'] ?? ($data['failed_delivery_by'] ?? ($order?->failed_delivery_by ?? null)),
             'rescheduled_date'       => $data['rescheduledDate'] ?? ($data['rescheduled_date'] ?? ($order?->rescheduled_date ?? null)),
-            'notes'                  => (function() use ($data, $isBorrowOrder) {
+            'notes'                  => (function() use ($data) {
                 $n = $data['notes'] ?? '';
                 if (!empty($data['parentOrderCode']) && !str_contains($n, $data['parentOrderCode'])) {
-                    $prefix = $isBorrowOrder ? "[ĐƠN VAY MƯỢN HÀNG]" : "[ĐƠN NỢ HÀNG]";
-                    $n = "{$prefix} Tách từ đơn gốc " . $data['parentOrderCode'] . " do kho thiếu hàng.\n" . $n;
+                    $n = "[ĐƠN NỢ HÀNG] Tách từ đơn gốc " . $data['parentOrderCode'] . " do kho thiếu hàng.\n" . $n;
                 }
                 return $n;
             })(),
@@ -738,11 +750,11 @@ class OrderController extends Controller
                     'returned_qty'        => $retQty,
                     'delivered_qty'       => $delivQty,
                     'return_reason'       => $it['returnReason'] ?? ($it['return_reason'] ?? null),
-                    'cost_price'          => $isBorrowOrder ? 0 : (float) ($it['costPrice'] ?? ($it['cost_price'] ?? ($uPrice * 0.8))),
-                    'unit_price'          => $isBorrowOrder ? 0 : $uPrice,
-                    'original_price'      => $isBorrowOrder ? 0 : (float) ($it['originalPrice'] ?? ($it['original_price'] ?? $uPrice)),
-                    'applied_tier_policy' => $isBorrowOrder ? 'Vay mượn' : ($it['appliedTierPolicy'] ?? ($it['applied_tier_policy'] ?? 'Đại lý Cấp 1')),
-                    'amount'              => $isBorrowOrder ? 0 : $amt,
+                    'cost_price'          => (float) ($it['costPrice'] ?? ($it['cost_price'] ?? ($uPrice * 0.8))),
+                    'unit_price'          => $uPrice,
+                    'original_price'      => (float) ($it['originalPrice'] ?? ($it['original_price'] ?? $uPrice)),
+                    'applied_tier_policy' => $it['appliedTierPolicy'] ?? ($it['applied_tier_policy'] ?? 'Đại lý Cấp 1'),
+                    'amount'              => $amt,
                 ]);
             }
         }
@@ -769,8 +781,8 @@ class OrderController extends Controller
             }
         }
 
-        // Tự động chuyển đơn về "Soạn hàng" nếu phát sinh tăng số lượng cần bốc khi đơn đã hoàn thành trước đó (Không áp dụng cho đơn vay mượn)
-        if (!$isBorrowOrder && $hasIncreasedPickingQty && in_array($order->status, ['Đã bốc xong', 'Đã kiểm hàng', 'Sẵn sàng xuất xe'])) {
+        // Tự động chuyển đơn về "Soạn hàng" nếu phát sinh tăng số lượng cần bốc khi đơn đã hoàn thành trước đó
+        if ($hasIncreasedPickingQty && in_array($order->status, ['Đã bốc xong', 'Đã kiểm hàng', 'Sẵn sàng xuất xe'])) {
             $order->status = 'Soạn hàng';
             $order->save();
         }
@@ -1076,7 +1088,7 @@ class OrderController extends Controller
         $isDebtOrder = in_array($order->payment_method, ['Ghi nợ', 'Ghi nợ đại lý'])
             || in_array($order->payment_status, ['Ghi nợ', 'Ghi nợ đại lý', 'Chưa thanh toán']);
 
-        if ($isNewOrder && $isDebtOrder && $order->dealer_id && !$isBorrowOrder) {
+        if ($isNewOrder && $isDebtOrder && $order->dealer_id) {
             $dealer = Dealer::find($order->dealer_id);
             if ($dealer && (float)($dealer->credit_limit ?? 0) > 0) {
                 $prevDebt = $dealer->getDebtExcludingOrder($order->id);
@@ -1427,20 +1439,17 @@ class OrderController extends Controller
         });
 
         $query->where(function ($q) {
-            $q->whereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng', 'Vay mượn'])
-              ->orWhereIn('order_type', ['backorder', 'borrow']);
+            $q->whereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng'])
+              ->orWhereIn('order_type', ['backorder']);
         });
 
         $orders = $query->with(['items.product'])->latest('id')->get()->map(function ($o) {
-            $isBorrow = in_array($o->status, ['Vay mượn', 'Đơn vay mượn']) 
-                || in_array($o->order_type, ['borrow', 'loan']);
-
             return [
                 'id' => $o->id,
                 'order_code' => $o->order_code,
                 'status' => $o->status,
-                'order_type' => $isBorrow ? 'borrow' : 'backorder',
-                'type_label' => $isBorrow ? 'Đơn vay mượn hàng' : 'Đơn giao sau (nợ hàng)',
+                'order_type' => 'backorder',
+                'type_label' => 'Đơn giao sau (nợ hàng)',
                 'created_at' => $o->created_at ? $o->created_at->format('d/m/Y H:i') : '',
                 'notes' => $o->notes,
                 'total_amount' => (float)$o->total_amount,
@@ -1633,7 +1642,6 @@ class OrderController extends Controller
             if (str_contains($sLower, 'nguyên giá') || str_contains($sLower, 'nguyen gia') || $sLower === 'ng') return 'NG';
             if (str_contains($sLower, 'bán lẻ') || str_contains($sLower, 'ban le') || $sLower === 'bl') return 'BL';
             if (str_contains($sLower, 'khuyến mại') || str_contains($sLower, 'tặng') || $sLower === 'km') return 'KM';
-            if (str_contains($sLower, 'vay mượn') || $sLower === 'vm') return 'VM';
             if (str_contains($sLower, 'cấp 1') || str_contains($sLower, 'cap 1') || $sLower === 'bc1') return 'BC1';
             if (str_contains($sLower, 'cấp 2') || str_contains($sLower, 'cap 2') || $sLower === 'bc2') return 'BC2';
             if (str_contains($sLower, 'cấp 3') || str_contains($sLower, 'cap 3') || $sLower === 'bc3') return 'BC3';
