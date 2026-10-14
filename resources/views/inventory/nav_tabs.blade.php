@@ -26,10 +26,10 @@
         <span>Bốc hàng & Kiểm đơn bán</span>
     </a>
 
-    <!-- 5. Hoàn kho từ xe giao hàng -->
+    <!-- 5. Kho hàng xe (Nhập hoàn & Xuất lẻ) -->
     <a href="{{ url('/inventory/import') }}" class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black transition-all cursor-pointer whitespace-nowrap {{ request()->is('inventory/import*') || request()->is('returns*') ? 'bg-[#1b4a8c] text-white shadow-md shadow-blue-900/20' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200' }}">
-        <i class="fa-solid fa-rotate-left text-sm {{ request()->is('inventory/import*') ? 'text-blue-300' : 'text-blue-600' }}"></i>
-        <span>Hoàn kho từ xe giao hàng</span>
+        <i class="fa-solid fa-truck-ramp-box text-sm {{ request()->is('inventory/import*') ? 'text-amber-300' : 'text-amber-600' }}"></i>
+        <span>Kho hàng xe (Nhập hoàn & Xuất lẻ)</span>
         @if(($pendingReturnBadge ?? 0) > 0)
             <span class="px-2 py-0.5 bg-rose-500 text-white rounded-full text-[10px] font-bold animate-pulse">{{ $pendingReturnBadge }}</span>
         @endif

@@ -642,6 +642,29 @@ class DeliveryController extends Controller
             }
         }
 
+        // Tự động đối trừ giảm công nợ cho Lái xe khi nộp tiền mặt/COD về quỹ thành công
+        $settledAmount = $totalCalculatedAmount > 0 ? $totalCalculatedAmount : $amount;
+        $driverUserId = $existingHandover?->driver_id ?? ($data['driverId'] ?? null);
+        $driverUser = $driverUserId ? \App\Models\User::find($driverUserId) : null;
+        if (!$driverUser && $driverName) {
+            $driverUser = \App\Models\User::where('name', $driverName)->first();
+        }
+        if ($driverUser && $settledAmount > 0) {
+            $driverUser->current_debt = max(0, (float)$driverUser->current_debt - $settledAmount);
+            $driverUser->save();
+        }
+
+        // Cập nhật lại công nợ các Đại lý có đơn hàng trong đợt thu tiền này
+        if (!empty($ordersToSettle)) {
+            $settledDealerIds = $ordersToSettle->pluck('dealer_id')->filter()->unique();
+            foreach ($settledDealerIds as $dId) {
+                $dl = \App\Models\Dealer::find($dId) ?: \App\Models\Dealer::where('code', $dId)->first();
+                if ($dl) {
+                    $dl->recalculateCurrentDebt();
+                }
+            }
+        }
+
         // Cập nhật DriverCashHandover trong DB
         $firstReceiptCode = !empty($orderReceiptCodes) ? reset($orderReceiptCodes) : ('PT-COD-' . date('Ymd'));
         DriverCashHandover::updateOrCreate(
@@ -1428,7 +1451,7 @@ class DeliveryController extends Controller
             ]);
         }
 
-        // TRƯỜNG HỢP 3: Thủ kho xác nhận duyệt nhập kho -> TỰ ĐỘNG CỘNG LẠI TỒN KHO & GIẢI PHÓNG HÀNG
+        // TRƯỜNG HỢP 3: Thủ kho xác nhận duyệt nhập kho -> TỰ ĐỘNG CỘNG LẠI TỒN KHO & ĐỒNG BỘ BẢNG KHO CHUNG
         foreach ($slips as $returnSlip) {
             $returnSlip->update([
                 'status'              => 'Đã nhập kho lại',
@@ -1438,14 +1461,73 @@ class DeliveryController extends Controller
                 'notes'               => !empty($data['notes']) ? $data['notes'] : $returnSlip->notes,
             ]);
 
-            // Tự động cộng lại số lượng vào tồn kho cho từng sản phẩm
+            // Tìm kho xe lưu động nguồn
+            $carWh = null;
+            if (!empty($returnSlip->vehicle_plate)) {
+                $carWh = \App\Models\Warehouse::where('code', 'KHO-XE-' . $returnSlip->vehicle_plate)->first();
+            }
+
+            // Dùng chung bảng inventory_transactions: Ghi nhận phiếu Nhập Kho Hoàn Xe
+            $invTx = null;
+            try {
+                $invTx = \App\Models\InventoryTransaction::create([
+                    'code'                 => 'NK-HOAN-' . $returnSlip->slip_code,
+                    'type'                 => 'import',
+                    'warehouse_id'         => $warehouseId,
+                    'target_warehouse_id'  => $carWh?->id,
+                    'created_by_id'        => auth()->id() ?? $intakeUserId ?? 1,
+                    'approved_by_id'       => auth()->id() ?? $intakeUserId ?? 1,
+                    'status'               => 'Hoàn thành',
+                    'supplier_name'        => 'Hoàn xe: ' . ($returnSlip->vehicle_plate ?: 'Xe lưu động') . ($returnSlip->driver_name ? ' (' . $returnSlip->driver_name . ')' : ''),
+                    'reference_order_code' => $returnSlip->order_code ?: $returnSlip->slip_code,
+                    'total_amount'         => (float)($returnSlip->total_returned_amount ?? 0),
+                    'notes'                => "[Nhập Hoàn Hàng Xe] Phiếu: {$returnSlip->slip_code} - Khách trả lại từ xe {$returnSlip->vehicle_plate}",
+                ]);
+            } catch (\Throwable $e) {}
+
+            // Tự động cộng lại số lượng vào tồn kho cho từng sản phẩm & cập nhật bảng warehouse_stocks
             foreach ($returnSlip->items as $item) {
                 $qty = (float) ($item->returned_qty ?? 0);
                 if ($qty > 0) {
+                    $prod = null;
                     if ($item->product_id) {
-                        \App\Models\Product::where('id', $item->product_id)->increment('stock_quantity', $qty);
+                        $prod = \App\Models\Product::find($item->product_id);
                     } elseif (!empty($item->sku)) {
-                        \App\Models\Product::where('sku', $item->sku)->increment('stock_quantity', $qty);
+                        $prod = \App\Models\Product::where('sku', $item->sku)->first();
+                    }
+
+                    if ($prod) {
+                        // 1. Tăng tồn kho tổng
+                        $prod->increment('stock_quantity', $qty);
+
+                        // 2. Tăng tồn kho tại kho đích trong warehouse_stocks
+                        $targetStock = \App\Models\WarehouseStock::firstOrCreate(
+                            ['product_id' => $prod->id, 'warehouse_id' => $warehouseId],
+                            ['stock_quantity' => 0, 'reserved_quantity' => 0]
+                        );
+                        $targetStock->increment('stock_quantity', $qty);
+
+                        // 3. Giảm tồn kho tại kho xe lưu động (nếu có tồn trên xe)
+                        if ($carWh) {
+                            $carStock = \App\Models\WarehouseStock::where('product_id', $prod->id)
+                                ->where('warehouse_id', $carWh->id)
+                                ->first();
+                            if ($carStock && $carStock->stock_quantity > 0) {
+                                $carStock->decrement('stock_quantity', min($qty, $carStock->stock_quantity));
+                            }
+                        }
+
+                        // 4. Lưu chi tiết vào bảng inventory_transaction_items
+                        if ($invTx) {
+                            \App\Models\InventoryTransactionItem::create([
+                                'inventory_transaction_id' => $invTx->id,
+                                'product_id'               => $prod->id,
+                                'quantity'                 => $qty,
+                                'import_price'             => (float)($item->unit_price ?? $prod->cost_price ?? 0),
+                                'cost_price_at_transaction' => (float)($item->unit_price ?? $prod->cost_price ?? 0),
+                                'notes'                    => "Nhập hoàn từ xe {$returnSlip->vehicle_plate} (phiếu {$returnSlip->slip_code})",
+                            ]);
+                        }
                     }
                 }
             }
@@ -1461,7 +1543,7 @@ class DeliveryController extends Controller
                     'field_name'           => 'Duyệt nhập kho hoàn trả',
                     'old_value'            => $returnSlip->status,
                     'new_value'            => 'Đã nhập kho lại',
-                    'notes'                => "{$warehouseName} ({$intakeUserName}) đã kiểm đếm và duyệt nhập kho lại hàng hoàn trả từ xe {$returnSlip->vehicle_plate} theo phiếu {$returnSlip->slip_code} (" . number_format($returnSlip->total_returned_amount, 0, ',', '.') . " đ). Đã tự động cộng lại tồn kho cho các sản phẩm.",
+                    'notes'                => "{$warehouseName} ({$intakeUserName}) đã kiểm đếm và duyệt nhập kho lại hàng hoàn trả từ xe {$returnSlip->vehicle_plate} theo phiếu {$returnSlip->slip_code} (" . number_format($returnSlip->total_returned_amount, 0, ',', '.') . " đ). Đã tự động cộng lại tồn kho cho các sản phẩm và đồng bộ sổ kho chung.",
                 ]);
             } catch (\Throwable $e) {}
         }
@@ -1538,13 +1620,61 @@ class DeliveryController extends Controller
               ->whereYear('intake_at', now()->year);
         })->sum('returned_qty');
 
+        \App\Models\Warehouse::syncVehicleWarehouses();
+
         $warehouses = \App\Models\Warehouse::all();
+        $physicalWarehouses = \App\Models\Warehouse::where('type', '!=', 'Kho xe lưu động')->where('is_active', true)->get();
         $warehouseStaff = \App\Models\User::where(function($q) {
             $q->whereIn('department', ['Warehouse', 'Kho', 'Kho vận', 'Vận hành', 'Executive', 'Ban Giám Đốc'])
               ->orWhereHas('roles', function($rq) {
                   $rq->whereIn('slug', ['warehouse', 'warehouse_staff', 'stocker', 'admin', 'manager', 'Director', 'Admin']);
               });
         })->where('status', '!=', 'Đã nghỉ việc')->get(['id', 'name', 'department', 'phone']);
+
+        // 2. Dữ liệu Xuất Hàng Lẻ Lên Xe (Bảng van_sale_dispatches & inventory_transactions)
+        $vanDispatches = \App\Models\VanSaleDispatch::with(['items.product', 'driver', 'warehouse'])
+            ->latest('id')
+            ->take(60)
+            ->get();
+        $totalVanDispatchesCount = \App\Models\VanSaleDispatch::count();
+        $totalVanDispatchesAmount = (float) \App\Models\VanSaleDispatch::sum('total_amount');
+        $totalVanDispatchesToday = \App\Models\VanSaleDispatch::whereDate('dispatch_date', today())->count();
+
+        // 3. Dữ liệu Tồn Kho Xe Lưu Động (Dùng chung bảng warehouses & warehouse_stocks)
+        $vehicleWarehouses = \App\Models\Warehouse::where('type', 'Kho xe lưu động')
+            ->with(['stocks.product'])
+            ->get()
+            ->map(function ($wh) {
+                $stocks = $wh->stocks->filter(fn($st) => (float)$st->stock_quantity > 0);
+                $plate = str_replace('KHO-XE-', '', $wh->code);
+                $totalQty = $stocks->sum('stock_quantity');
+                $totalVal = $stocks->sum(function($st) {
+                    return (float)$st->stock_quantity * (float)($st->product?->cost_price ?: 0);
+                });
+                return (object)[
+                    'id'           => $wh->id,
+                    'code'         => $wh->code,
+                    'name'         => $wh->name,
+                    'plate_number' => $plate,
+                    'driver_name'  => $wh->manager_name,
+                    'total_skus'   => $stocks->count(),
+                    'total_qty'    => $totalQty,
+                    'total_val'    => $totalVal,
+                    'stocks'       => $stocks,
+                ];
+            });
+
+        $vehicles = \App\Models\Vehicle::with('driver')->get();
+        $productsCatalog = \App\Models\Product::select('id', 'name', 'sku', 'unit', 'cost_price', 'price_tiers', 'stock_quantity')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->map(function ($p) {
+                $p->retail_price = (float)($p->getPriceForTier('Đại lý Cấp 1') ?: ($p->getPriceForTier('Bán Lẻ') ?: $p->cost_price));
+                return $p;
+            });
+
+        $activeTab = $request->query('tab', 'returns');
 
         return view('inventory.import', compact(
             'returns',
@@ -1561,7 +1691,16 @@ class DeliveryController extends Controller
             'totalMonthAmount',
             'totalMonthItemsCount',
             'warehouses',
-            'warehouseStaff'
+            'physicalWarehouses',
+            'warehouseStaff',
+            'vanDispatches',
+            'totalVanDispatchesCount',
+            'totalVanDispatchesAmount',
+            'totalVanDispatchesToday',
+            'vehicleWarehouses',
+            'vehicles',
+            'productsCatalog',
+            'activeTab'
         ));
     }
 
@@ -2021,6 +2160,24 @@ class DeliveryController extends Controller
         $routes = DeliveryRoute::all();
         $warehouses = \App\Models\Warehouse::where('is_active', true)->get();
 
+        // Hàng lẻ bán dạo / Hàng lưu động trên xe của tài xế
+        $driverVanDispatches = collect();
+        if ($selectedVehicle || $user) {
+            $driverVanDispatches = \App\Models\VanSaleDispatch::with('items')
+                ->where(function($q) use ($selectedVehicle, $user) {
+                    if ($selectedVehicle) {
+                        $q->where('vehicle_plate', $selectedVehicle->plate_number);
+                    }
+                    if ($user) {
+                        $q->orWhere('driver_id', $user->id);
+                    }
+                })
+                ->whereIn('status', ['dispatched', 'pending_settle'])
+                ->latest('id')
+                ->get();
+        }
+        $totalVanSaleDebt = (float)$driverVanDispatches->sum('total_amount');
+
         return view('delivery.execution', compact(
             'vehicles',
             'selectedVehicle',
@@ -2032,7 +2189,9 @@ class DeliveryController extends Controller
             'warehouses',
             'isAssignedUser',
             'accountants',
-            'warehouseStaff'
+            'warehouseStaff',
+            'driverVanDispatches',
+            'totalVanSaleDebt'
         ));
     }
 

@@ -29,6 +29,8 @@
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
+    @stack('styles')
+
     <!-- Global Money Input & Display Formatting Utilities -->
     <script>
         window.formatMoney = function(val) {
@@ -730,13 +732,13 @@
             @endif
 
             <!-- 7. Nhân sự -->
-            @if(!$authUser || $authUser->hasAnyPermission('staff_list.view', 'payroll.view', 'attendance.view', 'attendance.checkin', 'kpi.view', 'permissions.view'))
+            @if(!$authUser || $authUser->hasAnyPermission('staff_list.view', 'payroll.view', 'attendance.view', 'attendance.checkin', 'kpi.view', 'permissions.view', 'debt.view'))
             <div class="nav-item-group relative shrink-0">
-                <button type="button" class="flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-bold transition-colors select-none rounded-t-lg relative whitespace-nowrap cursor-pointer {{ request()->is('staff*') || request()->is('payroll*') || request()->is('attendance*') || request()->is('kpi*') || request()->is('roles*') || request()->is('profile*') ? 'bg-white text-[#1b4a8c] shadow-md' : 'text-white hover:bg-white/15' }}">
-                    <i class="fa-solid fa-user-group text-sm {{ request()->is('staff*') || request()->is('payroll*') || request()->is('attendance*') || request()->is('kpi*') || request()->is('roles*') || request()->is('profile*') ? 'text-[#1b4a8c]' : 'text-sky-200' }}"></i>
+                <button type="button" class="flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-bold transition-colors select-none rounded-t-lg relative whitespace-nowrap cursor-pointer {{ request()->is('staff*') || request()->is('staff-debt*') || request()->is('payroll*') || request()->is('attendance*') || request()->is('kpi*') || request()->is('roles*') || request()->is('profile*') ? 'bg-white text-[#1b4a8c] shadow-md' : 'text-white hover:bg-white/15' }}">
+                    <i class="fa-solid fa-user-group text-sm {{ request()->is('staff*') || request()->is('staff-debt*') || request()->is('payroll*') || request()->is('attendance*') || request()->is('kpi*') || request()->is('roles*') || request()->is('profile*') ? 'text-[#1b4a8c]' : 'text-sky-200' }}"></i>
                     <span>Nhân sự</span>
                     <i class="fa-solid fa-chevron-down text-[10px] ml-0.5 opacity-70"></i>
-                    @if(request()->is('staff*') || request()->is('payroll*') || request()->is('attendance*') || request()->is('kpi*') || request()->is('roles*') || request()->is('profile*'))
+                    @if(request()->is('staff*') || request()->is('staff-debt*') || request()->is('payroll*') || request()->is('attendance*') || request()->is('kpi*') || request()->is('roles*') || request()->is('profile*'))
                         <span class="absolute bottom-0 left-2 right-2 h-0.5 bg-amber-400 rounded-full"></span>
                     @endif
                 </button>
@@ -756,6 +758,14 @@
                             <i class="fa-solid fa-people-group text-indigo-600 w-4"></i><span>Nhóm nhân sự</span>
                         </div>
                         <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800">Mới</span>
+                    </a>
+                    @endif
+                    @if(!$authUser || $authUser->hasAnyPermission('staff_list.view', 'debt.view'))
+                    <a href="{{ url('/staff-debt') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center justify-between border-b border-slate-100 font-semibold text-slate-700">
+                        <div class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-hand-holding-dollar text-rose-600 w-4"></i><span>Công nợ nhân viên & Bàn giao nợ</span>
+                        </div>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">Mới</span>
                     </a>
                     @endif
                     @if(!$authUser || $authUser->hasPermission('payroll.view'))

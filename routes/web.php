@@ -373,6 +373,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/debt', [WebViewController::class, 'debt'])->name('debt.index')->middleware('permission:debt.view');
     Route::get('/debt/{id}', [WebViewController::class, 'dealerDebtDetail'])->name('debt.detail')->middleware('permission:debt.view');
     Route::get('/dealers/{id}/debt', [WebViewController::class, 'dealerDebtDetail'])->name('dealers.debt_detail')->middleware('permission:debt.view,dealers.view');
+    Route::get('/staff-debt', [WebViewController::class, 'staffDebt'])->name('staff.debt')->middleware('permission:debt.view,staff_list.view');
 
     // Reports Center
     Route::get('/reports', [WebViewController::class, 'reports'])->name('reports.index')->middleware('permission:dashboard.view,orders.view,inventory.view,funds.view,debt.view');

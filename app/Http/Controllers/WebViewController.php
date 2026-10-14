@@ -355,20 +355,13 @@ class WebViewController extends Controller
                 });
             } elseif (in_array($status, ['Giao sau', 'Đơn giao sau', 'Đơn nợ', 'Nợ hàng'])) {
                 $query->whereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng']);
-            } elseif (in_array($status, ['Vay mượn', 'Đơn vay mượn'])) {
-                $query->whereIn('status', ['Vay mượn', 'Đơn vay mượn']);
             } else {
                 $query->where('status', $status);
             }
         }
 
         if ($orderType = $request->input('order_type')) {
-            if ($orderType === 'borrow') {
-                $query->where(function ($q) {
-                    $q->whereIn('order_type', ['borrow', 'loan'])
-                      ->orWhereIn('status', ['Vay mượn', 'Đơn vay mượn']);
-                });
-            } elseif (in_array($orderType, ['backorder', 'debt'])) {
+            if (in_array($orderType, ['backorder', 'debt'])) {
                 $query->where(function ($q) {
                     $q->whereIn('order_type', ['backorder', 'debt'])
                       ->orWhereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng']);
@@ -438,12 +431,78 @@ class WebViewController extends Controller
         Cache::forget('orders_products_catalog_v1');
     }
 
+    /**
+     * Lấy danh sách kho khả dụng theo vai trò: Lái xe chỉ được xuất từ Kho Xe của mình, các user khác được chọn tất cả
+     */
+    private function getAvailableWarehousesForUser()
+    {
+        $user = auth()->user();
+        $isDriver = false;
+        $driverVehicle = null;
+
+        if ($user) {
+            $isDriver = ($user->staff_type === 'driver' || $user->department === 'Logistics' || (method_exists($user, 'hasRole') && ($user->hasRole('Fleet') || $user->hasRole('Driver'))));
+            if ($isDriver) {
+                $driverVehicle = Vehicle::where('driver_id', $user->id)->first();
+                if (!$driverVehicle) {
+                    $recentDispatch = \App\Models\VanSaleDispatch::where('driver_id', $user->id)->latest('id')->first();
+                    if ($recentDispatch && $recentDispatch->vehicle_plate) {
+                        $driverVehicle = Vehicle::where('plate_number', $recentDispatch->vehicle_plate)->first();
+                    }
+                }
+            }
+        }
+
+        if ($isDriver) {
+            // Lái xe: CHỈ có duy nhất Kho lưu động trên xe của chính mình
+            $plate = $driverVehicle?->plate_number ?? '29C-888.99';
+            $vehName = 'Kho Xe ' . $plate . ' (' . $user->name . ')';
+            $warehouses = collect([
+                (object)[
+                    'id'                   => 'xe_' . ($driverVehicle?->id ?? $user->id),
+                    'name'                 => $vehName,
+                    'code'                 => $plate,
+                    'is_vehicle_warehouse' => true,
+                    'plate_number'         => $plate,
+                    'driver_name'          => $user->name,
+                ]
+            ]);
+        } else {
+            // Admin, Quản lý, Sale, Kế toán: Có đầy đủ các kho công ty + các kho xe
+            $physicalWarehouses = Warehouse::where('is_active', true)->orderBy('id')->get(['id', 'name', 'code'])->map(function($w) {
+                return (object)[
+                    'id'                   => $w->id,
+                    'name'                 => $w->name,
+                    'code'                 => $w->code,
+                    'is_vehicle_warehouse' => false,
+                    'plate_number'         => '',
+                    'driver_name'          => '',
+                ];
+            });
+
+            $vehicleWarehouses = Vehicle::with('driver:id,name')->get()->map(function($v) {
+                return (object)[
+                    'id'                   => 'xe_' . $v->id,
+                    'name'                 => 'Kho Xe ' . $v->plate_number . ($v->driver ? ' (' . $v->driver->name . ')' : ''),
+                    'code'                 => $v->plate_number,
+                    'is_vehicle_warehouse' => true,
+                    'plate_number'         => $v->plate_number,
+                    'driver_name'          => $v->driver?->name ?? '',
+                ];
+            });
+
+            $warehouses = $physicalWarehouses->concat($vehicleWarehouses);
+        }
+
+        return [$warehouses, $isDriver, $driverVehicle];
+    }
+
     public function orderCreate()
     {
         $dealers = Dealer::select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit')
             ->orderBy('name')
             ->get();
-        $warehouses = Warehouse::where('is_active', true)->orderBy('id')->get(['id', 'name', 'code']);
+        [$warehouses, $isDriverUser, $driverVehicle] = $this->getAvailableWarehousesForUser();
         $products = self::getPosProductsCatalog();
         $drivers = User::select('id', 'name', 'phone')->get();
         $priceTiers = PriceTier::where('status', 'Hoạt động')
@@ -467,6 +526,8 @@ class WebViewController extends Controller
             'order' => null,
             'dealers' => $dealers,
             'warehouses' => $warehouses,
+            'isDriverUser' => $isDriverUser,
+            'driverVehicle' => $driverVehicle,
             'products' => $products,
             'drivers' => $drivers,
             'priceTiers' => $priceTiers,
@@ -483,7 +544,7 @@ class WebViewController extends Controller
         $dealers = Dealer::select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit')
             ->orderBy('name')
             ->get();
-        $warehouses = Warehouse::where('is_active', true)->orderBy('id')->get(['id', 'name', 'code']);
+        [$warehouses, $isDriverUser, $driverVehicle] = $this->getAvailableWarehousesForUser();
         $products = self::getPosProductsCatalog();
         $drivers = User::select('id', 'name', 'phone')->get();
         $priceTiers = PriceTier::where('status', 'Hoạt động')
@@ -507,6 +568,8 @@ class WebViewController extends Controller
             'order' => $order,
             'dealers' => $dealers,
             'warehouses' => $warehouses,
+            'isDriverUser' => $isDriverUser,
+            'driverVehicle' => $driverVehicle,
             'products' => $products,
             'drivers' => $drivers,
             'priceTiers' => $priceTiers,
@@ -735,7 +798,27 @@ class WebViewController extends Controller
             ->latest('id')
             ->get();
 
-        return view('delivery.dispatch', compact('dispatches', 'vehicles', 'routes', 'readyOrders'));
+        // Dữ liệu Hàng Lẻ Xe (Bán dạo / Lưu động theo xe)
+        $vanDispatches = \App\Models\VanSaleDispatch::with(['items', 'driver'])
+            ->latest('id')
+            ->take(60)
+            ->get();
+        $totalVanStockAmount = \App\Models\VanSaleDispatch::where('status', 'dispatched')->sum('total_amount');
+        $allDrivers = \App\Models\User::where('staff_type', 'driver')
+            ->orWhere('department', 'LIKE', '%Vận tải%')
+            ->orWhere('department', 'LIKE', '%Lái xe%')
+            ->orWhere('department', 'LIKE', '%Logistics%')
+            ->orWhereHas('roles', function($q) { $q->where('slug', 'driver'); })
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone', 'staff_type', 'department', 'current_debt']);
+        $availableProducts = \App\Models\Product::where('stock_quantity', '>', 0)
+            ->orderBy('name')
+            ->get(['id', 'name', 'sku', 'unit', 'cost_price', 'stock_quantity']);
+
+        return view('delivery.dispatch', compact(
+            'dispatches', 'vehicles', 'routes', 'readyOrders',
+            'vanDispatches', 'totalVanStockAmount', 'allDrivers', 'availableProducts'
+        ));
     }
 
     /**
@@ -1629,9 +1712,24 @@ class WebViewController extends Controller
                   ->orWhere('phone', 'like', "%{$search}%");
             });
         }
+        if ($tier = $request->input('tier')) {
+            $query->where('tier', $tier);
+        }
+        if ($debtFilter = $request->input('debt_status')) {
+            if ($debtFilter === 'has_debt') {
+                $query->where('current_debt', '>', 0);
+            } elseif ($debtFilter === 'in_term') {
+                $query->where('current_debt', '>', 0)->whereColumn('current_debt', '<=', 'credit_limit');
+            } elseif ($debtFilter === 'overdue') {
+                $query->where('current_debt', '>', 0)->whereColumn('current_debt', '>', 'credit_limit');
+            } elseif ($debtFilter === 'no_debt') {
+                $query->where('current_debt', '<=', 0);
+            }
+        }
+
         $dealers = $query->orderByDesc('current_debt')->paginate(20)->withQueryString();
         $totalDebt = Dealer::sum('current_debt');
-        $overdueDebt = Dealer::where('current_debt', '>', 50000000)->sum('current_debt');
+        $overdueDebt = Dealer::where('current_debt', '>', 0)->whereColumn('current_debt', '>', 'credit_limit')->sum('current_debt');
         $totalCreditLimit = Dealer::sum('credit_limit');
         $inTermDealersCount = Dealer::where('current_debt', '>', 0)->whereColumn('current_debt', '<=', 'credit_limit')->count();
 
@@ -1641,40 +1739,81 @@ class WebViewController extends Controller
             $selectedDealer = Dealer::with(['orders' => function($q) { $q->latest('id'); }])->find($selectedDealerId);
         }
 
-        // Dữ liệu cho Tab 2: Công nợ Nhân viên & Người vận chuyển
-        $staffList = \App\Models\User::with('dealer')
+        return view('dealers.debt', compact(
+            'dealers', 'totalDebt', 'overdueDebt', 'totalCreditLimit', 'inTermDealersCount', 'selectedDealer'
+        ));
+    }
+
+    /**
+     * Quản Lý Công Nợ Nhân Viên & Bàn Giao Nợ (Menu Nhân sự)
+     */
+    public function staffDebt(Request $request)
+    {
+        // 1. Dữ liệu Danh sách Nhân viên & Người vận chuyển
+        $query = \App\Models\User::with('dealer')
             ->where(function ($q) {
                 $q->whereIn('staff_type', ['driver', 'company_sales', 'dealer_sales'])
                   ->orWhere('department', 'LIKE', '%Kinh doanh%')
                   ->orWhere('department', 'LIKE', '%Vận tải%')
                   ->orWhere('current_debt', '>', 0);
-            })
-            ->orderByDesc('current_debt')
-            ->get();
-        $totalStaffDebt = \App\Models\User::sum('current_debt');
+            });
 
-        // Dữ liệu cho Tab 3: Biên bản Bàn giao công nợ
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+        if ($dept = $request->input('department')) {
+            $query->where('department', 'LIKE', "%{$dept}%");
+        }
+        if ($staffType = $request->input('staff_type')) {
+            $query->where('staff_type', $staffType);
+        }
+
+        $staffList = $query->orderByDesc('current_debt')->get();
+        $totalStaffDebt = \App\Models\User::sum('current_debt');
+        $debtStaffCount = \App\Models\User::where('current_debt', '>', 0)->count();
+
+        // 2. Dữ liệu Biên bản Bàn giao công nợ
         $handovers = \App\Models\DebtHandover::with(['fromUser', 'toUser', 'targetDealer', 'order'])
             ->latest('id')
-            ->take(50)
+            ->take(60)
             ->get();
         $pendingHandoversCount = \App\Models\DebtHandover::where('status', 'pending')->count();
-
-        // Dữ liệu cho Tab 4: Hàng lẻ trên xe
-        $vanDispatches = \App\Models\VanSaleDispatch::with(['items', 'driver'])
-            ->latest('id')
-            ->take(50)
-            ->get();
 
         // Danh sách hỗ trợ Dropdown trong các Modal
         $allStaff = \App\Models\User::select('id', 'name', 'code', 'phone', 'staff_type', 'dealer_id')->orderBy('name')->get();
         $allDealers = Dealer::select('id', 'name', 'code', 'phone', 'tier')->orderBy('name')->get();
-        $allProducts = \App\Models\Product::select('id', 'name', 'sku', 'unit', 'cost_price', 'stock_quantity')->where('stock_quantity', '>', 0)->orderBy('name')->get();
+        $allOrders = Order::select('id', 'order_code', 'customer_name', 'dealer_id', 'total_amount', 'driver_debt_amount', 'payment_status', 'status', 'created_at', 'warehouse', 'assigned_driver_id', 'creator_id', 'order_creator', 'assigned_vehicle_plate')
+            ->latest('id')
+            ->take(500)
+            ->get()
+            ->map(function ($ord) {
+                $orderTotal = (float)$ord->total_amount;
+                $isPaid = in_array($ord->payment_status, ['Đã thanh toán', 'Thanh toán đủ', 'paid', 'Thanh toán tiền mặt']);
+                $isVehicle = str_contains($ord->warehouse ?? '', 'Kho Xe') || !empty($ord->assigned_vehicle_plate);
+                return [
+                    'id'                 => $ord->id,
+                    'order_code'         => $ord->order_code,
+                    'customer_name'      => $ord->customer_name ?: 'Khách lẻ',
+                    'amount'             => $orderTotal,
+                    'total_amount'       => $orderTotal,
+                    'driver_debt_amount' => (float)$ord->driver_debt_amount,
+                    'payment_status'     => $ord->payment_status ?: 'Chưa thanh toán',
+                    'status'             => $ord->status ?: '---',
+                    'warehouse'          => $ord->warehouse ?: '',
+                    'is_paid'            => $isPaid,
+                    'is_vehicle'         => $isVehicle,
+                    'creator_name'       => $ord->order_creator ?: '',
+                    'assigned_driver_id' => $ord->assigned_driver_id,
+                ];
+            });
 
-        return view('dealers.debt', compact(
-            'dealers', 'totalDebt', 'overdueDebt', 'totalCreditLimit', 'inTermDealersCount', 'selectedDealer',
-            'staffList', 'totalStaffDebt', 'handovers', 'pendingHandoversCount', 'vanDispatches',
-            'allStaff', 'allDealers', 'allProducts'
+        return view('staff.debt', compact(
+            'staffList', 'totalStaffDebt', 'debtStaffCount', 'handovers', 'pendingHandoversCount', 
+            'allStaff', 'allDealers', 'allOrders'
         ));
     }
 
