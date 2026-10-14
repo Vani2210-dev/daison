@@ -88,6 +88,7 @@
                     <option value="Sales">Kinh Doanh & Bán Hàng</option>
                     <option value="Warehouse">Kho Vận & Vật Tư</option>
                     <option value="Logistics">Vận Tải & Đội Xe</option>
+                    <option value="Technician">Kỹ Thuật / Lắp Đặt</option>
                 </select>
             </div>
 
@@ -103,6 +104,7 @@
                     <option value="Warehouse_Staff">Nhân Viên Kho / Bốc Xếp</option>
                     <option value="Driver">Lái Xe / Vận Tải</option>
                     <option value="Finance_Accountant">Kế Toán Tài Chính / Thủ Quỹ</option>
+                    <option value="Technician">Kỹ Thuật Viên (Máy Lọc)</option>
                 </select>
             </div>
 
@@ -448,6 +450,22 @@ const PERM_DICT = {
     'staff_list.view': { name: 'Xem Hồ Sơ Nhân Sự', desc: 'Tra cứu danh sách cán bộ công nhân viên công ty' },
     'staff_list.create': { name: 'Thêm Nhân Viên', desc: 'Tạo tài khoản và hồ sơ nhân viên mới' },
     'staff_list.edit': { name: 'Sửa Thông Tin', desc: 'Cập nhật phòng ban, chức vụ, mức lương cơ bản' },
+    'water_filter.view': { name: 'Xem Phân Hệ Máy Lọc', desc: 'Xem phân hệ lắp đặt và sửa chữa máy lọc nước' },
+    'water_filter.install_view': { name: 'Xem Đơn Lắp Đặt', desc: 'Tra cứu danh sách & chi tiết các đơn đi lắp đặt máy lọc' },
+    'water_filter.install_create': { name: 'Lên Đơn Lắp Đặt', desc: 'Khởi tạo đơn giao hàng và lắp đặt máy lọc nước cho khách' },
+    'water_filter.install_edit': { name: 'Sửa Đơn Lắp Đặt', desc: 'Chỉnh sửa kỹ thuật viên phụ trách, lịch hẹn và phụ kiện kèm' },
+    'water_filter.install_status': { name: 'Cập Nhật Trạng Thái Lắp', desc: 'Chuyển trạng thái đơn, ghi nhận chỉ số TDS & nghiệm thu' },
+    'water_filter.install_delete': { name: 'Xóa Đơn Lắp Đặt', desc: 'Xóa đơn lắp đặt nháp hoặc đơn bị hủy' },
+    'water_filter.repair_view': { name: 'Xem Phiếu Sửa Chữa', desc: 'Tra cứu danh sách tiếp nhận sửa chữa máy lọc & bảo hành' },
+    'water_filter.repair_create': { name: 'Tiếp Nhận Sửa Chữa', desc: 'Lập phiếu tiếp nhận máy lọc tại xưởng hoặc sửa chữa tại nhà' },
+    'water_filter.repair_edit': { name: 'Chẩn Đoán & Thay Vật Tư', desc: 'Ghi nhận hiện tượng hỏng, giải pháp và phụ tùng thay thế' },
+    'water_filter.repair_status': { name: 'Đổi Trạng Thái Sửa & BH', desc: 'Cập nhật tiến độ sửa, thanh toán công/vật tư và bàn giao máy' },
+    'water_filter.repair_delete': { name: 'Xóa Phiếu Sửa Chữa', desc: 'Xóa phiếu sửa chữa nháp khỏi hệ thống' },
+    'water_filter.parts_view': { name: 'Xem Kho Phụ Tùng', desc: 'Tra cứu danh mục linh kiện, lõi lọc nước và số lượng tồn' },
+    'water_filter.parts_import': { name: 'Nhập Kho Phụ Tùng', desc: 'Tạo phiếu nhập thêm linh kiện phụ tùng vào kho độc lập' },
+    'water_filter.parts_manage': { name: 'Quản Lý Phụ Tùng', desc: 'Thêm mới mã linh kiện, cập nhật giá xuất và định mức tồn' },
+    'water_filter.parts_delete': { name: 'Xóa Mã Phụ Tùng', desc: 'Xóa mã phụ tùng linh kiện chưa từng phát sinh xuất nhập' },
+    'water_filter.models_manage': { name: 'Quản Lý Model Máy Lọc', desc: 'Thêm mới, sửa và quản lý danh mục Model máy lọc nước' },
     'staff_list.lock': { name: 'Khóa / Thôi Việc', desc: 'Khóa tài khoản truy cập khi nhân sự nghỉ việc' },
     'payroll.view': { name: 'Xem Bảng Lương', desc: 'Tra cứu phiếu lương cá nhân và bảng lương phòng ban' },
     'attendance.view': { name: 'Xem Bảng Chấm Công', desc: 'Theo dõi giờ vào/ra ca và lịch sử định vị GPS chấm công' },
@@ -682,6 +700,7 @@ function staffApp() {
             if (d.includes('sales') || d.includes('kinh doanh')) return 'Kinh Doanh & Bán Hàng';
             if (d.includes('warehouse') || d.includes('kho')) return 'Kho Vận & Vật Tư';
             if (d.includes('logistics') || d.includes('vận tải')) return 'Vận Tải & Đội Xe';
+            if (d.includes('technician') || d.includes('kỹ thuật') || d.includes('lắp đặt')) return 'Kỹ Thuật & Dịch Vụ Máy Lọc';
             return dept;
         },
 
@@ -693,6 +712,7 @@ function staffApp() {
             if (d.includes('sales') || d.includes('kinh doanh')) return 'bg-sky-100 text-sky-800 border border-sky-200';
             if (d.includes('warehouse') || d.includes('kho')) return 'bg-amber-100 text-amber-800 border border-amber-200';
             if (d.includes('logistics') || d.includes('vận tải')) return 'bg-indigo-100 text-indigo-800 border border-indigo-200';
+            if (d.includes('technician') || d.includes('kỹ thuật') || d.includes('lắp đặt')) return 'bg-cyan-100 text-cyan-800 border border-cyan-200';
             return 'bg-slate-100 text-slate-800 border border-slate-200';
         },
 
@@ -708,6 +728,7 @@ function staffApp() {
                 case 'Warehouse_Staff': return 'Nhân Viên Kho / Bốc Xếp';
                 case 'Driver': return 'Lái Xe / Vận Tải';
                 case 'Finance_Accountant': return 'Kế Toán Tài Chính / Thủ Quỹ';
+                case 'Technician': return 'Kỹ Thuật Viên (Máy Lọc Nước)';
                 default: return role.name || 'Nhân Viên';
             }
         },
@@ -723,6 +744,7 @@ function staffApp() {
                 case 'Warehouse_Staff': return 'fa-solid fa-dolly';
                 case 'Driver': return 'fa-solid fa-truck';
                 case 'Finance_Accountant': return 'fa-solid fa-wallet';
+                case 'Technician': return 'fa-solid fa-screwdriver-wrench';
                 default: return 'fa-solid fa-user-tie';
             }
         },
@@ -738,6 +760,7 @@ function staffApp() {
                 case 'Warehouse_Staff': return 'bg-amber-50 text-amber-700 border-amber-200';
                 case 'Driver': return 'bg-blue-50 text-blue-700 border-blue-200';
                 case 'Finance_Accountant': return 'bg-teal-50 text-teal-700 border-teal-200';
+                case 'Technician': return 'bg-cyan-50 text-cyan-700 border-cyan-200';
                 default: return 'bg-slate-50 text-slate-700 border-slate-200';
             }
         },
@@ -753,6 +776,7 @@ function staffApp() {
                 case 'Warehouse_Staff': return 'text-amber-700';
                 case 'Driver': return 'text-blue-700';
                 case 'Finance_Accountant': return 'text-teal-700';
+                case 'Technician': return 'text-cyan-700';
                 default: return 'text-slate-700';
             }
         },

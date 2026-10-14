@@ -293,6 +293,106 @@
             <!-- Right: User Profile & Quick Actions -->
             <div class="flex items-center gap-2 sm:gap-3 text-xs font-medium">
                 @if(Auth::check())
+                    <!-- NOTIFICATION BELL & DROPDOWN -->
+                    <div class="relative" x-data @click.away="$store.notifications ? ($store.notifications.openDropdown = false) : null">
+                        <button type="button" 
+                                @click="$store.notifications ? $store.notifications.toggleDropdown() : null"
+                                class="relative p-1.5 px-2.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold select-none"
+                                :class="$store.notifications && $store.notifications.openDropdown ? 'ring-2 ring-sky-400 bg-white/25 text-white' : ''"
+                                title="Thông báo hệ thống">
+                            <i class="fa-solid fa-bell text-xs" :class="$store.notifications && $store.notifications.unreadCount > 0 ? 'text-amber-300 animate-bounce' : 'text-slate-300'"></i>
+                            <span class="hidden md:inline">Thông báo</span>
+                            <template x-if="$store.notifications && $store.notifications.unreadCount > 0">
+                                <span class="px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-black text-[10px] min-w-[18px] text-center shadow-xs animate-pulse" 
+                                      x-text="$store.notifications.unreadCount > 99 ? '99+' : $store.notifications.unreadCount"></span>
+                            </template>
+                        </button>
+
+                        <!-- DROPDOWN PANEL -->
+                        <div x-show="$store.notifications && $store.notifications.openDropdown" 
+                             x-cloak
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+                             x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                             x-transition:leave="transition ease-in duration-150"
+                             x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                             x-transition:leave-end="opacity-0 translate-y-2 scale-95"
+                             class="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white text-slate-800 rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[9999] text-xs">
+                             
+                            <!-- Dropdown Header -->
+                            <div class="p-3 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex items-center justify-between border-b border-slate-700">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-bell text-amber-400"></i>
+                                    <span class="font-extrabold text-xs">Thông Báo Hệ Thống</span>
+                                    <template x-if="$store.notifications && $store.notifications.unreadCount > 0">
+                                        <span class="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black" x-text="$store.notifications.unreadCount + ' mới'"></span>
+                                    </template>
+                                </div>
+                                <button type="button" 
+                                        @click="$store.notifications ? $store.notifications.markAllAsRead() : null"
+                                        class="text-[11px] text-sky-300 hover:text-white font-bold transition flex items-center gap-1 cursor-pointer">
+                                    <i class="fa-solid fa-check-double text-[10px]"></i>
+                                    <span>Đọc tất cả</span>
+                                </button>
+                            </div>
+
+                            <!-- Dropdown List Container -->
+                            <div class="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                                <template x-if="$store.notifications && $store.notifications.loadingList">
+                                    <div class="p-8 text-center text-slate-400">
+                                        <i class="fa-solid fa-spinner fa-spin text-xl text-sky-600 mb-2"></i>
+                                        <p class="font-medium text-xs">Đang tải thông báo...</p>
+                                    </div>
+                                </template>
+
+                                <template x-if="$store.notifications && !$store.notifications.loadingList && $store.notifications.notifications.length === 0">
+                                    <div class="p-8 text-center text-slate-400 space-y-1">
+                                        <i class="fa-regular fa-bell-slash text-2xl text-slate-300"></i>
+                                        <p class="font-bold text-xs text-slate-600">Không có thông báo nào</p>
+                                        <p class="text-[11px] text-slate-400">Khi có phân công đơn hoặc tin mới, thông báo sẽ hiển thị tại đây</p>
+                                    </div>
+                                </template>
+
+                                <template x-if="$store.notifications">
+                                    <template x-for="n in $store.notifications.notifications" :key="n.id">
+                                        <div class="p-3 hover:bg-slate-50 transition cursor-pointer flex items-start gap-3"
+                                             :class="!n.is_read ? 'bg-sky-50/60' : 'bg-white'"
+                                             @click="$store.notifications.markAsRead(n.id); if (n.action_url) { window.location.href = n.action_url; $store.notifications.openDropdown = false; }">
+                                            
+                                            <!-- Type Icon -->
+                                            <div class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 shadow-xs"
+                                                 :class="{
+                                                     'bg-sky-100 text-sky-700': n.type === 'installation_assigned',
+                                                     'bg-amber-100 text-amber-700': n.type === 'repair_assigned',
+                                                     'bg-emerald-100 text-emerald-700': n.type === 'completed',
+                                                     'bg-slate-100 text-slate-600': !['installation_assigned', 'repair_assigned', 'completed'].includes(n.type)
+                                                 }">
+                                                <i :class="$store.notifications.getIconClass(n.type)"></i>
+                                            </div>
+
+                                            <!-- Content -->
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex items-center justify-between gap-1 mb-0.5">
+                                                    <span class="font-extrabold text-xs text-slate-900 truncate" x-text="n.title"></span>
+                                                    <span x-show="!n.is_read" class="w-2 h-2 rounded-full bg-sky-500 shrink-0"></span>
+                                                </div>
+                                                <p class="text-[11px] text-slate-600 line-clamp-2 leading-relaxed" x-text="n.message"></p>
+                                                <div class="flex items-center justify-between mt-1 text-[10px] text-slate-400 font-medium">
+                                                    <span x-text="n.time_ago"></span>
+                                                    <span class="px-1.5 py-0.2 rounded font-black text-[9px]"
+                                                          :class="$store.notifications.getTypeBadge(n.type).class"
+                                                          x-text="$store.notifications.getTypeBadge(n.type).text"></span>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </template>
+                                </template>
+                            </div>
+
+                        </div>
+                    </div>
+
                     <div class="flex items-center gap-2 bg-white/10 text-white px-3 py-1 rounded-lg border border-white/20 select-none">
                         <div class="w-6 h-6 rounded-full bg-sky-500 text-white font-bold text-[11px] flex items-center justify-center shadow-xs">
                             {{ mb_substr(Auth::user()->name, 0, 1) }}
@@ -363,7 +463,7 @@
                     <a href="{{ url('/tasks') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center gap-2.5 border-b border-slate-100 font-semibold text-slate-700">
                         <i class="fa-solid fa-tasks text-sky-600 w-4"></i><span>Giao việc & Báo cáo công việc</span>
                     </a>
-                    <a href="{{ url('/tasks') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center gap-2.5 border-b border-slate-100 font-semibold text-slate-700">
+                    <a href="{{ url('/tasks?view=my_tasks') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center gap-2.5 border-b border-slate-100 font-semibold text-slate-700">
                         <i class="fa-solid fa-user-check text-emerald-600 w-4"></i><span>Công việc của tôi</span>
                     </a>
                     @endif
@@ -512,6 +612,55 @@
                             <i class="fa-solid fa-truck-fast text-purple-600 w-4"></i><span>Giao hàng & Thu tiền</span>
                         </div>
                         <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">Lái xe</span>
+                    </a>
+                    @endif
+                </div>
+            </div>
+            @endif
+
+            <!-- 4.1 Máy lọc nước (Lắp đặt, Sửa chữa & Kho phụ tùng độc lập) -->
+            @if(!$authUser || $authUser->hasAnyPermission('water_filter.view', 'water_filter.install_view', 'water_filter.repair_view', 'water_filter.parts_view'))
+            <div class="nav-item-group relative shrink-0">
+                <button type="button" class="flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-bold transition-colors select-none rounded-t-lg relative whitespace-nowrap cursor-pointer {{ request()->is('water-filter*') || request()->is('may-loc-nuoc*') || request()->is('lap-dat-may-loc*') || request()->is('sua-chua-may-loc*') || request()->is('kho-phu-tung*') || request()->is('bao-hanh-may-loc*') ? 'bg-white text-[#1b4a8c] shadow-md' : 'text-white hover:bg-white/15' }}">
+                    <i class="fa-solid fa-faucet-drip text-sm {{ request()->is('water-filter*') || request()->is('may-loc-nuoc*') || request()->is('bao-hanh-may-loc*') ? 'text-[#1b4a8c]' : 'text-cyan-300' }}"></i>
+                    <span>Máy lọc nước</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] ml-0.5 opacity-70"></i>
+                    @if(request()->is('water-filter*') || request()->is('may-loc-nuoc*') || request()->is('lap-dat-may-loc*') || request()->is('sua-chua-may-loc*') || request()->is('kho-phu-tung*') || request()->is('bao-hanh-may-loc*'))
+                        <span class="absolute bottom-0 left-2 right-2 h-0.5 bg-amber-400 rounded-full"></span>
+                    @endif
+                </button>
+                <div class="nav-submenu hidden absolute left-0 top-full z-[9999] bg-white text-slate-800 border border-slate-200 shadow-2xl rounded-b-xl rounded-tr-xl min-w-[270px] py-2 text-xs">
+                    @if(!$authUser || $authUser->hasAnyPermission('water_filter.view', 'water_filter.install_view'))
+                    <a href="{{ url('/lap-dat-may-loc') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center justify-between border-b border-slate-100 font-semibold text-slate-700">
+                        <div class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-screwdriver-wrench text-sky-600 w-4"></i><span>Đơn đi lắp đặt máy lọc</span>
+                        </div>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800">Điều phối</span>
+                    </a>
+                    <a href="{{ url('/bao-hanh-may-loc') }}" class="w-full text-left px-4 py-2.5 hover:bg-emerald-50/70 flex items-center justify-between border-b border-slate-100 font-semibold text-slate-700">
+                        <div class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-shield-halved text-emerald-600 w-4"></i><span>Danh sách máy đã lắp</span>
+                        </div>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">Bảo hành</span>
+                    </a>
+                    @endif
+                    @if(!$authUser || $authUser->hasAnyPermission('water_filter.view', 'water_filter.repair_view'))
+                    <a href="{{ url('/sua-chua-may-loc') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center justify-between border-b border-slate-100 font-semibold text-slate-700">
+                        <div class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-wrench text-amber-600 w-4"></i><span>Tiếp nhận sửa chữa & BH</span>
+                        </div>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">Dịch vụ</span>
+                    </a>
+                    @endif
+                    @if(!$authUser || $authUser->hasAnyPermission('water_filter.view', 'water_filter.parts_view'))
+                    <a href="{{ url('/kho-phu-tung-may-loc') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center justify-between border-b border-slate-100 font-semibold text-slate-700">
+                        <div class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-boxes-stacked text-teal-600 w-4"></i><span>Kho phụ tùng & phụ kiện</span>
+                        </div>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-800">Kho riêng</span>
+                    </a>
+                    <a href="{{ url('/water-filter?tab=transactions') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center gap-2.5 font-semibold text-slate-700">
+                        <i class="fa-solid fa-clock-rotate-left text-indigo-600 w-4"></i><span>Lịch sử nhập / xuất kho phụ tùng</span>
                     </a>
                     @endif
                 </div>
@@ -1418,6 +1567,8 @@
 
     })();
     </script>
+
+    @include('layouts.notifications')
 
     @stack('scripts')
 </body>

@@ -115,6 +115,31 @@ class RoleSeeder extends Seeder
                     'attendance.checkin',
                 ],
             ],
+            [
+                'slug' => 'Technician',
+                'name' => 'Kỹ Thuật Viên',
+                'description' => 'Trực tiếp đi lắp đặt máy lọc nước, tiếp nhận sửa chữa, thay thế linh kiện phụ tùng và báo cáo',
+                'permissions' => [
+                    'water_filter.view',
+                    'water_filter.install_view',
+                    'water_filter.install_create',
+                    'water_filter.install_edit',
+                    'water_filter.install_status',
+                    'water_filter.repair_view',
+                    'water_filter.repair_create',
+                    'water_filter.repair_edit',
+                    'water_filter.repair_status',
+                    'water_filter.parts_view',
+                    'water_filter.parts_manage',
+                    'water_filter.parts_import',
+                    'water_filter.models_manage',
+                    'task_assignment.view',
+                    'task_assignment.report',
+                    'proposals.view',
+                    'proposals.create',
+                    'attendance.checkin',
+                ],
+            ],
         ];
 
         foreach ($rolesData as $data) {

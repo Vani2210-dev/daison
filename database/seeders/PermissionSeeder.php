@@ -166,6 +166,26 @@ class PermissionSeeder extends Seeder
 
             ['slug' => 'danhmuc.view', 'name' => 'Xem danh mục hệ thống (kho, xe, loại quỹ...)', 'module' => 'danhmuc', 'category' => 'Hệ thống', 'action' => 'view'],
             ['slug' => 'danhmuc.manage', 'name' => 'Thêm, sửa, xóa cấu hình danh mục', 'module' => 'danhmuc', 'category' => 'Hệ thống', 'action' => 'manage'],
+
+            // 9. Phân hệ Lắp đặt & Dịch vụ Máy lọc nước
+            ['slug' => 'water_filter.view', 'name' => 'Xem phân hệ máy lọc nước', 'module' => 'water_filter_install', 'category' => 'Máy lọc nước', 'action' => 'view'],
+            ['slug' => 'water_filter.install_view', 'name' => 'Xem danh sách & chi tiết đơn lắp đặt', 'module' => 'water_filter_install', 'category' => 'Máy lọc nước', 'action' => 'view'],
+            ['slug' => 'water_filter.install_create', 'name' => 'Lên đơn đi lắp đặt máy lọc mới', 'module' => 'water_filter_install', 'category' => 'Máy lọc nước', 'action' => 'create'],
+            ['slug' => 'water_filter.install_edit', 'name' => 'Chỉnh sửa đơn lắp đặt & điều KTV', 'module' => 'water_filter_install', 'category' => 'Máy lọc nước', 'action' => 'edit'],
+            ['slug' => 'water_filter.install_status', 'name' => 'Cập nhật trạng thái, TDS & nghiệm thu', 'module' => 'water_filter_install', 'category' => 'Máy lọc nước', 'action' => 'status'],
+            ['slug' => 'water_filter.install_delete', 'name' => 'Xóa đơn lắp đặt máy lọc', 'module' => 'water_filter_install', 'category' => 'Máy lọc nước', 'action' => 'delete'],
+
+            ['slug' => 'water_filter.repair_view', 'name' => 'Xem danh sách tiếp nhận sửa chữa', 'module' => 'water_filter_repair', 'category' => 'Máy lọc nước', 'action' => 'view'],
+            ['slug' => 'water_filter.repair_create', 'name' => 'Tiếp nhận máy sửa chữa / bảo hành mới', 'module' => 'water_filter_repair', 'category' => 'Máy lọc nước', 'action' => 'create'],
+            ['slug' => 'water_filter.repair_edit', 'name' => 'Cập nhật chẩn đoán & linh kiện thay', 'module' => 'water_filter_repair', 'category' => 'Máy lọc nước', 'action' => 'edit'],
+            ['slug' => 'water_filter.repair_status', 'name' => 'Cập nhật tiến độ & bàn giao máy sửa', 'module' => 'water_filter_repair', 'category' => 'Máy lọc nước', 'action' => 'status'],
+            ['slug' => 'water_filter.repair_delete', 'name' => 'Xóa phiếu tiếp nhận sửa chữa', 'module' => 'water_filter_repair', 'category' => 'Máy lọc nước', 'action' => 'delete'],
+
+            ['slug' => 'water_filter.parts_view', 'name' => 'Tra cứu tồn kho linh kiện & phụ tùng', 'module' => 'water_filter_parts', 'category' => 'Máy lọc nước', 'action' => 'view'],
+            ['slug' => 'water_filter.parts_manage', 'name' => 'Quản lý thông tin & giá xuất phụ tùng', 'module' => 'water_filter_parts', 'category' => 'Máy lọc nước', 'action' => 'manage'],
+            ['slug' => 'water_filter.parts_import', 'name' => 'Lập phiếu nhập kho phụ tùng / linh kiện', 'module' => 'water_filter_parts', 'category' => 'Máy lọc nước', 'action' => 'create'],
+            ['slug' => 'water_filter.parts_delete', 'name' => 'Xóa mã phụ tùng linh kiện', 'module' => 'water_filter_parts', 'category' => 'Máy lọc nước', 'action' => 'delete'],
+            ['slug' => 'water_filter.models_manage', 'name' => 'Quản lý danh mục Model máy lọc nước', 'module' => 'water_filter_parts', 'category' => 'Máy lọc nước', 'action' => 'manage'],
         ];
 
         foreach ($functionalPermissions as $p) {

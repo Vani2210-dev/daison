@@ -98,6 +98,11 @@ class User extends Authenticatable
         return $this->hasMany(UserRolePermission::class);
     }
 
+    public function systemNotifications()
+    {
+        return $this->hasMany(SystemNotification::class, 'user_id');
+    }
+
     /**
      * Lấy toàn bộ danh sách quyền hợp nhất mà User đang được kích hoạt
      */

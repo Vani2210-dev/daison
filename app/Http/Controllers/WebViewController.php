@@ -979,12 +979,71 @@ class WebViewController extends Controller
     }
 
     /**
-     * Display Task Assignments
+     * Display Task Assignments & Technician Installation Jobs
      */
     public function tasks(Request $request)
     {
-        $tasks = \App\Models\TaskAssignment::with('creator')->latest('id')->paginate(20)->withQueryString();
-        return view('tasks.index', compact('tasks'));
+        $user = Auth::user();
+        $isTechnician = $user && (
+            $user->hasRole('technician') || 
+            $user->hasRole('Technician') || 
+            str_contains(mb_strtolower($user->department ?? ''), 'kỹ thuật') || 
+            str_contains(mb_strtolower($user->department ?? ''), 'ky thuat')
+        );
+
+        $view = $request->input('view');
+        if (!$view) {
+            $view = $isTechnician ? 'my_tasks' : 'all';
+        }
+
+        // 1. Phân loại nhiệm vụ chung (TaskAssignment)
+        $tasksQuery = \App\Models\TaskAssignment::with(['creator', 'assignedTo'])->latest('id');
+        if ($view === 'my_tasks' && $user) {
+            $tasksQuery->where('assigned_to_id', $user->id);
+        }
+        $tasks = $tasksQuery->paginate(20)->withQueryString();
+
+        // 2. Danh sách đơn hàng lắp đặt máy lọc nước (FilterInstallation)
+        $installQuery = \App\Models\FilterInstallation::with(['items', 'installedMachine', 'technician'])->latest('id');
+        if ($view === 'my_tasks' && $user) {
+            $installQuery->where('technician_id', $user->id);
+        }
+        $filterInstallations = $installQuery->get();
+
+        // 3. Danh sách tem QR chưa kích hoạt sẵn sàng để gán
+        $blankQrCodes = \App\Models\FilterInstalledMachine::where('status', 'unactivated')
+            ->orderBy('id', 'asc')
+            ->take(50)
+            ->get();
+
+        // 4. Danh mục model máy lọc
+        $machineModels = \App\Models\FilterMachineModel::where('is_active', true)
+            ->orderBy('brand')
+            ->orderBy('name')
+            ->get();
+
+        // 5. Thống kê nhanh
+        $myInstallPending = \App\Models\FilterInstallation::where('technician_id', $user?->id)
+            ->whereIn('status', ['pending', 'confirmed', 'assigned', 'preparing', 'dispatching', 'in_progress'])
+            ->count();
+        $myInstallCompleted = \App\Models\FilterInstallation::where('technician_id', $user?->id)
+            ->where('status', 'completed')
+            ->count();
+        $allInstallPending = \App\Models\FilterInstallation::whereIn('status', ['pending', 'confirmed', 'assigned', 'preparing', 'dispatching', 'in_progress'])->count();
+        $allInstallCompleted = \App\Models\FilterInstallation::where('status', 'completed')->count();
+
+        return view('tasks.index', compact(
+            'tasks',
+            'view',
+            'isTechnician',
+            'filterInstallations',
+            'blankQrCodes',
+            'machineModels',
+            'myInstallPending',
+            'myInstallCompleted',
+            'allInstallPending',
+            'allInstallCompleted'
+        ));
     }
 
     /**

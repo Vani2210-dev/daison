@@ -22,6 +22,8 @@ use App\Http\Controllers\BankingWebhookController;
 use App\Http\Controllers\GeoController;
 use App\Http\Controllers\DebtHandoverController;
 use App\Http\Controllers\WarehouseTransactionController;
+use App\Http\Controllers\WaterFilterController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
@@ -169,10 +171,18 @@ Route::prefix('api')->group(function () {
     Route::get('/sales-policies', [\App\Http\Controllers\SalesPolicyController::class, 'index'])->middleware('permission:sales_policy.view');
     Route::post('/sales-policies', [\App\Http\Controllers\SalesPolicyController::class, 'store'])->middleware('permission:sales_policy.create');
     Route::put('/sales-policies/{id}', [\App\Http\Controllers\SalesPolicyController::class, 'update'])->middleware('permission:sales_policy.edit');
-    Route::delete('/sales-policies/{id}', [\App\Http\Controllers\SalesPolicyController::class, 'destroy'])->middleware('permission:sales_policy.delete');
+    // 18. Notifications & Floating Alerts
+    Route::get('/notifications/poll', [NotificationController::class, 'poll']);
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
 });
 
 // Non-prefixed aliases
+Route::get('/notifications/poll', [NotificationController::class, 'poll']);
+Route::get('/notifications', [NotificationController::class, 'index']);
+Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
 Route::post('/delivery-dispatches/settle-cash', [DeliveryController::class, 'settleDriverCash']);
 Route::get('/delivery-dispatches/driver-cash-handovers', [DeliveryController::class, 'getDriverCashHandovers']);
 Route::get('/delivery-returns', [DeliveryController::class, 'getDeliveryReturns']);
@@ -187,6 +197,11 @@ Route::post('/van-sale-dispatches', [DebtHandoverController::class, 'createVanSa
 Route::get('/van-sale-dispatches', [DebtHandoverController::class, 'getVanSaleDispatches']);
 
 use App\Http\Controllers\WebViewController;
+
+// Public QR Scan & Machine Activation / Warranty Portal
+Route::get('/m/{token}', [WaterFilterController::class, 'scanQrMachine'])->name('water_filter.qr_scan');
+Route::post('/m/{token}/activate', [WaterFilterController::class, 'submitActivationRequest'])->name('water_filter.qr_activate');
+Route::post('/m/{token}/request-service', [WaterFilterController::class, 'customerRequestService'])->name('water_filter.qr_service');
 
 // Web Authentication Routes (Blade)
 Route::get('/login', [WebViewController::class, 'loginView'])->name('login');
@@ -366,6 +381,71 @@ Route::middleware('auth')->group(function () {
     // Staff Profile & Personal Dashboard
     Route::get('/profile', [WebViewController::class, 'profile'])->name('profile');
     Route::get('/staff/personal', [WebViewController::class, 'profile']);
+
+    // Water Filter System (Phân hệ Lắp đặt & Sửa chữa Máy lọc nước - Bảng độc lập)
+    Route::middleware('permission:water_filter.view,water_filter.install_view,water_filter.repair_view,water_filter.parts_view')->group(function () {
+        Route::get('/water-filter', [WaterFilterController::class, 'index'])->name('water_filter.index');
+        Route::get('/may-loc-nuoc', [WaterFilterController::class, 'index']);
+        Route::get('/water-filter/installations/create', [WaterFilterController::class, 'createInstallation'])->name('water_filter.installations.create');
+        Route::get('/water-filter/installations/{id}/edit', [WaterFilterController::class, 'editInstallationView'])->name('water_filter.installations.edit');
+        Route::get('/lap-dat-may-loc/create', [WaterFilterController::class, 'createInstallation']);
+        Route::get('/lap-dat-may-loc/{id}/edit', [WaterFilterController::class, 'editInstallationView']);
+        Route::get('/lap-dat-may-loc', function(Request $request, WaterFilterController $controller) {
+            $request->merge(['tab' => 'installations']);
+            return $controller->index($request);
+        });
+        Route::get('/sua-chua-may-loc', function(Request $request, WaterFilterController $controller) {
+            $request->merge(['tab' => 'repairs']);
+            return $controller->index($request);
+        });
+        Route::get('/kho-phu-tung-may-loc', function(Request $request, WaterFilterController $controller) {
+            $request->merge(['tab' => 'parts']);
+            return $controller->index($request);
+        });
+        Route::get('/bao-hanh-may-loc', function(Request $request, WaterFilterController $controller) {
+            $request->merge(['tab' => 'installed_machines']);
+            return $controller->index($request);
+        });
+        Route::get('/bao-hanh-may-loc/print-qr', [WaterFilterController::class, 'printQrStickers'])->name('water_filter.qr_print');
+        Route::get('/water-filter/print-qr', [WaterFilterController::class, 'printQrStickers']);
+
+        // Water Filter APIs
+        Route::prefix('api/water-filter')->group(function () {
+            // Machine Models
+            Route::get('/machine-models', [WaterFilterController::class, 'getMachineModels']);
+            Route::post('/machine-models', [WaterFilterController::class, 'saveMachineModel']);
+            Route::delete('/machine-models/{id}', [WaterFilterController::class, 'deleteMachineModel']);
+
+            // Parts Warehouse
+            Route::get('/parts', [WaterFilterController::class, 'getParts']);
+            Route::post('/parts', [WaterFilterController::class, 'savePart']);
+            Route::delete('/parts/{id}', [WaterFilterController::class, 'deletePart']);
+            Route::post('/parts/import', [WaterFilterController::class, 'importStock']);
+            Route::get('/transactions', [WaterFilterController::class, 'getTransactions']);
+
+            // Installations
+            Route::get('/installations', [WaterFilterController::class, 'getInstallations']);
+            Route::post('/installations', [WaterFilterController::class, 'saveInstallation']);
+            Route::post('/installations/{id}/status', [WaterFilterController::class, 'updateInstallationStatus']);
+            Route::post('/installations/{id}/bind-qr', [WaterFilterController::class, 'bindQrToInstallation']);
+            Route::post('/installations/bind-qr', [WaterFilterController::class, 'bindQrToInstallation']);
+            Route::delete('/installations/{id}', [WaterFilterController::class, 'deleteInstallation']);
+
+            // Installed Machines & Warranty Management
+            Route::get('/installed-machines', [WaterFilterController::class, 'getInstalledMachines']);
+            Route::post('/installed-machines/generate-qr', [WaterFilterController::class, 'generateBlankQrCodes']);
+            Route::post('/installed-machines/{id}/activate', [WaterFilterController::class, 'activateMachine']);
+            Route::post('/installed-machines/{id}/update', [WaterFilterController::class, 'updateInstalledMachine']);
+            Route::delete('/installed-machines/{id}', [WaterFilterController::class, 'deleteInstalledMachine']);
+            Route::post('/installed-machines/{id}/warranty', [WaterFilterController::class, 'updateMachineWarranty']);
+
+            // Repairs
+            Route::get('/repairs', [WaterFilterController::class, 'getRepairs']);
+            Route::post('/repairs', [WaterFilterController::class, 'saveRepair']);
+            Route::post('/repairs/{id}/status', [WaterFilterController::class, 'updateRepairStatus']);
+            Route::delete('/repairs/{id}', [WaterFilterController::class, 'deleteRepair']);
+        });
+    });
 });
 
 // Fallback: If user accesses any unknown route, redirect to dashboard or login
