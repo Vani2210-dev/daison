@@ -676,7 +676,7 @@
                     @if(!$authUser || $authUser->hasPermission('inv_import.view'))
                     <a href="{{ route('inventory.receipts') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center justify-between border-b border-slate-100 font-semibold text-slate-700 {{ request()->is('inventory/receipts*') || request()->is('warehouse/receipts*') ? 'bg-sky-100/80 text-[#1b4a8c] font-bold border-l-4 border-l-[#1b4a8c]' : '' }}">
                         <div class="flex items-center gap-2.5">
-                            <i class="fa-solid fa-arrow-down-left-across-segments text-emerald-600 w-4"></i><span>Phiếu Nhập kho (PNK)</span>
+                            <i class="fa-solid fa-dolly text-emerald-600 w-4"></i><span>Phiếu Nhập kho (PNK)</span>
                         </div>
                         <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">Nhập NCC</span>
                     </a>

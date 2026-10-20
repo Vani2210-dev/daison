@@ -131,6 +131,14 @@
                 <i class="fa-solid fa-shield-halved text-emerald-600"></i>
                 <span x-text="countReadyQc + ' đơn sẵn sàng kiểm'"></span>
             </div>
+
+            <button type="button" @click="setOrderTypeFilter(filterOrderType === 'consignment' ? 'all' : 'consignment')" 
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border"
+                    :class="filterOrderType === 'consignment' ? 'bg-amber-600 text-white border-amber-700 shadow-2xs ring-2 ring-amber-500/30' : 'bg-white hover:bg-amber-50 border-amber-300 text-amber-900 shadow-2xs'"
+                    title="Nhấn để xem riêng danh sách đơn hàng ôm của nhân viên">
+                <i class="fa-solid fa-boxes-stacked text-amber-600" :class="{'text-white': filterOrderType === 'consignment'}"></i>
+                <span x-text="countConsignmentOrders + ' đơn hàng ôm'"></span>
+            </button>
         </div>
     </div>
 
@@ -275,6 +283,26 @@
                            class="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-200 font-medium text-slate-800 bg-slate-50/70 focus:bg-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all placeholder:text-slate-400">
                 </div>
 
+                <!-- Order Type Filter: Lọc loại đơn (Tất cả / Đơn bán hàng / Đơn hàng ôm) -->
+                <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl text-[11px] font-bold">
+                    <button type="button" @click="setOrderTypeFilter('all')" 
+                            class="py-1 px-1 rounded-lg text-center transition-all cursor-pointer truncate"
+                            :class="filterOrderType === 'all' ? 'bg-white text-slate-900 shadow-2xs font-black' : 'text-slate-600 hover:text-slate-900'">
+                        Tất cả (<span x-text="orders.length"></span>)
+                    </button>
+                    <button type="button" @click="setOrderTypeFilter('sales')" 
+                            class="py-1 px-1 rounded-lg text-center transition-all cursor-pointer truncate"
+                            :class="filterOrderType === 'sales' ? 'bg-white text-sky-700 shadow-2xs font-black' : 'text-slate-600 hover:text-slate-900'">
+                        Đơn bán (<span x-text="countSalesOrders"></span>)
+                    </button>
+                    <button type="button" @click="setOrderTypeFilter('consignment')" 
+                            class="py-1 px-1 rounded-lg text-center transition-all cursor-pointer truncate flex items-center justify-center gap-1"
+                            :class="filterOrderType === 'consignment' ? 'bg-amber-600 text-white shadow-2xs font-black' : 'text-amber-800 hover:text-amber-900 bg-amber-50/80'">
+                        <i class="fa-solid fa-boxes-stacked text-[10px]"></i>
+                        <span>Hàng ôm (<span x-text="countConsignmentOrders"></span>)</span>
+                    </button>
+                </div>
+
                 <!-- Date Filter: Bộ lọc ngày soạn hàng -->
                 <div class="bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/80 space-y-1.5">
                     <div class="flex items-center justify-between text-[11px] font-bold text-slate-600">
@@ -338,6 +366,12 @@
                                     <div class="flex items-center justify-between gap-2">
                                         <div class="flex items-center gap-1.5 flex-wrap">
                                             <span class="font-mono font-black text-xs text-sky-700 tracking-tight" x-text="ord.order_code"></span>
+                                            <template x-if="ord.is_consignment">
+                                                <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-[9px] flex items-center gap-1">
+                                                    <i class="fa-solid fa-boxes-stacked text-[8px] text-amber-600"></i>
+                                                    <span>Hàng Ôm</span>
+                                                </span>
+                                            </template>
                                             <template x-if="ord._hasItemsModified">
                                                 <span class="px-1.5 py-0.5 rounded bg-rose-600 text-white font-black text-[9px] animate-pulse shadow-2xs">
                                                     ⚠️ Sửa SL
@@ -361,7 +395,7 @@
 
                                     <!-- Row 3: Warehouse & Date -->
                                     <div class="text-[11px] text-slate-500 flex items-center justify-between">
-                                        <span class="truncate max-w-[150px]" x-text="ord.warehouse || 'Kho Tổng Mê Linh (MQ)'"></span>
+                                        <span class="truncate max-w-[150px]" x-text="typeof ord.warehouse === 'string' ? ord.warehouse : (ord.warehouse?.name || 'Kho Tổng Mê Linh (MQ)')"></span>
                                         <div class="text-right shrink-0">
                                             <template x-if="ord.delivery_date">
                                                 <span class="font-mono text-[10px] text-emerald-700 font-bold block" x-text="'Giao: ' + formatDate(ord.delivery_date)"></span>
@@ -453,8 +487,14 @@
                         <!-- Panel Header -->
                         <div class="px-5 py-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                             <div>
-                                <h3 class="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                <h3 class="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2 flex-wrap">
                                     <span class="text-sky-700 font-mono" x-text="activeOrder.order_code"></span>
+                                    <template x-if="activeOrder.is_consignment">
+                                        <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-xs inline-flex items-center gap-1">
+                                            <i class="fa-solid fa-boxes-stacked text-amber-600"></i>
+                                            <span>Đơn Hàng Ôm (Xuất NVKD)</span>
+                                        </span>
+                                    </template>
                                     <span class="text-slate-400">|</span>
                                     <span x-text="activeOrder.customer_name"></span>
                                 </h3>
@@ -1026,8 +1066,14 @@
                         <!-- Panel Header -->
                         <div class="px-5 py-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                             <div>
-                                <h3 class="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                <h3 class="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2 flex-wrap">
                                     <span class="text-emerald-700 font-mono" x-text="activeOrder.order_code"></span>
+                                    <template x-if="activeOrder.is_consignment">
+                                        <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-xs inline-flex items-center gap-1">
+                                            <i class="fa-solid fa-boxes-stacked text-amber-600"></i>
+                                            <span>Đơn Hàng Ôm (Xuất NVKD)</span>
+                                        </span>
+                                    </template>
                                     <span class="text-slate-400">|</span>
                                     <span x-text="activeOrder.customer_name"></span>
                                     <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
@@ -1683,6 +1729,7 @@ function pickingApp() {
         fulfillmentMode: 'single', // 'single' | 'batch'
         selectedBranch: '',
         filterPickingDate: '{{ date("Y-m-d") }}',
+        filterOrderType: 'all', // 'all' | 'sales' | 'consignment'
         searchQuery: '',
         pickerFilter: 'all',
         qcInspector: '{{ $currentUser->name }} ({{ $currentUser->department ?? "Manager" }})',
@@ -1798,6 +1845,15 @@ function pickingApp() {
             });
 
             this.$watch('selectedBranch', () => {
+                setTimeout(() => {
+                    const list = this.filteredOrders;
+                    if (list.length > 0 && !list.some(o => o.id === this.activeOrderId)) {
+                        this.activeOrderId = list[0].id;
+                    }
+                }, 50);
+            });
+
+            this.$watch('filterOrderType', () => {
                 setTimeout(() => {
                     const list = this.filteredOrders;
                     if (list.length > 0 && !list.some(o => o.id === this.activeOrderId)) {
@@ -1926,8 +1982,40 @@ function pickingApp() {
             return this.orders.filter(o => this.isOrderReadyForQc(o) && !this.isOrderDaKiem(o)).length;
         },
 
+        get countConsignmentOrders() {
+            return this.orders.filter(o => !!o.is_consignment).length;
+        },
+
+        get countSalesOrders() {
+            return this.orders.filter(o => !o.is_consignment).length;
+        },
+
+        setOrderTypeFilter(type) {
+            this.filterOrderType = type;
+            if (type === 'consignment') {
+                const hasOnDate = !this.filterPickingDate || this.orders.some(o => o.is_consignment && this.formatDateForInput(o.picking_date) === this.filterPickingDate);
+                if (!hasOnDate && this.countConsignmentOrders > 0) {
+                    this.filterPickingDate = '';
+                }
+            }
+            setTimeout(() => {
+                const list = this.filteredOrders;
+                if (list.length > 0 && !list.some(o => o.id === this.activeOrderId)) {
+                    this.activeOrderId = list[0].id;
+                }
+            }, 50);
+        },
+
         get filteredOrders() {
             return this.orders.filter(o => {
+                // Filter theo loại đơn: Đơn bán thông thường vs Đơn hàng ôm của nhân viên
+                if (this.filterOrderType === 'sales' && o.is_consignment) {
+                    return false;
+                }
+                if (this.filterOrderType === 'consignment' && !o.is_consignment) {
+                    return false;
+                }
+
                 // Chỉ lấy các đơn hàng có ngày soạn hàng
                 if (!o.picking_date) {
                     return false;
@@ -1941,18 +2029,20 @@ function pickingApp() {
                     }
                 }
 
-                // Branch filter
-                if (this.selectedBranch && o.warehouse && !o.warehouse.includes(this.selectedBranch)) {
+                // Branch filter (hỗ trợ cả string và object)
+                const whName = typeof o.warehouse === 'string' ? o.warehouse : (o.warehouse?.name || '');
+                if (this.selectedBranch && whName && !whName.includes(this.selectedBranch)) {
                     return false;
                 }
 
-                // Text search
+                // Text search (mã đơn, tên khách/hàng ôm, kho xuất, hoặc nhân viên tạo/ôm đơn)
                 if (this.searchQuery) {
                     const q = this.searchQuery.toLowerCase();
                     const matchCode = (o.order_code || '').toLowerCase().includes(q);
                     const matchCust = (o.customer_name || '').toLowerCase().includes(q);
-                    const matchWh = (o.warehouse || '').toLowerCase().includes(q);
-                    if (!matchCode && !matchCust && !matchWh) return false;
+                    const matchWh = whName.toLowerCase().includes(q);
+                    const matchStaff = (o.order_creator || o.supervisor || '').toLowerCase().includes(q);
+                    if (!matchCode && !matchCust && !matchWh && !matchStaff) return false;
                 }
 
                 return true;
@@ -3459,6 +3549,7 @@ function pickingApp() {
         goToAlertOrder(alert) {
             if (!alert) return;
             this.filterPickingDate = ''; // Tắt lọc ngày để đảm bảo luôn hiển thị đơn
+            this.filterOrderType = 'all'; // Đảm bảo không bị ẩn bởi bộ lọc loại đơn
             this.searchQuery = alert.orderCode || '';
             const ord = this.orders.find(o => o.order_code === alert.orderCode || Number(o.id) === Number(alert.orderId));
             if (ord) {

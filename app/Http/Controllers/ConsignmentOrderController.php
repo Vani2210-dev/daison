@@ -38,7 +38,9 @@ class ConsignmentOrderController extends Controller
 
         $warehouses = Warehouse::where('is_active', true)
             ->where('type', '!=', 'Kho xe lưu động')
+            ->where('name', 'not like', 'Kho Hàng Ôm%')
             ->where('code', 'not like', 'KHO-XE-%')
+            ->where('code', 'not like', 'KHO-OM-%')
             ->orderBy('name')
             ->get(['id', 'code', 'name', 'type', 'address']);
 
@@ -47,20 +49,7 @@ class ConsignmentOrderController extends Controller
             ->get()
             ->map(function ($p) {
                 $costPrice = (float)($p->cost_price ?? $p->latest_cost_price ?? 0);
-                $tiers = is_array($p->price_tiers) ? $p->price_tiers : json_decode($p->price_tiers, true);
-
-                $consignmentPrice = $costPrice;
-                $retailPrice = $costPrice;
-
-                if (!empty($tiers) && is_array($tiers)) {
-                    if (isset($tiers[0]['price']) && (float)$tiers[0]['price'] > 0) {
-                        $consignmentPrice = (float)$tiers[0]['price'];
-                    }
-                    $lastTier = end($tiers);
-                    if (isset($lastTier['price']) && (float)$lastTier['price'] > 0) {
-                        $retailPrice = (float)$lastTier['price'];
-                    }
-                }
+                $sellPrice = (float)($p->price ?: $costPrice);
 
                 return [
                     'id'             => $p->id,
@@ -68,8 +57,8 @@ class ConsignmentOrderController extends Controller
                     'name'           => $p->name,
                     'unit'           => $p->unit ?? 'cái',
                     'cost_price'     => $costPrice,
-                    'price'          => $consignmentPrice,
-                    'sell_price'     => $retailPrice,
+                    'price'          => $sellPrice,
+                    'sell_price'     => $sellPrice,
                     'stock_quantity' => (float)($p->stock_quantity ?? 0),
                 ];
             });
@@ -113,6 +102,54 @@ class ConsignmentOrderController extends Controller
     }
 
     /**
+     * Mở trang lập đơn hàng ôm ở trang riêng
+     */
+    public function create(Request $request)
+    {
+        $currentUser = Auth::user();
+        $isAccountant = $currentUser?->isAccountant() ?? false;
+
+        $staffQuery = User::where(function ($q) {
+            $q->where('status', 'Đang làm việc')->orWhereNull('status');
+        })->orderBy('name');
+
+        if (!$isAccountant && $currentUser) {
+            $staffQuery->where('id', $currentUser->id);
+        }
+
+        $staff = $staffQuery->get(['id', 'code', 'name', 'phone', 'current_debt', 'department', 'branch']);
+
+        // Chỉ lấy kho công ty, không lấy kho ôm nhân sự hay kho xe
+        $warehouses = Warehouse::where('is_active', true)
+            ->where('type', '!=', 'Kho xe lưu động')
+            ->where('name', 'not like', 'Kho Hàng Ôm%')
+            ->where('code', 'not like', 'KHO-XE-%')
+            ->where('code', 'not like', 'KHO-OM-%')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'type', 'address']);
+
+        $products = Product::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'sku', 'name', 'unit', 'price', 'cost_price', 'latest_cost_price', 'stock_quantity'])
+            ->map(function ($p) {
+                $costPrice = (float)($p->cost_price ?? $p->latest_cost_price ?? 0);
+                $sellPrice = (float)($p->price ?: $costPrice);
+                return [
+                    'id'             => $p->id,
+                    'sku'            => $p->sku,
+                    'name'           => $p->name,
+                    'unit'           => $p->unit ?? 'cái',
+                    'cost_price'     => $costPrice,
+                    'price'          => $sellPrice,
+                    'sell_price'     => $sellPrice,
+                    'stock_quantity' => (float)($p->stock_quantity ?? 0),
+                ];
+            });
+
+        return view('orders.consignment_create', compact('staff', 'warehouses', 'products', 'isAccountant', 'currentUser'));
+    }
+
+    /**
      * Chi tiết đơn hàng ôm
      */
     public function show($id)
@@ -128,10 +165,18 @@ class ConsignmentOrderController extends Controller
 
     /**
      * Tạo đơn hàng ôm mới
+     * - Nhân sự tự đặt: status = pending (chờ kế toán duyệt)
+     * - Kế toán lập: tự động approved (sẵn sàng bốc hàng)
      */
     public function store(Request $request)
     {
-        $staffId = $request->input('staff_id') ?: Auth::id();
+        $currentUser = Auth::user();
+        $isAccountant = $currentUser?->isAccountant() ?? false;
+
+        $staffId = ($isAccountant && $request->filled('staff_id'))
+            ? $request->input('staff_id')
+            : ($currentUser?->id ?? $request->input('staff_id'));
+
         $request->merge(['staff_id' => $staffId]);
 
         $request->validate([
@@ -143,27 +188,38 @@ class ConsignmentOrderController extends Controller
             'notes'       => 'nullable|string',
         ]);
 
-        return DB::transaction(function () use ($request, $staffId) {
+        return DB::transaction(function () use ($request, $staffId, $currentUser, $isAccountant) {
             $staff = User::findOrFail($staffId);
             $warehouse = $request->warehouse_id ? Warehouse::find($request->warehouse_id) : null;
 
+            $status = $isAccountant ? 'approved' : 'pending';
+            $approvedBy = $isAccountant ? $currentUser?->id : null;
+            $approvedByName = $isAccountant ? $currentUser?->name : null;
+            $approvedAt = $isAccountant ? now() : null;
+
             $order = ConsignmentOrder::create([
-                'code'           => ConsignmentOrder::generateCode(),
-                'staff_id'       => $staff->id,
-                'staff_name'     => $staff->name,
-                'warehouse_id'   => $warehouse?->id,
-                'warehouse_name' => $warehouse?->name,
-                'status'         => 'pending',
-                'notes'          => $request->notes,
-                'created_by_id'  => Auth::id(),
+                'code'               => ConsignmentOrder::generateCode(),
+                'staff_id'           => $staff->id,
+                'staff_name'         => $staff->name,
+                'warehouse_id'       => $warehouse?->id,
+                'warehouse_name'     => $warehouse?->name,
+                'status'             => $status,
+                'picking_date'       => now()->format('Y-m-d'),
+                'delivery_date'      => now()->format('Y-m-d'),
+                'notes'              => $request->notes,
+                'created_by_id'      => $currentUser?->id,
+                'approved_by'        => $approvedBy,
+                'approved_by_name'   => $approvedByName,
+                'approved_at'        => $approvedAt,
+                'stock_deducted'     => false,
             ]);
 
             $totalAmount = 0;
 
             foreach ($request->items as $itemData) {
                 $product = Product::findOrFail($itemData['product_id']);
-                $unitPrice = $itemData['unit_price'] ?? $product->price ?? 0;
-                $sellPrice = $itemData['sell_price'] ?? $product->sell_price ?? $unitPrice;
+                $unitPrice = isset($itemData['unit_price']) ? (float)$itemData['unit_price'] : (float)($product->cost_price ?: $product->price ?: 0);
+                $sellPrice = isset($itemData['sell_price']) ? (float)$itemData['sell_price'] : (float)($product->price ?: $unitPrice);
                 $quantity = (float) $itemData['quantity'];
                 $amount = $unitPrice * $quantity;
 
@@ -192,74 +248,81 @@ class ConsignmentOrderController extends Controller
 
             $order->load('items.product');
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Tạo đơn hàng ôm thành công!',
-                'order'   => $order,
-            ]);
+            $msg = $isAccountant
+                ? "Tạo đơn hàng ôm {$order->code} thành công! Đơn đã tự động được duyệt và chuyển sang bộ phận bốc hàng."
+                : "Tạo đơn hàng ôm {$order->code} thành công! Đơn đã gửi chờ Kế toán duyệt trước khi chuyển sang bộ phận bốc hàng.";
+
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success'  => true,
+                    'message'  => $msg,
+                    'order'    => $order,
+                    'redirect' => route('orders.index', ['tab' => 'consignments']),
+                ]);
+            }
+
+            return redirect()->route('orders.index', ['tab' => 'consignments'])->with('success', $msg);
         });
     }
 
     /**
-     * Duyệt đơn hàng ôm → Xuất kho + Cộng công nợ NV
+     * Kế toán duyệt đơn hàng ôm → Chuyển sang bốc hàng (approved)
+     * Khi duyệt xong sẽ hiển thị bên màn hình bốc hàng (/inventory/picking)
      */
     public function approve($id, Request $request)
     {
-        return DB::transaction(function () use ($id) {
+        $currentUser = Auth::user();
+        if (!$currentUser || !$currentUser->isAccountant()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền duyệt đơn hàng ôm. Quyền này chỉ dành riêng cho Kế toán / Ban Quản Lý!'
+            ], 403);
+        }
+
+        return DB::transaction(function () use ($id, $currentUser) {
             $order = ConsignmentOrder::with('items')->findOrFail($id);
 
             if (!in_array($order->status, ['pending', 'draft'])) {
                 return response()->json(['success' => false, 'message' => 'Đơn không ở trạng thái chờ duyệt!'], 422);
             }
 
-            // Kiểm tra tồn kho
-            foreach ($order->items as $item) {
-                if ($order->warehouse_id) {
-                    $stock = WarehouseStock::where('warehouse_id', $order->warehouse_id)
-                        ->where('product_id', $item->product_id)
-                        ->first();
-                    $available = $stock ? (float) $stock->stock_quantity : (float) (Product::find($item->product_id)?->stock_quantity ?? 0);
-                    if ($available < (float) $item->quantity) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => "Sản phẩm \"{$item->name}\" không đủ tồn kho (có: {$available}, cần: {$item->quantity})!"
-                        ], 422);
-                    }
-                }
-            }
-
-            // Trừ tồn kho
-            foreach ($order->items as $item) {
-                if ($order->warehouse_id) {
-                    WarehouseStock::where('warehouse_id', $order->warehouse_id)
-                        ->where('product_id', $item->product_id)
-                        ->decrement('stock_quantity', (float) $item->quantity);
-                }
-                Product::where('id', $item->product_id)
-                    ->decrement('stock_quantity', (float) $item->quantity);
-            }
-
-            // Cộng công nợ nhân viên
-            $staff = User::findOrFail($order->staff_id);
-            $staff->increment('current_debt', (float) $order->total_amount);
-
-            // Cập nhật trạng thái
-            $user = Auth::user();
+            // Cập nhật trạng thái sang approved (hiển thị ngay bên bốc hàng)
             $order->update([
-                'status'           => 'in_progress',
-                'approved_by'      => $user?->id,
-                'approved_by_name' => $user?->name,
+                'status'           => 'approved',
+                'approved_by'      => $currentUser->id,
+                'approved_by_name' => $currentUser->name,
                 'approved_at'      => now(),
             ]);
 
-            // Đồng bộ số dư tồn kho ôm của nhân viên
-            ConsignmentOrder::recalculateEmployeeHoldingStock($order->staff_id);
-
             return response()->json([
                 'success' => true,
-                'message' => "Duyệt đơn {$order->code} thành công! Đã cộng " . number_format($order->total_amount) . "đ vào công nợ NV {$staff->name}.",
+                'message' => "Kế toán duyệt đơn {$order->code} thành công! Đơn đã được chuyển sang bộ phận bốc hàng.",
+                'order'   => $order,
             ]);
         });
+    }
+
+    /**
+     * Xuất kho trực tiếp vào kho ôm nhân viên (dành cho Kế toán / Thủ kho)
+     */
+    public function dispatchStock($id, Request $request)
+    {
+        $currentUser = Auth::user();
+        if (!$currentUser || !$currentUser->isAccountant()) {
+            return response()->json(['success' => false, 'message' => 'Chỉ Kế toán / Thủ kho mới có quyền xác nhận xuất kho!'], 403);
+        }
+
+        $order = ConsignmentOrder::with(['items', 'warehouse'])->findOrFail($id);
+        if ($order->stock_deducted) {
+            return response()->json(['success' => false, 'message' => 'Đơn này đã được xuất kho và cộng vào kho ôm của NV!'], 422);
+        }
+
+        $order->transferStockToEmployeeHoldingWarehouse($currentUser->id, $currentUser->name);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Đã xuất kho cho đơn {$order->code}! Hàng đã được cộng vào Kho Hàng Ôm của nhân viên {$order->staff_name}.",
+        ]);
     }
 
     /**

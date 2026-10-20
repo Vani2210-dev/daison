@@ -20,6 +20,10 @@ class ConsignmentOrder extends Model
         'returned_amount',
         'remaining_amount',
         'status',
+        'stock_deducted',
+        'dispatched_at',
+        'dispatched_by',
+        'dispatched_by_name',
         'approved_by',
         'approved_by_name',
         'approved_at',
@@ -30,6 +34,11 @@ class ConsignmentOrder extends Model
         'settled_by_name',
         'notes',
         'created_by_id',
+        'picking_date',
+        'delivery_date',
+        'shortage_reported',
+        'shortage_reported_at',
+        'shortage_reported_note',
     ];
 
     protected $casts = [
@@ -37,7 +46,9 @@ class ConsignmentOrder extends Model
         'sold_amount'      => 'decimal:2',
         'returned_amount'  => 'decimal:2',
         'remaining_amount' => 'decimal:2',
+        'stock_deducted'   => 'boolean',
         'approved_at'      => 'datetime',
+        'dispatched_at'    => 'datetime',
         'rejected_at'      => 'datetime',
         'settled_at'       => 'datetime',
     ];
@@ -161,10 +172,13 @@ class ConsignmentOrder extends Model
             }
         }
 
-        // Lấy tất cả các mặt hàng còn lại từ các đơn ôm đang hoạt động
+        // Lấy tất cả các mặt hàng còn lại từ các đơn ôm đã thực xuất kho vào kho hàng ôm của nhân viên
         $activeItemSums = ConsignmentOrderItem::whereHas('consignmentOrder', function ($q) use ($staffId) {
             $q->where('staff_id', $staffId)
-              ->whereIn('status', ['approved', 'in_progress']);
+              ->where(function($sub) {
+                  $sub->where('status', 'in_progress')
+                      ->orWhere('stock_deducted', true);
+              });
         })
         ->select('product_id', \Illuminate\Support\Facades\DB::raw('SUM(remaining_quantity) as total_remaining'))
         ->groupBy('product_id')
@@ -210,5 +224,50 @@ class ConsignmentOrder extends Model
         foreach ($staffIds as $staffId) {
             static::recalculateEmployeeHoldingStock((int)$staffId);
         }
+    }
+
+    /**
+     * Chuyển tồn kho từ kho xuất công ty vào kho hàng ôm của nhân viên
+     * Thực hiện khi: Đơn đã được Kế toán duyệt VÀ Kho đã bốc/kiểm hàng xong!
+     */
+    public function transferStockToEmployeeHoldingWarehouse(?int $dispatchedById = null, ?string $dispatchedByName = null): bool
+    {
+        if ($this->stock_deducted) {
+            return false;
+        }
+
+        $this->load(['items.product']);
+
+        // 1. Trừ tồn kho tại kho xuất công ty (nếu có kho xuất)
+        if ($this->warehouse_id) {
+            foreach ($this->items as $item) {
+                \App\Models\WarehouseStock::where('warehouse_id', $this->warehouse_id)
+                    ->where('product_id', $item->product_id)
+                    ->decrement('stock_quantity', (float) $item->quantity);
+
+                \App\Models\Product::where('id', $item->product_id)
+                    ->decrement('stock_quantity', (float) $item->quantity);
+            }
+        }
+
+        // 2. Ghi nhận công nợ nhân sự
+        $staff = \App\Models\User::find($this->staff_id);
+        if ($staff) {
+            $staff->increment('current_debt', (float) $this->total_amount);
+        }
+
+        // 3. Đánh dấu đã trừ kho công ty & xuất kho
+        $this->update([
+            'status'             => 'in_progress',
+            'stock_deducted'     => true,
+            'dispatched_at'      => now(),
+            'dispatched_by'      => $dispatchedById ?: auth()->id(),
+            'dispatched_by_name' => $dispatchedByName ?: (auth()->user()?->name ?: 'Thủ kho'),
+        ]);
+
+        // 4. Cộng tồn kho vào Kho hàng ôm của nhân sự
+        static::recalculateEmployeeHoldingStock((int)$this->staff_id);
+
+        return true;
     }
 }

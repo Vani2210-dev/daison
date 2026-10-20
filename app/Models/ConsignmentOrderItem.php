@@ -22,6 +22,17 @@ class ConsignmentOrderItem extends Model
         'sold_quantity',
         'returned_quantity',
         'remaining_quantity',
+        'picked_qty',
+        'item_status',
+        'assigned_staff',
+        'assigned_staff_list',
+        'shortage_reason',
+        'is_picked',
+        'is_checked',
+        'checked_qty',
+        'checked_by',
+        'checked_at',
+        'check_notes',
     ];
 
     protected $casts = [
@@ -32,6 +43,11 @@ class ConsignmentOrderItem extends Model
         'sold_quantity'      => 'decimal:2',
         'returned_quantity'  => 'decimal:2',
         'remaining_quantity' => 'decimal:2',
+        'picked_qty'         => 'decimal:2',
+        'checked_qty'        => 'decimal:2',
+        'is_picked'          => 'boolean',
+        'is_checked'         => 'boolean',
+        'assigned_staff_list'=> 'array',
     ];
 
     public function consignmentOrder()

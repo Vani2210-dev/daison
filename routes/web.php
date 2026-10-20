@@ -55,13 +55,14 @@ Route::prefix('api')->group(function () {
     Route::get('/dealers/{id}/credit-info', [OrderController::class, 'getDealerCreditInfo'])->middleware('permission:orders.view,dealers.view');
     Route::post('/orders/{id}/approve-credit-overrun', [OrderController::class, 'approveCreditOverrunAtCreation'])->middleware('permission:orders.approve,orders.edit,debt.approve');
 
-    // 2.1 Đơn Hàng Ôm (Consignment Orders)
+    // 2.1 Đơn Hàng Ôm (Consignment Orders APIs)
     Route::get('/consignment-orders/master-data', [ConsignmentOrderController::class, 'masterData']);
     Route::get('/consignment-orders', [ConsignmentOrderController::class, 'index']);
     Route::post('/consignment-orders', [ConsignmentOrderController::class, 'store']);
     Route::get('/consignment-orders/{id}', [ConsignmentOrderController::class, 'show']);
     Route::post('/consignment-orders/{id}/approve', [ConsignmentOrderController::class, 'approve']);
     Route::post('/consignment-orders/{id}/reject', [ConsignmentOrderController::class, 'reject']);
+    Route::post('/consignment-orders/{id}/dispatch', [ConsignmentOrderController::class, 'dispatchStock']);
     Route::post('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'createRetailOrder']);
     Route::get('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'retailOrders']);
     Route::post('/consignment-orders/{id}/return', [ConsignmentOrderController::class, 'returnItems']);
@@ -234,6 +235,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/products/create', [WebViewController::class, 'productCreate'])->middleware('permission:inventory.create');
     Route::get('/cat_products/{id}/edit', [WebViewController::class, 'productEdit'])->name('products.edit')->middleware('permission:inventory.edit');
     Route::get('/products/{id}/edit', [WebViewController::class, 'productEdit'])->middleware('permission:inventory.edit');
+    Route::get('/cat_products/{id}/batches', [WebViewController::class, 'productBatches'])->name('products.batches')->middleware('permission:inventory.view');
+    Route::get('/products/{id}/batches', [WebViewController::class, 'productBatches'])->middleware('permission:inventory.view');
     Route::post('/cat_products/save', [WebViewController::class, 'productSave'])->name('products.save')->middleware('permission:inventory.create,inventory.edit');
     Route::post('/products/save', [WebViewController::class, 'productSave'])->middleware('permission:inventory.create,inventory.edit');
     Route::delete('/cat_products/{id}', [WebViewController::class, 'productDelete'])->name('products.delete')->middleware('permission:inventory.delete');
@@ -247,6 +250,23 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales/cod-verification', [DeliveryController::class, 'codVerificationPage']);
     Route::get('/cod-verification', [DeliveryController::class, 'codVerificationPage']);
     Route::get('/orders/{id}/edit', [WebViewController::class, 'orderEdit'])->name('orders.edit')->middleware('permission:orders.edit');
+    Route::post('/orders/save', [OrderController::class, 'saveOrder']);
+    Route::post('/orders/update-status', [OrderController::class, 'updateOrderStatus']);
+
+    // Consignment Orders (Trang tạo đơn riêng & Direct endpoints)
+    Route::get('/orders/consignments/create', [ConsignmentOrderController::class, 'create'])->name('orders.consignments.create')->middleware('permission:orders.create,orders.view,consignments.create,consignments.view');
+    Route::get('/consignment-orders/create', [ConsignmentOrderController::class, 'create']);
+    Route::get('/consignment-orders/master-data', [ConsignmentOrderController::class, 'masterData']);
+    Route::get('/consignment-orders', [ConsignmentOrderController::class, 'index']);
+    Route::post('/consignment-orders', [ConsignmentOrderController::class, 'store']);
+    Route::get('/consignment-orders/{id}', [ConsignmentOrderController::class, 'show']);
+    Route::post('/consignment-orders/{id}/approve', [ConsignmentOrderController::class, 'approve']);
+    Route::post('/consignment-orders/{id}/reject', [ConsignmentOrderController::class, 'reject']);
+    Route::post('/consignment-orders/{id}/dispatch', [ConsignmentOrderController::class, 'dispatchStock']);
+    Route::post('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'createRetailOrder']);
+    Route::get('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'retailOrders']);
+    Route::post('/consignment-orders/{id}/return', [ConsignmentOrderController::class, 'returnItems']);
+    Route::post('/consignment-orders/{id}/settle', [ConsignmentOrderController::class, 'settle']);
 
     // Dealers & Customers Management
     Route::get('/dealers', [WebViewController::class, 'dealers'])->name('dealers.index')->middleware('permission:dealers.view');
@@ -296,6 +316,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/inventory/transactions/{id}/print', [WarehouseTransactionController::class, 'print'])->name('inventory.transactions.print')->middleware('permission:inventory.view');
     Route::post('/inventory/transactions/{id}/cancel', [WarehouseTransactionController::class, 'cancel'])->name('inventory.transactions.cancel')->middleware('permission:inventory.delete,inventory.edit');
     Route::get('/api/inventory/search-products', [WarehouseTransactionController::class, 'searchProducts']);
+    Route::get('/inventory/batches', [WarehouseTransactionController::class, 'batchesView'])->name('inventory.batches')->middleware('permission:inventory.view');
+    Route::get('/warehouse/batches', [WarehouseTransactionController::class, 'batchesView']);
+    Route::get('/api/products/{id}/batches', [WarehouseTransactionController::class, 'getProductBatches'])->middleware('permission:inventory.view');
+    Route::get('/api/inventory/batches', [WarehouseTransactionController::class, 'getWarehouseBatches'])->middleware('permission:inventory.view');
 
     // 4. Warehouse Returns Intake & Holding Stock Sale (Hoàn kho & Bán hàng từ kho ôm)
     Route::get('/inventory/import', [DeliveryController::class, 'returnsIntakePage'])->name('inventory.import')->middleware('permission:inventory.view,inv_import.view,returns.view');
@@ -386,8 +410,9 @@ Route::middleware('auth')->group(function () {
     // Customer Debt & Credit Limits
     Route::get('/debt', [WebViewController::class, 'debt'])->name('debt.index')->middleware('permission:debt.view');
     Route::get('/debt/{id}', [WebViewController::class, 'dealerDebtDetail'])->name('debt.detail')->middleware('permission:debt.view');
-    Route::get('/dealers/{id}/debt', [WebViewController::class, 'dealerDebtDetail'])->name('dealers.debt_detail')->middleware('permission:debt.view,dealers.view');
     Route::get('/staff-debt', [WebViewController::class, 'staffDebt'])->name('staff.debt')->middleware('permission:debt.view,staff_list.view');
+    Route::get('/staff-debt/{id}', [WebViewController::class, 'staffDebtDetail'])->name('staff.debt.detail')->middleware('permission:debt.view,staff_list.view');
+    Route::get('/staff/{id}/debt', [WebViewController::class, 'staffDebtDetail'])->middleware('permission:debt.view,staff_list.view');
 
     // Reports Center
     Route::get('/reports', [WebViewController::class, 'reports'])->name('reports.index')->middleware('permission:dashboard.view,orders.view,inventory.view,funds.view,debt.view');

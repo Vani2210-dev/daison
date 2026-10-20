@@ -224,6 +224,30 @@ class User extends Authenticatable
     }
 
     /**
+     * Kiểm tra người dùng có quyền Kế toán / Duyệt đơn ôm hay không
+     */
+    public function isAccountant(): bool
+    {
+        if ($this->id === 1) {
+            return true;
+        }
+
+        if ($this->hasRole('Manager') || $this->hasRole('Admin') || $this->hasRole('Sales_Accountant') || $this->hasRole('Finance_Accountant') || $this->hasRole('Accountant')) {
+            return true;
+        }
+
+        if ($this->hasPermission('consignments.approve') || $this->hasPermission('orders.approve')) {
+            return true;
+        }
+
+        if (in_array($this->department, ['Ban Giám Đốc', 'Quản Lý', 'Kế toán', 'Accounting', 'Executive'])) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Gán vai trò cho User kèm danh sách quyền được chọn
      * Nếu $permissionIds === null, hệ thống sẽ lấy mặc định toàn bộ quyền của vai trò đó
      */

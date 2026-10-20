@@ -114,4 +114,22 @@ class Order extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+
+    /**
+     * Scope chỉ lấy các đơn hàng xuất bán của công ty (loại trừ đơn hàng xuất bán từ kho hàng ôm của nhân sự)
+     */
+    public function scopeCompanyOrders($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('order_type')
+              ->orWhere('order_type', '!=', 'holding_sale');
+        })
+        ->where(function ($q) {
+            $q->whereNull('warehouse')
+              ->orWhere(function ($sub) {
+                  $sub->where('warehouse', 'not like', '%Kho Hàng Ôm%')
+                      ->where('warehouse', 'not like', 'KHO-OM-%');
+              });
+        });
+    }
 }

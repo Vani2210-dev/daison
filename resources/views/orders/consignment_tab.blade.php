@@ -83,10 +83,10 @@
                 <i class="fa-solid fa-boxes-stacked text-xs"></i>
                 <span>Xem Kho Hàng Ôm Thực Tế</span>
             </a>
-            <button type="button" @click="openCreateModal()" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shadow-md shadow-amber-600/20 transition-all cursor-pointer">
+            <a href="{{ route('orders.consignments.create') }}" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shadow-md shadow-amber-600/20 transition-all cursor-pointer">
                 <i class="fa-solid fa-plus text-xs"></i>
                 <span>Lập đơn ôm hàng mới</span>
-            </button>
+            </a>
             <button type="button" @click="fetchOrders()" class="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer" title="Làm mới">
                 <i class="fa-solid fa-rotate-right text-xs" :class="{'fa-spin': loading}"></i>
             </button>
@@ -210,8 +210,9 @@
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
                                     :class="{
                                         'bg-amber-100 text-amber-800 border border-amber-200': order.status === 'pending',
+                                        'bg-blue-100 text-blue-800 border border-blue-200': order.status === 'approved',
                                         'bg-sky-100 text-sky-800 border border-sky-200': order.status === 'in_progress',
-                                        'bg-emerald-100 text-emerald-800 border border-emerald-200': order.status === 'completed',
+                                        'bg-emerald-100 text-emerald-800 border border-emerald-200': order.status === 'completed' || order.status === 'settled',
                                         'bg-rose-100 text-rose-800 border border-rose-200': order.status === 'cancelled'
                                     }">
                                     <span x-text="getStatusLabel(order.status)"></span>
@@ -233,16 +234,16 @@
                                         </button>
                                     </template>
 
-                                    <!-- Duyệt đơn (Chỉ khi pending) -->
-                                    <template x-if="order.status === 'pending'">
-                                        <button type="button" @click="approveOrder(order)" class="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-[11px] shadow-xs cursor-pointer" title="Duyệt xuất kho & cộng nợ">
+                                    <!-- Duyệt đơn (Chỉ khi pending và user có quyền kế toán) -->
+                                    <template x-if="order.status === 'pending' && isAccountant">
+                                        <button type="button" @click="approveOrder(order)" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-[11px] shadow-xs cursor-pointer" title="Kế toán duyệt đơn để chuyển sang bốc hàng">
                                             <i class="fa-solid fa-check text-[10px]"></i>
-                                            <span>Duyệt</span>
+                                            <span>Duyệt đơn</span>
                                         </button>
                                     </template>
 
-                                    <!-- Từ chối đơn (Chỉ khi pending) -->
-                                    <template x-if="order.status === 'pending'">
+                                    <!-- Từ chối đơn (Chỉ khi pending và user có quyền kế toán) -->
+                                    <template x-if="order.status === 'pending' && isAccountant">
                                         <button type="button" @click="rejectOrder(order)" class="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 cursor-pointer" title="Từ chối đơn">
                                             <i class="fa-solid fa-xmark text-xs"></i>
                                         </button>
@@ -392,12 +393,6 @@
                                     </span>
                                     <span>&bull;</span>
                                     <span>ĐVT: <strong class="text-slate-700" x-text="item.unit || 'cái'"></strong></span>
-                                    <template x-if="item.sell_price">
-                                        <span class="flex items-center gap-1">
-                                            <span>&bull;</span>
-                                            <span>Giá bán lẻ gợi ý: <strong class="text-sky-600" x-text="formatMoney(item.sell_price)"></strong></span>
-                                        </span>
-                                    </template>
                                 </div>
 
                                 <!-- Dropdown danh sách gợi ý sản phẩm -->
@@ -429,8 +424,7 @@
                                                 </div>
                                             </div>
                                             <div class="shrink-0 text-right">
-                                                <div class="font-black text-amber-600 text-xs" x-text="'Giá ôm: ' + formatMoney(p.price)"></div>
-                                                <div class="text-[10px] text-slate-400" x-show="p.sell_price" x-text="'Lẻ: ' + formatMoney(p.sell_price)"></div>
+                                                <div class="font-bold text-amber-600 text-xs" x-text="'Giá: ' + formatMoney(p.price)"></div>
                                             </div>
                                         </div>
                                     </template>
@@ -455,12 +449,12 @@
                                        class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold text-center outline-none focus:border-amber-500 text-xs">
                             </div>
 
-                            <!-- Cột đơn giá ôm -->
+                            <!-- Cột giá bán -->
                             <div class="w-28">
-                                <label class="block text-[10px] text-slate-400 mb-0.5 sm:hidden">Đơn giá ôm</label>
+                                <label class="block text-[10px] text-slate-400 mb-0.5 sm:hidden">Giá bán</label>
                                 <input type="number"
                                        x-model.number="item.unit_price"
-                                       placeholder="Giá ôm"
+                                       placeholder="Giá bán"
                                        @input="calcCreateItemTotal(item)"
                                        class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold text-right outline-none focus:border-amber-500 text-xs">
                             </div>
@@ -618,7 +612,7 @@
                                 <th class="p-2.5 text-center">SL ôm</th>
                                 <th class="p-2.5 text-center">Đã bán lẻ</th>
                                 <th class="p-2.5 text-center">Còn lại</th>
-                                <th class="p-2.5 text-right">Đơn giá ôm</th>
+                                <th class="p-2.5 text-right">Giá bán</th>
                                 <th class="p-2.5 text-right">Thành tiền</th>
                             </tr>
                         </thead>
@@ -680,6 +674,7 @@ function consignmentOrdersApp() {
         orders: [],
         search: '',
         selectedStatus: '',
+        isAccountant: {{ ($currentUser && $currentUser->isAccountant()) ? 'true' : 'false' }},
         usersList: @json($initialStaff),
         warehousesList: @json($initialWarehouses),
         productsList: @json($initialProducts),
@@ -798,9 +793,12 @@ function consignmentOrdersApp() {
 
         getStatusLabel(status) {
             const map = {
-                'pending': 'Chờ duyệt',
+                'draft': 'Bản nháp',
+                'pending': 'Chờ kế toán duyệt',
+                'approved': 'Đã duyệt (Chờ bốc)',
                 'in_progress': 'Đang ôm hàng',
                 'completed': 'Hoàn tất',
+                'settled': 'Đã quyết toán',
                 'cancelled': 'Đã hủy'
             };
             return map[status] || status || 'Chờ duyệt';
@@ -1040,25 +1038,30 @@ function consignmentOrdersApp() {
         },
 
         async approveOrder(order) {
-            if (!confirm(`Bạn có chắc muốn DUYỆT đơn ${order.code}?\n\nHàng sẽ được xuất kho và cộng ${this.formatMoney(order.total_amount)} vào công nợ nhân viên ${order.staff_name || ''}.`)) {
+            if (!confirm(`Bạn có chắc muốn KẾ TOÁN DUYỆT đơn ${order.code}?\n\nSau khi duyệt, đơn sẽ xuất hiện bên màn hình Bốc hàng để bộ phận kho chuẩn bị hàng xuất.`)) {
                 return;
             }
 
             try {
                 const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                const res = await fetch(`/api/consignment-orders/${order.id}/approve`, {
+                const res = await fetch(`/consignment-orders/${order.id}/approve`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token || '' }
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token || '' 
+                    }
                 });
-                const data = await res.json();
+                const data = await res.json().catch(() => ({ success: false, message: 'Phản hồi không hợp lệ từ máy chủ' }));
                 if (data.success) {
-                    alert(data.message || 'Duyệt đơn ôm thành công!');
+                    alert(data.message || 'Kế toán duyệt đơn ôm thành công!');
                     await this.fetchOrders();
                 } else {
                     alert(data.message || 'Lỗi duyệt đơn');
                 }
             } catch (e) {
-                alert('Lỗi kết nối khi duyệt đơn');
+                console.error('Approve error:', e);
+                alert('Lỗi khi duyệt đơn: ' + (e?.message || 'Không thể kết nối đến máy chủ'));
             }
         },
 
@@ -1068,12 +1071,16 @@ function consignmentOrdersApp() {
 
             try {
                 const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                const res = await fetch(`/api/consignment-orders/${order.id}/reject`, {
+                const res = await fetch(`/consignment-orders/${order.id}/reject`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token || '' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token || '' 
+                    },
                     body: JSON.stringify({ reason })
                 });
-                const data = await res.json();
+                const data = await res.json().catch(() => ({ success: false, message: 'Phản hồi không hợp lệ từ máy chủ' }));
                 if (data.success) {
                     alert('Đã từ chối đơn hàng ôm!');
                     await this.fetchOrders();
@@ -1081,7 +1088,8 @@ function consignmentOrdersApp() {
                     alert(data.message || 'Lỗi từ chối đơn');
                 }
             } catch (e) {
-                alert('Lỗi kết nối');
+                console.error('Reject error:', e);
+                alert('Lỗi kết nối: ' + (e?.message || 'Không thể kết nối đến máy chủ'));
             }
         },
 

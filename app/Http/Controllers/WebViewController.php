@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\PriceTier;
 use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Models\Role;
 use App\Models\Permission;
 use App\Models\SalesPolicy;
@@ -145,6 +146,32 @@ class WebViewController extends Controller
             'warehouses' => $warehouses,
             'priceTiers' => $priceTiers,
         ]);
+    }
+
+    /**
+     * Dedicated Page: Chi tiết Hạn Sử Dụng (Date) & Các Lần Nhập Hàng Theo Lô
+     */
+    public function productBatches($id)
+    {
+        $product = Product::with(['category', 'brand'])->findOrFail($id);
+
+        $batches = ProductBatch::with([
+            'warehouse:id,name,code',
+            'transactionItem.transaction:id,code,created_at,supplier_name'
+        ])
+        ->where('product_id', $id)
+        ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC, id DESC')
+        ->get();
+
+        $stats = [
+            'total_batches' => $batches->count(),
+            'active_batches' => $batches->where('remaining_quantity', '>', 0)->count(),
+            'near_expired' => $batches->where('remaining_quantity', '>', 0)->where('expiry_status_code', 'near_expired')->count(),
+            'expired' => $batches->where('remaining_quantity', '>', 0)->where('expiry_status_code', 'expired')->count(),
+            'total_remaining' => (float)$batches->sum('remaining_quantity'),
+        ];
+
+        return view('products.batches', compact('product', 'batches', 'stats'));
     }
 
     /**
@@ -314,7 +341,7 @@ class WebViewController extends Controller
      */
     public function orders(Request $request)
     {
-        $query = Order::with(['dealer', 'items', 'creator', 'assignedDriver']);
+        $query = Order::companyOrders()->with(['dealer', 'items', 'creator', 'assignedDriver']);
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -364,10 +391,30 @@ class WebViewController extends Controller
             $query->where('payment_status', $paymentStatus);
         }
 
+        if ($fromDate = $request->input('from_date')) {
+            $query->whereDate('created_at', '>=', $fromDate);
+        }
+
+        if ($toDate = $request->input('to_date')) {
+            $query->whereDate('created_at', '<=', $toDate);
+        }
+
+        if ($customer = $request->input('customer')) {
+            $query->where(function ($q) use ($customer) {
+                $q->where('customer_name', 'like', "%{$customer}%")
+                  ->orWhere('customer_phone', 'like', "%{$customer}%")
+                  ->orWhereHas('dealer', function ($dq) use ($customer) {
+                      $dq->where('name', 'like', "%{$customer}%")
+                        ->orWhere('phone', 'like', "%{$customer}%");
+                  });
+            });
+        }
+
         $orders = $query->latest('id')->paginate(20)->withQueryString();
         $dealers = Dealer::select('id', 'name', 'phone', 'tier', 'address')->get();
+        [$warehouses] = $this->getAvailableWarehousesForUser();
 
-        return view('orders.index', compact('orders', 'dealers'));
+        return view('orders.index', compact('orders', 'dealers', 'warehouses'));
     }
 
     /**
@@ -457,11 +504,9 @@ class WebViewController extends Controller
                     'driver_name'          => $user->name,
                 ]
             ]);
-            Warehouse::syncEmployeeWarehouses();
-
-            // Admin, Quản lý, Sale, Kế toán: Có đầy đủ các kho công ty + các kho hàng ôm nhân viên
-            $physicalWarehouses = Warehouse::where('is_active', true)
-                ->whereNotIn('type', ['Kho hàng ôm', 'Kho xe lưu động'])
+        } else {
+            // Chỉ lấy các kho vật lý chính thức của công ty (loại trừ kho hàng ôm nhân sự và kho xe)
+            $warehouses = Warehouse::companyWarehouses()
                 ->orderBy('id')
                 ->get(['id', 'name', 'code'])
                 ->map(function($w) {
@@ -475,24 +520,6 @@ class WebViewController extends Controller
                         'driver_name'          => '',
                     ];
                 });
-
-            $holdingWarehouses = Warehouse::where('is_active', true)
-                ->whereIn('type', ['Kho hàng ôm', 'Kho xe lưu động'])
-                ->orderBy('name')
-                ->get()
-                ->map(function($w) {
-                    return (object)[
-                        'id'                   => $w->id,
-                        'name'                 => $w->name,
-                        'code'                 => $w->code,
-                        'is_vehicle_warehouse' => false,
-                        'is_holding_warehouse' => true,
-                        'plate_number'         => '',
-                        'driver_name'          => $w->manager_name,
-                    ];
-                });
-
-            $warehouses = $physicalWarehouses->concat($holdingWarehouses);
         }
 
         return [$warehouses, $isDriver, $driverVehicle];
@@ -512,7 +539,7 @@ class WebViewController extends Controller
             ->orderBy('id')
             ->get();
         $today = date('Y-m-d');
-        $salesPolicies = SalesPolicy::with('freeProduct:id,name,sku,unit,cost_price,retail_price')
+        $salesPolicies = SalesPolicy::with('freeProduct:id,name,sku,unit,cost_price,price')
             ->where('status', 'Hoạt động')
             ->where(function($q) use ($today) {
                 $q->whereNull('start_date')->orWhere('start_date', '<=', $today);
@@ -554,7 +581,7 @@ class WebViewController extends Controller
             ->orderBy('id')
             ->get();
         $today = date('Y-m-d');
-        $salesPolicies = SalesPolicy::with('freeProduct:id,name,sku,unit,cost_price,retail_price')
+        $salesPolicies = SalesPolicy::with('freeProduct:id,name,sku,unit,cost_price,price')
             ->where('status', 'Hoạt động')
             ->where(function($q) use ($today) {
                 $q->whereNull('start_date')->orWhere('start_date', '<=', $today);
@@ -1821,6 +1848,138 @@ class WebViewController extends Controller
         return view('staff.debt', compact(
             'staffList', 'totalStaffDebt', 'debtStaffCount', 'handovers', 'pendingHandoversCount', 
             'allStaff', 'allDealers', 'allOrders'
+        ));
+    }
+
+    /**
+     * Xem Chi Tiết Công Nợ Nhân Viên (Sổ công nợ, đơn hàng vận chuyển/lên đơn, bàn giao nợ & thu quỹ) - Trang riêng
+     */
+    public function staffDebtDetail($id, Request $request)
+    {
+        $staff = \App\Models\User::with('dealer')->where('id', $id)->orWhere('code', $id)->firstOrFail();
+
+        $holdingWarehouse = \App\Models\Warehouse::where('type', 'Kho hàng ôm')
+            ->where(function($q) use ($staff) {
+                $q->where('code', 'KHO-OM-' . $staff->id)
+                  ->orWhere('manager_name', $staff->name);
+            })->first();
+
+        // 1. Đơn hàng liên quan (đơn hàng tài xế giao/chịu nợ, sale lên đơn, hoặc đơn xuất bán từ kho hàng ôm)
+        $allOrders = Order::with(['dealer', 'items'])
+            ->where(function($q) use ($staff, $holdingWarehouse) {
+                $q->where('assigned_driver_id', $staff->id)
+                  ->orWhere('creator_id', $staff->id)
+                  ->orWhere('sales_rep_id', $staff->id);
+                if ($holdingWarehouse) {
+                    $q->orWhere('warehouse', $holdingWarehouse->name)
+                      ->orWhere('warehouse', $holdingWarehouse->code);
+                }
+                $q->orWhere('warehouse', 'like', "%Kho Hàng Ôm - {$staff->name}%")
+                  ->orWhere('warehouse', 'like', "%KHO-OM-{$staff->id}%")
+                  ->orWhere('notes', 'like', "%Kho Hàng Ôm - {$staff->name}%");
+            })
+            ->latest('id')
+            ->get();
+
+        // Phân loại đơn bán từ kho hàng ôm vs đơn vận chuyển/giao hàng
+        $holdingSaleOrders = $allOrders->filter(function($ord) use ($staff, $holdingWarehouse) {
+            if ($ord->order_type === 'holding_sale') return true;
+            if ($holdingWarehouse && ($ord->warehouse === $holdingWarehouse->name || $ord->warehouse === $holdingWarehouse->code)) return true;
+            if (str_contains($ord->warehouse ?? '', 'Kho Hàng Ôm') && (str_contains($ord->warehouse ?? '', $staff->name) || $ord->sales_rep_id == $staff->id)) return true;
+            if (str_contains(mb_strtolower($ord->notes ?? ''), 'kho hàng ôm')) return true;
+            return false;
+        })->values();
+
+        $deliveryOrders = $allOrders->filter(function($ord) use ($holdingSaleOrders) {
+            return !$holdingSaleOrders->contains('id', $ord->id);
+        })->values();
+
+        $orders = $allOrders;
+
+        // 2. Biên bản bàn giao công nợ (Bên giao hoặc Bên nhận)
+        $handoversSent = \App\Models\DebtHandover::with(['toUser', 'targetDealer', 'order'])
+            ->where('from_user_id', $staff->id)
+            ->latest('id')
+            ->get();
+
+        $handoversReceived = \App\Models\DebtHandover::with(['fromUser', 'targetDealer', 'order'])
+            ->where('to_user_id', $staff->id)
+            ->latest('id')
+            ->get();
+
+        // 3. Đơn hàng ôm & Hàng giữ trong kho ôm của nhân viên
+        $consignmentOrders = \App\Models\ConsignmentOrder::with(['items.product', 'warehouse'])
+            ->where('staff_id', $staff->id)
+            ->latest('id')
+            ->get();
+
+        $holdingStocks = $holdingWarehouse 
+            ? \App\Models\WarehouseStock::with('product')
+                ->where('warehouse_id', $holdingWarehouse->id)
+                ->where('stock_quantity', '>', 0)
+                ->get()
+            : collect();
+
+        // 4. Giao dịch thu/chi quỹ liên quan
+        $transactions = \App\Models\Transaction::where(function($q) use ($staff) {
+            $q->where('customer_partner_name', 'like', "%{$staff->name}%")
+              ->orWhere('notes', 'like', "%{$staff->code}%")
+              ->orWhere('notes', 'like', "%{$staff->name}%");
+        })->latest('date')->latest('id')->get();
+
+        // Thống kê tài chính
+        $currentDebt = (float)($staff->current_debt ?? 0);
+        $creditLimit = (float)($staff->credit_limit ?? 0);
+        $totalOrdersCount = $orders->count();
+        $totalOrderAmount = $orders->whereNotIn('status', ['Hủy', 'Đã hủy'])->sum('total_amount');
+        $totalDriverDebt = $orders->where('assigned_driver_id', $staff->id)->sum('driver_debt_amount');
+        $totalHandoverConfirmed = $handoversSent->where('status', 'confirmed')->sum('amount');
+        $totalHandoverReceived = $handoversReceived->where('status', 'confirmed')->sum('amount');
+        $totalConsignmentRemaining = $consignmentOrders->whereIn('status', ['approved', 'in_progress'])->sum('remaining_amount');
+        $totalHoldingItemsCount = $holdingStocks->sum('stock_quantity');
+
+        // Thống kê đơn hàng bán từ kho ôm
+        $totalHoldingSalesCount = $holdingSaleOrders->count();
+        $totalHoldingSalesAmount = $holdingSaleOrders->whereNotIn('status', ['Hủy', 'Đã hủy'])->sum('total_amount');
+        $totalHoldingSalesCash = $holdingSaleOrders->whereNotIn('status', ['Hủy', 'Đã hủy'])->where('payment_method', 'Tiền mặt')->sum('total_amount');
+        $totalHoldingSalesDebt = $holdingSaleOrders->whereNotIn('status', ['Hủy', 'Đã hủy'])->where('payment_method', '!=', 'Tiền mặt')->sum('total_amount');
+
+        if ($request->wantsJson() || $request->ajax() || $request->query('format') === 'json') {
+            return response()->json([
+                'success'                   => true,
+                'staff'                     => $staff,
+                'currentDebt'               => $currentDebt,
+                'creditLimit'               => $creditLimit,
+                'totalOrdersCount'          => $totalOrdersCount,
+                'totalOrderAmount'          => $totalOrderAmount,
+                'totalDriverDebt'           => $totalDriverDebt,
+                'totalHandoverConfirmed'    => $totalHandoverConfirmed,
+                'totalHandoverReceived'     => $totalHandoverReceived,
+                'totalConsignmentRemaining' => $totalConsignmentRemaining,
+                'totalHoldingItemsCount'    => $totalHoldingItemsCount,
+                'holdingWarehouse'          => $holdingWarehouse,
+                'holdingStocks'             => $holdingStocks,
+                'consignmentOrders'         => $consignmentOrders,
+                'holdingSaleOrders'         => $holdingSaleOrders,
+                'deliveryOrders'            => $deliveryOrders,
+                'totalHoldingSalesCount'    => $totalHoldingSalesCount,
+                'totalHoldingSalesAmount'   => $totalHoldingSalesAmount,
+                'totalHoldingSalesCash'     => $totalHoldingSalesCash,
+                'totalHoldingSalesDebt'     => $totalHoldingSalesDebt,
+                'orders'                    => $orders,
+                'handoversSent'             => $handoversSent,
+                'handoversReceived'         => $handoversReceived,
+                'transactions'              => $transactions,
+            ]);
+        }
+
+        return view('staff.debt_detail', compact(
+            'staff', 'currentDebt', 'creditLimit', 'totalOrdersCount', 'totalOrderAmount',
+            'totalDriverDebt', 'totalHandoverConfirmed', 'totalHandoverReceived',
+            'totalConsignmentRemaining', 'totalHoldingItemsCount', 'holdingWarehouse', 'holdingStocks',
+            'consignmentOrders', 'holdingSaleOrders', 'deliveryOrders', 'totalHoldingSalesCount',
+            'totalHoldingSalesAmount', 'totalHoldingSalesCash', 'totalHoldingSalesDebt',
+            'orders', 'handoversSent', 'handoversReceived', 'transactions'
         ));
     }
 

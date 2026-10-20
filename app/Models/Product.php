@@ -79,6 +79,16 @@ class Product extends Model
             ->withTimestamps();
     }
 
+    public function batches()
+    {
+        return $this->hasMany(ProductBatch::class)->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC');
+    }
+
+    public function activeBatches()
+    {
+        return $this->hasMany(ProductBatch::class)->where('remaining_quantity', '>', 0)->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC');
+    }
+
     public function getStockInWarehouse($warehouseIdentifier): float
     {
         $stocks = $this->relationLoaded('warehouseStocks') ? $this->warehouseStocks : $this->warehouseStocks()->with('warehouse')->get();

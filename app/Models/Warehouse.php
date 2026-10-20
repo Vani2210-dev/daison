@@ -45,6 +45,22 @@ class Warehouse extends Model
             ->withTimestamps();
     }
 
+    public function batches()
+    {
+        return $this->hasMany(ProductBatch::class);
+    }
+
+    /**
+     * Scope chỉ lấy các kho vật lý chính thức của công ty (loại trừ kho hàng ôm nhân viên và kho xe)
+     */
+    public function scopeCompanyWarehouses($query)
+    {
+        return $query->where('is_active', true)
+            ->whereNotIn('type', ['Kho hàng ôm', 'Kho xe lưu động'])
+            ->where('name', 'not like', '%Kho Hàng Ôm%')
+            ->where('name', 'not like', '%Kho Xe%');
+    }
+
     /**
      * Tự động đồng bộ các kho hàng ôm nhân viên từ bảng users
      */

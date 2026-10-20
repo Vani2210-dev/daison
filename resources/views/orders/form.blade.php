@@ -260,7 +260,7 @@
             <!-- Row 2: 3 columns (Top aligned, labels & inputs perfectly level) -->
             <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
                 <!-- Khách hàng (Chọn từ danh sách đại lý / khách hàng kèm phím mũi tên Lên/Xuống + Enter) -->
-                <div class="lg:col-span-6" 
+                <div class="md:col-span-6 lg:col-span-4" 
                      x-data="{ 
                          openDealerDropdown: false, 
                          dealerSearch: '', 
@@ -362,8 +362,30 @@
                     </div>
                 </div>
 
+                <!-- Vị trí giao hàng -->
+                <div class="md:col-span-6 lg:col-span-5">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-[11px] font-bold text-slate-500 tracking-wide uppercase">VỊ TRÍ GIAO HÀNG</label>
+                        <span class="text-[11px] text-slate-400 font-medium" x-show="formData.customer_address" x-text="'Địa chỉ nhận hàng'"></span>
+                    </div>
+                    <div class="relative">
+                        <i class="fa-solid fa-location-dot absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                        <input type="text" 
+                               x-model="formData.customer_address" 
+                               placeholder="Địa chỉ giao hàng, vị trí công trình, số nhà, tuyến giao..." 
+                               class="w-full pl-9 pr-8 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors">
+                        <button type="button" 
+                                x-show="formData.customer_address" 
+                                @click="formData.customer_address = ''" 
+                                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500 p-0.5 cursor-pointer" 
+                                title="Xóa địa chỉ">
+                            <i class="fa-solid fa-xmark text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Kho dự kiến xuất -->
-                <div class="lg:col-span-3">
+                <div class="md:col-span-12 lg:col-span-3">
                     <div class="flex items-center justify-between mb-1">
                         <label class="text-[11px] font-bold text-slate-500 tracking-wide uppercase">KHO DỰ KIẾN XUẤT</label>
                         @if($isDriverUser ?? false)
@@ -379,9 +401,11 @@
                             {{ ($isDriverUser ?? false) ? 'disabled' : '' }}>
                         <option value="">-- Chọn kho xuất hàng --</option>
                         @foreach($warehouses as $wh)
-                            <option value="{{ $wh->name }}">
-                                {{ $wh->name }} {{ !empty($wh->code) ? "({$wh->code})" : '' }}
-                            </option>
+                            @if(empty($wh->is_holding_warehouse) && !str_starts_with($wh->code ?? '', 'KHO-OM-') && !str_contains($wh->name ?? '', 'Kho Hàng Ôm'))
+                                <option value="{{ $wh->name }}">
+                                    {{ $wh->name }} {{ !empty($wh->code) ? "({$wh->code})" : '' }}
+                                </option>
+                            @endif
                         @endforeach
                     </select>
                     @if($isDriverUser ?? false)
@@ -390,19 +414,6 @@
                             <span>Lái xe chỉ được xuất bán từ kho trên xe của mình.</span>
                         </p>
                     @endif
-                </div>
-
-                <!-- Loại giá -->
-                <div class="lg:col-span-3">
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="text-[11px] font-bold text-slate-500 tracking-wide uppercase">LOẠI GIÁ</label>
-                        <span class="text-[11px] text-sky-600 font-medium" x-text="items.filter(it => it.product_id && it.checked !== false).length + ' dòng đồng bộ'"></span>
-                    </div>
-                    <select x-model="formData.dealer_tier" @change="recalculateItemPrices()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer shadow-2xs hover:border-slate-400 transition-colors">
-                        <template x-for="pt in priceTiersCatalog" :key="pt.id">
-                            <option :value="pt.name" x-text="pt.name"></option>
-                        </template>
-                    </select>
                 </div>
             </div>
 
@@ -632,7 +643,6 @@
                                 </th>
                             </template>
                             <th class="py-2.5 px-3 text-right w-36">THÀNH TIỀN</th>
-                            <th class="py-2.5 px-2 text-center w-28">LOẠI GIÁ</th>
                             <th class="py-2.5 px-2 text-center w-12"></th>
                         </tr>
                     </thead>
@@ -980,20 +990,6 @@
                                             <i class="fa-solid fa-triangle-exclamation text-[8px]"></i>
                                             <span>Thiếu <span x-text="getShortageQty(item)"></span> <span x-text="item.unit"></span></span>
                                         </div>
-                                    </template>
-                                </td>
-
-                                <!-- Loại giá -->
-                                <td class="py-2 px-2 text-center align-top">
-                                    <template x-if="!item.isPromotionalGift">
-                                        <select x-model="item.price_type" @change="onItemPriceTypeChange(index)" class="w-full px-1.5 py-1.5 bg-slate-50 border border-slate-300 hover:border-slate-400 rounded-lg text-[11px] font-medium focus:bg-white focus:outline-none cursor-pointer shadow-2xs transition-colors">
-                                            <template x-for="pt in priceTiersCatalog" :key="pt.id">
-                                                <option :value="pt.name" x-text="pt.name" :selected="item.price_type === pt.name"></option>
-                                            </template>
-                                        </select>
-                                    </template>
-                                    <template x-if="item.isPromotionalGift">
-                                        <span class="inline-block py-1 px-2 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold">Khuyến mại</span>
                                     </template>
                                 </td>
 

@@ -6,21 +6,21 @@
 @php
     $allOrders = $orders;
     $counts = [
-        'Tất cả' => \App\Models\Order::count(),
-        'Báo giá' => \App\Models\Order::where('status', 'Báo giá')->count(),
-        'Chốt đơn' => \App\Models\Order::whereIn('status', ['Chốt đơn', 'Đã duyệt', 'Chờ duyệt', 'Chờ kế toán duyệt'])->count(),
-        'Soạn hàng' => \App\Models\Order::whereIn('status', ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong', 'Đang kiểm hàng'])->count(),
-        'Soạn bốc' => \App\Models\Order::whereIn('status', ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong', 'Đang kiểm hàng'])->count(),
-        'Đơn thiếu' => \App\Models\Order::where(function ($q) {
+        'Tất cả' => \App\Models\Order::companyOrders()->count(),
+        'Báo giá' => \App\Models\Order::companyOrders()->where('status', 'Báo giá')->count(),
+        'Chốt đơn' => \App\Models\Order::companyOrders()->whereIn('status', ['Chốt đơn', 'Đã duyệt', 'Chờ duyệt', 'Chờ kế toán duyệt'])->count(),
+        'Soạn hàng' => \App\Models\Order::companyOrders()->whereIn('status', ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong', 'Đang kiểm hàng'])->count(),
+        'Soạn bốc' => \App\Models\Order::companyOrders()->whereIn('status', ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong', 'Đang kiểm hàng'])->count(),
+        'Đơn thiếu' => \App\Models\Order::companyOrders()->where(function ($q) {
             $q->where('shortage_reported', true)
               ->orWhereIn('status', ['Kho báo thiếu hàng', 'Báo thiếu']);
         })->count(),
-        'Giao sau' => \App\Models\Order::whereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng'])->count(),
-        'Đơn nợ' => \App\Models\Order::whereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng'])->count(),
-        'Kiểm hàng' => \App\Models\Order::whereIn('status', ['Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng', 'Sẵn sàng xuất xe'])->count(),
-        'Đang vận chuyển' => \App\Models\Order::whereIn('status', ['Đang vận chuyển', 'Đang giao hàng'])->count(),
-        'Đã giao' => \App\Models\Order::whereIn('status', ['Đã giao', 'Giao thành công'])->count(),
-        'Hủy' => \App\Models\Order::whereIn('status', ['Hủy', 'Đã hủy'])->count(),
+        'Giao sau' => \App\Models\Order::companyOrders()->whereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng'])->count(),
+        'Đơn nợ' => \App\Models\Order::companyOrders()->whereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng'])->count(),
+        'Kiểm hàng' => \App\Models\Order::companyOrders()->whereIn('status', ['Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng', 'Sẵn sàng xuất xe'])->count(),
+        'Đang vận chuyển' => \App\Models\Order::companyOrders()->whereIn('status', ['Đang vận chuyển', 'Đang giao hàng'])->count(),
+        'Đã giao' => \App\Models\Order::companyOrders()->whereIn('status', ['Đã giao', 'Giao thành công'])->count(),
+        'Hủy' => \App\Models\Order::companyOrders()->whereIn('status', ['Hủy', 'Đã hủy'])->count(),
     ];
 @endphp
 
@@ -148,6 +148,16 @@
             @endforeach
         </div>
 
+        @php
+            $activeFilterCount = 0;
+            if (request('from_date')) $activeFilterCount++;
+            if (request('to_date')) $activeFilterCount++;
+            if (request('search')) $activeFilterCount++;
+            if (request('customer')) $activeFilterCount++;
+            if (request('order_type')) $activeFilterCount++;
+            if (request('payment_status')) $activeFilterCount++;
+        @endphp
+
         <!-- Filter Form Row 1 -->
         <form action="{{ url('/orders') }}" method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 text-xs pt-1 items-end">
             @if(request('status'))
@@ -158,7 +168,7 @@
             <div class="lg:col-span-2 space-y-1">
                 <label class="font-bold text-slate-500 text-[11px]">Từ ngày</label>
                 <div class="relative">
-                    <input type="date" name="from_date" value="{{ request('from_date', date('Y-m-d')) }}" class="w-full p-2 pr-8 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:outline-none focus:border-sky-500 bg-white">
+                    <input type="date" name="from_date" value="{{ request('from_date') }}" class="w-full p-2 pr-8 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:outline-none focus:border-sky-500 bg-white">
                     <i class="fa-solid fa-calendar-days text-slate-400 absolute right-2.5 top-3 pointer-events-none"></i>
                 </div>
             </div>
@@ -167,7 +177,7 @@
             <div class="lg:col-span-2 space-y-1">
                 <label class="font-bold text-slate-500 text-[11px]">Đến ngày</label>
                 <div class="relative">
-                    <input type="date" name="to_date" value="{{ request('to_date', date('Y-m-d')) }}" class="w-full p-2 pr-8 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:outline-none focus:border-sky-500 bg-white">
+                    <input type="date" name="to_date" value="{{ request('to_date') }}" class="w-full p-2 pr-8 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:outline-none focus:border-sky-500 bg-white">
                     <i class="fa-solid fa-calendar-days text-slate-400 absolute right-2.5 top-3 pointer-events-none"></i>
                 </div>
             </div>
@@ -222,9 +232,11 @@
                     <button type="button" @click="isAdvancedOpen = !isAdvancedOpen" class="p-2 bg-sky-600 text-white rounded-xl cursor-pointer hover:bg-sky-700 transition-colors" title="Bộ lọc nâng cao">
                         <i class="fa-solid fa-filter"></i>
                     </button>
-                    <span class="absolute -top-1.5 -right-1.5 bg-rose-600 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
-                        2
-                    </span>
+                    @if($activeFilterCount > 0)
+                        <span class="absolute -top-1.5 -right-1.5 bg-rose-600 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                            {{ $activeFilterCount }}
+                        </span>
+                    @endif
                 </div>
             </div>
         </form>
@@ -233,7 +245,9 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs pt-2 border-t border-slate-100">
             <button type="button" @click="isAdvancedOpen = !isAdvancedOpen" class="text-sky-600 hover:text-sky-800 font-bold flex items-center gap-1.5 cursor-pointer select-none">
                 <span x-text="isAdvancedOpen ? '^ Thu gọn bộ lọc nâng cao' : 'v Mở rộng bộ lọc nâng cao'"></span>
-                <span class="px-2 py-0.2 bg-sky-100 text-sky-800 rounded-full text-[10px] font-extrabold">2</span>
+                @if($activeFilterCount > 0)
+                    <span class="px-2 py-0.2 bg-sky-100 text-sky-800 rounded-full text-[10px] font-extrabold">{{ $activeFilterCount }}</span>
+                @endif
             </button>
 
             <label class="flex items-center gap-2 font-bold text-slate-700 select-none cursor-pointer">

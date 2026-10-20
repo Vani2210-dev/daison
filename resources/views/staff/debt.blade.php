@@ -136,10 +136,18 @@
                                     (staffTypeFilter === 'all' || '{{ $st->staff_type }}' === staffTypeFilter) &&
                                     (search === '' || '{{ strtolower($st->name . ' ' . $st->phone . ' ' . $st->code) }}'.includes(search.toLowerCase()))">
                             <td class="py-2.5 px-3 text-center text-slate-400">{{ $sIdx + 1 }}</td>
-                            <td class="py-2.5 px-3 font-mono font-bold text-sky-800">{{ $st->code ?: ('NV-' . str_pad($st->id, 3, '0', STR_PAD_LEFT)) }}</td>
+                            <td class="py-2.5 px-3 font-mono font-bold whitespace-nowrap">
+                                <a href="{{ url('/staff-debt/' . $st->id) }}" class="text-sky-800 hover:text-sky-950 hover:underline font-bold" title="Xem sổ chi tiết công nợ nhân sự">
+                                    {{ $st->code ?: ('NV-' . str_pad($st->id, 3, '0', STR_PAD_LEFT)) }}
+                                </a>
+                            </td>
                             <td class="py-2.5 px-3 font-bold text-slate-900">
-                                <div>{{ $st->name }}</div>
-                                <span class="text-[10px] text-slate-400">{{ $st->department ?: 'Chưa phân ban' }}</span>
+                                <div>
+                                    <a href="{{ url('/staff-debt/' . $st->id) }}" class="hover:text-sky-700 hover:underline transition-colors" title="Xem sổ chi tiết công nợ nhân sự">
+                                        {{ $st->name }}
+                                    </a>
+                                </div>
+                                <span class="text-[10px] text-slate-400 font-normal">{{ $st->department ?: 'Chưa phân ban' }}</span>
                             </td>
                             <td class="py-2.5 px-3 font-mono text-slate-600">{{ $st->phone ?: '---' }}</td>
                             <td class="py-2.5 px-3">
@@ -168,10 +176,17 @@
                             <td class="py-2.5 px-3 text-right font-mono font-bold {{ $st->current_debt > 0 ? 'text-rose-700' : 'text-slate-400' }}">
                                 {{ number_format($st->current_debt ?? 0, 0, ',', '.') }} đ
                             </td>
-                            <td class="py-2.5 px-3 text-center">
+                            <td class="py-2.5 px-3 text-center whitespace-nowrap">
                                 <div class="flex items-center justify-center gap-1.5">
+                                    <a href="{{ url('/staff-debt/' . $st->id) }}" 
+                                       class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1" 
+                                       title="Xem sổ chi tiết công nợ nhân sự (Mở trang riêng)">
+                                        <i class="fa-solid fa-eye text-[10px] text-slate-500"></i>
+                                        <span>Chi tiết</span>
+                                    </a>
                                     <button type="button" @click="openHandoverModal({{ $st->id }})" 
-                                            class="px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1">
+                                            class="px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1"
+                                            title="Lập biên bản bàn giao nợ">
                                         <i class="fa-solid fa-share-from-square text-[10px]"></i>
                                         <span>Bàn giao nợ</span>
                                     </button>

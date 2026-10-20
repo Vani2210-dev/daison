@@ -14,7 +14,7 @@ class OrderController extends Controller
      */
     public function getBootstrapData()
     {
-        return Order::with(['items.product', 'dealer', 'salesRep', 'creator', 'salesAccountant', 'assignedDriver', 'warehouseStaff'])
+        return Order::companyOrders()->with(['items.product', 'dealer', 'salesRep', 'creator', 'salesAccountant', 'assignedDriver', 'warehouseStaff'])
             ->latest('updated_at')
             ->get()
             ->map(function ($o) {
@@ -147,6 +147,79 @@ class OrderController extends Controller
 
         if (!$orderId || !$status) {
             return response()->json(['success' => false, 'message' => 'Missing orderId or status'], 422);
+        }
+
+        $consignmentOrder = null;
+        if (is_numeric($orderId) && (int)$orderId >= 900000) {
+            $consignmentOrder = \App\Models\ConsignmentOrder::with(['items.product.category', 'staff', 'warehouse'])->find((int)$orderId - 900000);
+        }
+        if (!$consignmentOrder) {
+            $consignmentOrder = \App\Models\ConsignmentOrder::with(['items.product.category', 'staff', 'warehouse'])->where('code', $orderId)->first();
+        }
+
+        if ($consignmentOrder) {
+            $oldStatus = $consignmentOrder->status;
+            $consignmentOrder->status = $status;
+            if ($request->has('picking_date') || $request->has('pickingDate')) {
+                $consignmentOrder->picking_date = $request->input('picking_date') ?? $request->input('pickingDate');
+            }
+            $consignmentOrder->save();
+
+            $authUser = auth()->user();
+            $performerName = $authUser?->name ?? 'Người dùng';
+            $performerId = $authUser?->id;
+
+            // Nếu đơn hàng ôm chuyển sang trạng thái đã bốc xong / đã kiểm hàng / xuất kho và đã được kế toán duyệt
+            if (in_array($status, ['Đã bốc xong', 'Kho đã xuất đủ', 'Đã kiểm hàng', 'Sẵn sàng xuất xe', 'Đang giao hàng', 'Hoàn tất', 'in_progress']) && !$consignmentOrder->stock_deducted && $consignmentOrder->approved_at) {
+                $consignmentOrder->transferStockToEmployeeHoldingWarehouse($performerId, $performerName);
+            }
+
+            try {
+                \App\Models\AuditLog::create([
+                    'timestamp'            => now()->format('Y-m-d H:i:s'),
+                    'performer_name'       => $performerName,
+                    'user_id'              => $performerId,
+                    'action'               => 'Cập nhật trạng thái đơn ôm',
+                    'module'               => 'Đơn Hàng Ôm',
+                    'target_document_code' => $consignmentOrder->code,
+                    'field_name'           => 'Trạng thái chứng từ',
+                    'old_value'            => $oldStatus,
+                    'new_value'            => $status,
+                    'notes'                => "Chuyển tiến trình đơn hàng ôm từ [{$oldStatus}] sang [{$status}]",
+                ]);
+
+                \App\Models\PickingSyncEvent::create([
+                    'order_id'            => (string) (900000 + $consignmentOrder->id),
+                    'event_type'          => 'ORDER_STATUS_CHANGED',
+                    'performer_name'      => $performerName,
+                    'order_status'        => $status,
+                    'extra_data'          => [
+                        'orderId'      => 900000 + $consignmentOrder->id,
+                        'orderCode'    => $consignmentOrder->code,
+                        'oldStatus'    => $oldStatus,
+                        'newStatus'    => $status,
+                        'customerName' => 'Hàng Ôm - ' . ($consignmentOrder->staff_name ?: 'NVKD'),
+                        'warehouse'    => $consignmentOrder->warehouse_name ?: 'Kho Tổng Mê Linh',
+                        'performer'    => $performerName,
+                        'modifiedAt'   => now()->format('H:i:s d/m/Y'),
+                    ],
+                    'created_at'          => now(),
+                ]);
+            } catch (\Throwable $e) {}
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cập nhật trạng thái đơn hàng ôm thành công',
+                'order' => [
+                    'id'            => (string) (900000 + $consignmentOrder->id),
+                    'orderCode'     => $consignmentOrder->code,
+                    'status'        => $consignmentOrder->status,
+                    'stockDeducted' => false,
+                ],
+                'dealerId'   => null,
+                'dealerDebt' => null,
+                'auditLogs'  => [],
+            ]);
         }
 
         $order = Order::where('id', $orderId)
@@ -396,7 +469,7 @@ class OrderController extends Controller
 
         // Tự động gán Đại lý nếu Người tạo đơn hoặc Sales phụ trách là Sale Đại Lý Phụ Thuộc
         $activeUser = $creatorId ? \App\Models\User::find($creatorId) : auth()->user();
-        $salesRepId = $data['salesRepId'] ?? ($data['sales_rep_id'] ?? null);
+        $salesRepId = $data['salesRepId'] ?? ($data['sales_rep_id'] ?? ($data['employee_id'] ?? null));
         $salesRepUser = ($salesRepId && is_numeric($salesRepId)) ? \App\Models\User::find($salesRepId) : null;
 
         $dependentSales = null;
@@ -432,7 +505,7 @@ class OrderController extends Controller
         // Ràng buộc kho cho Lái xe: Khi lái xe tạo đơn, bắt buộc chỉ được bán từ Kho Xe của họ
         $isDriverCreator = $activeUser && ($activeUser->staff_type === 'driver' || $activeUser->department === 'Logistics' || (method_exists($activeUser, 'hasRole') && ($activeUser->hasRole('Fleet') || $activeUser->hasRole('Driver'))));
         $warehouseName = $data['warehouse'] ?? ($data['warehouse_name'] ?? ($order?->warehouse ?? 'Kho Tổng Mê Linh (MQ)'));
-        $isHoldingStockSale = !empty($data['is_holding_stock']) || !empty($data['is_holding_stock_sale']) || str_contains($warehouseName, 'Kho Hàng Ôm');
+        $isHoldingStockSale = !empty($data['is_holding_stock']) || !empty($data['is_holding_stock_sale']) || str_contains($warehouseName, 'Kho Hàng Ôm') || (($data['orderType'] ?? ($data['order_type'] ?? '')) === 'holding_sale');
 
         if ($isDriverCreator) {
             $assignedDriverId = $activeUser->id;
@@ -456,8 +529,8 @@ class OrderController extends Controller
                     $assignedDriverId = $vehObj->driver_id;
                 }
             }
-        } elseif ($isHoldingStockSale && !$assignedDriverId && $creatorId) {
-            $assignedDriverId = $creatorId;
+        } elseif ($isHoldingStockSale && !$assignedDriverId && ($salesRepId ?: $creatorId)) {
+            $assignedDriverId = $salesRepId ?: $creatorId;
         }
 
         $items = $data['items'] ?? null;
@@ -500,12 +573,13 @@ class OrderController extends Controller
             || str_contains($notesPayload, '[ĐƠN NỢ HÀNG');
 
         $defaultPrefix = $isBackOrder ? 'DH-NO-' : 'DH-';
-        $resolvedOrderType = $isBackOrder ? 'backorder' : ($data['orderType'] ?? ($data['order_type'] ?? ($order?->order_type ?? 'normal')));
+        $resolvedOrderType = $isHoldingStockSale ? 'holding_sale' : ($isBackOrder ? 'backorder' : ($data['orderType'] ?? ($data['order_type'] ?? ($order?->order_type ?? 'normal'))));
 
         $orderAttributes = [
             'order_code'             => $orderCode ?: ($order ? $order->order_code : $defaultPrefix . date('Y') . '-' . rand(1000, 9999)),
             'dealer_id'              => $dealerId,
             'creator_id'             => $creatorId,
+            'sales_rep_id'           => $salesRepId ?: ($order?->sales_rep_id ?? null),
             'order_creator'          => $creatorName ?: ($order?->order_creator ?? null),
             'customer_name'          => $data['dealerName'] ?? ($data['customer_name'] ?? ($order?->customer_name ?? 'Khách lẻ')),
             'customer_phone'         => $data['customerPhone'] ?? ($data['customer_phone'] ?? ($order?->customer_phone ?? '')),
@@ -1349,8 +1423,13 @@ class OrderController extends Controller
                     $staffId = null;
                     if (preg_match('/KHO-OM-(\d+)/', $targetWarehouse->code, $m)) {
                         $staffId = (int)$m[1];
-                    } elseif ($order->created_by_id) {
-                        $staffId = (int)$order->created_by_id;
+                    } elseif ($order->sales_rep_id) {
+                        $staffId = (int)$order->sales_rep_id;
+                    } elseif ($order->creator_id) {
+                        $staffId = (int)$order->creator_id;
+                    } elseif (!empty($targetWarehouse->manager_name)) {
+                        $matchedUser = \App\Models\User::where('name', $targetWarehouse->manager_name)->first();
+                        $staffId = $matchedUser?->id;
                     }
 
                     if ($staffId) {

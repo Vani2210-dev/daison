@@ -12,6 +12,9 @@ class InventoryTransactionItem extends Model
     protected $fillable = [
         'inventory_transaction_id',
         'product_id',
+        'batch_code',
+        'manufacturing_date',
+        'expiry_date',
         'quantity',
         'import_price',
         'cost_price_at_transaction',
@@ -20,6 +23,8 @@ class InventoryTransactionItem extends Model
     ];
 
     protected $casts = [
+        'manufacturing_date' => 'date:Y-m-d',
+        'expiry_date' => 'date:Y-m-d',
         'quantity' => 'decimal:2',
         'import_price' => 'decimal:2',
         'cost_price_at_transaction' => 'decimal:2',
@@ -34,5 +39,10 @@ class InventoryTransactionItem extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function batch()
+    {
+        return $this->hasOne(ProductBatch::class, 'inventory_transaction_item_id');
     }
 }

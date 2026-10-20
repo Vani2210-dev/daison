@@ -197,7 +197,7 @@
     <!-- 1. Header Banner -->
     <div class="mobile-header-banner bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div class="flex items-start sm:items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
-            <a href="{{ url('/inventory/import?tab=stocks') }}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#1b4a8c] hover:bg-blue-800 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-900/20 cursor-pointer transition-transform hover:scale-105 mt-0.5 sm:mt-0" title="Quay lại Kho hàng ôm">
+            <a href="{{ $returnUrl ?: url('/inventory/import?tab=stocks') }}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#1b4a8c] hover:bg-blue-800 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-900/20 cursor-pointer transition-transform hover:scale-105 mt-0.5 sm:mt-0" title="Quay lại">
                 <i class="fa-solid fa-arrow-left text-xs sm:text-sm"></i>
             </a>
 
@@ -230,7 +230,7 @@
             </div>
             @endif
 
-            <a href="{{ url('/inventory/import?tab=stocks') }}" class="hidden sm:flex px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs items-center gap-2 shadow-2xs cursor-pointer whitespace-nowrap">
+            <a href="{{ $returnUrl ?: url('/inventory/import?tab=stocks') }}" class="hidden sm:flex px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs items-center gap-2 shadow-2xs cursor-pointer whitespace-nowrap">
                 <i class="fa-solid fa-arrow-left text-slate-500"></i>
                 <span>Hủy & Quay lại</span>
             </a>
@@ -245,9 +245,9 @@
         <h3 class="text-base font-bold text-slate-800">Chưa có kho hàng ôm nào có tồn kho sẵn sàng để bán</h3>
         <p class="text-xs text-slate-500 max-w-md mx-auto">Vui lòng điều chuyển / xuất hàng ôm cho nhân viên từ kho công ty trước khi tạo đơn bán hàng trực tiếp.</p>
         <div class="pt-2">
-            <a href="{{ url('/inventory/import?tab=stocks') }}" class="px-4 py-2 bg-[#1b4a8c] hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors inline-flex items-center gap-2">
+            <a href="{{ $returnUrl ?: url('/inventory/import?tab=stocks') }}" class="px-4 py-2 bg-[#1b4a8c] hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors inline-flex items-center gap-2">
                 <i class="fa-solid fa-arrow-left"></i>
-                <span>Quay lại Quản lý Kho Hàng Ôm</span>
+                <span>Quay lại</span>
             </a>
         </div>
     </div>
@@ -542,6 +542,8 @@ function holdingSaleApp() {
         employeeWarehouses: @json($employeeWarehouses ?? []),
         dealersList: @json($dealers ?? []),
         preselectedProductId: '{{ $preselectedProductId ?? "" }}',
+        preselectedDealerId: '{{ $preselectedDealerId ?? "" }}',
+        returnUrl: '{{ $returnUrl ?? "" }}',
         availableStocks: [],
 
         quickAddSearch: '',
@@ -556,7 +558,7 @@ function holdingSaleApp() {
             employee_id: '{{ $currentWarehouse?->employee_id ?? "" }}',
             employee_name: '{{ $currentWarehouse?->employee_name ?? "" }}',
             customer_type: 'dealer',
-            dealer_id: '',
+            dealer_id: '{{ $preselectedDealerId ?? "" }}',
             customer_name: '',
             customer_phone: '',
             customer_address: '',
@@ -570,6 +572,13 @@ function holdingSaleApp() {
                 this.availableStocks = this.currentWarehouse.stocks;
             }
 
+            // Nếu có preselectedDealerId thì tự động điền thông tin đại lý
+            if (this.preselectedDealerId) {
+                this.saleForm.customer_type = 'dealer';
+                this.saleForm.dealer_id = String(this.preselectedDealerId);
+                this.onDealerChange();
+            }
+
             // Nếu người dùng bấm "Bán SP này" từ bảng tồn kho (có preselectedProductId) -> Thêm sẵn sản phẩm đó
             if (this.preselectedProductId && this.availableStocks && this.availableStocks.length > 0) {
                 const match = this.availableStocks.find(s => String(s.product_id) === String(this.preselectedProductId));
@@ -580,7 +589,14 @@ function holdingSaleApp() {
         },
 
         onWarehouseChange(whId) {
-            window.location.href = '/inventory/holding-sale/create?warehouse_id=' + whId;
+            let url = '/inventory/holding-sale/create?warehouse_id=' + whId;
+            if (this.saleForm.dealer_id) {
+                url += '&dealer_id=' + this.saleForm.dealer_id;
+            }
+            if (this.returnUrl) {
+                url += '&return_url=' + encodeURIComponent(this.returnUrl);
+            }
+            window.location.href = url;
         },
 
         getQuickAddFilteredStocks() {
@@ -703,11 +719,23 @@ function holdingSaleApp() {
             this.isSubmitting = true;
             try {
                 const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                const res = await fetch('/orders/save', {
+                const saveUrl = '/api/orders/save';
+                const res = await fetch(saveUrl, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token || '' },
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token || '' 
+                    },
                     body: JSON.stringify({
                         warehouse: this.saleForm.warehouse_name,
+                        warehouse_id: this.saleForm.warehouse_id,
+                        employee_id: this.saleForm.employee_id,
+                        employee_name: this.saleForm.employee_name,
+                        sales_rep_id: this.saleForm.employee_id,
+                        salesRepId: this.saleForm.employee_id,
+                        order_type: 'holding_sale',
+                        orderType: 'holding_sale',
                         is_holding_stock: true,
                         is_holding_stock_sale: true,
                         status: 'Đã giao hàng',
@@ -719,7 +747,7 @@ function holdingSaleApp() {
                         deliveryAddress: this.saleForm.customer_address,
                         paymentMethod: this.saleForm.payment_method,
                         paymentStatus: this.saleForm.payment_method === 'Công nợ (Ghi nợ đại lý)' ? 'Chưa thanh toán' : 'Đã thanh toán',
-                        notes: '',
+                        notes: this.saleForm.notes || ('Bán trực tiếp từ ' + (this.saleForm.warehouse_name || 'kho hàng ôm')),
                         items: validItems.map(it => ({
                             product_id: parseInt(it.product_id, 10),
                             name: it.name,
@@ -736,12 +764,19 @@ function holdingSaleApp() {
                     })
                 });
 
-                const data = await res.json();
-                if (data.success || data.order_id || data.id) {
+                const text = await res.text();
+                let data = null;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    throw new Error('Máy chủ phản hồi định dạng không hợp lệ (mã ' + res.status + ')');
+                }
+
+                if (res.ok && (data.success || data.order_id || data.id || data.order?.id)) {
                     alert(data.message || 'Tạo đơn bán hàng từ kho hàng ôm thành công! Tồn kho đã được trừ trực tiếp.');
-                    window.location.href = '/inventory/import?tab=stocks';
+                    window.location.href = this.returnUrl || '/inventory/import?tab=stocks';
                 } else {
-                    alert('Lỗi tạo đơn bán hàng: ' + (data.message || 'Không thể lưu đơn'));
+                    alert('Lỗi tạo đơn bán hàng: ' + (data.message || data.error || ('Mã lỗi ' + res.status)));
                 }
             } catch (e) {
                 alert('Lỗi kết nối máy chủ: ' + e.message);

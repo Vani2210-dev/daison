@@ -296,6 +296,11 @@
                                             <span :class="Number(item.max_stock_alert) > 0 ? 'text-purple-700 font-medium' : 'text-slate-400'" title="Định mức tồn tối đa">Max: <span x-text="formatNumber(item.max_stock_alert)"></span></span>
                                         </template>
                                     </div>
+                                    <!-- Nút xem Date/Lô hàng (Mở trang chi tiết) -->
+                                    <a :href="'{{ url('/cat_products') }}/' + item.id + '/batches'" class="inline-flex items-center gap-1 text-[10px] text-amber-800 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200/80 mt-1 cursor-pointer font-bold transition-all shadow-2xs hover:scale-102" title="Xem chi tiết Hạn Sử Dụng (Date) & các lần nhập hàng">
+                                        <i class="fa-solid fa-clock-rotate-left text-[9px] text-amber-600"></i>
+                                        <span>Date/Lô</span>
+                                    </a>
                                 </div>
                             </td>
 
@@ -313,6 +318,9 @@
                             <!-- Thao Tác (Trang riêng) - Cố định bên phải -->
                             <td class="sticky right-0 bg-white group-hover:bg-slate-50 transition-colors py-3 px-4 text-center whitespace-nowrap z-10 shadow-[-4px_0_8px_rgba(0,0,0,0.05)] border-l border-slate-200/80">
                                 <div class="flex items-center justify-center gap-1.5">
+                                    <a :href="'{{ url('/cat_products') }}/' + item.id + '/batches'" class="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 rounded-lg transition-colors cursor-pointer" title="Xem Hạn Sử Dụng (Date) & Chi Tiết Lô Hàng (Trang riêng)">
+                                        <i class="fa-solid fa-clock-rotate-left"></i>
+                                    </a>
                                     <a :href="'{{ url('/cat_products') }}/' + item.id + '/edit'" class="p-1.5 bg-slate-100 hover:bg-sky-100 text-slate-600 hover:text-sky-700 rounded-lg transition-colors cursor-pointer" title="Chỉnh sửa sản phẩm (Trang riêng)">
                                         <i class="fa-solid fa-pen-to-square"></i>
                                     </a>
@@ -468,6 +476,8 @@
                 </form>
             </div>
         </div>
+
+
     </div>
 </div>
 
@@ -490,7 +500,7 @@ function productsManager() {
         importFile: null,
         importFileName: '',
 
-        initData() {},
+
 
         get filteredProducts() {
             const q = this.searchQuery.trim().toLowerCase();

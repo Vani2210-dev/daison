@@ -69,8 +69,15 @@
             </div>
         </div>
 
-        <!-- Quick Actions: In phiếu, Gọi khách, Chỉ đường -->
+        <!-- Quick Actions: In phiếu, Gọi khách, Chỉ đường, Tồn kho ôm -->
         <div class="flex flex-wrap items-center gap-2 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+            <button type="button" @click="scrollToHoldingStock()"
+                    class="px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#1b4a8c] font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                    title="Xem tồn kho hàng ôm của nhân viên/xe">
+                <i class="fa-solid fa-boxes-stacked text-[#1b4a8c]"></i>
+                <span>Tồn kho hàng ôm (<strong class="font-mono" x-text="getSelectedHoldingWh()?.total_qty || 0"></strong> SP)</span>
+            </button>
+
             <button type="button" @click="printDeliverySlip()"
                     class="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors">
                 <i class="fa-solid fa-print text-sky-600"></i>
@@ -814,6 +821,332 @@
     </div>
 
     <!-- ========================================================================= -->
+    <!-- 3. TỒN KHO HÀNG ÔM CỦA NHÂN VIÊN & BÁN HÀNG TẠI ĐIỂM GIAO                 -->
+    <!-- ========================================================================= -->
+    <div id="holding-stock-section" class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+        
+        <!-- HEADER SECTION -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-blue-100 text-[#1b4a8c] flex items-center justify-center font-bold text-base shadow-xs">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h2 class="font-black text-slate-900 text-base sm:text-lg">Tồn Kho Hàng Ôm Của Nhân Viên / Xe</h2>
+                        <span class="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#1b4a8c] font-bold text-[11px] border border-blue-200">
+                            Bán trực tiếp tại điểm giao
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Hàng hóa nhân viên/xe đang nắm giữ để chào mẫu hoặc bán bổ sung ngay cho khách hàng 
+                        <strong class="text-slate-800 font-bold">{{ $custName }}</strong>
+                    </p>
+                </div>
+            </div>
+
+            <!-- ACTIONS & WAREHOUSE SELECTOR -->
+            <div class="flex flex-wrap items-center gap-2">
+                @if(count($employeeWarehouses) > 1)
+                <div class="flex items-center gap-1.5 text-xs bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+                    <label class="font-bold text-slate-600 whitespace-nowrap text-xs">Kho ôm:</label>
+                    <select x-model="selectedHoldingWhId" class="bg-white font-bold text-[#1b4a8c] border border-slate-300 rounded-lg px-2 py-1 text-xs focus:outline-none">
+                        @foreach($employeeWarehouses as $ewh)
+                            <option value="{{ $ewh->id }}">
+                                {{ $ewh->employee_name ?? $ewh->name }} ({{ number_format($ewh->total_qty) }} SP)
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
+
+                <!-- Nút chuyển sang trang tạo đơn bán hàng từ kho ôm -->
+                <a :href="'/inventory/holding-sale/create?warehouse_id=' + (selectedHoldingWhId || '') + '&dealer_id={{ $order->dealer_id ?? '' }}'"
+                   target="_blank"
+                   class="px-3.5 py-2 rounded-xl bg-[#1b4a8c] hover:bg-blue-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer no-underline"
+                   title="Mở trang bán hàng đầy đủ trong tab mới với đại lý đã chọn sẵn">
+                    <i class="fa-solid fa-cart-shopping text-xs"></i>
+                    <span>+ Bán Hàng Từ Kho Này ↗</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- THẺ TỔNG QUAN KHO ĐANG CHỌN (TƯƠNG TỰ BÊN IMPORT.BLADE.PHP) -->
+        <template x-if="getSelectedHoldingWh()">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <!-- Thẻ 1: Thông tin nhân sự giữ kho -->
+                <div class="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-1">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">Nhân viên giữ kho</span>
+                        <span class="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200" x-text="getSelectedHoldingWh()?.employee_code || ('KHO-OM-' + getSelectedHoldingWh()?.id)"></span>
+                    </div>
+                    <div class="font-black text-slate-900 text-sm truncate" x-text="getSelectedHoldingWh()?.employee_name || getSelectedHoldingWh()?.name"></div>
+                    <div class="text-[11px] text-slate-500 flex items-center justify-between">
+                        <span x-text="getSelectedHoldingWh()?.department || 'Kinh doanh'"></span>
+                        <span class="font-mono text-slate-700 font-semibold" x-text="getSelectedHoldingWh()?.phone || '---'"></span>
+                    </div>
+                </div>
+
+                <!-- Thẻ 2: Số mặt hàng & tổng số lượng -->
+                <div class="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-1">
+                    <span class="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">Số mặt hàng đang ôm</span>
+                    <div class="font-black text-slate-900 text-base">
+                        <span class="text-blue-700 font-mono" x-text="getSelectedHoldingWh()?.total_skus || 0"></span> mặt hàng
+                    </div>
+                    <div class="text-[11px] text-slate-500">
+                        Tổng cộng: <strong class="text-slate-800 font-mono" x-text="formatNumber(getSelectedHoldingWh()?.total_qty || 0)"></strong> sản phẩm
+                    </div>
+                </div>
+
+                <!-- Thẻ 3: Tổng giá trị hàng ôm -->
+                <div class="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-1">
+                    <span class="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">Tổng giá trị hàng ôm</span>
+                    <div class="font-black text-emerald-700 text-base font-mono" x-text="formatNumber(getSelectedHoldingWh()?.total_val || 0) + ' đ'"></div>
+                    <div class="text-[11px] text-slate-500">Theo đơn giá bán niêm yết</div>
+                </div>
+
+                <!-- Thẻ 4: Công nợ nhân viên ôm hàng -->
+                <div class="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-1">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">Công nợ nhân viên</span>
+                        <span class="text-[10px] text-amber-700 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Đang nợ cty</span>
+                    </div>
+                    <div class="font-black text-amber-900 text-base font-mono" x-text="formatNumber(getSelectedHoldingWh()?.debt || 0) + ' đ'"></div>
+                    <div class="text-[11px] text-slate-500">
+                        Đơn ôm đang giữ: <strong class="text-slate-800 font-mono" x-text="(getSelectedHoldingWh()?.active_orders || []).length"></strong> đơn
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- NẾU CÓ NHIỀU KHO ÔM: THẺ CHỌN NHANH NHÂN VIÊN (GIỐNG IMPORT.BLADE.PHP) -->
+        @if(count($employeeWarehouses) > 1)
+        <div class="space-y-1.5 pt-1">
+            <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                <span>Chọn kho nhân sự / xe:</span>
+                <span class="text-[10px] text-slate-400 font-normal">Click vào thẻ để chuyển xem tồn kho của nhân viên đó</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                <template x-for="wh in employeeWarehouses" :key="wh.id">
+                    <div @click="selectedHoldingWhId = wh.id"
+                         :class="String(selectedHoldingWhId) === String(wh.id) ? 'ring-2 ring-[#1b4a8c] bg-blue-50/60 border-blue-400 shadow-xs' : 'bg-white hover:bg-slate-50 border-slate-200'"
+                         class="p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2">
+                        <div class="min-w-0 flex-1">
+                            <div class="font-bold text-xs text-slate-900 truncate" x-text="wh.employee_name || wh.name"></div>
+                            <div class="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                                <span class="font-mono text-blue-700 font-semibold" x-text="wh.employee_code || ('KHO-OM-' + wh.id)"></span>
+                                <span>•</span>
+                                <span class="font-mono font-bold text-emerald-700" x-text="wh.total_qty + ' SP'"></span>
+                            </div>
+                        </div>
+                        <span x-show="String(selectedHoldingWhId) === String(wh.id)" class="w-5 h-5 rounded-full bg-[#1b4a8c] text-white flex items-center justify-center text-[10px] shrink-0">
+                            <i class="fa-solid fa-check"></i>
+                        </span>
+                    </div>
+                </template>
+            </div>
+        </div>
+        @endif
+
+        <!-- BẢNG CHI TIẾT TỒN KHO HÀNG ÔM CỦA NHÂN VIÊN ĐANG CHỌN (CHUẨN FORM NHƯ IMPORT.BLADE.PHP) -->
+        <div class="rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+            <!-- THANH TÌM KIẾM SẢN PHẨM TRONG KHO ÔM -->
+            <div class="p-3 bg-slate-50/90 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-700">Chi tiết sản phẩm:</span>
+                    <span class="px-2 py-0.5 rounded-lg bg-blue-100 text-[#1b4a8c] font-bold text-[11px] font-mono"
+                          x-text="(getSelectedHoldingWh()?.stocks || []).length + ' sản phẩm'"></span>
+                </div>
+
+                <div class="relative w-full sm:w-72">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs pointer-events-none"></i>
+                    <input type="text" x-model="holdingSearch" placeholder="Lọc theo tên hoặc mã SKU..."
+                           class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-500 shadow-2xs">
+                </div>
+            </div>
+
+            <!-- TABLE CONTENT -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs divide-y divide-slate-200">
+                    <thead class="bg-slate-100/80 text-slate-600 font-extrabold text-[11px] uppercase tracking-wider">
+                        <tr>
+                            <th class="py-3 px-3 text-center w-12">STT</th>
+                            <th class="py-3 px-3">Mã Hàng (SKU)</th>
+                            <th class="py-3 px-3">Tên Sản Phẩm</th>
+                            <th class="py-3 px-3 text-center">ĐVT</th>
+                            <th class="py-3 px-3 text-center">Tồn Đang Ôm</th>
+                            <th class="py-3 px-3 text-right">Đơn Giá Bán</th>
+                            <th class="py-3 px-3 text-right">Thành Tiền (Giá Bán)</th>
+                            <th class="py-3 px-3 text-center">Vị Trí Lưu</th>
+                            <th class="py-3 px-4 text-center">Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-slate-700 bg-white">
+                        <template x-for="(st, sIdx) in getFilteredHoldingStocks()" :key="st.id || sIdx">
+                            <tr class="hover:bg-blue-50/40 transition-colors">
+                                <td class="py-2.5 px-3 text-center font-mono text-slate-400" x-text="sIdx + 1"></td>
+                                <td class="py-2.5 px-3 font-mono font-bold text-slate-900" x-text="st.sku || st.product?.sku || '---'"></td>
+                                <td class="py-2.5 px-3 font-semibold text-slate-800" x-text="st.name || st.product?.name || '---'"></td>
+                                <td class="py-2.5 px-3 text-center" x-text="st.unit || st.product?.unit || 'cái'"></td>
+                                <td class="py-2.5 px-3 text-center">
+                                    <span class="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 font-mono font-black text-xs" x-text="formatNumber(st.stock_quantity)"></span>
+                                </td>
+                                <td class="py-2.5 px-3 text-right font-mono text-slate-600" x-text="formatNumber(st.price || st.product?.price || 0) + ' đ'"></td>
+                                <td class="py-2.5 px-3 text-right font-mono font-bold text-emerald-700" x-text="formatNumber((st.stock_quantity || 0) * (st.price || st.product?.price || 0)) + ' đ'"></td>
+                                <td class="py-2.5 px-3 text-center text-slate-500 italic text-[11px]" x-text="st.location || 'Hàng ôm NV'"></td>
+                                <td class="py-2.5 px-4 text-center whitespace-nowrap">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <!-- Nút 1: Bán nhanh tại chỗ (Mở Modal Bán Nhanh không mất trang) -->
+                                        <button type="button" @click="openQuickSaleModal(st)"
+                                                class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-2xs transition-colors cursor-pointer inline-flex items-center gap-1">
+                                            <i class="fa-solid fa-bolt text-[10px]"></i>
+                                            <span>Bán nhanh</span>
+                                        </button>
+
+                                        <!-- Nút 2: Mở trang bán hàng đầy đủ (tab mới) -->
+                                        <a :href="'/inventory/holding-sale/create?warehouse_id=' + (selectedHoldingWhId || '') + '&dealer_id={{ $order->dealer_id ?? '' }}&product_id=' + (st.product_id || '')"
+                                           target="_blank"
+                                           class="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-[#1b4a8c] rounded-lg text-xs font-bold border border-blue-200 transition-colors cursor-pointer inline-flex items-center gap-1 no-underline"
+                                           title="Mở form bán hàng chi tiết trong tab mới">
+                                            <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+                                            <span>Trang bán ↗</span>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+
+                        <!-- TRẠNG THÁI RỖNG HOẶC KHÔNG TÌM THẤY SẢN PHẨM -->
+                        <template x-if="getFilteredHoldingStocks().length === 0">
+                            <tr>
+                                <td colspan="9" class="py-10 text-center text-slate-400">
+                                    <i class="fa-solid fa-boxes-packing text-3xl mb-2 text-slate-300"></i>
+                                    <p class="text-xs font-semibold" x-text="holdingSearch ? 'Không tìm thấy sản phẩm nào khớp với từ khóa tìm kiếm.' : 'Nhân viên / kho này hiện chưa có sản phẩm ôm nào sẵn sàng để bán.'"></p>
+                                    <template x-if="holdingSearch">
+                                        <button type="button" @click="holdingSearch = ''" class="mt-2 text-blue-600 font-bold hover:underline text-xs cursor-pointer">
+                                            Xóa tìm kiếm để xem tất cả
+                                        </button>
+                                    </template>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL BÁN NHANH TRỰC TIẾP TỪ KHO HÀNG ÔM                                    -->
+    <!-- ========================================================================= -->
+    <div x-show="showQuickSaleModal" x-cloak class="fixed inset-0 z-[120] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4" @click.away="showQuickSaleModal = false">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-slate-900 text-base">Bán Nhanh Từ Kho Hàng Ôm</h3>
+                        <p class="text-xs text-slate-500 font-medium">Bán bổ sung ngay tại điểm giao hàng</p>
+                    </div>
+                </div>
+                <button type="button" @click="showQuickSaleModal = false" class="text-slate-400 hover:text-slate-600 text-xl font-bold cursor-pointer">&times;</button>
+            </div>
+
+            <template x-if="quickSaleProduct">
+                <div class="space-y-3.5 text-xs">
+                    <!-- Thông tin Khách hàng & Kho xuất -->
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-500 font-semibold">Khách hàng nhận:</span>
+                            <span class="font-black text-purple-700">{{ $custName }} ({{ $custCode }})</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-500 font-semibold">Kho ôm xuất:</span>
+                            <span class="font-bold text-slate-800" x-text="quickSaleProduct.warehouse_name"></span>
+                        </div>
+                    </div>
+
+                    <!-- Thông tin sản phẩm chọn bán -->
+                    <div class="p-3.5 bg-blue-50/60 rounded-xl border border-blue-200 space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="font-mono text-[10px] text-blue-700 font-bold bg-white px-1.5 py-0.5 rounded border border-blue-200" x-text="quickSaleProduct.sku"></span>
+                            <span class="text-emerald-700 font-bold">Tồn còn: <strong class="font-mono" x-text="quickSaleProduct.stock_quantity"></strong> <span x-text="quickSaleProduct.unit"></span></span>
+                        </div>
+                        <div class="font-black text-slate-900 text-sm" x-text="quickSaleProduct.name"></div>
+                    </div>
+
+                    <!-- Số lượng bán & Đơn giá -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Số lượng bán (*):</label>
+                            <div class="relative flex items-center">
+                                <button type="button" @click="if (quickSaleQty > 1) quickSaleQty--"
+                                        class="w-8 h-9 rounded-l-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 font-bold text-slate-700 cursor-pointer flex items-center justify-center">-</button>
+                                <input type="number" min="1" :max="quickSaleProduct.stock_quantity"
+                                       x-model.number="quickSaleQty"
+                                       class="w-full h-9 px-2 bg-white border-y border-slate-300 text-center font-mono font-black text-sm text-slate-900 focus:outline-none">
+                                <button type="button" @click="if (quickSaleQty < quickSaleProduct.stock_quantity) quickSaleQty++"
+                                        class="w-8 h-9 rounded-r-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 font-bold text-slate-700 cursor-pointer flex items-center justify-center">+</button>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
+                                <span>Đơn vị: <strong x-text="quickSaleProduct.unit"></strong></span>
+                                <button type="button" @click="quickSaleQty = quickSaleProduct.stock_quantity" class="text-blue-600 font-bold hover:underline cursor-pointer">Bán hết tồn</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Đơn giá bán (*):</label>
+                            <div class="relative">
+                                <input type="number" min="0" step="1000"
+                                       x-model.number="quickSalePrice"
+                                       class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-sm text-slate-900 focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-1">Đơn vị: VNĐ / <span x-text="quickSaleProduct.unit"></span></div>
+                        </div>
+                    </div>
+
+                    <!-- Thành tiền tính tự động -->
+                    <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between">
+                        <span class="font-bold text-emerald-900">Tổng tiền bán:</span>
+                        <span class="font-mono text-base font-black text-emerald-700" x-text="formatNumber(quickSaleQty * quickSalePrice) + ' đ'"></span>
+                    </div>
+
+                    <!-- Hình thức thanh toán -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Hình thức thanh toán:</label>
+                        <select x-model="quickSalePaymentMethod" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-bold text-xs focus:outline-none focus:border-purple-500">
+                            <option value="Tiền mặt">Tiền mặt (Đã thu tại chỗ)</option>
+                            <option value="Chuyển khoản VietQR">Chuyển khoản VietQR (Đã chuyển)</option>
+                            <option value="Ghi nợ">Ghi nợ (Cộng vào công nợ đại lý)</option>
+                        </select>
+                    </div>
+
+                    <!-- Ghi chú bán -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Ghi chú:</label>
+                        <input type="text" x-model="quickSaleNotes" placeholder="Ghi chú thêm nếu có..."
+                               class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:outline-none">
+                    </div>
+                </div>
+            </template>
+
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button type="button" @click="showQuickSaleModal = false" class="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-50 cursor-pointer">
+                    Hủy bỏ
+                </button>
+                <button type="button" @click="submitQuickSale()" :disabled="isSubmittingQuickSale"
+                        class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50">
+                    <i class="fa-solid" :class="isSubmittingQuickSale ? 'fa-spinner fa-spin' : 'fa-check'"></i>
+                    <span x-text="isSubmittingQuickSale ? 'Đang tạo đơn & trừ kho ôm...' : 'Xác nhận bán & Trừ kho ôm'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
     <!-- MODAL BÁO GIAO HÀNG THẤT BẠI                                              -->
     <!-- ========================================================================= -->
     <div x-show="showFailModal" x-cloak class="fixed inset-0 z-[120] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -894,6 +1227,20 @@ function deliveryConfirmPage() {
         showFailModal: false,
         failReason: 'Khách hẹn giao lại vào ngày mai',
         failNotes: '',
+
+        // --- Tồn Kho Hàng Ôm & Bán Hàng Trực Tiếp ---
+        employeeWarehouses: @json($employeeWarehouses ?? []),
+        selectedHoldingWhId: {{ $defaultWhId ? (int)$defaultWhId : "''" }},
+        holdingSearch: '',
+
+        // Quick Sale Modal State
+        showQuickSaleModal: false,
+        quickSaleProduct: null,
+        quickSaleQty: 1,
+        quickSalePrice: 0,
+        quickSalePaymentMethod: 'Tiền mặt',
+        quickSaleNotes: '',
+        isSubmittingQuickSale: false,
 
         confirmForm: {
             orderId: {{ $order->id }},
@@ -1422,6 +1769,146 @@ function deliveryConfirmPage() {
                 alert('Lỗi kết nối máy chủ: ' + e.message);
             } finally {
                 this.isSubmittingDelivery = false;
+            }
+        },
+
+        // --- Methods for Tồn Kho Hàng Ôm & Bán Hàng Trực Tiếp ---
+        getSelectedHoldingWh() {
+            if (!this.employeeWarehouses || this.employeeWarehouses.length === 0) return null;
+            if (!this.selectedHoldingWhId) return this.employeeWarehouses[0];
+            return this.employeeWarehouses.find(w => String(w.id) === String(this.selectedHoldingWhId)) || this.employeeWarehouses[0];
+        },
+
+        getFilteredHoldingStocks() {
+            const wh = this.getSelectedHoldingWh();
+            if (!wh || !wh.stocks) return [];
+            const q = (this.holdingSearch || '').trim().toLowerCase();
+            if (!q) return wh.stocks;
+            return wh.stocks.filter(st => {
+                const name = (st.name || '').toLowerCase();
+                const sku = (st.sku || '').toLowerCase();
+                return name.includes(q) || sku.includes(q);
+            });
+        },
+
+        scrollToHoldingStock() {
+            const el = document.getElementById('holding-stock-section');
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        },
+
+        openQuickSaleModal(stockItem) {
+            const wh = this.getSelectedHoldingWh();
+            if (!wh || !stockItem) return;
+            this.quickSaleProduct = {
+                warehouse_id: wh.id,
+                warehouse_name: wh.name,
+                employee_id: wh.employee_id,
+                employee_name: wh.employee_name,
+                product_id: stockItem.product_id,
+                name: stockItem.name,
+                sku: stockItem.sku,
+                unit: stockItem.unit,
+                stock_quantity: Number(stockItem.stock_quantity || 0),
+                price: Number(stockItem.price || stockItem.selling_price || 0)
+            };
+            this.quickSaleQty = 1;
+            this.quickSalePrice = Number(stockItem.price || stockItem.selling_price || 0);
+            this.quickSalePaymentMethod = 'Tiền mặt';
+            this.quickSaleNotes = 'Bán tại điểm giao đơn #' + this.orderCode;
+            this.showQuickSaleModal = true;
+        },
+
+        async submitQuickSale() {
+            if (!this.quickSaleProduct) return;
+            const maxStock = Number(this.quickSaleProduct.stock_quantity || 0);
+            const qty = Number(this.quickSaleQty);
+            if (qty <= 0) {
+                alert('Số lượng bán phải lớn hơn 0!');
+                return;
+            }
+            if (qty > maxStock) {
+                alert(`Số lượng bán (${qty}) vượt quá số lượng tồn đang giữ (${maxStock})!`);
+                return;
+            }
+
+            this.isSubmittingQuickSale = true;
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const p = this.quickSaleProduct;
+                const unitPrice = Number(this.quickSalePrice);
+                const totalAmount = qty * unitPrice;
+
+                const payload = {
+                    warehouse: p.warehouse_name,
+                    warehouse_id: p.warehouse_id,
+                    employee_id: p.employee_id,
+                    employee_name: p.employee_name,
+                    sales_rep_id: p.employee_id,
+                    salesRepId: p.employee_id,
+                    order_type: 'holding_sale',
+                    orderType: 'holding_sale',
+                    is_holding_stock: true,
+                    is_holding_stock_sale: true,
+                    status: 'Đã giao hàng',
+                    dealerId: {{ $order->dealer_id ?: 'null' }},
+                    dealerName: this.customerName,
+                    customerName: this.customerName,
+                    customerPhone: '{{ $order->customer_phone ?? "" }}',
+                    customerAddress: '{{ addslashes($order->customer_address ?? "") }}',
+                    deliveryAddress: '{{ addslashes($order->customer_address ?? "") }}',
+                    paymentMethod: this.quickSalePaymentMethod,
+                    paymentStatus: this.quickSalePaymentMethod === 'Ghi nợ' || this.quickSalePaymentMethod === 'Công nợ (Ghi nợ đại lý)' ? 'Chưa thanh toán' : 'Đã thanh toán',
+                    notes: this.quickSaleNotes || ('Bán từ kho ôm tại điểm giao đơn #' + this.orderCode),
+                    items: [{
+                        product_id: parseInt(p.product_id, 10),
+                        name: p.name,
+                        sku: p.sku,
+                        unit: p.unit,
+                        quantity: qty,
+                        unitPrice: unitPrice,
+                        unit_price: unitPrice,
+                        discount: 0,
+                        amount: totalAmount,
+                        isChecked: true,
+                        isPicked: true
+                    }]
+                };
+
+                const res = await fetch('/api/orders/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token || ''
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (res.ok && (data.success || data.order_id || data.id || data.order?.id)) {
+                    // Cập nhật tồn kho cục bộ ngay trên màn hình mà không cần load lại trang
+                    p.stock_quantity -= qty;
+                    const wh = this.getSelectedHoldingWh();
+                    if (wh && wh.stocks) {
+                        const targetStock = wh.stocks.find(s => String(s.product_id) === String(p.product_id));
+                        if (targetStock) {
+                            targetStock.stock_quantity = Math.max(0, Number(targetStock.stock_quantity) - qty);
+                        }
+                        wh.total_qty = wh.stocks.reduce((sum, s) => sum + Number(s.stock_quantity || 0), 0);
+                        wh.total_val = wh.stocks.reduce((sum, s) => sum + (Number(s.stock_quantity || 0) * Number(s.price || 0)), 0);
+                    }
+
+                    this.showQuickSaleModal = false;
+                    this.showToast('✅ Bán hàng thành công! Đã tạo đơn bán và trừ kho ôm ' + qty + ' ' + p.unit, 'success');
+                } else {
+                    alert('Lỗi khi tạo đơn bán hàng: ' + (data.message || data.error || 'Vui lòng thử lại'));
+                }
+            } catch (err) {
+                alert('Lỗi kết nối: ' + err.message);
+            } finally {
+                this.isSubmittingQuickSale = false;
             }
         },
 

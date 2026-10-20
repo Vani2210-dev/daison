@@ -54,23 +54,12 @@
             </span>
         </button>
 
-        <!-- Tab 2: Xuất hàng ôm cho NV -->
-        <button type="button" @click="setMainTab('dispatches')" 
-                :class="activeMainTab === 'dispatches' ? 'bg-[#1b4a8c] text-white shadow-md shadow-blue-900/20' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'"
-                class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black transition-all cursor-pointer whitespace-nowrap">
-            <i class="fa-solid fa-truck-ramp-box text-sm" :class="activeMainTab === 'dispatches' ? 'text-amber-200' : 'text-amber-600'"></i>
-            <span>2. Xuất Hàng Ôm Cho Nhân Viên (Xuất giao NVKD)</span>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold" :class="activeMainTab === 'dispatches' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'">
-                {{ $totalVanDispatchesCount }}
-            </span>
-        </button>
-
-        <!-- Tab 3: Hoàn hàng về kho -->
+        <!-- Tab 2: Hoàn hàng về kho -->
         <button type="button" @click="setMainTab('returns')" 
                 :class="activeMainTab === 'returns' ? 'bg-[#1b4a8c] text-white shadow-md shadow-blue-900/20' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'"
                 class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black transition-all cursor-pointer whitespace-nowrap">
             <i class="fa-solid fa-rotate-left text-sm" :class="activeMainTab === 'returns' ? 'text-blue-200' : 'text-blue-600'"></i>
-            <span>3. Hoàn Hàng Ôm Về Kho (Nhập kho từ nhân viên)</span>
+            <span>2. Hoàn Hàng Ôm Về Kho (Nhập kho từ nhân viên)</span>
             <span class="px-2 py-0.5 rounded-full text-[10px] font-bold" :class="activeMainTab === 'returns' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'">
                 {{ $returns->total() }}
             </span>
@@ -209,8 +198,8 @@
                             <th class="py-3.5 px-3">Tên Sản Phẩm</th>
                             <th class="py-3.5 px-3 text-center">ĐVT</th>
                             <th class="py-3.5 px-3 text-center">Tồn Đang Ôm</th>
-                            <th class="py-3.5 px-3 text-right">Đơn Giá Vốn</th>
-                            <th class="py-3.5 px-3 text-right">Thành Tiền Tồn</th>
+                            <th class="py-3.5 px-3 text-right">Đơn Giá Bán</th>
+                            <th class="py-3.5 px-3 text-right">Thành Tiền (Giá Bán)</th>
                             <th class="py-3.5 px-3 text-center">Vị Trí Lưu</th>
                             <th class="py-3.5 px-4 text-center">Thao Tác</th>
                         </tr>
@@ -225,8 +214,8 @@
                                 <td class="py-3 px-3 text-center">
                                     <span class="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 font-mono font-bold text-xs" x-text="st.stock_quantity"></span>
                                 </td>
-                                <td class="py-3 px-3 text-right font-mono text-slate-600" x-text="formatMoney(st.cost_price || st.product?.cost_price || 0) + ' đ'"></td>
-                                <td class="py-3 px-3 text-right font-mono font-bold text-emerald-700" x-text="formatMoney((st.stock_quantity || 0) * (st.cost_price || st.product?.cost_price || 0)) + ' đ'"></td>
+                                <td class="py-3 px-3 text-right font-mono text-slate-600" x-text="formatMoney(st.product?.price || st.cost_price || st.product?.cost_price || 0) + ' đ'"></td>
+                                <td class="py-3 px-3 text-right font-mono font-bold text-emerald-700" x-text="formatMoney((st.stock_quantity || 0) * (st.product?.price || st.cost_price || st.product?.cost_price || 0)) + ' đ'"></td>
                                 <td class="py-3 px-3 text-center text-slate-500 italic text-[11px]" x-text="st.location || 'Hàng ôm NV'"></td>
                                 <td class="py-3 px-4 text-center">
                                     <a :href="'/inventory/holding-sale/create?warehouse_id=' + (getSelectedVehicleWh()?.id || '') + '&product_id=' + (st.product_id || st.product?.id || '')"
@@ -520,8 +509,9 @@
         </div>
     </div>
 
+    @if(false)
     <!-- ======================================================== -->
-    <!-- TAB 2: XUẤT HÀNG ÔM CHO NHÂN VIÊN (XUẤT GIAO NVKD)       -->
+    <!-- TAB 2: XUẤT HÀNG ÔM CHO NHÂN VIÊN (ĐÃ BỎ)                 -->
     <!-- ======================================================== -->
     <div x-show="activeMainTab === 'dispatches'" x-cloak class="space-y-4">
         <!-- Metrics Xuất hàng ôm -->
@@ -822,6 +812,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     <!-- ======================================================== -->
     <!-- MODAL: LẬP PHIẾU XUẤT HÀNG ÔM CHO NHÂN VIÊN (PXK-OM)      -->
@@ -1367,7 +1358,7 @@
 <script>
 function vehicleInventoryApp() {
     return {
-        activeMainTab: '{{ $activeTab ?? "stocks" }}', // 'stocks', 'dispatches', 'returns'
+        activeMainTab: '{{ ($activeTab ?? "stocks") === "dispatches" ? "stocks" : ($activeTab ?? "stocks") }}', // 'stocks', 'returns'
         dispatchSubTab: 'consignment', // 'consignment' (Đơn hàng ôm OM), 'direct' (PXK-OM)
         selectedVehicleWhId: {{ $employeeWarehouses->first()?->id ?? ($vehicleWarehouses->first()?->id ?? 'null') }},
         vehicleWarehousesData: @json($employeeWarehouses ?? ($vehicleWarehouses ?? [])),
