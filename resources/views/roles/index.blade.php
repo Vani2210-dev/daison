@@ -103,8 +103,8 @@
             </div>
         </div>
 
-        <!-- 7 Roles Cards Dàn Ngang (Horizontal Grid) -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        <!-- 8 Roles Cards Dàn Ngang (Horizontal Grid) -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-3">
             <template x-for="r in rolesData" :key="r.id">
                 <div @click="selectRole(r)"
                      class="p-3 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between select-none"
@@ -481,7 +481,29 @@ const PERMISSION_META = {
 
     // 30. danhmuc
     'danhmuc.view': { name: 'Xem Danh Mục', desc: 'Tra cứu đơn vị tính, nhóm sản phẩm, tài khoản ngân hàng', icon: 'fa-regular fa-eye', color: 'sky', weight: 1 },
-    'danhmuc.edit': { name: 'Cập Nhật Danh Mục', desc: 'Thêm, sửa các thông số cấu hình dùng chung toàn hệ thống', icon: 'fa-solid fa-pen', color: 'amber', weight: 2 }
+    'danhmuc.edit': { name: 'Cập Nhật Danh Mục', desc: 'Thêm, sửa các thông số cấu hình dùng chung toàn hệ thống', icon: 'fa-solid fa-pen', color: 'amber', weight: 2 },
+
+    // 31. water_filter_install
+    'water_filter.view': { name: 'Xem Phân Hệ Máy Lọc', desc: 'Quyền xem tổng quan phân hệ lắp đặt và sửa chữa máy lọc nước', icon: 'fa-regular fa-eye', color: 'sky', weight: 1 },
+    'water_filter.install_view': { name: 'Xem Đơn Lắp Đặt', desc: 'Tra cứu danh sách & chi tiết các đơn đi lắp đặt máy lọc', icon: 'fa-regular fa-eye', color: 'sky', weight: 2 },
+    'water_filter.install_create': { name: 'Lên Đơn Lắp Đặt', desc: 'Khởi tạo đơn giao hàng và lắp đặt máy lọc nước cho khách', icon: 'fa-solid fa-plus', color: 'emerald', weight: 3 },
+    'water_filter.install_edit': { name: 'Sửa Đơn Lắp Đặt', desc: 'Chỉnh sửa kỹ thuật viên phụ trách, lịch hẹn và phụ kiện kèm', icon: 'fa-solid fa-pen', color: 'amber', weight: 4 },
+    'water_filter.install_status': { name: 'Cập Nhật Tiến Độ & TDS', desc: 'Chuyển trạng thái đơn, ghi nhận chỉ số TDS, áp lực & nghiệm thu', icon: 'fa-solid fa-arrows-rotate', color: 'purple', weight: 5 },
+    'water_filter.install_delete': { name: 'Xóa Đơn Lắp Đặt', desc: 'Xóa đơn lắp đặt nháp hoặc đơn bị hủy', icon: 'fa-regular fa-trash-can', color: 'rose', weight: 6 },
+
+    // 32. water_filter_repair
+    'water_filter.repair_view': { name: 'Xem Phiếu Sửa Chữa', desc: 'Tra cứu danh sách tiếp nhận sửa chữa máy lọc & bảo hành', icon: 'fa-regular fa-eye', color: 'sky', weight: 1 },
+    'water_filter.repair_create': { name: 'Tiếp Nhận Sửa Chữa', desc: 'Lập phiếu tiếp nhận máy lọc tại xưởng hoặc sửa chữa tại nhà', icon: 'fa-solid fa-plus', color: 'emerald', weight: 2 },
+    'water_filter.repair_edit': { name: 'Chẩn Đoán & Thay Vật Tư', desc: 'Ghi nhận hiện tượng hỏng, giải pháp và phụ tùng thay thế', icon: 'fa-solid fa-pen', color: 'amber', weight: 3 },
+    'water_filter.repair_status': { name: 'Đổi Trạng Thái Sửa & BH', desc: 'Cập nhật tiến độ sửa, thanh toán công/vật tư và bàn giao máy', icon: 'fa-solid fa-arrows-rotate', color: 'purple', weight: 4 },
+    'water_filter.repair_delete': { name: 'Xóa Phiếu Sửa Chữa', desc: 'Xóa phiếu sửa chữa nháp khỏi hệ thống', icon: 'fa-regular fa-trash-can', color: 'rose', weight: 5 },
+
+    // 33. water_filter_parts
+    'water_filter.parts_view': { name: 'Xem Kho Phụ Tùng', desc: 'Tra cứu danh mục linh kiện, lõi lọc nước và số lượng tồn', icon: 'fa-regular fa-eye', color: 'sky', weight: 1 },
+    'water_filter.parts_import': { name: 'Nhập Kho Phụ Tùng', desc: 'Tạo phiếu nhập thêm linh kiện phụ tùng vào kho độc lập', icon: 'fa-solid fa-boxes-packing', color: 'emerald', weight: 2 },
+    'water_filter.parts_manage': { name: 'Quản Lý Phụ Tùng', desc: 'Thêm mới mã linh kiện, cập nhật giá xuất và định mức tồn', icon: 'fa-solid fa-pen', color: 'amber', weight: 3 },
+    'water_filter.parts_delete': { name: 'Xóa Mã Phụ Tùng', desc: 'Xóa mã phụ tùng linh kiện chưa từng phát sinh xuất nhập', icon: 'fa-regular fa-trash-can', color: 'rose', weight: 4 },
+    'water_filter.models_manage': { name: 'Quản Lý Model Máy Lọc', desc: 'Thêm mới, sửa và quản lý danh mục Model máy lọc nước', icon: 'fa-solid fa-layer-group', color: 'indigo', weight: 5 }
 };
 
 function rolesApp() {
@@ -914,6 +936,17 @@ function rolesApp() {
                         { key: 'dashboard', name: 'Bàn làm việc & Báo cáo tổng quan', permissions: this.enrichAndSortPermissions('dashboard') },
                         { key: 'audit', name: 'Nhật ký kiểm toán & Khóa kỳ kế toán', permissions: this.enrichAndSortPermissions('audit') },
                         { key: 'danhmuc', name: 'Danh mục dùng chung hệ thống', permissions: this.enrichAndSortPermissions('danhmuc') }
+                    ]
+                },
+                {
+                    id: 'water_filter',
+                    name: 'Phân Hệ Lắp Đặt & Dịch Vụ Máy Lọc Nước',
+                    desc: 'Tiếp nhận lắp đặt máy mới, sửa chữa bảo hành tại nhà/xưởng và quản lý kho phụ tùng độc lập',
+                    icon: 'fa-solid fa-faucet-drip',
+                    features: [
+                        { key: 'water_filter_install', name: 'Đơn hàng & Điều phối lắp đặt máy lọc', permissions: this.enrichAndSortPermissions('water_filter_install') },
+                        { key: 'water_filter_repair', name: 'Tiếp nhận kiểm tra sửa chữa & Bảo hành', permissions: this.enrichAndSortPermissions('water_filter_repair') },
+                        { key: 'water_filter_parts', name: 'Kho linh kiện phụ tùng & Danh mục Model', permissions: this.enrichAndSortPermissions('water_filter_parts') }
                     ]
                 }
             ];

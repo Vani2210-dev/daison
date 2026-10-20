@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\PriceTier;
 use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Models\Role;
 use App\Models\Permission;
 use App\Models\SalesPolicy;
@@ -148,6 +149,32 @@ class WebViewController extends Controller
     }
 
     /**
+     * Dedicated Page: Chi tiết Hạn Sử Dụng (Date) & Các Lần Nhập Hàng Theo Lô
+     */
+    public function productBatches($id)
+    {
+        $product = Product::with(['category', 'brand'])->findOrFail($id);
+
+        $batches = ProductBatch::with([
+            'warehouse:id,name,code',
+            'transactionItem.transaction:id,code,created_at,supplier_name'
+        ])
+        ->where('product_id', $id)
+        ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC, id DESC')
+        ->get();
+
+        $stats = [
+            'total_batches' => $batches->count(),
+            'active_batches' => $batches->where('remaining_quantity', '>', 0)->count(),
+            'near_expired' => $batches->where('remaining_quantity', '>', 0)->where('expiry_status_code', 'near_expired')->count(),
+            'expired' => $batches->where('remaining_quantity', '>', 0)->where('expiry_status_code', 'expired')->count(),
+            'total_remaining' => (float)$batches->sum('remaining_quantity'),
+        ];
+
+        return view('products.batches', compact('product', 'batches', 'stats'));
+    }
+
+    /**
      * Save Product (Create or Update)
      */
     public function productSave(Request $request)
@@ -175,34 +202,22 @@ class WebViewController extends Controller
         }
 
         $costPrice = (float)round((float)$request->input('cost_price', 0));
-        $convCostPrice = (float)$request->input('conversion_price', 0);
-        if ($convCostPrice <= 0 && $costPrice > 0) {
-            $convCostPrice = ($conversionRate > 1) ? (float)round($costPrice / $conversionRate) : $costPrice;
+        $price = (float)round((float)$request->input('price', 0));
+
+        $convPrice = (float)$request->input('conversion_price', 0);
+        if ($convPrice <= 0 && $price > 0 && $conversionRate > 1) {
+            $convPrice = (float)round($price / $conversionRate);
         } else {
-            $convCostPrice = (float)round($convCostPrice);
+            $convPrice = (float)round($convPrice);
         }
 
-        $priceTiersInput = $request->input('price_tiers', []);
-        $formattedPriceTiers = [];
-
-        if (is_array($priceTiersInput)) {
-            foreach ($priceTiersInput as $tier) {
-                if (!empty($tier['name'])) {
-                    $tierPrice = (float)round((float)($tier['price'] ?? 0));
-                    $tierConvPrice = (float)($tier['conversion_price'] ?? 0);
-                    if ($tierConvPrice <= 0 && $tierPrice > 0) {
-                        $tierConvPrice = ($conversionRate > 1) ? (float)round($tierPrice / $conversionRate) : $tierPrice;
-                    } else {
-                        $tierConvPrice = (float)round($tierConvPrice);
-                    }
-                    $formattedPriceTiers[] = [
-                        'name' => trim($tier['name']),
-                        'price' => $tierPrice,
-                        'conversion_price' => $tierConvPrice,
-                    ];
-                }
-            }
-        }
+        // Tự động duy trì cấu trúc price_tiers chuẩn để tương thích với các module đơn hàng, POS, ký gửi
+        $formattedPriceTiers = [
+            ['name' => 'Giá Bán', 'price' => $price, 'conversion_price' => $convPrice],
+            ['name' => 'Giá Bán lẻ', 'price' => $price, 'conversion_price' => $convPrice],
+            ['name' => 'Giá Đại lý Cấp 1', 'price' => $price, 'conversion_price' => $convPrice],
+            ['name' => 'Nguyên Giá', 'price' => $price, 'conversion_price' => $convPrice],
+        ];
 
         $data = [
             'sku' => trim($request->input('sku')),
@@ -216,8 +231,9 @@ class WebViewController extends Controller
             'unit' => $unit,
             'conversion_unit' => $conversionUnit ?: null,
             'conversion_rate' => $conversionRate,
-            'conversion_price' => $convCostPrice,
             'cost_price' => $costPrice,
+            'price' => $price,
+            'conversion_price' => $convPrice,
             'vat_rate' => (float)$request->input('vat_rate', 10),
             'price_tiers' => $formattedPriceTiers,
             'stock_quantity' => (float)$request->input('stock_quantity', 0),
@@ -325,7 +341,7 @@ class WebViewController extends Controller
      */
     public function orders(Request $request)
     {
-        $query = Order::with(['dealer', 'items', 'creator', 'assignedDriver']);
+        $query = Order::companyOrders()->with(['dealer', 'items', 'creator', 'assignedDriver']);
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -375,10 +391,30 @@ class WebViewController extends Controller
             $query->where('payment_status', $paymentStatus);
         }
 
+        if ($fromDate = $request->input('from_date')) {
+            $query->whereDate('created_at', '>=', $fromDate);
+        }
+
+        if ($toDate = $request->input('to_date')) {
+            $query->whereDate('created_at', '<=', $toDate);
+        }
+
+        if ($customer = $request->input('customer')) {
+            $query->where(function ($q) use ($customer) {
+                $q->where('customer_name', 'like', "%{$customer}%")
+                  ->orWhere('customer_phone', 'like', "%{$customer}%")
+                  ->orWhereHas('dealer', function ($dq) use ($customer) {
+                      $dq->where('name', 'like', "%{$customer}%")
+                        ->orWhere('phone', 'like', "%{$customer}%");
+                  });
+            });
+        }
+
         $orders = $query->latest('id')->paginate(20)->withQueryString();
         $dealers = Dealer::select('id', 'name', 'phone', 'tier', 'address')->get();
+        [$warehouses] = $this->getAvailableWarehousesForUser();
 
-        return view('orders.index', compact('orders', 'dealers'));
+        return view('orders.index', compact('orders', 'dealers', 'warehouses'));
     }
 
     /**
@@ -403,7 +439,7 @@ class WebViewController extends Controller
             }
 
             return Product::where('is_active', true)
-                ->select('id', 'sku', 'name', 'unit', 'conversion_unit', 'conversion_rate', 'conversion_price', 'cost_price', 'price_tiers', 'vat_rate', 'stock_quantity')
+                ->select('id', 'sku', 'name', 'unit', 'conversion_unit', 'conversion_rate', 'conversion_price', 'cost_price', 'price', 'price_tiers', 'vat_rate', 'stock_quantity')
                 ->orderBy('name')
                 ->get()
                 ->map(function ($p) use ($stockMap) {
@@ -416,6 +452,7 @@ class WebViewController extends Controller
                         'conversion_rate' => (float)$p->conversion_rate,
                         'conversion_price' => (float)$p->conversion_price,
                         'cost_price' => (float)$p->cost_price,
+                        'price' => (float)$p->price,
                         'price_tiers' => $p->price_tiers,
                         'vat_rate' => (float)$p->vat_rate,
                         'stock_quantity' => (float)$p->stock_quantity,
@@ -468,30 +505,21 @@ class WebViewController extends Controller
                 ]
             ]);
         } else {
-            // Admin, Quản lý, Sale, Kế toán: Có đầy đủ các kho công ty + các kho xe
-            $physicalWarehouses = Warehouse::where('is_active', true)->orderBy('id')->get(['id', 'name', 'code'])->map(function($w) {
-                return (object)[
-                    'id'                   => $w->id,
-                    'name'                 => $w->name,
-                    'code'                 => $w->code,
-                    'is_vehicle_warehouse' => false,
-                    'plate_number'         => '',
-                    'driver_name'          => '',
-                ];
-            });
-
-            $vehicleWarehouses = Vehicle::with('driver:id,name')->get()->map(function($v) {
-                return (object)[
-                    'id'                   => 'xe_' . $v->id,
-                    'name'                 => 'Kho Xe ' . $v->plate_number . ($v->driver ? ' (' . $v->driver->name . ')' : ''),
-                    'code'                 => $v->plate_number,
-                    'is_vehicle_warehouse' => true,
-                    'plate_number'         => $v->plate_number,
-                    'driver_name'          => $v->driver?->name ?? '',
-                ];
-            });
-
-            $warehouses = $physicalWarehouses->concat($vehicleWarehouses);
+            // Chỉ lấy các kho vật lý chính thức của công ty (loại trừ kho hàng ôm nhân sự và kho xe)
+            $warehouses = Warehouse::companyWarehouses()
+                ->orderBy('id')
+                ->get(['id', 'name', 'code'])
+                ->map(function($w) {
+                    return (object)[
+                        'id'                   => $w->id,
+                        'name'                 => $w->name,
+                        'code'                 => $w->code,
+                        'is_vehicle_warehouse' => false,
+                        'is_holding_warehouse' => false,
+                        'plate_number'         => '',
+                        'driver_name'          => '',
+                    ];
+                });
         }
 
         return [$warehouses, $isDriver, $driverVehicle];
@@ -511,7 +539,7 @@ class WebViewController extends Controller
             ->orderBy('id')
             ->get();
         $today = date('Y-m-d');
-        $salesPolicies = SalesPolicy::with('freeProduct:id,name,sku,unit,cost_price,retail_price')
+        $salesPolicies = SalesPolicy::with('freeProduct:id,name,sku,unit,cost_price,price')
             ->where('status', 'Hoạt động')
             ->where(function($q) use ($today) {
                 $q->whereNull('start_date')->orWhere('start_date', '<=', $today);
@@ -553,7 +581,7 @@ class WebViewController extends Controller
             ->orderBy('id')
             ->get();
         $today = date('Y-m-d');
-        $salesPolicies = SalesPolicy::with('freeProduct:id,name,sku,unit,cost_price,retail_price')
+        $salesPolicies = SalesPolicy::with('freeProduct:id,name,sku,unit,cost_price,price')
             ->where('status', 'Hoạt động')
             ->where(function($q) use ($today) {
                 $q->whereNull('start_date')->orWhere('start_date', '<=', $today);
@@ -1062,12 +1090,77 @@ class WebViewController extends Controller
     }
 
     /**
-     * Display Task Assignments
+     * Display Task Assignments & Technician Installation Jobs
      */
     public function tasks(Request $request)
     {
-        $tasks = \App\Models\TaskAssignment::with('creator')->latest('id')->paginate(20)->withQueryString();
-        return view('tasks.index', compact('tasks'));
+        $user = Auth::user();
+        $isTechnician = $user && (
+            $user->hasRole('technician') || 
+            $user->hasRole('Technician') || 
+            str_contains(mb_strtolower($user->department ?? ''), 'kỹ thuật') || 
+            str_contains(mb_strtolower($user->department ?? ''), 'ky thuat')
+        );
+
+        $view = $request->input('view');
+        if (!$view) {
+            $view = $isTechnician ? 'my_tasks' : 'all';
+        }
+
+        // 1. Phân loại nhiệm vụ chung (TaskAssignment)
+        $tasksQuery = \App\Models\TaskAssignment::with(['creator', 'assignedTo'])->latest('id');
+        if ($view === 'my_tasks' && $user) {
+            $tasksQuery->where('assigned_to_id', $user->id);
+        }
+        $tasks = $tasksQuery->paginate(20)->withQueryString();
+
+        // 2. Danh sách đơn hàng lắp đặt máy lọc nước (FilterInstallation)
+        $installQuery = \App\Models\FilterInstallation::with(['items', 'installedMachine', 'technician'])->latest('id');
+        if ($view === 'my_tasks' && $user) {
+            $installQuery->where('technician_id', $user->id);
+        }
+        $filterInstallations = $installQuery->get();
+
+        // 3. Danh sách tem QR chưa kích hoạt sẵn sàng để gán
+        $blankQrCodes = \App\Models\FilterInstalledMachine::where('status', 'unactivated')
+            ->orderBy('id', 'asc')
+            ->take(50)
+            ->get();
+
+        // 4. Danh mục model máy lọc
+        $machineModels = \App\Models\FilterMachineModel::where('is_active', true)
+            ->orderBy('brand')
+            ->orderBy('name')
+            ->get();
+
+        // 5. Danh mục phụ tùng / phụ kiện kho phục vụ cài đặt máy
+        $filterParts = \App\Models\FilterPart::where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'category', 'unit', 'stock_qty']);
+
+        // 6. Thống kê nhanh
+        $myInstallPending = \App\Models\FilterInstallation::where('technician_id', $user?->id)
+            ->whereIn('status', ['pending', 'confirmed', 'assigned', 'preparing', 'dispatching', 'in_progress'])
+            ->count();
+        $myInstallCompleted = \App\Models\FilterInstallation::where('technician_id', $user?->id)
+            ->where('status', 'completed')
+            ->count();
+        $allInstallPending = \App\Models\FilterInstallation::whereIn('status', ['pending', 'confirmed', 'assigned', 'preparing', 'dispatching', 'in_progress'])->count();
+        $allInstallCompleted = \App\Models\FilterInstallation::where('status', 'completed')->count();
+
+        return view('tasks.index', compact(
+            'tasks',
+            'view',
+            'isTechnician',
+            'filterInstallations',
+            'blankQrCodes',
+            'machineModels',
+            'filterParts',
+            'myInstallPending',
+            'myInstallCompleted',
+            'allInstallPending',
+            'allInstallCompleted'
+        ));
     }
 
     /**
@@ -1755,6 +1848,138 @@ class WebViewController extends Controller
         return view('staff.debt', compact(
             'staffList', 'totalStaffDebt', 'debtStaffCount', 'handovers', 'pendingHandoversCount', 
             'allStaff', 'allDealers', 'allOrders'
+        ));
+    }
+
+    /**
+     * Xem Chi Tiết Công Nợ Nhân Viên (Sổ công nợ, đơn hàng vận chuyển/lên đơn, bàn giao nợ & thu quỹ) - Trang riêng
+     */
+    public function staffDebtDetail($id, Request $request)
+    {
+        $staff = \App\Models\User::with('dealer')->where('id', $id)->orWhere('code', $id)->firstOrFail();
+
+        $holdingWarehouse = \App\Models\Warehouse::where('type', 'Kho hàng ôm')
+            ->where(function($q) use ($staff) {
+                $q->where('code', 'KHO-OM-' . $staff->id)
+                  ->orWhere('manager_name', $staff->name);
+            })->first();
+
+        // 1. Đơn hàng liên quan (đơn hàng tài xế giao/chịu nợ, sale lên đơn, hoặc đơn xuất bán từ kho hàng ôm)
+        $allOrders = Order::with(['dealer', 'items'])
+            ->where(function($q) use ($staff, $holdingWarehouse) {
+                $q->where('assigned_driver_id', $staff->id)
+                  ->orWhere('creator_id', $staff->id)
+                  ->orWhere('sales_rep_id', $staff->id);
+                if ($holdingWarehouse) {
+                    $q->orWhere('warehouse', $holdingWarehouse->name)
+                      ->orWhere('warehouse', $holdingWarehouse->code);
+                }
+                $q->orWhere('warehouse', 'like', "%Kho Hàng Ôm - {$staff->name}%")
+                  ->orWhere('warehouse', 'like', "%KHO-OM-{$staff->id}%")
+                  ->orWhere('notes', 'like', "%Kho Hàng Ôm - {$staff->name}%");
+            })
+            ->latest('id')
+            ->get();
+
+        // Phân loại đơn bán từ kho hàng ôm vs đơn vận chuyển/giao hàng
+        $holdingSaleOrders = $allOrders->filter(function($ord) use ($staff, $holdingWarehouse) {
+            if ($ord->order_type === 'holding_sale') return true;
+            if ($holdingWarehouse && ($ord->warehouse === $holdingWarehouse->name || $ord->warehouse === $holdingWarehouse->code)) return true;
+            if (str_contains($ord->warehouse ?? '', 'Kho Hàng Ôm') && (str_contains($ord->warehouse ?? '', $staff->name) || $ord->sales_rep_id == $staff->id)) return true;
+            if (str_contains(mb_strtolower($ord->notes ?? ''), 'kho hàng ôm')) return true;
+            return false;
+        })->values();
+
+        $deliveryOrders = $allOrders->filter(function($ord) use ($holdingSaleOrders) {
+            return !$holdingSaleOrders->contains('id', $ord->id);
+        })->values();
+
+        $orders = $allOrders;
+
+        // 2. Biên bản bàn giao công nợ (Bên giao hoặc Bên nhận)
+        $handoversSent = \App\Models\DebtHandover::with(['toUser', 'targetDealer', 'order'])
+            ->where('from_user_id', $staff->id)
+            ->latest('id')
+            ->get();
+
+        $handoversReceived = \App\Models\DebtHandover::with(['fromUser', 'targetDealer', 'order'])
+            ->where('to_user_id', $staff->id)
+            ->latest('id')
+            ->get();
+
+        // 3. Đơn hàng ôm & Hàng giữ trong kho ôm của nhân viên
+        $consignmentOrders = \App\Models\ConsignmentOrder::with(['items.product', 'warehouse'])
+            ->where('staff_id', $staff->id)
+            ->latest('id')
+            ->get();
+
+        $holdingStocks = $holdingWarehouse 
+            ? \App\Models\WarehouseStock::with('product')
+                ->where('warehouse_id', $holdingWarehouse->id)
+                ->where('stock_quantity', '>', 0)
+                ->get()
+            : collect();
+
+        // 4. Giao dịch thu/chi quỹ liên quan
+        $transactions = \App\Models\Transaction::where(function($q) use ($staff) {
+            $q->where('customer_partner_name', 'like', "%{$staff->name}%")
+              ->orWhere('notes', 'like', "%{$staff->code}%")
+              ->orWhere('notes', 'like', "%{$staff->name}%");
+        })->latest('date')->latest('id')->get();
+
+        // Thống kê tài chính
+        $currentDebt = (float)($staff->current_debt ?? 0);
+        $creditLimit = (float)($staff->credit_limit ?? 0);
+        $totalOrdersCount = $orders->count();
+        $totalOrderAmount = $orders->whereNotIn('status', ['Hủy', 'Đã hủy'])->sum('total_amount');
+        $totalDriverDebt = $orders->where('assigned_driver_id', $staff->id)->sum('driver_debt_amount');
+        $totalHandoverConfirmed = $handoversSent->where('status', 'confirmed')->sum('amount');
+        $totalHandoverReceived = $handoversReceived->where('status', 'confirmed')->sum('amount');
+        $totalConsignmentRemaining = $consignmentOrders->whereIn('status', ['approved', 'in_progress'])->sum('remaining_amount');
+        $totalHoldingItemsCount = $holdingStocks->sum('stock_quantity');
+
+        // Thống kê đơn hàng bán từ kho ôm
+        $totalHoldingSalesCount = $holdingSaleOrders->count();
+        $totalHoldingSalesAmount = $holdingSaleOrders->whereNotIn('status', ['Hủy', 'Đã hủy'])->sum('total_amount');
+        $totalHoldingSalesCash = $holdingSaleOrders->whereNotIn('status', ['Hủy', 'Đã hủy'])->where('payment_method', 'Tiền mặt')->sum('total_amount');
+        $totalHoldingSalesDebt = $holdingSaleOrders->whereNotIn('status', ['Hủy', 'Đã hủy'])->where('payment_method', '!=', 'Tiền mặt')->sum('total_amount');
+
+        if ($request->wantsJson() || $request->ajax() || $request->query('format') === 'json') {
+            return response()->json([
+                'success'                   => true,
+                'staff'                     => $staff,
+                'currentDebt'               => $currentDebt,
+                'creditLimit'               => $creditLimit,
+                'totalOrdersCount'          => $totalOrdersCount,
+                'totalOrderAmount'          => $totalOrderAmount,
+                'totalDriverDebt'           => $totalDriverDebt,
+                'totalHandoverConfirmed'    => $totalHandoverConfirmed,
+                'totalHandoverReceived'     => $totalHandoverReceived,
+                'totalConsignmentRemaining' => $totalConsignmentRemaining,
+                'totalHoldingItemsCount'    => $totalHoldingItemsCount,
+                'holdingWarehouse'          => $holdingWarehouse,
+                'holdingStocks'             => $holdingStocks,
+                'consignmentOrders'         => $consignmentOrders,
+                'holdingSaleOrders'         => $holdingSaleOrders,
+                'deliveryOrders'            => $deliveryOrders,
+                'totalHoldingSalesCount'    => $totalHoldingSalesCount,
+                'totalHoldingSalesAmount'   => $totalHoldingSalesAmount,
+                'totalHoldingSalesCash'     => $totalHoldingSalesCash,
+                'totalHoldingSalesDebt'     => $totalHoldingSalesDebt,
+                'orders'                    => $orders,
+                'handoversSent'             => $handoversSent,
+                'handoversReceived'         => $handoversReceived,
+                'transactions'              => $transactions,
+            ]);
+        }
+
+        return view('staff.debt_detail', compact(
+            'staff', 'currentDebt', 'creditLimit', 'totalOrdersCount', 'totalOrderAmount',
+            'totalDriverDebt', 'totalHandoverConfirmed', 'totalHandoverReceived',
+            'totalConsignmentRemaining', 'totalHoldingItemsCount', 'holdingWarehouse', 'holdingStocks',
+            'consignmentOrders', 'holdingSaleOrders', 'deliveryOrders', 'totalHoldingSalesCount',
+            'totalHoldingSalesAmount', 'totalHoldingSalesCash', 'totalHoldingSalesDebt',
+            'orders', 'handoversSent', 'handoversReceived', 'transactions'
         ));
     }
 

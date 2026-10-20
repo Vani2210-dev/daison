@@ -316,6 +316,7 @@ class ProductExcelImportService
                         ],
                     ];
                     $costPrice = $costVal;
+                    $sellingPrice = $retailVal > 0 ? $retailVal : ($originVal > 0 ? $originVal : $costVal);
                 } else {
                     // Đơn vị tính và đơn vị quy đổi KHÁC NHAU: PHÂN BIỆT GIÁ theo từng đơn vị tính (Cây vs Mét...)
                     $unit = $unit1;
@@ -360,6 +361,7 @@ class ProductExcelImportService
                         ],
                     ];
                     $costPrice = $cost1Val;
+                    $sellingPrice = $retail1Val > 0 ? $retail1Val : ($origin1Val > 0 ? $origin1Val : $cost1Val);
                 }
 
                 $vatRate = (isset($colMap['vat_rate']) && isset($cols[$colMap['vat_rate']]) && is_numeric($cols[$colMap['vat_rate']]))
@@ -388,6 +390,7 @@ class ProductExcelImportService
                     'conversion_price' => $conversionPrice,
                     'specification' => $spec,
                     'cost_price' => $costPrice,
+                    'price' => $sellingPrice,
                     'latest_cost_price' => $costPrice,
                     'vat_rate' => $vatRate,
                     'min_stock_alert' => $minStock,

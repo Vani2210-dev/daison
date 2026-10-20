@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Danh Mục Sản Phẩm & Bảng Giá - Đại Sơn ERP')
+@section('title', 'Danh Mục Sản Phẩm Hàng Tiêu Dùng & Bảng Giá - Đại Sơn ERP')
 
 @section('content')
 <div class="space-y-4" x-data="productsManager()" x-init="initData()">
     
-    <!-- Sub-Section Navigation Tabs (Kho hàng Đại Sơn) -->
+    <!-- Sub-Section Navigation Tabs (Phân Hệ Hàng Tiêu Dùng Đại Sơn) -->
     @include('inventory.nav_tabs')
 
     <!-- Top Action Header -->
@@ -13,10 +13,10 @@
         <div>
             <h1 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                 <i class="fa-solid fa-boxes-stacked text-sky-600"></i>
-                <span>Danh Mục Sản Phẩm & Bảng Giá Toàn Diện</span>
+                <span>Danh Mục Sản Phẩm & Bảng Giá</span>
             </h1>
             <p class="text-xs text-slate-500 mt-1">
-                Quản lý 2 tên gọi (Thương mại & Hóa đơn), quy cách quy đổi, phân loại & thương hiệu và bảng giá phân khúc đa tầng.
+                Quản lý thông tin hàng hóa, kho bãi lưu trữ, theo dõi giá vốn và giá bán sản phẩm.
             </p>
         </div>
 
@@ -25,10 +25,6 @@
                 <i class="fa-solid fa-file-excel text-emerald-600"></i>
                 <span>Import Excel</span>
             </button>
-            <a href="{{ url('/cat_price_tiers') }}" class="px-3.5 py-2 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-2xs">
-                <i class="fa-solid fa-tags text-indigo-600"></i>
-                <span>Cấu Hình Giá</span>
-            </a>
             <a href="{{ url('/cat_products/create') }}" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95">
                 <i class="fa-solid fa-plus text-xs"></i>
                 <span>Thêm Sản Phẩm Mới</span>
@@ -120,38 +116,14 @@
                         <!-- Stacked Price Headers -->
                         <template x-if="priceViewMode === 'stacked'">
                             <th class="py-3 px-3 text-right whitespace-nowrap text-amber-900 bg-amber-50/80 font-bold border-x border-amber-200/60">
-                                <div>GIÁ VỐN BQ</div>
+                                <div>GIÁ VỐN</div>
                                 <div class="text-[9px] font-semibold text-amber-700/80 normal-case">Chuẩn &bull; Quy đổi</div>
                             </th>
                         </template>
                         <template x-if="priceViewMode === 'stacked'">
-                            <th class="py-3 px-3 text-right whitespace-nowrap text-slate-800 bg-slate-50">
-                                <div>NGUYÊN GIÁ</div>
-                                <div class="text-[9px] font-semibold text-slate-500 normal-case">Chuẩn &bull; Quy đổi</div>
-                            </th>
-                        </template>
-                        <template x-if="priceViewMode === 'stacked'">
-                            <th class="py-3 px-3 text-right whitespace-nowrap text-slate-800 bg-slate-50">
-                                <div>GIÁ ĐL C1</div>
-                                <div class="text-[9px] font-semibold text-slate-500 normal-case">Chuẩn &bull; Quy đổi</div>
-                            </th>
-                        </template>
-                        <template x-if="priceViewMode === 'stacked'">
-                            <th class="py-3 px-3 text-right whitespace-nowrap text-slate-800 bg-slate-50">
-                                <div>GIÁ ĐL C2</div>
-                                <div class="text-[9px] font-semibold text-slate-500 normal-case">Chuẩn &bull; Quy đổi</div>
-                            </th>
-                        </template>
-                        <template x-if="priceViewMode === 'stacked'">
-                            <th class="py-3 px-3 text-right whitespace-nowrap text-slate-800 bg-slate-50">
-                                <div>GIÁ ĐL C3</div>
-                                <div class="text-[9px] font-semibold text-slate-500 normal-case">Chuẩn &bull; Quy đổi</div>
-                            </th>
-                        </template>
-                        <template x-if="priceViewMode === 'stacked'">
-                            <th class="py-3 px-3 text-right whitespace-nowrap text-blue-900 bg-blue-50/80 font-bold border-x border-blue-200/60">
-                                <div>GIÁ BÁN LẺ</div>
-                                <div class="text-[9px] font-semibold text-blue-700/80 normal-case">Chuẩn &bull; Quy đổi</div>
+                            <th class="py-3 px-3 text-right whitespace-nowrap text-sky-900 bg-sky-50/80 font-bold border-r border-sky-200/60">
+                                <div>GIÁ BÁN</div>
+                                <div class="text-[9px] font-semibold text-sky-700/80 normal-case">Chuẩn &bull; Quy đổi</div>
                             </th>
                         </template>
 
@@ -163,34 +135,10 @@
                             <th class="py-3 px-3 text-right whitespace-nowrap text-emerald-800 bg-emerald-50/80 font-bold border-r border-amber-200/60">VỐN (QUY ĐỔI)</th>
                         </template>
                         <template x-if="priceViewMode === 'split'">
-                            <th class="py-3 px-3 text-right whitespace-nowrap text-slate-800 bg-slate-50">NGUYÊN GIÁ (CHUẨN)</th>
+                            <th class="py-3 px-3 text-right whitespace-nowrap text-sky-900 bg-sky-50/80 font-bold">GIÁ BÁN (CHUẨN)</th>
                         </template>
                         <template x-if="priceViewMode === 'split'">
-                            <th class="py-3 px-3 text-right whitespace-nowrap text-emerald-800 bg-emerald-50/80 font-bold">NGUYÊN GIÁ (QĐ)</th>
-                        </template>
-                        <template x-if="priceViewMode === 'split'">
-                            <th class="py-3 px-3 text-right whitespace-nowrap text-slate-800 bg-slate-50">ĐL C1 (CHUẨN)</th>
-                        </template>
-                        <template x-if="priceViewMode === 'split'">
-                            <th class="py-3 px-3 text-right whitespace-nowrap text-emerald-800 bg-emerald-50/80 font-bold">ĐL C1 (QĐ)</th>
-                        </template>
-                        <template x-if="priceViewMode === 'split'">
-                            <th class="py-3 px-3 text-right whitespace-nowrap text-slate-800 bg-slate-50">ĐL C2 (CHUẨN)</th>
-                        </template>
-                        <template x-if="priceViewMode === 'split'">
-                            <th class="py-3 px-3 text-right whitespace-nowrap text-emerald-800 bg-emerald-50/80 font-bold">ĐL C2 (QĐ)</th>
-                        </template>
-                        <template x-if="priceViewMode === 'split'">
-                            <th class="py-3 px-3 text-right whitespace-nowrap text-slate-800 bg-slate-50">ĐL C3 (CHUẨN)</th>
-                        </template>
-                        <template x-if="priceViewMode === 'split'">
-                            <th class="py-3 px-3 text-right whitespace-nowrap text-emerald-800 bg-emerald-50/80 font-bold">ĐL C3 (QĐ)</th>
-                        </template>
-                        <template x-if="priceViewMode === 'split'">
-                            <th class="py-3 px-3 text-right whitespace-nowrap text-blue-900 bg-blue-50/80 font-bold border-l border-blue-200/60">BÁN LẺ (CHUẨN)</th>
-                        </template>
-                        <template x-if="priceViewMode === 'split'">
-                            <th class="py-3 px-3 text-right whitespace-nowrap text-emerald-800 bg-emerald-50/80 font-bold border-r border-blue-200/60">BÁN LẺ (QĐ)</th>
+                            <th class="py-3 px-3 text-right whitespace-nowrap text-emerald-800 bg-emerald-50/80 font-bold border-r border-sky-200/60">GIÁ BÁN (QĐ)</th>
                         </template>
 
                         <th class="py-3 px-3 text-center whitespace-nowrap">VAT</th>
@@ -247,8 +195,7 @@
                             </td>
 
                             <!-- =================== STACKED PRICE MODE CELLS =================== -->
-                            <!-- =================== STACKED PRICE MODE CELLS =================== -->
-                            <!-- Giá Vốn BQ (Stacked) -->
+                            <!-- Giá Vốn (Stacked) -->
                             <template x-if="priceViewMode === 'stacked'">
                                 <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap bg-amber-50/40 border-x border-amber-100">
                                     <div class="font-bold text-amber-950 flex items-center justify-end gap-1">
@@ -267,94 +214,18 @@
                                 </td>
                             </template>
 
-                            <!-- Nguyên Giá (Stacked) -->
+                            <!-- Giá Bán (Stacked) -->
                             <template x-if="priceViewMode === 'stacked'">
-                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap">
-                                    <div class="font-bold text-slate-800 flex items-center justify-end gap-1">
-                                        <span x-text="formatNumber(getTierPrice(item, 'Nguyên Giá'))"></span>
-                                        <span class="text-[10px] font-normal text-slate-500">đ</span>
-                                        <span class="text-[10px] font-normal text-slate-400" x-show="item.unit" x-text="'/' + item.unit"></span>
+                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap bg-sky-50/40 border-r border-sky-100">
+                                    <div class="font-bold text-sky-950 flex items-center justify-end gap-1">
+                                        <span x-text="formatNumber(getSellingPrice(item))"></span>
+                                        <span class="text-[10px] font-normal text-sky-800">đ</span>
+                                        <span class="text-[10px] font-normal text-sky-700" x-show="item.unit" x-text="'/' + item.unit"></span>
                                     </div>
-                                    <template x-if="hasDiffPrice(getTierPrice(item, 'Nguyên Giá'), getTierConversionPrice(item, 'Nguyên Giá'))">
+                                    <template x-if="hasDiffPrice(getSellingPrice(item), getSellingConversionPrice(item))">
                                         <div class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 mt-0.5">
                                             <span class="text-[9px] uppercase tracking-wider text-emerald-600 font-bold">QĐ:</span>
-                                            <span x-text="formatNumber(getTierConversionPrice(item, 'Nguyên Giá'))"></span>
-                                            <span class="text-[9px]">đ</span>
-                                            <span x-show="item.conversion_unit" x-text="'/' + item.conversion_unit"></span>
-                                        </div>
-                                    </template>
-                                </td>
-                            </template>
-
-                            <!-- Giá Đại Lý C1 (Stacked) -->
-                            <template x-if="priceViewMode === 'stacked'">
-                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap">
-                                    <div class="font-bold text-slate-800 flex items-center justify-end gap-1">
-                                        <span x-text="formatNumber(getTierPrice(item, 'Giá Đại lý Cấp 1', 'Đại lý Cấp 1', 'Cấp 1'))"></span>
-                                        <span class="text-[10px] font-normal text-slate-500">đ</span>
-                                        <span class="text-[10px] font-normal text-slate-400" x-show="item.unit" x-text="'/' + item.unit"></span>
-                                    </div>
-                                    <template x-if="hasDiffPrice(getTierPrice(item, 'Giá Đại lý Cấp 1', 'Đại lý Cấp 1', 'Cấp 1'), getTierConversionPrice(item, 'Giá Đại lý Cấp 1', 'Đại lý Cấp 1', 'Cấp 1'))">
-                                        <div class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 mt-0.5">
-                                            <span class="text-[9px] uppercase tracking-wider text-emerald-600 font-bold">QĐ:</span>
-                                            <span x-text="formatNumber(getTierConversionPrice(item, 'Giá Đại lý Cấp 1', 'Đại lý Cấp 1', 'Cấp 1'))"></span>
-                                            <span class="text-[9px]">đ</span>
-                                            <span x-show="item.conversion_unit" x-text="'/' + item.conversion_unit"></span>
-                                        </div>
-                                    </template>
-                                </td>
-                            </template>
-
-                            <!-- Giá Đại Lý C2 (Stacked) -->
-                            <template x-if="priceViewMode === 'stacked'">
-                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap">
-                                    <div class="font-bold text-slate-800 flex items-center justify-end gap-1">
-                                        <span x-text="formatNumber(getTierPrice(item, 'Giá Đại lý Cấp 2', 'Đại lý Cấp 2', 'Cấp 2'))"></span>
-                                        <span class="text-[10px] font-normal text-slate-500">đ</span>
-                                        <span class="text-[10px] font-normal text-slate-400" x-show="item.unit" x-text="'/' + item.unit"></span>
-                                    </div>
-                                    <template x-if="hasDiffPrice(getTierPrice(item, 'Giá Đại lý Cấp 2', 'Đại lý Cấp 2', 'Cấp 2'), getTierConversionPrice(item, 'Giá Đại lý Cấp 2', 'Đại lý Cấp 2', 'Cấp 2'))">
-                                        <div class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 mt-0.5">
-                                            <span class="text-[9px] uppercase tracking-wider text-emerald-600 font-bold">QĐ:</span>
-                                            <span x-text="formatNumber(getTierConversionPrice(item, 'Giá Đại lý Cấp 2', 'Đại lý Cấp 2', 'Cấp 2'))"></span>
-                                            <span class="text-[9px]">đ</span>
-                                            <span x-show="item.conversion_unit" x-text="'/' + item.conversion_unit"></span>
-                                        </div>
-                                    </template>
-                                </td>
-                            </template>
-
-                            <!-- Giá Đại Lý C3 (Stacked) -->
-                            <template x-if="priceViewMode === 'stacked'">
-                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap">
-                                    <div class="font-bold text-slate-800 flex items-center justify-end gap-1">
-                                        <span x-text="formatNumber(getTierPrice(item, 'giá đại lý cấp 3', 'Đại lý Cấp 3', 'Cấp 3'))"></span>
-                                        <span class="text-[10px] font-normal text-slate-500">đ</span>
-                                        <span class="text-[10px] font-normal text-slate-400" x-show="item.unit" x-text="'/' + item.unit"></span>
-                                    </div>
-                                    <template x-if="hasDiffPrice(getTierPrice(item, 'giá đại lý cấp 3', 'Đại lý Cấp 3', 'Cấp 3'), getTierConversionPrice(item, 'giá đại lý cấp 3', 'Đại lý Cấp 3', 'Cấp 3'))">
-                                        <div class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 mt-0.5">
-                                            <span class="text-[9px] uppercase tracking-wider text-emerald-600 font-bold">QĐ:</span>
-                                            <span x-text="formatNumber(getTierConversionPrice(item, 'giá đại lý cấp 3', 'Đại lý Cấp 3', 'Cấp 3'))"></span>
-                                            <span class="text-[9px]">đ</span>
-                                            <span x-show="item.conversion_unit" x-text="'/' + item.conversion_unit"></span>
-                                        </div>
-                                    </template>
-                                </td>
-                            </template>
-
-                            <!-- Giá Bán Lẻ (Stacked) -->
-                            <template x-if="priceViewMode === 'stacked'">
-                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap bg-blue-50/40 border-x border-blue-100">
-                                    <div class="font-black text-blue-950 flex items-center justify-end gap-1">
-                                        <span x-text="formatNumber(getTierPrice(item, 'Giá Bán lẻ', 'Bán Lẻ', 'retail_price'))"></span>
-                                        <span class="text-[10px] font-normal text-blue-700">đ</span>
-                                        <span class="text-[10px] font-normal text-blue-600" x-show="item.unit" x-text="'/' + item.unit"></span>
-                                    </div>
-                                    <template x-if="hasDiffPrice(getTierPrice(item, 'Giá Bán lẻ', 'Bán Lẻ', 'retail_price'), getTierConversionPrice(item, 'Giá Bán lẻ', 'Bán Lẻ'))">
-                                        <div class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 mt-0.5">
-                                            <span class="text-[9px] uppercase tracking-wider text-emerald-600 font-bold">QĐ:</span>
-                                            <span x-text="formatNumber(getTierConversionPrice(item, 'Giá Bán lẻ', 'Bán Lẻ'))"></span>
+                                            <span x-text="formatNumber(getSellingConversionPrice(item))"></span>
                                             <span class="text-[9px]">đ</span>
                                             <span x-show="item.conversion_unit" x-text="'/' + item.conversion_unit"></span>
                                         </div>
@@ -386,116 +257,24 @@
                                 </td>
                             </template>
 
-                            <!-- Nguyên Giá (Chuẩn & QĐ) -->
+                            <!-- Giá Bán (Chuẩn & QĐ) -->
                             <template x-if="priceViewMode === 'split'">
-                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap font-bold text-slate-800">
-                                    <span x-text="formatNumber(getTierPrice(item, 'Nguyên Giá'))"></span>
-                                    <span class="text-[10px] font-normal text-slate-500">đ</span>
-                                    <span class="text-[10px] font-normal text-slate-400" x-show="item.unit" x-text="'/' + item.unit"></span>
+                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap bg-sky-50/40 font-bold text-sky-950">
+                                    <span x-text="formatNumber(getSellingPrice(item))"></span>
+                                    <span class="text-[10px] font-normal text-sky-800">đ</span>
+                                    <span class="text-[10px] font-normal text-sky-700" x-show="item.unit" x-text="'/' + item.unit"></span>
                                 </td>
                             </template>
                             <template x-if="priceViewMode === 'split'">
-                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap bg-emerald-50/40">
-                                    <template x-if="hasDiffPrice(getTierPrice(item, 'Nguyên Giá'), getTierConversionPrice(item, 'Nguyên Giá'))">
+                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap bg-emerald-50/40 border-r border-sky-100">
+                                    <template x-if="hasDiffPrice(getSellingPrice(item), getSellingConversionPrice(item))">
                                         <span class="font-bold text-emerald-800">
-                                            <span x-text="formatNumber(getTierConversionPrice(item, 'Nguyên Giá'))"></span>
+                                            <span x-text="formatNumber(getSellingConversionPrice(item))"></span>
                                             <span class="text-[10px] font-normal text-emerald-600">đ</span>
                                             <span class="text-[10px] font-normal text-emerald-600" x-show="item.conversion_unit" x-text="'/' + item.conversion_unit"></span>
                                         </span>
                                     </template>
-                                    <template x-if="!hasDiffPrice(getTierPrice(item, 'Nguyên Giá'), getTierConversionPrice(item, 'Nguyên Giá'))">
-                                        <span class="text-slate-300 font-normal">-</span>
-                                    </template>
-                                </td>
-                            </template>
-
-                            <!-- ĐL C1 (Chuẩn & QĐ) -->
-                            <template x-if="priceViewMode === 'split'">
-                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap font-bold text-slate-800">
-                                    <span x-text="formatNumber(getTierPrice(item, 'Giá Đại lý Cấp 1', 'Đại lý Cấp 1', 'Cấp 1'))"></span>
-                                    <span class="text-[10px] font-normal text-slate-500">đ</span>
-                                    <span class="text-[10px] font-normal text-slate-400" x-show="item.unit" x-text="'/' + item.unit"></span>
-                                </td>
-                            </template>
-                            <template x-if="priceViewMode === 'split'">
-                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap bg-emerald-50/40">
-                                    <template x-if="hasDiffPrice(getTierPrice(item, 'Giá Đại lý Cấp 1', 'Đại lý Cấp 1', 'Cấp 1'), getTierConversionPrice(item, 'Giá Đại lý Cấp 1', 'Đại lý Cấp 1', 'Cấp 1'))">
-                                        <span class="font-bold text-emerald-800">
-                                            <span x-text="formatNumber(getTierConversionPrice(item, 'Giá Đại lý Cấp 1', 'Đại lý Cấp 1', 'Cấp 1'))"></span>
-                                            <span class="text-[10px] font-normal text-emerald-600">đ</span>
-                                            <span class="text-[10px] font-normal text-emerald-600" x-show="item.conversion_unit" x-text="'/' + item.conversion_unit"></span>
-                                        </span>
-                                    </template>
-                                    <template x-if="!hasDiffPrice(getTierPrice(item, 'Giá Đại lý Cấp 1', 'Đại lý Cấp 1', 'Cấp 1'), getTierConversionPrice(item, 'Giá Đại lý Cấp 1', 'Đại lý Cấp 1', 'Cấp 1'))">
-                                        <span class="text-slate-300 font-normal">-</span>
-                                    </template>
-                                </td>
-                            </template>
-
-                            <!-- ĐL C2 (Chuẩn & QĐ) -->
-                            <template x-if="priceViewMode === 'split'">
-                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap font-bold text-slate-800">
-                                    <span x-text="formatNumber(getTierPrice(item, 'Giá Đại lý Cấp 2', 'Đại lý Cấp 2', 'Cấp 2'))"></span>
-                                    <span class="text-[10px] font-normal text-slate-500">đ</span>
-                                    <span class="text-[10px] font-normal text-slate-400" x-show="item.unit" x-text="'/' + item.unit"></span>
-                                </td>
-                            </template>
-                            <template x-if="priceViewMode === 'split'">
-                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap bg-emerald-50/40">
-                                    <template x-if="hasDiffPrice(getTierPrice(item, 'Giá Đại lý Cấp 2', 'Đại lý Cấp 2', 'Cấp 2'), getTierConversionPrice(item, 'Giá Đại lý Cấp 2', 'Đại lý Cấp 2', 'Cấp 2'))">
-                                        <span class="font-bold text-emerald-800">
-                                            <span x-text="formatNumber(getTierConversionPrice(item, 'Giá Đại lý Cấp 2', 'Đại lý Cấp 2', 'Cấp 2'))"></span>
-                                            <span class="text-[10px] font-normal text-emerald-600">đ</span>
-                                            <span class="text-[10px] font-normal text-emerald-600" x-show="item.conversion_unit" x-text="'/' + item.conversion_unit"></span>
-                                        </span>
-                                    </template>
-                                    <template x-if="!hasDiffPrice(getTierPrice(item, 'Giá Đại lý Cấp 2', 'Đại lý Cấp 2', 'Cấp 2'), getTierConversionPrice(item, 'Giá Đại lý Cấp 2', 'Đại lý Cấp 2', 'Cấp 2'))">
-                                        <span class="text-slate-300 font-normal">-</span>
-                                    </template>
-                                </td>
-                            </template>
-
-                            <!-- ĐL C3 (Chuẩn & QĐ) -->
-                            <template x-if="priceViewMode === 'split'">
-                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap font-bold text-slate-800">
-                                    <span x-text="formatNumber(getTierPrice(item, 'giá đại lý cấp 3', 'Đại lý Cấp 3', 'Cấp 3'))"></span>
-                                    <span class="text-[10px] font-normal text-slate-500">đ</span>
-                                    <span class="text-[10px] font-normal text-slate-400" x-show="item.unit" x-text="'/' + item.unit"></span>
-                                </td>
-                            </template>
-                            <template x-if="priceViewMode === 'split'">
-                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap bg-emerald-50/40">
-                                    <template x-if="hasDiffPrice(getTierPrice(item, 'giá đại lý cấp 3', 'Đại lý Cấp 3', 'Cấp 3'), getTierConversionPrice(item, 'giá đại lý cấp 3', 'Đại lý Cấp 3', 'Cấp 3'))">
-                                        <span class="font-bold text-emerald-800">
-                                            <span x-text="formatNumber(getTierConversionPrice(item, 'giá đại lý cấp 3', 'Đại lý Cấp 3', 'Cấp 3'))"></span>
-                                            <span class="text-[10px] font-normal text-emerald-600">đ</span>
-                                            <span class="text-[10px] font-normal text-emerald-600" x-show="item.conversion_unit" x-text="'/' + item.conversion_unit"></span>
-                                        </span>
-                                    </template>
-                                    <template x-if="!hasDiffPrice(getTierPrice(item, 'giá đại lý cấp 3', 'Đại lý Cấp 3', 'Cấp 3'), getTierConversionPrice(item, 'giá đại lý cấp 3', 'Đại lý Cấp 3', 'Cấp 3'))">
-                                        <span class="text-slate-300 font-normal">-</span>
-                                    </template>
-                                </td>
-                            </template>
-
-                            <!-- Bán Lẻ (Chuẩn & QĐ) -->
-                            <template x-if="priceViewMode === 'split'">
-                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap bg-blue-50/40 border-l border-blue-100 font-black text-blue-950">
-                                    <span x-text="formatNumber(getTierPrice(item, 'Giá Bán lẻ', 'Bán Lẻ', 'retail_price'))"></span>
-                                    <span class="text-[10px] font-normal text-blue-700">đ</span>
-                                    <span class="text-[10px] font-normal text-blue-600" x-show="item.unit" x-text="'/' + item.unit"></span>
-                                </td>
-                            </template>
-                            <template x-if="priceViewMode === 'split'">
-                                <td class="py-2.5 px-3 text-right font-mono whitespace-nowrap bg-emerald-50/40 border-r border-blue-100">
-                                    <template x-if="hasDiffPrice(getTierPrice(item, 'Giá Bán lẻ', 'Bán Lẻ', 'retail_price'), getTierConversionPrice(item, 'Giá Bán lẻ', 'Bán Lẻ'))">
-                                        <span class="font-bold text-emerald-800">
-                                            <span x-text="formatNumber(getTierConversionPrice(item, 'Giá Bán lẻ', 'Bán Lẻ'))"></span>
-                                            <span class="text-[10px] font-normal text-emerald-600">đ</span>
-                                            <span class="text-[10px] font-normal text-emerald-600" x-show="item.conversion_unit" x-text="'/' + item.conversion_unit"></span>
-                                        </span>
-                                    </template>
-                                    <template x-if="!hasDiffPrice(getTierPrice(item, 'Giá Bán lẻ', 'Bán Lẻ', 'retail_price'), getTierConversionPrice(item, 'Giá Bán lẻ', 'Bán Lẻ'))">
+                                    <template x-if="!hasDiffPrice(getSellingPrice(item), getSellingConversionPrice(item))">
                                         <span class="text-slate-300 font-normal">-</span>
                                     </template>
                                 </td>
@@ -517,6 +296,11 @@
                                             <span :class="Number(item.max_stock_alert) > 0 ? 'text-purple-700 font-medium' : 'text-slate-400'" title="Định mức tồn tối đa">Max: <span x-text="formatNumber(item.max_stock_alert)"></span></span>
                                         </template>
                                     </div>
+                                    <!-- Nút xem Date/Lô hàng (Mở trang chi tiết) -->
+                                    <a :href="'{{ url('/cat_products') }}/' + item.id + '/batches'" class="inline-flex items-center gap-1 text-[10px] text-amber-800 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200/80 mt-1 cursor-pointer font-bold transition-all shadow-2xs hover:scale-102" title="Xem chi tiết Hạn Sử Dụng (Date) & các lần nhập hàng">
+                                        <i class="fa-solid fa-clock-rotate-left text-[9px] text-amber-600"></i>
+                                        <span>Date/Lô</span>
+                                    </a>
                                 </div>
                             </td>
 
@@ -534,6 +318,9 @@
                             <!-- Thao Tác (Trang riêng) - Cố định bên phải -->
                             <td class="sticky right-0 bg-white group-hover:bg-slate-50 transition-colors py-3 px-4 text-center whitespace-nowrap z-10 shadow-[-4px_0_8px_rgba(0,0,0,0.05)] border-l border-slate-200/80">
                                 <div class="flex items-center justify-center gap-1.5">
+                                    <a :href="'{{ url('/cat_products') }}/' + item.id + '/batches'" class="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 rounded-lg transition-colors cursor-pointer" title="Xem Hạn Sử Dụng (Date) & Chi Tiết Lô Hàng (Trang riêng)">
+                                        <i class="fa-solid fa-clock-rotate-left"></i>
+                                    </a>
                                     <a :href="'{{ url('/cat_products') }}/' + item.id + '/edit'" class="p-1.5 bg-slate-100 hover:bg-sky-100 text-slate-600 hover:text-sky-700 rounded-lg transition-colors cursor-pointer" title="Chỉnh sửa sản phẩm (Trang riêng)">
                                         <i class="fa-solid fa-pen-to-square"></i>
                                     </a>
@@ -546,7 +333,7 @@
                     </template>
 
                     <tr x-show="filteredProducts.length === 0">
-                        <td :colspan="priceViewMode === 'split' ? 23 : 17" class="py-12 text-center text-slate-400">
+                        <td :colspan="priceViewMode === 'split' ? 17 : 15" class="py-12 text-center text-slate-400">
                             <i class="fa-solid fa-box-open text-3xl text-slate-300 mb-2"></i>
                             <p class="font-bold text-slate-700">Không tìm thấy sản phẩm phù hợp!</p>
                             <p class="text-xs text-slate-400 mt-1">Hãy thử đổi từ khóa tìm kiếm hoặc bấm "Thêm Sản Phẩm Mới".</p>
@@ -689,6 +476,8 @@
                 </form>
             </div>
         </div>
+
+
     </div>
 </div>
 
@@ -711,7 +500,7 @@ function productsManager() {
         importFile: null,
         importFileName: '',
 
-        initData() {},
+
 
         get filteredProducts() {
             const q = this.searchQuery.trim().toLowerCase();
@@ -751,6 +540,23 @@ function productsManager() {
             if (Number(product.cost_price) > 0) {
                 const rate = Number(product.conversion_rate) || 1;
                 return rate > 1 ? Number((product.cost_price / rate).toFixed(2)) : Number(product.cost_price);
+            }
+            return 0;
+        },
+
+        getSellingPrice(product) {
+            if (!product) return 0;
+            if (Number(product.price) > 0) return Number(product.price);
+            return this.getTierPrice(product, 'Giá Bán', 'Giá Bán lẻ', 'Bán Lẻ', 'retail_price', 'Tiêu Chuẩn', 'Nguyên Giá') || Number(product.cost_price || 0);
+        },
+
+        getSellingConversionPrice(product) {
+            if (!product) return 0;
+            if (Number(product.conversion_price) > 0) return Number(product.conversion_price);
+            const sellPrice = this.getSellingPrice(product);
+            if (sellPrice > 0) {
+                const rate = Number(product.conversion_rate) || 1;
+                return rate > 1 ? Number((sellPrice / rate).toFixed(2)) : sellPrice;
             }
             return 0;
         },

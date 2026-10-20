@@ -1,0 +1,62 @@
+{
+  "name": "Đại Sơn ERP - Phân Phối Hàng Tiêu Dùng & Dịch Vụ Máy Lọc Nước",
+  "short_name": "Đại Sơn ERP",
+  "description": "Hệ Thống Quản Trị ERP Phân Phối Hàng Tiêu Dùng & Dịch Vụ Máy Lọc Nước Đại Sơn",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f0f2f5",
+  "theme_color": "#1a3a68",
+  "lang": "vi",
+  "dir": "ltr",
+  "categories": [
+    "business",
+    "productivity",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "/images/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Máy Lọc Nước",
+      "short_name": "Máy Lọc",
+      "description": "Quản lý lắp đặt & bảo hành máy lọc nước",
+      "url": "/water-filter",
+      "icons": [{ "src": "/images/logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Quản Lý Đơn Hàng",
+      "short_name": "Đơn Hàng",
+      "description": "Xem danh sách và tạo mới đơn hàng",
+      "url": "/orders",
+      "icons": [{ "src": "/images/logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Soạn Hàng Kho (Picking)",
+      "short_name": "Soạn Hàng",
+      "description": "Bốc hàng và kiểm tra xuất kho",
+      "url": "/inventory/picking",
+      "icons": [{ "src": "/images/logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Bảng Điều Khiển",
+      "short_name": "Dashboard",
+      "description": "Tổng quan dữ liệu doanh nghiệp",
+      "url": "/dashboard",
+      "icons": [{ "src": "/images/logo.png", "sizes": "192x192" }]
+    }
+  ]
+}

@@ -76,7 +76,16 @@ class PickingSyncController extends Controller
 
         // Tự động đồng bộ và lưu trực tiếp vào CSDL MySQL (bảng orders và order_items)
         try {
-            $order = \App\Models\Order::where('id', $orderId)->orWhere('order_code', $orderId)->first();
+            $order = null;
+            if (is_numeric($orderId) && (int)$orderId >= 900000) {
+                $order = \App\Models\ConsignmentOrder::with(['items.product.category', 'staff', 'warehouse'])->find((int)$orderId - 900000);
+            }
+            if (!$order) {
+                $order = \App\Models\ConsignmentOrder::with(['items.product.category', 'staff', 'warehouse'])->where('code', $orderId)->first();
+            }
+            if (!$order) {
+                $order = \App\Models\Order::where('id', $orderId)->orWhere('order_code', $orderId)->first();
+            }
             if ($order) {
                 if ($shortageReported) {
                     $order->shortage_reported = true;
@@ -442,6 +451,11 @@ class PickingSyncController extends Controller
                 }
                 $order->save();
 
+                // Nếu là đơn hàng ôm đã được Kế toán duyệt và kho bốc/kiểm hàng xong -> Chuyển vào kho hàng ôm NV & trừ kho công ty
+                if ($order instanceof \App\Models\ConsignmentOrder && in_array($order->status, ['Đã bốc xong', 'Đã kiểm hàng', 'Kho đã xuất đủ', 'in_progress']) && !$order->stock_deducted && $order->approved_at) {
+                    $order->transferStockToEmployeeHoldingWarehouse(auth()->id(), $performerName);
+                }
+
                 // Cập nhật lại event để phát sóng realtime chính xác
                 if ($event) {
                     $event->order_status = $order->status;
@@ -506,6 +520,12 @@ class PickingSyncController extends Controller
         }
 
         $order = \App\Models\Order::with(['items', 'dealer'])->where('id', $orderId)->orWhere('order_code', $orderId)->first();
+        if (!$order && is_numeric($orderId) && (int)$orderId >= 900000) {
+            $order = \App\Models\ConsignmentOrder::with(['items', 'staff'])->find((int)$orderId - 900000);
+        }
+        if (!$order) {
+            $order = \App\Models\ConsignmentOrder::with(['items', 'staff'])->where('code', $orderId)->first();
+        }
         if (!$order) {
             return response()->json(['success' => false, 'message' => 'Order not found'], 404);
         }
@@ -543,7 +563,13 @@ class PickingSyncController extends Controller
         $supervisor = $order->order_creator 
             ?: ($order->salesRep?->name 
             ?: ($order->dealer?->staff_in_charge 
-            ?: ($order->creator?->name ?: 'Admin KBTech')));
+            ?: ($order->staff_name
+            ?: ($order->staff?->name
+            ?: ($order->creator?->name ?: 'Admin KBTech')))));
+
+        $orderCode = $order->order_code ?? ($order->code ?? ('OM-' . $order->id));
+        $customerName = $order->customer_name ?? ('Hàng Ôm - ' . ($order->staff_name ?? 'NVKD'));
+        $warehouseName = $order->warehouse ?? ($order->warehouse_name ?? 'Kho Tổng Mê Linh');
 
         // Tạo sự kiện đồng bộ Realtime PickingSyncEvent gửi tới Người phụ trách đơn hàng
         $event = PickingSyncEvent::create([
@@ -555,9 +581,9 @@ class PickingSyncController extends Controller
             'shortage_reported'   => true,
             'extra_data'          => [
                 'orderId'        => (int) $order->id,
-                'orderCode'      => $order->order_code,
-                'customerName'   => $order->customer_name,
-                'warehouse'      => $order->warehouse,
+                'orderCode'      => $orderCode,
+                'customerName'   => $customerName,
+                'warehouse'      => $warehouseName,
                 'reporter'       => $reporterName,
                 'supervisor'     => $supervisor,
                 'shortageItems'  => $shortageItems,
@@ -735,11 +761,17 @@ class PickingSyncController extends Controller
 
         if ($reqOrderId = $request->query('order_id')) {
             $orderToPick = \App\Models\Order::find($reqOrderId);
+            if (!$orderToPick && is_numeric($reqOrderId) && (int)$reqOrderId >= 900000) {
+                $orderToPick = \App\Models\ConsignmentOrder::find((int)$reqOrderId - 900000);
+            }
+            if (!$orderToPick) {
+                $orderToPick = \App\Models\ConsignmentOrder::where('code', $reqOrderId)->first();
+            }
             if ($orderToPick) {
                 if (!empty($orderToPick->delivery_date)) {
-                    $isDebt = ($orderToPick->status === 'Nợ hàng') || str_contains($orderToPick->notes ?? '', '[ĐƠN NỢ HÀNG]') || str_starts_with($orderToPick->order_code, 'DH-NO');
+                    $isDebt = ($orderToPick->status === 'Nợ hàng') || str_contains($orderToPick->notes ?? '', '[ĐƠN NỢ HÀNG]') || str_starts_with($orderToPick->order_code ?? '', 'DH-NO');
                     if (!$isDebt) {
-                        if (in_array($orderToPick->status, ['Chốt đơn', 'Đã duyệt'])) {
+                        if (in_array($orderToPick->status, ['Chốt đơn', 'Đã duyệt', 'pending', 'approved'])) {
                             $orderToPick->status = 'Soạn hàng';
                         }
                         if ($request->filled('picking_date')) {
@@ -753,13 +785,78 @@ class PickingSyncController extends Controller
             }
         }
 
-        // Bốc hàng & Kiểm hàng CHỈ LẤY những đơn hàng có dữ liệu ngày giao hàng (delivery_date) VÀ ngày soạn hàng (picking_date)
+        // Bốc hàng & Kiểm hàng: Lấy đơn hàng bán thông thường
         $orders = \App\Models\Order::with(['items.product.category', 'dealer', 'creator', 'salesRep'])
             ->whereIn('status', $allowedStatuses)
-            ->whereNotNull('delivery_date')
-            ->whereNotNull('picking_date')
+            ->where(function($q) {
+                $q->whereNotNull('delivery_date')
+                  ->orWhereNotNull('picking_date')
+                  ->orWhereIn('status', ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong', 'Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng', 'Kho báo thiếu hàng']);
+            })
             ->latest('id')
             ->get();
+
+        foreach ($orders as $ord) {
+            $ord->picking_date = $ord->picking_date ?: ($ord->delivery_date ?: ($ord->created_at ? $ord->created_at->format('Y-m-d') : now()->format('Y-m-d')));
+            $ord->delivery_date = $ord->delivery_date ?: ($ord->picking_date ?: ($ord->created_at ? $ord->created_at->format('Y-m-d') : now()->format('Y-m-d')));
+            $ord->is_consignment = false;
+        }
+
+        // Bổ sung: Lấy cả đơn hàng ôm (ConsignmentOrder) phục vụ xuất kho cho NVKD (CHỈ LẤY CÁC ĐƠN ĐÃ ĐƯỢC DUYỆT)
+        $consignmentOrders = \App\Models\ConsignmentOrder::with(['items.product.category', 'staff', 'warehouse'])
+            ->whereIn('status', ['approved', 'in_progress', 'Chờ bốc', 'Đang bốc hàng', 'Kho báo thiếu hàng', 'Đã bốc xong', 'Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng', 'Sẵn sàng xuất xe', 'Kho đã xuất đủ'])
+            ->latest('id')
+            ->get();
+
+        foreach ($consignmentOrders as $co) {
+            $co->raw_id = $co->id;
+            $co->id = 900000 + $co->id;
+            $co->order_code = $co->code;
+            $co->customer_name = 'Hàng Ôm - ' . ($co->staff_name ?: ($co->staff?->name ?: 'NVKD'));
+            $co->customer_phone = $co->staff?->phone ?? '---';
+            $co->customer_address = $co->warehouse_name ?: 'Kho xuất công ty';
+            
+            $whName = $co->warehouse_name ?: ($co->warehouse?->name ?: 'Kho Tổng Mê Linh');
+            $co->unsetRelation('warehouse');
+            $co->warehouse = $whName;
+
+            $co->is_consignment = true;
+            $co->order_type = 'Hàng ôm';
+            $co->order_creator = $co->staff_name ?: ($co->staff?->name ?: 'Admin KBTech');
+            $co->supervisor = $co->staff_name ?: ($co->staff?->name ?: 'Admin KBTech');
+            $co->picking_date = $co->picking_date ?: ($co->created_at ? $co->created_at->format('Y-m-d') : now()->format('Y-m-d'));
+            $co->delivery_date = $co->delivery_date ?: ($co->created_at ? $co->created_at->format('Y-m-d') : now()->format('Y-m-d'));
+
+            // Map trạng thái đơn ôm sang quy trình soạn bốc kho
+            if ($co->status === 'approved') {
+                $co->status = 'Chờ bốc';
+            } elseif ($co->status === 'in_progress') {
+                $allPicked = $co->items->isNotEmpty() && $co->items->every(fn($it) => (float)($it->picked_qty ?? 0) >= (float)$it->quantity);
+                $anyPicked = $co->items->contains(fn($it) => (float)($it->picked_qty ?? 0) > 0);
+                if ($allPicked) {
+                    $co->status = 'Đã bốc xong';
+                } elseif ($anyPicked) {
+                    $co->status = 'Đang bốc hàng';
+                } else {
+                    $co->status = 'Chờ bốc';
+                }
+            }
+
+            foreach ($co->items as $it) {
+                $it->order_id = $co->id;
+                $it->gift_quantity = 0;
+                $it->product_name = $it->name;
+                $it->picked_qty = (float)($it->picked_qty ?? 0);
+                $it->checked_qty = (float)($it->checked_qty ?? 0);
+                $it->item_status = $it->item_status ?: ($it->picked_qty >= $it->quantity && $it->quantity > 0 ? 'Đủ hàng' : 'Chờ bốc');
+                $it->is_picked = (bool)($it->is_picked || ($it->picked_qty >= $it->quantity && $it->quantity > 0));
+                $it->is_checked = (bool)($it->is_checked || ($it->checked_qty >= $it->quantity && $it->quantity > 0));
+                $it->category_id = (int)($it->category_id ?: ($it->product?->category_id ?? 0));
+                $it->category_name = $it->category_name ?: ($it->product?->category?->name ?? 'Mặt hàng chung');
+            }
+
+            $orders->push($co);
+        }
 
         $allActiveGroups = \App\Models\StaffGroup::where('status', 'active')->with(['leader'])->get();
         $allCategories = \App\Models\Category::all(['id', 'code', 'name']);
@@ -977,7 +1074,7 @@ class PickingSyncController extends Controller
     /**
      * Kiểm tra user có quyền phân công người khác soạn mặt hàng này không
      */
-    public function canUserAssignItem(?\App\Models\User $user, ?\App\Models\OrderItem $item): bool
+    public function canUserAssignItem(?\App\Models\User $user, $item): bool
     {
         if (!$user) return true;
 
@@ -1006,7 +1103,7 @@ class PickingSyncController extends Controller
      * Đánh giá tiến độ bốc hàng và kiểm hàng theo từng nhóm nhân sự bốc hàng
      * Trạng thái đơn hàng CHỈ được coi là hoàn tất khi 100% các nhóm cùng hoàn thành!
      */
-    public static function evaluateOrderGroupProgress(\App\Models\Order $order, $activeGroups = null, $allCategories = null): array
+    public static function evaluateOrderGroupProgress($order, $activeGroups = null, $allCategories = null): array
     {
         if ($activeGroups === null) {
             $activeGroups = \App\Models\StaffGroup::where('status', 'active')->with(['leader'])->get();

@@ -94,14 +94,14 @@
                     </div>
                 @endif
 
-                <!-- Button 0: Hàng Lẻ Xe (Bán dạo) -->
-                <button type="button" @click="showVanSaleItemsModal = true"
+                <!-- Button 0: Hàng Kho Nhân Sự (Kho Ôm / Xe) -->
+                <button type="button" @click="showHoldingStockModal = true"
                         class="px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-200 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
-                        title="Xem hàng lẻ / bán dạo bốc trên xe">
-                    <i class="fa-solid fa-truck-ramp-box text-emerald-400 text-xs"></i>
-                    <span>Hàng Lẻ Xe</span>
+                        title="Xem hàng tồn kho của nhân sự quản lý xe">
+                    <i class="fa-solid fa-boxes-stacked text-emerald-400 text-xs"></i>
+                    <span>Kho Nhân Sự</span>
                     <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px] font-black bg-emerald-500/30 text-emerald-200 border border-emerald-500/40"
-                          x-text="vanDispatches.length">0</span>
+                          x-text="holdingStocks.length">0</span>
                 </button>
 
                 <!-- Button 1: Hàng Trả Về -->
@@ -447,62 +447,89 @@
     </div>
 
     <!-- ========================================================================= -->
-    <!-- KHỐI: HÀNG LẺ BÁN DẠO / LƯU ĐỘNG TRÊN XE CỦA BẠN (TÍNH NỢ XE)             -->
+    <!-- KHỐI: HÀNG KHO CỦA NHÂN SỰ QUẢN LÝ XE                                    -->
     <!-- ========================================================================= -->
-    <div x-show="vanDispatches.length > 0"
+    <div x-show="holdingStocks.length > 0 || totalHoldingQty > 0 || holdingWarehouse"
          class="rounded-3xl p-4 sm:p-5 bg-gradient-to-r from-emerald-950/80 via-slate-900 to-teal-950/80 border border-emerald-500/40 text-white shadow-xl space-y-3.5">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div class="flex items-center gap-3">
                 <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-xl shadow-lg shadow-emerald-500/30 shrink-0">
-                    <i class="fa-solid fa-truck-ramp-box"></i>
+                    <i class="fa-solid fa-boxes-stacked"></i>
                 </div>
                 <div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <h3 class="font-black text-sm sm:text-base text-white tracking-tight">
-                            Hàng Lẻ Bán Dạo / Hàng Lưu Động Trên Xe
+                            Hàng Kho Của Nhân Sự Quản Lý Xe
                         </h3>
                         <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                              x-text="vanDispatches.length + ' phiếu bốc lên xe'"></span>
+                              x-text="(holdingStocks.length || 0) + ' mặt hàng tồn'"></span>
+                        <template x-if="holdingWarehouse">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                                  x-text="holdingWarehouse.name"></span>
+                        </template>
                     </div>
                     <p class="text-xs text-slate-300 mt-0.5">
-                        Hàng xuất lẻ bán dạo dọc tuyến đường do lái xe trực tiếp quản lý & chịu trách nhiệm công nợ
+                        Nhân sự quản lý: <strong class="text-emerald-300" x-text="vehicleManagerName || 'Lái xe'"></strong> &bull;
+                        Biển số xe: <strong class="text-purple-300" x-text="selectedVehicle?.plate_number || '{{ $selectedPlate ?? '' }}'"></strong>
                     </p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-3 shrink-0 self-end sm:self-center">
+            <div class="flex flex-wrap items-center gap-3 shrink-0 self-end sm:self-center">
                 <div class="text-right">
-                    <span class="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">Tổng Giá Trị Nợ Hàng Xe</span>
-                    <span class="text-lg sm:text-xl font-black text-emerald-300 font-mono" x-text="formatNumber(totalVanSaleDebt) + ' đ'"></span>
+                    <span class="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">Tổng Tồn Kho / Giá Trị</span>
+                    <span class="text-lg sm:text-xl font-black text-emerald-300 font-mono">
+                        <span x-text="formatNumber(totalHoldingQty)"></span> <span class="text-xs font-normal text-slate-300">SP</span> &bull; 
+                        <span x-text="formatNumber(totalHoldingVal) + ' đ'"></span>
+                    </span>
+                    <template x-if="empDebt > 0">
+                        <span class="block text-[11px] font-bold text-amber-400">
+                            Nợ hàng tồn: <span x-text="formatNumber(empDebt) + ' đ'"></span>
+                        </span>
+                    </template>
                 </div>
-                <button type="button" @click="showVanSaleItemsModal = true"
-                        class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all shadow-md shadow-emerald-600/30 flex items-center gap-1.5 cursor-pointer active:scale-95">
-                    <i class="fa-solid fa-list-check"></i>
-                    <span>Kiểm đếm hàng</span>
-                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" @click="showHoldingStockModal = true"
+                            class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95">
+                        <i class="fa-solid fa-list-check text-emerald-400"></i>
+                        <span>Chi tiết kho</span>
+                    </button>
+                    <a :href="'/inventory/holding-sale/create?warehouse_id=' + (holdingWarehouse ? holdingWarehouse.id : '') + '&return_url=' + encodeURIComponent(window.location.href)"
+                       class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all shadow-md shadow-emerald-600/30 flex items-center gap-1.5 cursor-pointer active:scale-95 no-underline">
+                        <i class="fa-solid fa-cart-plus"></i>
+                        <span>+ Bán Hàng</span>
+                    </a>
+                </div>
             </div>
         </div>
 
-        <!-- Bảng xem nhanh các mặt hàng trên xe -->
+        <!-- Bảng xem nhanh các mặt hàng tồn trong kho -->
         <div class="bg-slate-950/60 rounded-2xl p-3 border border-slate-800/80 overflow-x-auto text-xs">
             <div class="flex items-center justify-between text-slate-400 text-[11px] font-bold uppercase mb-2 px-1">
-                <span>Danh mục mặt hàng lẻ trên thùng xe:</span>
-                <span class="text-emerald-400 font-mono" x-text="allVanItems.length + ' loại mặt hàng'"></span>
+                <span>Danh mục hàng tồn kho nhân sự:</span>
+                <span class="text-emerald-400 font-mono" x-text="holdingStocks.length + ' loại mặt hàng'"></span>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                <template x-for="(it, iIdx) in allVanItems" :key="iIdx">
+                <template x-for="(it, iIdx) in holdingStocks" :key="it.id || iIdx">
                     <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 transition-colors">
                         <div class="truncate mr-2">
-                            <p class="font-bold text-white text-xs truncate" x-text="it.name"></p>
-                            <p class="text-[10px] text-slate-400 font-mono" x-text="'Đơn vị: ' + (it.unit || 'cái') + ' | Giá bán: ' + formatNumber(it.unit_price) + ' đ'"></p>
+                            <p class="font-bold text-white text-xs truncate" x-text="it.product_name"></p>
+                            <p class="text-[10px] text-slate-400 font-mono" x-text="'Mã: ' + (it.sku || '--') + ' | ĐVT: ' + (it.unit || 'cái') + ' | Giá: ' + formatNumber(it.price) + ' đ'"></p>
                         </div>
                         <div class="text-right shrink-0">
                             <span class="px-2 py-0.5 rounded-md font-mono font-black text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                                   x-text="'SL: ' + it.quantity"></span>
                             <p class="text-[11px] font-mono font-bold text-slate-300 mt-1" x-text="formatNumber(it.amount) + ' đ'"></p>
+                            <a :href="'/inventory/holding-sale/create?warehouse_id=' + (holdingWarehouse ? holdingWarehouse.id : '') + '&product_id=' + it.product_id + '&return_url=' + encodeURIComponent(window.location.href)"
+                               class="inline-block mt-1 text-[10px] font-bold text-emerald-400 hover:text-emerald-300 hover:underline">
+                                + Bán SP này &rarr;
+                            </a>
                         </div>
                     </div>
                 </template>
+                <div x-show="holdingStocks.length === 0" class="col-span-full py-4 text-center text-slate-400 italic">
+                    Kho của nhân sự phụ trách xe hiện chưa có hàng tồn.
+                </div>
             </div>
         </div>
     </div>
@@ -1265,25 +1292,26 @@
     </div>
 
     <!-- ========================================================================= -->
-    <!-- MODAL: CHI TIẾT HÀNG LẺ LƯU ĐỘNG TRÊN XE (DÀNH CHO TÀI XẾ KIỂM ĐẾM)      -->
+    <!-- MODAL: CHI TIẾT HÀNG KHO NHÂN SỰ QUẢN LÝ XE                               -->
     <!-- ========================================================================= -->
-    <div x-show="showVanSaleItemsModal" x-cloak
+    <div x-show="showHoldingStockModal || showVanSaleItemsModal" x-cloak
          class="fixed inset-0 z-[9999] overflow-y-auto bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
-        <div class="bg-slate-900 text-white rounded-3xl shadow-2xl border border-slate-800 w-full max-w-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
-             @click.away="showVanSaleItemsModal = false">
+        <div class="bg-slate-900 text-white rounded-3xl shadow-2xl border border-slate-800 w-full max-w-3xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+             @click.away="showHoldingStockModal = false; showVanSaleItemsModal = false">
             
             <!-- Modal Header -->
             <div class="p-4 sm:p-5 border-b border-slate-800 bg-gradient-to-r from-emerald-900/80 via-slate-900 to-teal-900/80 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold text-lg">
-                        <i class="fa-solid fa-truck-ramp-box"></i>
+                        <i class="fa-solid fa-boxes-stacked"></i>
                     </div>
                     <div>
-                        <h3 class="text-base font-black tracking-tight text-white">Kiểm Đếm Hàng Lẻ Lưu Động Trên Xe</h3>
-                        <p class="text-xs text-emerald-300 font-mono mt-0.5" x-text="'Xe: ' + (selectedVehicle?.plate_number || '{{ $selectedPlate ?? '' }}')"></p>
+                        <h3 class="text-base font-black tracking-tight text-white">Chi Tiết Hàng Kho Nhân Sự Quản Lý Xe</h3>
+                        <p class="text-xs text-emerald-300 font-mono mt-0.5" 
+                           x-text="'Kho: ' + (holdingWarehouse?.name || 'Kho hàng ôm') + ' &bull; Phụ trách: ' + (vehicleManagerName || 'Lái xe') + ' (' + (selectedVehicle?.plate_number || '{{ $selectedPlate ?? '' }}') + ')'"></p>
                     </div>
                 </div>
-                <button type="button" @click="showVanSaleItemsModal = false" class="text-slate-400 hover:text-white transition-colors cursor-pointer">
+                <button type="button" @click="showHoldingStockModal = false; showVanSaleItemsModal = false" class="text-slate-400 hover:text-white transition-colors cursor-pointer">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -1291,65 +1319,432 @@
             <!-- Modal Body -->
             <div class="p-4 sm:p-5 space-y-4 text-xs overflow-y-auto max-h-[75vh]">
                 
-                <div class="p-3 bg-emerald-950/40 rounded-2xl border border-emerald-500/30 flex items-center justify-between">
-                    <div>
-                        <span class="text-slate-400 text-[11px] block">Tổng tiền hàng lẻ nợ xe:</span>
-                        <span class="text-xl font-black font-mono text-emerald-400" x-text="formatNumber(totalVanSaleDebt) + ' đ'"></span>
+                <!-- Quick KPI row -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800">
+                        <span class="text-slate-400 text-[10px] uppercase font-bold block">Tổng số SKU</span>
+                        <span class="text-lg font-black font-mono text-emerald-400" x-text="holdingStocks.length + ' SP'"></span>
                     </div>
-                    <div class="text-right">
-                        <span class="text-slate-400 text-[11px] block">Tổng loại hàng:</span>
-                        <span class="text-sm font-bold text-white font-mono" x-text="allVanItems.length + ' sản phẩm'"></span>
+                    <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800">
+                        <span class="text-slate-400 text-[10px] uppercase font-bold block">Tổng số lượng tồn</span>
+                        <span class="text-lg font-black font-mono text-sky-400" x-text="formatNumber(totalHoldingQty)"></span>
+                    </div>
+                    <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800">
+                        <span class="text-slate-400 text-[10px] uppercase font-bold block">Tổng giá trị tồn</span>
+                        <span class="text-lg font-black font-mono text-amber-400" x-text="formatNumber(totalHoldingVal) + ' đ'"></span>
+                    </div>
+                    <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800">
+                        <span class="text-slate-400 text-[10px] uppercase font-bold block">Nợ hàng nhân sự</span>
+                        <span class="text-lg font-black font-mono text-rose-400" x-text="formatNumber(empDebt) + ' đ'"></span>
                     </div>
                 </div>
 
-                <!-- Danh sách từng phiếu bốc hàng -->
-                <div class="space-y-3">
-                    <template x-for="(vd, vIdx) in vanDispatches" :key="vd.id">
-                        <div class="bg-slate-950 rounded-2xl border border-slate-800 p-3.5 space-y-2.5">
-                            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                                <div class="flex items-center gap-2">
-                                    <span class="font-mono font-black text-xs text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30" x-text="vd.code"></span>
-                                    <span class="text-[11px] text-slate-400" x-text="'Ngày: ' + formatDate(vd.dispatch_date || vd.created_at)"></span>
-                                </div>
-                                <span class="font-mono font-black text-emerald-400 text-xs" x-text="formatNumber(vd.total_amount) + ' đ'"></span>
-                            </div>
+                <!-- Search bar in modal -->
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass text-slate-400 absolute left-3 top-2.5 pointer-events-none"></i>
+                    <input type="text" x-model="holdingSearchQuery"
+                           placeholder="Tìm nhanh theo tên sản phẩm hoặc mã SKU trong kho..."
+                           class="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-xs">
+                </div>
 
-                            <p class="text-[11px] text-slate-400 italic" x-text="vd.notes ? 'Ghi chú: ' + vd.notes : 'Hàng bốc đi bán dạo lưu động'"></p>
+                <!-- Bảng danh sách hàng tồn -->
+                <div class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-900/90 text-slate-400 text-[11px] font-bold uppercase border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">Sản phẩm</th>
+                                <th class="p-3 text-center">ĐVT</th>
+                                <th class="p-3 text-right">SL Tồn</th>
+                                <th class="p-3 text-right">Giá bán</th>
+                                <th class="p-3 text-right">Thành tiền</th>
+                                <th class="p-3 text-center">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/80">
+                            <template x-for="(it, idx) in filteredHoldingStocks" :key="it.id || idx">
+                                <tr class="hover:bg-slate-900/50 transition-colors">
+                                    <td class="p-3">
+                                        <div class="font-bold text-white" x-text="it.product_name"></div>
+                                        <div class="font-mono text-[10px] text-slate-400" x-text="'Mã: ' + (it.sku || '--')"></div>
+                                    </td>
+                                    <td class="p-3 text-center text-slate-300 font-medium" x-text="it.unit || 'cái'"></td>
+                                    <td class="p-3 text-right font-mono font-black text-emerald-400 text-sm" x-text="it.quantity"></td>
+                                    <td class="p-3 text-right font-mono text-slate-300" x-text="formatNumber(it.price) + ' đ'"></td>
+                                    <td class="p-3 text-right font-mono font-bold text-emerald-300" x-text="formatNumber(it.amount) + ' đ'"></td>
+                                    <td class="p-3 text-center">
+                                        <a :href="'/inventory/holding-sale/create?warehouse_id=' + (holdingWarehouse ? holdingWarehouse.id : '') + '&product_id=' + it.product_id + '&return_url=' + encodeURIComponent(window.location.href)"
+                                           class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] transition-colors inline-flex items-center gap-1 shadow-sm no-underline">
+                                            <i class="fa-solid fa-cart-plus text-[10px]"></i>
+                                            <span>Bán</span>
+                                        </a>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="filteredHoldingStocks.length === 0">
+                                <td colspan="6" class="p-8 text-center text-slate-400 italic">
+                                    Không tìm thấy mặt hàng nào trong kho nhân sự phù hợp.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-                            <!-- Bảng sản phẩm trong phiếu -->
-                            <div class="space-y-1.5">
-                                <template x-for="(it, iIdx) in (vd.items || [])" :key="iIdx">
-                                    <div class="flex items-center justify-between p-2 rounded-xl bg-slate-900 border border-slate-800/80 text-[11.5px]">
-                                        <div>
-                                            <span class="font-bold text-white" x-text="it.name"></span>
-                                            <span class="text-[10px] text-slate-400 block font-mono" x-text="'Đơn giá: ' + formatNumber(it.unit_price) + ' đ/' + (it.unit || 'cái')"></span>
+                <div class="p-3 bg-slate-800/60 rounded-2xl border border-slate-700/60 text-slate-300 text-[11px] leading-relaxed flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        💡 <strong>Lưu ý:</strong> Hàng tồn kho này thuộc trách nhiệm quản lý của nhân sự <strong><span x-text="vehicleManagerName"></span></strong>. Khi phát sinh bán lẻ cho khách dọc đường, nhân sự có thể bấm "Bán hàng" để tạo đơn xuất trực tiếp trừ kho.
+                    </div>
+                    <a :href="'/inventory/holding-sale/create?warehouse_id=' + (holdingWarehouse ? holdingWarehouse.id : '') + '&return_url=' + encodeURIComponent(window.location.href)"
+                       class="shrink-0 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm no-underline">
+                        <i class="fa-solid fa-cart-plus"></i>
+                        <span>+ Bán hàng từ kho này</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-3.5 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
+                <span class="text-xs text-slate-400 font-mono" x-text="'Mã kho: ' + (holdingWarehouse?.code || '--')"></span>
+                <button type="button" @click="showHoldingStockModal = false; showVanSaleItemsModal = false"
+                        class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition-colors cursor-pointer">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL: BÁN HÀNG TRỰC TIẾP TỪ KHO NHÂN SỰ (TƯƠNG TỰ HOLDING SALE CREATE)    -->
+    <!-- ========================================================================= -->
+    <div x-show="showHoldingSaleModal" x-cloak
+         class="fixed inset-0 z-[10000] overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white text-slate-800 rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+             @click.away="showHoldingSaleModal = false">
+            
+            <!-- Modal Header -->
+            <div class="p-4 sm:p-5 border-b border-slate-200 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-white/10 text-emerald-400 border border-white/20 flex items-center justify-center font-bold text-lg">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-base font-black tracking-tight text-white">Tạo Đơn Bán Hàng Trực Tiếp Từ Kho Nhân Sự</h3>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Xuất & Trừ Kho Ngay</span>
+                        </div>
+                        <p class="text-xs text-slate-300 font-medium mt-0.5">
+                            Kho: <strong class="text-white" x-text="holdingWarehouse?.name || 'Kho hàng ôm'"></strong> &bull;
+                            Nhân sự: <strong class="text-emerald-300" x-text="vehicleManagerName || 'Lái xe'"></strong> &bull;
+                            Xe: <strong class="text-purple-300" x-text="selectedVehicle?.plate_number || '{{ $selectedPlate ?? '' }}'"></strong>
+                        </p>
+                    </div>
+                </div>
+                <button type="button" @click="showHoldingSaleModal = false" class="text-slate-300 hover:text-white transition-colors cursor-pointer text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-4 sm:p-6 space-y-4 text-xs overflow-y-auto max-h-[75vh]">
+                
+                <!-- BƯỚC 1: THÔNG TIN KHÁCH HÀNG / ĐẠI LÝ -->
+                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <label class="font-black text-slate-800 text-xs uppercase tracking-tight flex items-center gap-1.5">
+                            <i class="fa-solid fa-user-tag text-blue-700"></i>
+                            <span>1. Thông tin Khách hàng / Đại lý nhận hàng (*)</span>
+                        </label>
+                        <!-- Tab chọn kiểu khách -->
+                        <div class="inline-flex rounded-xl bg-slate-200/80 p-0.5 text-[11px] font-bold">
+                            <button type="button" @click="saleForm.customer_type = 'trip_dealer'"
+                                    :class="saleForm.customer_type === 'trip_dealer' ? 'bg-white text-blue-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'"
+                                    class="px-2.5 py-1 rounded-lg transition-all cursor-pointer">
+                                Đại lý trên xe hôm nay
+                            </button>
+                            <button type="button" @click="saleForm.customer_type = 'dealer'"
+                                    :class="saleForm.customer_type === 'dealer' ? 'bg-white text-blue-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'"
+                                    class="px-2.5 py-1 rounded-lg transition-all cursor-pointer">
+                                Tìm đại lý hệ thống
+                            </button>
+                            <button type="button" @click="saleForm.customer_type = 'walk_in'"
+                                    :class="saleForm.customer_type === 'walk_in' ? 'bg-white text-blue-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'"
+                                    class="px-2.5 py-1 rounded-lg transition-all cursor-pointer">
+                                Khách vãng lai / Khác
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Trường hợp 1: Chọn nhanh đại lý trên xe hôm nay -->
+                    <template x-if="saleForm.customer_type === 'trip_dealer'">
+                        <div class="space-y-2">
+                            <div class="text-[11px] text-slate-500 font-medium">Bấm chọn nhanh một đại lý trên chuyến giao hôm nay:</div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                                <template x-for="td in tripDealers" :key="td.dealer_id || td.name">
+                                    <div @click="selectTripDealer(td)"
+                                         :class="(saleForm.customer_name === td.name) ? 'ring-2 ring-blue-600 bg-blue-50/80 border-blue-400' : 'bg-white hover:bg-slate-100 border-slate-200'"
+                                         class="p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 shadow-2xs">
+                                        <div class="min-w-0">
+                                            <div class="font-bold text-xs text-slate-900 truncate" x-text="td.name"></div>
+                                            <div class="text-[10px] text-slate-500 truncate" x-text="td.address || td.phone || 'Điểm giao'"></div>
                                         </div>
-                                        <div class="text-right">
-                                            <span class="px-2 py-0.5 rounded font-mono font-black text-xs bg-slate-800 text-amber-300" x-text="'x ' + it.quantity"></span>
-                                            <span class="font-mono font-bold text-emerald-400 block text-xs mt-0.5" x-text="formatNumber(it.amount) + ' đ'"></span>
-                                        </div>
+                                        <span x-show="saleForm.customer_name === td.name" class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] shrink-0">
+                                            <i class="fa-solid fa-check"></i>
+                                        </span>
                                     </div>
                                 </template>
                             </div>
                         </div>
                     </template>
 
-                    <div x-show="vanDispatches.length === 0" class="py-8 text-center text-slate-400 italic">
-                        Xe hiện chưa có hàng lẻ lưu động nào được bốc lên.
+                    <!-- Trường hợp 2: Tìm đại lý trong toàn bộ hệ thống -->
+                    <template x-if="saleForm.customer_type === 'dealer'">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 mb-1">Chọn Đại Lý (*):</label>
+                                <select x-model="saleForm.dealer_id" @change="onSystemDealerChange()"
+                                        class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-600">
+                                    <option value="">-- Chọn đại lý từ danh bạ --</option>
+                                    <template x-for="dl in dealers" :key="dl.id">
+                                        <option :value="dl.id" x-text="dl.name + ' (' + (dl.code || dl.phone || 'Đại lý') + ')'"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 mb-1">Số điện thoại:</label>
+                                <input type="text" x-model="saleForm.customer_phone" placeholder="SĐT khách..."
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-blue-600">
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Trường hợp 3: Khách vãng lai / Khách lẻ -->
+                    <template x-if="saleForm.customer_type === 'walk_in'">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 mb-1">Tên khách / Đơn vị mua (*):</label>
+                                <input type="text" x-model="saleForm.customer_name" placeholder="VD: Anh Tuấn (Công trình X)"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-600">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 mb-1">Số điện thoại:</label>
+                                <input type="text" x-model="saleForm.customer_phone" placeholder="VD: 0912..."
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-blue-600">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 mb-1">Địa chỉ giao:</label>
+                                <input type="text" x-model="saleForm.customer_address" placeholder="Địa chỉ giao nhận..."
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-blue-600">
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Khách hàng đã chọn -->
+                    <div class="p-2.5 bg-blue-50/60 rounded-xl border border-blue-200/80 flex flex-wrap items-center justify-between text-xs">
+                        <div class="flex items-center gap-2">
+                            <span class="text-slate-500 font-semibold">Khách mua:</span>
+                            <strong class="text-blue-900 font-black text-sm" x-text="saleForm.customer_name || '(Chưa chọn khách)'"></strong>
+                        </div>
+                        <div class="flex items-center gap-3 text-slate-600 text-[11px]">
+                            <span x-show="saleForm.customer_phone" x-text="'SĐT: ' + saleForm.customer_phone"></span>
+                            <span x-show="saleForm.customer_address" class="truncate max-w-xs" x-text="'ĐC: ' + saleForm.customer_address"></span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="p-3 bg-slate-800/60 rounded-2xl border border-slate-700/60 text-slate-300 text-[11px] leading-relaxed">
-                    💡 <strong>Hướng dẫn Lái xe:</strong> Khi bán lẻ dọc đường cho khách, bạn có thể thu tiền mặt hoặc đưa mã QR MBBank trên app cho khách chuyển khoản. Tiền thu được nộp về cùng tiền COD cuối ca.
+                <!-- BƯỚC 2: CHỌN SẢN PHẨM TRONG KHO ÔM ĐỂ BÁN -->
+                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <label class="font-black text-slate-800 text-xs uppercase tracking-tight flex items-center gap-1.5">
+                            <i class="fa-solid fa-boxes-stacked text-emerald-600"></i>
+                            <span>2. Danh sách sản phẩm bán từ kho ôm (*)</span>
+                        </label>
+                        <span class="text-[11px] text-slate-500 font-mono" x-text="saleForm.items.length + ' sản phẩm trong đơn'"></span>
+                    </div>
+
+                    <!-- Ô tìm & chọn sản phẩm nhanh -->
+                    <div class="relative" @click.outside="showSaleProductDropdown = false">
+                        <div class="relative flex items-center">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 text-slate-400 text-xs pointer-events-none"></i>
+                            <input type="text"
+                                   x-model="saleProductSearch"
+                                   @focus="showSaleProductDropdown = true"
+                                   @input="showSaleProductDropdown = true"
+                                   placeholder="Gõ tên hoặc mã SKU sản phẩm trong kho ôm để thêm..."
+                                   class="w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-600 shadow-2xs">
+                        </div>
+
+                        <!-- Dropdown menu gợi ý -->
+                        <div x-show="showSaleProductDropdown && filteredSaleProducts.length > 0"
+                             class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 max-h-56 overflow-y-auto divide-y divide-slate-100 p-1">
+                            <template x-for="stk in filteredSaleProducts" :key="stk.product_id">
+                                <div @click="addSaleItem(stk)"
+                                     class="p-2.5 hover:bg-emerald-50/80 rounded-xl cursor-pointer transition-colors flex items-center justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <div class="font-bold text-xs text-slate-900 truncate" x-text="stk.product_name"></div>
+                                        <div class="text-[10px] text-slate-500 font-mono" x-text="'Mã: ' + (stk.sku || '--') + ' | ĐVT: ' + (stk.unit || 'cái') + ' | Giá bán: ' + formatNumber(stk.price) + ' đ'"></div>
+                                    </div>
+                                    <div class="text-right shrink-0">
+                                        <span class="px-2 py-0.5 rounded-md font-mono font-bold text-xs bg-emerald-100 text-emerald-800"
+                                              x-text="'Tồn: ' + stk.quantity + ' ' + (stk.unit || '')"></span>
+                                        <span class="block text-[10px] text-emerald-600 font-bold mt-0.5">+ Thêm</span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Bảng các sản phẩm đã thêm vào đơn -->
+                    <div class="rounded-xl border border-slate-200 overflow-hidden bg-white">
+                        <table class="w-full text-left text-xs divide-y divide-slate-200">
+                            <thead class="bg-slate-100 text-slate-600 text-[10.5px] font-bold uppercase">
+                                <tr>
+                                    <th class="p-2.5">Sản phẩm</th>
+                                    <th class="p-2.5 text-center">Tồn kho</th>
+                                    <th class="p-2.5 text-center w-32">SL Bán</th>
+                                    <th class="p-2.5 text-right w-32">Đơn giá</th>
+                                    <th class="p-2.5 text-right w-32">Thành tiền</th>
+                                    <th class="p-2.5 text-center w-10">Xóa</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <template x-for="(it, iIdx) in saleForm.items" :key="it.product_id">
+                                    <tr class="hover:bg-slate-50/60">
+                                        <td class="p-2.5">
+                                            <div class="font-bold text-slate-900 text-xs" x-text="it.name"></div>
+                                            <div class="text-[10px] text-slate-500 font-mono" x-text="'SKU: ' + it.sku + ' | ĐVT: ' + it.unit"></div>
+                                        </td>
+                                        <td class="p-2.5 text-center font-mono font-bold text-emerald-700" x-text="it.available_stock"></td>
+                                        <td class="p-2.5 text-center">
+                                            <div class="flex items-center justify-center gap-1">
+                                                <button type="button" @click="if (it.quantity > 1) it.quantity--"
+                                                        class="w-6 h-6 rounded bg-slate-200 hover:bg-slate-300 font-bold text-slate-700 flex items-center justify-center cursor-pointer">-</button>
+                                                <input type="number" min="1" :max="it.available_stock"
+                                                       x-model.number="it.quantity"
+                                                       class="w-14 h-7 text-center font-mono font-bold text-xs border border-slate-300 rounded focus:outline-none focus:border-blue-600">
+                                                <button type="button" @click="if (it.quantity < it.available_stock) it.quantity++"
+                                                        class="w-6 h-6 rounded bg-slate-200 hover:bg-slate-300 font-bold text-slate-700 flex items-center justify-center cursor-pointer">+</button>
+                                            </div>
+                                        </td>
+                                        <td class="p-2.5 text-right">
+                                            <input type="number" step="1000" min="0"
+                                                   x-model.number="it.unit_price"
+                                                   class="w-24 h-7 px-2 text-right font-mono font-bold text-xs border border-slate-300 rounded focus:outline-none focus:border-blue-600">
+                                        </td>
+                                        <td class="p-2.5 text-right font-mono font-black text-emerald-700 text-xs"
+                                            x-text="formatNumber(it.quantity * it.unit_price) + ' đ'"></td>
+                                        <td class="p-2.5 text-center">
+                                            <button type="button" @click="removeSaleItem(iIdx)"
+                                                    class="text-rose-500 hover:text-rose-700 text-sm cursor-pointer" title="Xóa mặt hàng này">
+                                                <i class="fa-solid fa-trash-can"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <tr x-show="saleForm.items.length === 0">
+                                    <td colspan="6" class="p-6 text-center text-slate-400 italic">
+                                        Chưa có sản phẩm nào được chọn. Vui lòng gõ tìm và chọn sản phẩm ở ô trên.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+
+                <!-- BƯỚC 3: HÌNH THỨC THANH TOÁN & GHI CHÚ -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Thanh toán -->
+                    <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
+                        <label class="font-black text-slate-800 text-xs uppercase tracking-tight flex items-center gap-1.5">
+                            <i class="fa-solid fa-wallet text-amber-600"></i>
+                            <span>3. Hình thức thanh toán</span>
+                        </label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" @click="saleForm.payment_method = 'Tiền mặt'"
+                                    :class="saleForm.payment_method === 'Tiền mặt' ? 'bg-emerald-600 text-white font-bold border-emerald-600 shadow-sm' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'"
+                                    class="py-2 rounded-xl border text-xs flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors">
+                                <i class="fa-solid fa-money-bill-wave"></i>
+                                <span>Tiền mặt</span>
+                            </button>
+                            <button type="button" @click="saleForm.payment_method = 'VietQR'"
+                                    :class="saleForm.payment_method === 'VietQR' ? 'bg-sky-600 text-white font-bold border-sky-600 shadow-sm' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'"
+                                    class="py-2 rounded-xl border text-xs flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors">
+                                <i class="fa-solid fa-qrcode"></i>
+                                <span>VietQR</span>
+                            </button>
+                            <button type="button" @click="saleForm.payment_method = 'Công nợ (Ghi nợ đại lý)'"
+                                    :disabled="!saleForm.dealer_id"
+                                    :class="saleForm.payment_method === 'Công nợ (Ghi nợ đại lý)' ? 'bg-purple-700 text-white font-bold border-purple-700 shadow-sm' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'"
+                                    class="py-2 rounded-xl border text-xs flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                                <i class="fa-solid fa-file-invoice-dollar"></i>
+                                <span>Ghi nợ</span>
+                            </button>
+                        </div>
+
+                        <!-- Mã VietQR thanh toán nhanh tại chỗ -->
+                        <div x-show="saleForm.payment_method === 'VietQR' && saleTotalAmount > 0"
+                             class="p-3 bg-white rounded-xl border border-sky-200 flex flex-col items-center gap-1.5 text-center">
+                            <img :src="holdingSaleVietQrUrl" alt="VietQR" class="w-36 h-36 object-contain rounded-lg border border-slate-100 shadow-inner">
+                            <div class="text-[10px] text-slate-500">Quét mã chuyển khoản MBBank:</div>
+                            <div class="font-mono font-black text-sky-700 text-sm" x-text="formatNumber(saleTotalAmount) + ' đ'"></div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1">Ghi chú đơn bán:</label>
+                            <input type="text" x-model="saleForm.notes" placeholder="VD: Khách lấy thêm 5 cây tại điểm giao..."
+                                   class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-blue-600">
+                        </div>
+                    </div>
+
+                    <!-- Tổng kết giá trị -->
+                    <div class="p-4 bg-slate-900 text-white rounded-2xl flex flex-col justify-between space-y-3">
+                        <div>
+                            <span class="text-[10px] uppercase font-bold text-emerald-400 tracking-wider block">Tổng Kết Đơn Bán Kho Ôm</span>
+                            <div class="mt-2 space-y-1.5 text-xs">
+                                <div class="flex items-center justify-between text-slate-300">
+                                    <span>Tổng số lượng sản phẩm:</span>
+                                    <strong class="font-mono text-white text-sm" x-text="saleTotalQty + ' SP'"></strong>
+                                </div>
+                                <div class="flex items-center justify-between text-slate-300">
+                                    <span>Số loại mặt hàng:</span>
+                                    <strong class="font-mono text-white" x-text="saleForm.items.length + ' loại'"></strong>
+                                </div>
+                                <div class="flex items-center justify-between text-slate-300">
+                                    <span>Hình thức:</span>
+                                    <span class="font-bold text-emerald-300" x-text="saleForm.payment_method"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-800">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs uppercase font-bold text-slate-400">Tổng Thành Tiền:</span>
+                                <span class="text-2xl font-black font-mono text-emerald-400" x-text="formatNumber(saleTotalAmount) + ' đ'"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- Modal Footer -->
-            <div class="p-3.5 bg-slate-950 border-t border-slate-800 flex items-center justify-end">
-                <button type="button" @click="showVanSaleItemsModal = false"
-                        class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition-colors cursor-pointer">
-                    Đóng
-                </button>
+            <div class="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <a :href="'/inventory/holding-sale/create?warehouse_id=' + (holdingWarehouse ? holdingWarehouse.id : '')"
+                   target="_blank"
+                   class="text-xs text-blue-700 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                    <span>Mở màn hình bán hàng đầy đủ trong tab mới ↗</span>
+                </a>
+
+                <div class="flex items-center gap-2 justify-end">
+                    <button type="button" @click="showHoldingSaleModal = false"
+                            class="px-4 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs transition-colors cursor-pointer">
+                        Hủy
+                    </button>
+                    <button type="button" @click="submitHoldingSale()" :disabled="isSubmittingHoldingSale || saleForm.items.length === 0"
+                            class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs transition-all shadow-md shadow-emerald-600/30 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span x-text="isSubmittingHoldingSale ? 'Đang xuất kho...' : 'Xác Nhận Bán & Xuất Kho Ngay'"></span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1367,6 +1762,15 @@
     "accountants": @json($accountants ?? []),
     "warehouseStaff": @json($warehouseStaff ?? []),
     "warehouses": @json($warehouses ?? []),
+    "holdingWarehouse": @json($holdingWarehouse ?? null),
+    "holdingStocks": @json($holdingStocks ?? []),
+    "totalHoldingQty": {{ (float)($totalHoldingQty ?? 0) }},
+    "totalHoldingVal": {{ (float)($totalHoldingVal ?? 0) }},
+    "totalHoldingSkus": {{ (int)($totalHoldingSkus ?? 0) }},
+    "empDebt": {{ (float)($empDebt ?? 0) }},
+    "vehicleManagerName": @json($vehicleManagerName ?? ''),
+    "vehicleManagerId": @json($vehicleManagerId ?? null),
+    "dealers": @json($dealers ?? []),
     "driverVanDispatches": @json($driverVanDispatches ?? []),
     "totalVanSaleDebt": {{ (float)($totalVanSaleDebt ?? 0) }}
 }
@@ -1397,24 +1801,275 @@ function deliveryExecutionApp() {
         warehouseStaff: rawData.warehouseStaff || [],
         warehouses: rawData.warehouses || [],
 
-        // Hàng lẻ bán dạo trên xe
+        // Hàng kho nhân sự quản lý xe
+        showHoldingStockModal: false,
         showVanSaleItemsModal: false,
+        holdingWarehouse: rawData.holdingWarehouse || null,
+        holdingStocks: rawData.holdingStocks || [],
+        totalHoldingQty: Number(rawData.totalHoldingQty || 0),
+        totalHoldingVal: Number(rawData.totalHoldingVal || 0),
+        totalHoldingSkus: Number(rawData.totalHoldingSkus || 0),
+        empDebt: Number(rawData.empDebt || 0),
+        vehicleManagerName: rawData.vehicleManagerName || '',
+        vehicleManagerId: rawData.vehicleManagerId || null,
+        dealers: rawData.dealers || [],
+        holdingSearchQuery: '',
+
+        // Modal Bán hàng từ kho nhân sự (Tương tự holding_sale_create.blade.php)
+        showHoldingSaleModal: false,
+        isSubmittingHoldingSale: false,
+        saleForm: {
+            customer_type: 'trip_dealer', // 'trip_dealer' | 'dealer' | 'walk_in'
+            dealer_id: '',
+            customer_name: '',
+            customer_phone: '',
+            customer_address: '',
+            payment_method: 'Tiền mặt',
+            notes: '',
+            items: []
+        },
+        saleProductSearch: '',
+        showSaleProductDropdown: false,
+
+        // Danh sách các đại lý có đơn trên xe hôm nay (duy nhất)
+        get tripDealers() {
+            const map = new Map();
+            (this.orders || []).forEach(o => {
+                const id = o.dealer_id || o.customer_name;
+                if (!map.has(id)) {
+                    map.set(id, {
+                        dealer_id: o.dealer_id || '',
+                        name: o.customer_name || 'Đại lý',
+                        phone: o.customer_phone || '',
+                        address: o.customer_address || ''
+                    });
+                }
+            });
+            return Array.from(map.values());
+        },
+
+        get filteredSaleProducts() {
+            if (!this.saleProductSearch || !this.saleProductSearch.trim()) {
+                return this.holdingStocks;
+            }
+            const q = this.saleProductSearch.toLowerCase().trim();
+            return (this.holdingStocks || []).filter(s => 
+                (s.product_name && s.product_name.toLowerCase().includes(q)) ||
+                (s.sku && s.sku.toLowerCase().includes(q))
+            );
+        },
+
+        openHoldingSaleModal(preselectedItem = null, preselectedDealer = null) {
+            // Reset form
+            this.saleForm = {
+                customer_type: 'trip_dealer',
+                dealer_id: '',
+                customer_name: '',
+                customer_phone: '',
+                customer_address: '',
+                payment_method: 'Tiền mặt',
+                notes: 'Bán trực tiếp từ kho ' + (this.holdingWarehouse?.name || 'nhân sự'),
+                items: []
+            };
+            this.saleProductSearch = '';
+            this.showSaleProductDropdown = false;
+
+            // Nếu có preselectedDealer
+            if (preselectedDealer) {
+                this.selectTripDealer(preselectedDealer);
+            } else if (this.tripDealers.length > 0) {
+                this.selectTripDealer(this.tripDealers[0]);
+            }
+
+            // Nếu có preselectedItem
+            if (preselectedItem) {
+                this.addSaleItem(preselectedItem);
+            }
+
+            this.showHoldingSaleModal = true;
+        },
+
+        selectTripDealer(d) {
+            this.saleForm.customer_type = 'trip_dealer';
+            this.saleForm.dealer_id = d.dealer_id || '';
+            this.saleForm.customer_name = d.name;
+            this.saleForm.customer_phone = d.phone || '';
+            this.saleForm.customer_address = d.address || '';
+        },
+
+        onSystemDealerChange() {
+            const dl = (this.dealers || []).find(d => String(d.id) === String(this.saleForm.dealer_id));
+            if (dl) {
+                this.saleForm.customer_name = dl.name;
+                this.saleForm.customer_phone = dl.phone || '';
+                this.saleForm.customer_address = dl.address || '';
+            }
+        },
+
+        addSaleItem(stockItem) {
+            if (!stockItem) return;
+            const existing = this.saleForm.items.find(i => String(i.product_id) === String(stockItem.product_id));
+            const maxStock = Number(stockItem.quantity ?? stockItem.stock_quantity ?? 0);
+            if (existing) {
+                if (existing.quantity < maxStock) {
+                    existing.quantity++;
+                } else {
+                    alert(`Sản phẩm [${stockItem.sku}] ${stockItem.product_name} chỉ còn tồn ${maxStock} trong kho!`);
+                }
+            } else {
+                this.saleForm.items.push({
+                    product_id: stockItem.product_id,
+                    sku: stockItem.sku,
+                    name: stockItem.product_name || stockItem.name,
+                    unit: stockItem.unit || 'cái',
+                    available_stock: maxStock,
+                    quantity: 1,
+                    unit_price: Number(stockItem.price || 0)
+                });
+            }
+            this.saleProductSearch = '';
+            this.showSaleProductDropdown = false;
+        },
+
+        removeSaleItem(idx) {
+            this.saleForm.items.splice(idx, 1);
+        },
+
+        get saleTotalQty() {
+            return (this.saleForm.items || []).reduce((sum, it) => sum + Number(it.quantity || 0), 0);
+        },
+
+        get saleTotalAmount() {
+            return (this.saleForm.items || []).reduce((sum, it) => sum + (Number(it.quantity || 0) * Number(it.unit_price || 0)), 0);
+        },
+
+        // Sinh link VietQR khi khách chọn quét mã thanh toán đơn bán này
+        get holdingSaleVietQrUrl() {
+            const amt = this.saleTotalAmount;
+            if (amt <= 0) return '';
+            const memo = encodeURIComponent('BAN ' + (this.selectedVehicle?.plate_number || '') + ' ' + (this.saleForm.customer_name ? this.saleForm.customer_name.substring(0, 15) : 'KHO'));
+            return `https://img.vietqr.io/image/${this.bankInfo.bankId}-${this.bankInfo.accountNo}-compact2.png?amount=${amt}&addInfo=${memo}&accountName=${encodeURIComponent(this.bankInfo.accountName)}`;
+        },
+
+        async submitHoldingSale() {
+            if (!this.saleForm.customer_name || !this.saleForm.customer_name.trim()) {
+                alert('Vui lòng nhập tên khách hàng hoặc chọn đại lý nhận hàng!');
+                return;
+            }
+            if (this.saleForm.items.length === 0) {
+                alert('Vui lòng chọn ít nhất 1 sản phẩm từ kho để bán!');
+                return;
+            }
+            for (let it of this.saleForm.items) {
+                if (Number(it.quantity) <= 0) {
+                    alert(`Số lượng bán cho sản phẩm [${it.sku}] phải lớn hơn 0!`);
+                    return;
+                }
+                if (Number(it.quantity) > Number(it.available_stock)) {
+                    alert(`Sản phẩm [${it.sku}] ${it.name} chỉ còn tồn ${it.available_stock} trong kho. Không thể bán ${it.quantity}!`);
+                    return;
+                }
+            }
+
+            this.isSubmittingHoldingSale = true;
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const pMethod = this.saleForm.payment_method;
+                const isPaid = (pMethod === 'Tiền mặt' || pMethod === 'VietQR');
+
+                const payload = {
+                    warehouse: this.holdingWarehouse ? this.holdingWarehouse.name : 'Kho xe lưu động',
+                    warehouse_id: this.holdingWarehouse ? this.holdingWarehouse.id : null,
+                    employee_id: this.vehicleManagerId || (this.holdingWarehouse ? this.holdingWarehouse.employee_id : null),
+                    employee_name: this.vehicleManagerName || '',
+                    sales_rep_id: this.vehicleManagerId || null,
+                    salesRepId: this.vehicleManagerId || null,
+                    assigned_vehicle_plate: this.selectedVehicle?.plate_number || '',
+                    assignedVehiclePlate: this.selectedVehicle?.plate_number || '',
+                    assigned_driver_id: this.vehicleManagerId || null,
+                    order_type: 'holding_sale',
+                    orderType: 'holding_sale',
+                    is_holding_stock: true,
+                    is_holding_stock_sale: true,
+                    status: 'Đã giao',
+                    dealerId: this.saleForm.dealer_id || null,
+                    dealerName: this.saleForm.customer_name,
+                    customerName: this.saleForm.customer_name,
+                    customerPhone: this.saleForm.customer_phone,
+                    customerAddress: this.saleForm.customer_address,
+                    deliveryAddress: this.saleForm.customer_address,
+                    paymentMethod: pMethod,
+                    paymentStatus: isPaid ? 'Đã thanh toán' : 'Ghi nợ đại lý',
+                    notes: this.saleForm.notes || ('Bán trực tiếp từ kho ' + (this.holdingWarehouse?.name || 'nhân sự')),
+                    items: this.saleForm.items.map(it => ({
+                        product_id: parseInt(it.product_id, 10),
+                        name: it.name,
+                        sku: it.sku,
+                        unit: it.unit,
+                        quantity: Number(it.quantity),
+                        unitPrice: Number(it.unit_price),
+                        unit_price: Number(it.unit_price),
+                        discount: 0,
+                        amount: Number(it.quantity) * Number(it.unit_price),
+                        isChecked: true,
+                        isPicked: true
+                    }))
+                };
+
+                const res = await fetch('/api/orders/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token || ''
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (res.ok && (data.success || data.order_id || data.id || data.order?.id)) {
+                    // Trừ tồn kho local trực tiếp trên màn hình
+                    this.saleForm.items.forEach(saleItem => {
+                        const target = (this.holdingStocks || []).find(s => String(s.product_id) === String(saleItem.product_id));
+                        if (target) {
+                            target.quantity = Math.max(0, Number(target.quantity) - Number(saleItem.quantity));
+                            target.stock_quantity = target.quantity;
+                            target.amount = target.quantity * Number(target.price || 0);
+                        }
+                    });
+
+                    // Tính lại tổng tồn
+                    this.totalHoldingQty = this.holdingStocks.reduce((sum, s) => sum + Number(s.quantity || 0), 0);
+                    this.totalHoldingVal = this.holdingStocks.reduce((sum, s) => sum + (Number(s.quantity || 0) * Number(s.price || 0)), 0);
+
+                    // Đóng modal & hiển thị Toast
+                    this.showHoldingSaleModal = false;
+                    this.showToast(`✅ Bán hàng thành công! Đã tạo đơn bán và trừ kho ${this.saleTotalQty} sản phẩm (${this.formatNumber(this.saleTotalAmount)} đ)`, 'success');
+                } else {
+                    alert('Lỗi tạo đơn bán hàng: ' + (data.message || data.error || 'Vui lòng kiểm tra lại'));
+                }
+            } catch (err) {
+                alert('Lỗi kết nối máy chủ: ' + err.message);
+            } finally {
+                this.isSubmittingHoldingSale = false;
+            }
+        },
+
+        get filteredHoldingStocks() {
+            if (!this.holdingSearchQuery) return this.holdingStocks;
+            const q = this.holdingSearchQuery.toLowerCase().trim();
+            return (this.holdingStocks || []).filter(it => 
+                (it.product_name && it.product_name.toLowerCase().includes(q)) ||
+                (it.sku && it.sku.toLowerCase().includes(q))
+            );
+        },
+
+        // Legacy van dispatches fallback if any
         vanDispatches: rawData.driverVanDispatches || [],
         totalVanSaleDebt: Number(rawData.totalVanSaleDebt || 0),
 
         get allVanItems() {
-            const list = [];
-            (this.vanDispatches || []).forEach(vd => {
-                (vd.items || []).forEach(it => {
-                    list.push({
-                        ...it,
-                        quantity: Number(it.quantity || 0),
-                        unit_price: Number(it.unit_price || 0),
-                        amount: Number(it.amount || ((it.quantity || 0) * (it.unit_price || 0)))
-                    });
-                });
-            });
-            return list;
+            return this.holdingStocks;
         },
 
         searchQuery: '',
@@ -1722,7 +2377,9 @@ function deliveryExecutionApp() {
         },
 
         changeVehicle(plate) {
-            window.location.href = '/driver-portal?vehicle=' + encodeURIComponent(plate);
+            const url = new URL(window.location.href);
+            url.searchParams.set('vehicle', plate);
+            window.location.href = url.toString();
         },
 
         showToast(msg, type = 'success') {

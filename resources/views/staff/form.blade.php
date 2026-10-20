@@ -128,6 +128,7 @@
                         <option value="Sales">Kinh Doanh & Bán Hàng</option>
                         <option value="Warehouse">Kho Vận & Quản Lý Vật Tư</option>
                         <option value="Logistics">Vận Tải & Đội Xe Giao Hàng</option>
+                        <option value="Technician">Kỹ Thuật & Dịch Vụ Máy Lọc</option>
                     </select>
                 </div>
 
@@ -142,6 +143,7 @@
                         <option value="dealer_sales">🏪 Sale Đại Lý Phụ Thuộc (Từ Đại lý cài vào)</option>
                         <option value="driver">🚚 Người Vận Chuyển / Lái Xe (Chịu nợ hàng xe)</option>
                         <option value="warehouse">📦 Nhân Viên Kho (Soạn hàng & QC)</option>
+                        <option value="technician">🔧 Kỹ Thuật Viên Lắp Đặt / Sửa Chữa</option>
                         <option value="accountant">💰 Kế Toán Công Nợ & Quỹ</option>
                         <option value="manager">👑 Ban Lãnh Đạo / Quản Lý</option>
                     </select>
@@ -232,7 +234,7 @@
             </div>
 
             <!-- Role Selection Cards -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-3">
                 <template x-for="r in rolesList" :key="r.id">
                     <div @click="selectRole(r.slug)"
                          class="p-3.5 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between select-none"
@@ -442,6 +444,23 @@ const PERM_DICT = {
     'staff_list.edit': { name: 'Sửa Thông Tin', desc: 'Cập nhật phòng ban, chức vụ, mức lương cơ bản', icon: 'fa-solid fa-pen' },
     'staff_list.lock': { name: 'Khóa / Thôi Việc', desc: 'Khóa tài khoản truy cập khi nhân sự nghỉ việc', icon: 'fa-solid fa-user-slash' },
     
+    'water_filter.view': { name: 'Xem Phân Hệ Máy Lọc', desc: 'Xem phân hệ lắp đặt và sửa chữa máy lọc nước', icon: 'fa-solid fa-droplet' },
+    'water_filter.install_view': { name: 'Xem Đơn Lắp Đặt', desc: 'Tra cứu danh sách & chi tiết các đơn đi lắp đặt máy lọc', icon: 'fa-solid fa-wrench' },
+    'water_filter.install_create': { name: 'Lên Đơn Lắp Đặt', desc: 'Khởi tạo đơn giao hàng và lắp đặt máy lọc nước cho khách', icon: 'fa-solid fa-plus' },
+    'water_filter.install_edit': { name: 'Sửa Đơn Lắp Đặt', desc: 'Chỉnh sửa kỹ thuật viên phụ trách, lịch hẹn và phụ kiện kèm', icon: 'fa-solid fa-pen' },
+    'water_filter.install_status': { name: 'Cập Nhật Trạng Thái Lắp', desc: 'Chuyển trạng thái đơn, ghi nhận chỉ số TDS & nghiệm thu', icon: 'fa-solid fa-clipboard-check' },
+    'water_filter.install_delete': { name: 'Xóa Đơn Lắp Đặt', desc: 'Xóa đơn lắp đặt nháp hoặc đơn bị hủy', icon: 'fa-solid fa-trash' },
+    'water_filter.repair_view': { name: 'Xem Phiếu Sửa Chữa', desc: 'Tra cứu danh sách tiếp nhận sửa chữa máy lọc & bảo hành', icon: 'fa-solid fa-screwdriver-wrench' },
+    'water_filter.repair_create': { name: 'Tiếp Nhận Sửa Chữa', desc: 'Lập phiếu tiếp nhận máy lọc tại xưởng hoặc sửa chữa tại nhà', icon: 'fa-solid fa-plus' },
+    'water_filter.repair_edit': { name: 'Chẩn Đoán & Thay Vật Tư', desc: 'Ghi nhận hiện tượng hỏng, giải pháp và phụ tùng thay thế', icon: 'fa-solid fa-pen' },
+    'water_filter.repair_status': { name: 'Đổi Trạng Thái Sửa & BH', desc: 'Cập nhật tiến độ sửa, thanh toán công/vật tư và bàn giao máy', icon: 'fa-solid fa-arrows-rotate' },
+    'water_filter.repair_delete': { name: 'Xóa Phiếu Sửa Chữa', desc: 'Xóa phiếu sửa chữa nháp khỏi hệ thống', icon: 'fa-solid fa-trash' },
+    'water_filter.parts_view': { name: 'Xem Kho Phụ Tùng', desc: 'Tra cứu danh mục linh kiện, lõi lọc nước và số lượng tồn', icon: 'fa-solid fa-boxes-stacked' },
+    'water_filter.parts_import': { name: 'Nhập Kho Phụ Tùng', desc: 'Tạo phiếu nhập thêm linh kiện phụ tùng vào kho độc lập', icon: 'fa-solid fa-file-arrow-down' },
+    'water_filter.parts_manage': { name: 'Quản Lý Phụ Tùng', desc: 'Thêm mới mã linh kiện, cập nhật giá xuất và định mức tồn', icon: 'fa-solid fa-gears' },
+    'water_filter.parts_delete': { name: 'Xóa Mã Phụ Tùng', desc: 'Xóa mã phụ tùng linh kiện chưa từng phát sinh xuất nhập', icon: 'fa-solid fa-trash' },
+    'water_filter.models_manage': { name: 'Quản Lý Model Máy Lọc', desc: 'Thêm mới, sửa và quản lý danh mục Model máy lọc nước', icon: 'fa-solid fa-cube' },
+    
     'payroll.view': { name: 'Xem Bảng Lương', desc: 'Tra cứu phiếu lương cá nhân và bảng lương phòng ban', icon: 'fa-regular fa-eye' },
     'attendance.view': { name: 'Xem Bảng Chấm Công', desc: 'Theo dõi giờ vào/ra ca và lịch sử định vị GPS chấm công', icon: 'fa-regular fa-eye' },
     'attendance.checkin': { name: 'Chấm Công GPS', desc: 'Thực hiện điểm danh ca làm việc qua điện thoại', icon: 'fa-solid fa-location-dot' },
@@ -556,7 +575,8 @@ function staffFormApp() {
                 'Warehouse_Manager': 'fa-solid fa-boxes-stacked',
                 'Warehouse_Staff': 'fa-solid fa-dolly',
                 'Driver': 'fa-solid fa-truck-fast',
-                'Accountant_Chief': 'fa-solid fa-calculator'
+                'Accountant_Chief': 'fa-solid fa-calculator',
+                'Technician': 'fa-solid fa-screwdriver-wrench'
             };
             return icons[slug] || 'fa-solid fa-user-shield';
         },

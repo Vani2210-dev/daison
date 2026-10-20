@@ -23,6 +23,7 @@ class Product extends Model
         'conversion_rate',
         'conversion_price',
         'cost_price',
+        'price',
         'latest_cost_price',
         'price_tiers',
         'vat_rate',
@@ -38,6 +39,7 @@ class Product extends Model
 
     protected $casts = [
         'cost_price' => 'decimal:2',
+        'price' => 'decimal:2',
         'latest_cost_price' => 'decimal:2',
         'vat_rate' => 'decimal:2',
         'conversion_rate' => 'decimal:4',
@@ -75,6 +77,16 @@ class Product extends Model
         return $this->belongsToMany(Warehouse::class, 'warehouse_stocks')
             ->withPivot('stock_quantity', 'reserved_quantity', 'location')
             ->withTimestamps();
+    }
+
+    public function batches()
+    {
+        return $this->hasMany(ProductBatch::class)->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC');
+    }
+
+    public function activeBatches()
+    {
+        return $this->hasMany(ProductBatch::class)->where('remaining_quantity', '>', 0)->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC');
     }
 
     public function getStockInWarehouse($warehouseIdentifier): float

@@ -14,7 +14,7 @@ class OrderController extends Controller
      */
     public function getBootstrapData()
     {
-        return Order::with(['items.product', 'dealer', 'salesRep', 'creator', 'salesAccountant', 'assignedDriver', 'warehouseStaff'])
+        return Order::companyOrders()->with(['items.product', 'dealer', 'salesRep', 'creator', 'salesAccountant', 'assignedDriver', 'warehouseStaff'])
             ->latest('updated_at')
             ->get()
             ->map(function ($o) {
@@ -147,6 +147,79 @@ class OrderController extends Controller
 
         if (!$orderId || !$status) {
             return response()->json(['success' => false, 'message' => 'Missing orderId or status'], 422);
+        }
+
+        $consignmentOrder = null;
+        if (is_numeric($orderId) && (int)$orderId >= 900000) {
+            $consignmentOrder = \App\Models\ConsignmentOrder::with(['items.product.category', 'staff', 'warehouse'])->find((int)$orderId - 900000);
+        }
+        if (!$consignmentOrder) {
+            $consignmentOrder = \App\Models\ConsignmentOrder::with(['items.product.category', 'staff', 'warehouse'])->where('code', $orderId)->first();
+        }
+
+        if ($consignmentOrder) {
+            $oldStatus = $consignmentOrder->status;
+            $consignmentOrder->status = $status;
+            if ($request->has('picking_date') || $request->has('pickingDate')) {
+                $consignmentOrder->picking_date = $request->input('picking_date') ?? $request->input('pickingDate');
+            }
+            $consignmentOrder->save();
+
+            $authUser = auth()->user();
+            $performerName = $authUser?->name ?? 'Người dùng';
+            $performerId = $authUser?->id;
+
+            // Nếu đơn hàng ôm chuyển sang trạng thái đã bốc xong / đã kiểm hàng / xuất kho và đã được kế toán duyệt
+            if (in_array($status, ['Đã bốc xong', 'Kho đã xuất đủ', 'Đã kiểm hàng', 'Sẵn sàng xuất xe', 'Đang giao hàng', 'Hoàn tất', 'in_progress']) && !$consignmentOrder->stock_deducted && $consignmentOrder->approved_at) {
+                $consignmentOrder->transferStockToEmployeeHoldingWarehouse($performerId, $performerName);
+            }
+
+            try {
+                \App\Models\AuditLog::create([
+                    'timestamp'            => now()->format('Y-m-d H:i:s'),
+                    'performer_name'       => $performerName,
+                    'user_id'              => $performerId,
+                    'action'               => 'Cập nhật trạng thái đơn ôm',
+                    'module'               => 'Đơn Hàng Ôm',
+                    'target_document_code' => $consignmentOrder->code,
+                    'field_name'           => 'Trạng thái chứng từ',
+                    'old_value'            => $oldStatus,
+                    'new_value'            => $status,
+                    'notes'                => "Chuyển tiến trình đơn hàng ôm từ [{$oldStatus}] sang [{$status}]",
+                ]);
+
+                \App\Models\PickingSyncEvent::create([
+                    'order_id'            => (string) (900000 + $consignmentOrder->id),
+                    'event_type'          => 'ORDER_STATUS_CHANGED',
+                    'performer_name'      => $performerName,
+                    'order_status'        => $status,
+                    'extra_data'          => [
+                        'orderId'      => 900000 + $consignmentOrder->id,
+                        'orderCode'    => $consignmentOrder->code,
+                        'oldStatus'    => $oldStatus,
+                        'newStatus'    => $status,
+                        'customerName' => 'Hàng Ôm - ' . ($consignmentOrder->staff_name ?: 'NVKD'),
+                        'warehouse'    => $consignmentOrder->warehouse_name ?: 'Kho Tổng Mê Linh',
+                        'performer'    => $performerName,
+                        'modifiedAt'   => now()->format('H:i:s d/m/Y'),
+                    ],
+                    'created_at'          => now(),
+                ]);
+            } catch (\Throwable $e) {}
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cập nhật trạng thái đơn hàng ôm thành công',
+                'order' => [
+                    'id'            => (string) (900000 + $consignmentOrder->id),
+                    'orderCode'     => $consignmentOrder->code,
+                    'status'        => $consignmentOrder->status,
+                    'stockDeducted' => false,
+                ],
+                'dealerId'   => null,
+                'dealerDebt' => null,
+                'auditLogs'  => [],
+            ]);
         }
 
         $order = Order::where('id', $orderId)
@@ -396,7 +469,7 @@ class OrderController extends Controller
 
         // Tự động gán Đại lý nếu Người tạo đơn hoặc Sales phụ trách là Sale Đại Lý Phụ Thuộc
         $activeUser = $creatorId ? \App\Models\User::find($creatorId) : auth()->user();
-        $salesRepId = $data['salesRepId'] ?? ($data['sales_rep_id'] ?? null);
+        $salesRepId = $data['salesRepId'] ?? ($data['sales_rep_id'] ?? ($data['employee_id'] ?? null));
         $salesRepUser = ($salesRepId && is_numeric($salesRepId)) ? \App\Models\User::find($salesRepId) : null;
 
         $dependentSales = null;
@@ -432,6 +505,7 @@ class OrderController extends Controller
         // Ràng buộc kho cho Lái xe: Khi lái xe tạo đơn, bắt buộc chỉ được bán từ Kho Xe của họ
         $isDriverCreator = $activeUser && ($activeUser->staff_type === 'driver' || $activeUser->department === 'Logistics' || (method_exists($activeUser, 'hasRole') && ($activeUser->hasRole('Fleet') || $activeUser->hasRole('Driver'))));
         $warehouseName = $data['warehouse'] ?? ($data['warehouse_name'] ?? ($order?->warehouse ?? 'Kho Tổng Mê Linh (MQ)'));
+        $isHoldingStockSale = !empty($data['is_holding_stock']) || !empty($data['is_holding_stock_sale']) || str_contains($warehouseName, 'Kho Hàng Ôm') || (($data['orderType'] ?? ($data['order_type'] ?? '')) === 'holding_sale');
 
         if ($isDriverCreator) {
             $assignedDriverId = $activeUser->id;
@@ -455,6 +529,8 @@ class OrderController extends Controller
                     $assignedDriverId = $vehObj->driver_id;
                 }
             }
+        } elseif ($isHoldingStockSale && !$assignedDriverId && ($salesRepId ?: $creatorId)) {
+            $assignedDriverId = $salesRepId ?: $creatorId;
         }
 
         $items = $data['items'] ?? null;
@@ -497,12 +573,13 @@ class OrderController extends Controller
             || str_contains($notesPayload, '[ĐƠN NỢ HÀNG');
 
         $defaultPrefix = $isBackOrder ? 'DH-NO-' : 'DH-';
-        $resolvedOrderType = $isBackOrder ? 'backorder' : ($data['orderType'] ?? ($data['order_type'] ?? ($order?->order_type ?? 'normal')));
+        $resolvedOrderType = $isHoldingStockSale ? 'holding_sale' : ($isBackOrder ? 'backorder' : ($data['orderType'] ?? ($data['order_type'] ?? ($order?->order_type ?? 'normal'))));
 
         $orderAttributes = [
             'order_code'             => $orderCode ?: ($order ? $order->order_code : $defaultPrefix . date('Y') . '-' . rand(1000, 9999)),
             'dealer_id'              => $dealerId,
             'creator_id'             => $creatorId,
+            'sales_rep_id'           => $salesRepId ?: ($order?->sales_rep_id ?? null),
             'order_creator'          => $creatorName ?: ($order?->order_creator ?? null),
             'customer_name'          => $data['dealerName'] ?? ($data['customer_name'] ?? ($order?->customer_name ?? 'Khách lẻ')),
             'customer_phone'         => $data['customerPhone'] ?? ($data['customer_phone'] ?? ($order?->customer_phone ?? '')),
@@ -527,13 +604,14 @@ class OrderController extends Controller
             'has_returns'            => !empty($data['hasReturns']) || !empty($data['has_returns']),
             'total_returned_amount'  => (float) ($data['totalReturnedAmount'] ?? ($data['total_returned_amount'] ?? 0)),
             'return_slip_code'       => $data['returnSlipCode'] ?? ($data['return_slip_code'] ?? null),
-            'status'                 => (function() use ($data, $order, $isBackOrder) {
+            'status'                 => (function() use ($data, $order, $isBackOrder, $isHoldingStockSale) {
                 if (!empty($data['status'])) {
                     if ($isBackOrder && in_array($data['status'], ['Chốt đơn', 'Báo giá', 'Giao sau', 'Nợ hàng'])) {
                         return 'Giao sau';
                     }
                     return $data['status'];
                 }
+                if ($isHoldingStockSale) return 'Đã giao hàng';
                 if ($isBackOrder) return 'Giao sau';
                 return $order?->status ?? 'Báo giá';
             })(),
@@ -700,8 +778,12 @@ class OrderController extends Controller
                         : (float)($oldItem?->picked_qty ?? 0));
 
                 $reqTotal = $qty + $giftQty;
-                // Nếu số lượng cần bốc tăng lên và số lượng đã bốc < số lượng cần, đưa trạng thái về Chờ bốc/Đang bốc
-                if ($reqTotal > 0 && $pickedQty < $reqTotal) {
+                if ($isHoldingStockSale) {
+                    $isPicked = true;
+                    $pickedQty = $reqTotal;
+                    $itemStatus = 'Đủ hàng';
+                    $shortageReason = null;
+                } else if ($reqTotal > 0 && $pickedQty < $reqTotal) {
                     $isPicked = false;
                     $itemStatus = ($pickedQty > 0) ? 'Đang bốc' : 'Chờ bốc';
                     $shortageReason = $it['shortageReason'] ?? ($it['shortage_reason'] ?? ($oldItem?->shortage_reason ?? null));
@@ -715,12 +797,12 @@ class OrderController extends Controller
                     $shortageReason = $it['shortageReason'] ?? ($it['shortage_reason'] ?? ($oldItem?->shortage_reason ?? null));
                 }
 
-                $isChecked = !empty($it['isChecked']) || !empty($it['is_checked']) || (bool)($oldItem?->is_checked ?? false);
-                $checkedQty = isset($it['checkedQty']) 
+                $isChecked = $isHoldingStockSale ? true : (!empty($it['isChecked']) || !empty($it['is_checked']) || (bool)($oldItem?->is_checked ?? false));
+                $checkedQty = $isHoldingStockSale ? $reqTotal : (isset($it['checkedQty']) 
                     ? (float)$it['checkedQty'] 
                     : (isset($it['checked_qty']) 
                         ? (float)$it['checked_qty'] 
-                        : (float)($oldItem?->checked_qty ?? ($isChecked ? $reqTotal : 0)));
+                        : (float)($oldItem?->checked_qty ?? ($isChecked ? $reqTotal : 0))));
                 if ($reqTotal > 0 && $checkedQty < $reqTotal) {
                     $isChecked = false;
                 }
@@ -1329,14 +1411,63 @@ class OrderController extends Controller
                     }
                 }
 
-                $product->decrement('stock_quantity', $baseQty);
-
-                if ($targetWarehouse) {
+                if ($targetWarehouse && in_array($targetWarehouse->type, ['Kho hàng ôm', 'Kho xe lưu động'])) {
+                    // Xuất bán từ kho hàng ôm của nhân viên: Chỉ trừ tồn kho hàng ôm (vì kho tổng đã trừ từ trước khi xuất giao ôm)
                     $whStock = \App\Models\WarehouseStock::firstOrCreate(
                         ['product_id' => $product->id, 'warehouse_id' => $targetWarehouse->id],
                         ['stock_quantity' => 0, 'reserved_quantity' => 0]
                     );
                     $whStock->decrement('stock_quantity', $baseQty);
+
+                    // Đồng bộ trừ vào các đơn hàng ôm (ConsignmentOrderItem) của nhân viên theo FIFO
+                    $staffId = null;
+                    if (preg_match('/KHO-OM-(\d+)/', $targetWarehouse->code, $m)) {
+                        $staffId = (int)$m[1];
+                    } elseif ($order->sales_rep_id) {
+                        $staffId = (int)$order->sales_rep_id;
+                    } elseif ($order->creator_id) {
+                        $staffId = (int)$order->creator_id;
+                    } elseif (!empty($targetWarehouse->manager_name)) {
+                        $matchedUser = \App\Models\User::where('name', $targetWarehouse->manager_name)->first();
+                        $staffId = $matchedUser?->id;
+                    }
+
+                    if ($staffId) {
+                        $activeConsignmentItems = \App\Models\ConsignmentOrderItem::whereHas('consignmentOrder', function ($q) use ($staffId) {
+                            $q->where('staff_id', $staffId)->whereIn('status', ['approved', 'in_progress']);
+                        })
+                        ->where('product_id', $product->id)
+                        ->where('remaining_quantity', '>', 0)
+                        ->orderBy('id', 'asc')
+                        ->get();
+
+                        $qtyToDeduct = $baseQty;
+                        foreach ($activeConsignmentItems as $cItem) {
+                            if ($qtyToDeduct <= 0) break;
+                            $deduct = min($qtyToDeduct, (float)$cItem->remaining_quantity);
+                            $cItem->increment('sold_quantity', $deduct);
+                            $cItem->decrement('remaining_quantity', $deduct);
+                            $qtyToDeduct -= $deduct;
+
+                            $cOrder = $cItem->consignmentOrder;
+                            if ($cOrder) {
+                                $soldAmt = $deduct * (float)$cItem->unit_price;
+                                $cOrder->increment('sold_amount', $soldAmt);
+                                $cOrder->remaining_amount = max(0, (float)$cOrder->total_amount - (float)$cOrder->sold_amount - (float)$cOrder->returned_amount);
+                                $cOrder->save();
+                            }
+                        }
+                    }
+                } else {
+                    $product->decrement('stock_quantity', $baseQty);
+
+                    if ($targetWarehouse) {
+                        $whStock = \App\Models\WarehouseStock::firstOrCreate(
+                            ['product_id' => $product->id, 'warehouse_id' => $targetWarehouse->id],
+                            ['stock_quantity' => 0, 'reserved_quantity' => 0]
+                        );
+                        $whStock->decrement('stock_quantity', $baseQty);
+                    }
                 }
             }
         }
@@ -1389,14 +1520,58 @@ class OrderController extends Controller
                     }
                 }
 
-                $product->increment('stock_quantity', $baseQty);
-
-                if ($targetWarehouse) {
+                if ($targetWarehouse && in_array($targetWarehouse->type, ['Kho hàng ôm', 'Kho xe lưu động'])) {
+                    // Hoàn lại kho hàng ôm của nhân viên
                     $whStock = \App\Models\WarehouseStock::firstOrCreate(
                         ['product_id' => $product->id, 'warehouse_id' => $targetWarehouse->id],
                         ['stock_quantity' => 0, 'reserved_quantity' => 0]
                     );
                     $whStock->increment('stock_quantity', $baseQty);
+
+                    // Hoàn lại ConsignmentOrderItem của NV nếu có
+                    $staffId = null;
+                    if (preg_match('/KHO-OM-(\d+)/', $targetWarehouse->code, $m)) {
+                        $staffId = (int)$m[1];
+                    } elseif ($order->created_by_id) {
+                        $staffId = (int)$order->created_by_id;
+                    }
+
+                    if ($staffId) {
+                        $activeConsignmentItems = \App\Models\ConsignmentOrderItem::whereHas('consignmentOrder', function ($q) use ($staffId) {
+                            $q->where('staff_id', $staffId)->whereIn('status', ['approved', 'in_progress']);
+                        })
+                        ->where('product_id', $product->id)
+                        ->where('sold_quantity', '>', 0)
+                        ->orderBy('id', 'desc')
+                        ->get();
+
+                        $qtyToRestore = $baseQty;
+                        foreach ($activeConsignmentItems as $cItem) {
+                            if ($qtyToRestore <= 0) break;
+                            $restore = min($qtyToRestore, (float)$cItem->sold_quantity);
+                            $cItem->decrement('sold_quantity', $restore);
+                            $cItem->increment('remaining_quantity', $restore);
+                            $qtyToRestore -= $restore;
+
+                            $cOrder = $cItem->consignmentOrder;
+                            if ($cOrder) {
+                                $soldAmt = $restore * (float)$cItem->unit_price;
+                                $cOrder->decrement('sold_amount', $soldAmt);
+                                $cOrder->remaining_amount = max(0, (float)$cOrder->total_amount - (float)$cOrder->sold_amount - (float)$cOrder->returned_amount);
+                                $cOrder->save();
+                            }
+                        }
+                    }
+                } else {
+                    $product->increment('stock_quantity', $baseQty);
+
+                    if ($targetWarehouse) {
+                        $whStock = \App\Models\WarehouseStock::firstOrCreate(
+                            ['product_id' => $product->id, 'warehouse_id' => $targetWarehouse->id],
+                            ['stock_quantity' => 0, 'reserved_quantity' => 0]
+                        );
+                        $whStock->increment('stock_quantity', $baseQty);
+                    }
                 }
             }
         }

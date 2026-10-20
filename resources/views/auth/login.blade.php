@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Đăng Nhập Hệ Thống | KBTech ERP Điện Nước & Ống Nhựa PVC</title>
+    <title>Đăng Nhập Hệ Thống | ĐẠI ĐẠI SƠN ERP</title>
     <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}">
 
     <!-- Google Fonts -->
@@ -65,115 +65,51 @@
         
         <div class="grid grid-cols-1 lg:grid-cols-12">
             
-            <!-- LEFT COLUMN: Brand showcase & feature highlights -->
-            <div class="lg:col-span-7 p-6 sm:p-10 lg:p-11 flex flex-col justify-between bg-gradient-to-b from-[#0b162c] to-[#091224] border-b lg:border-b-0 lg:border-r border-slate-800/80 relative overflow-hidden">
+            <!-- LEFT COLUMN: Brand showcase & Logo centered -->
+            <div class="lg:col-span-6 p-6 sm:p-10 lg:p-12 flex flex-col justify-between bg-gradient-to-b from-[#0b162c] to-[#091224] border-b lg:border-b-0 lg:border-r border-slate-800/80 relative overflow-hidden">
                 
                 <!-- Subtle internal decorative glow -->
-                <div class="absolute -top-24 -left-24 w-60 h-60 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -top-24 -left-24 w-72 h-72 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-                <div class="relative z-10 space-y-6 sm:space-y-7">
+                <!-- Top Badge -->
+                <div class="relative z-10">
+                    <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-sky-500/10 border border-sky-400/30 text-sky-300 text-xs font-semibold shadow-xs">
+                        <i class="fa-solid fa-layer-group text-sky-400 text-xs"></i>
+                        <span>Hệ Thống Quản Trị Doanh Nghiệp Tập Trung</span>
+                    </span>
+                </div>
+
+                <!-- Center Logo Showcase (Clean & Modern) -->
+                <div class="relative z-10 my-auto py-10 flex flex-col items-center justify-center text-center space-y-5">
+                    <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-2xl shadow-blue-950/80 border border-white/60 max-w-[280px] sm:max-w-[320px] transition-transform duration-300 hover:scale-105">
+                        <img src="{{ asset('images/logo.png') }}?v={{ time() }}" alt="Nhà Phân Phối Đại Sơn" class="w-full h-auto object-contain">
+                    </div>
                     
-                    <!-- Brand / Logo Header -->
-                    <div class="flex items-center gap-3.5">
-                        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-600 to-blue-500 flex items-center justify-center shadow-lg shadow-sky-500/25 border border-sky-400/30 shrink-0">
-                            <i class="fa-solid fa-city text-white text-xl"></i>
-                        </div>
-                        <div class="leading-tight">
-                            <div class="flex items-center gap-1.5 text-xl sm:text-2xl font-black tracking-tight">
-                                <span class="text-white">KBTech</span>
-                                <span class="text-sky-400 font-extrabold">ERP</span>
-                            </div>
-                            <div class="text-[10px] sm:text-[11px] font-bold tracking-widest text-sky-300 uppercase mt-0.5">
-                                ĐIỆN NƯỚC &amp; ỐNG NHỰA PVC
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Badge Pill -->
-                    <div>
-                        <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-sky-500/10 border border-sky-400/30 text-sky-300 text-xs font-semibold shadow-xs">
-                            <i class="fa-solid fa-wand-magic-sparkles text-sky-400 text-xs"></i>
-                            <span>Hệ Thống Quản Trị Doanh Nghiệp v2.4</span>
-                        </span>
-                    </div>
-
-                    <!-- Main Hero Title & Description -->
-                    <div class="space-y-3">
-                        <h1 class="text-2xl sm:text-[32px] font-extrabold text-white leading-tight tracking-tight">
-                            Giải pháp số hóa toàn <br class="hidden sm:inline">diện chuỗi cung ứng
+                    <div class="space-y-1.5">
+                        <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
+                            ĐẠI ĐẠI SƠN <span class="text-sky-400">ERP</span>
                         </h1>
-                        <p class="text-xs sm:text-sm text-slate-400 font-normal leading-relaxed max-w-lg">
-                            Tối ưu hóa quy trình nhập xuất tồn kho ống nhựa PVC, quản lý hạn mức công nợ đại lý đa cấp, giám sát thị trường GPS và phân quyền kiểm soát nội bộ.
+                        <p class="text-xs text-slate-400 font-medium tracking-wide">
+                            Nhà Phân Phối Đại Sơn &bull; Phiên Bản 2026
                         </p>
                     </div>
-
-                    <!-- 3 Feature Highlight Cards -->
-                    <div class="space-y-3 pt-1">
-                        
-                        <!-- Feature 1: Kho hàng & Quy đổi -->
-                        <div class="group flex items-center gap-3.5 p-3.5 rounded-2xl bg-[#0f1b35]/60 hover:bg-[#132244] border border-slate-700/50 hover:border-sky-500/40 transition-all duration-200">
-                            <div class="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                                <i class="fa-solid fa-cubes-stacked text-sm"></i>
-                            </div>
-                            <div class="min-w-0">
-                                <div class="text-xs sm:text-[13px] font-bold text-white group-hover:text-sky-200 transition-colors">
-                                    Kho hàng đa chi nhánh &amp; Quy đổi
-                                </div>
-                                <div class="text-[11px] text-slate-400 truncate mt-0.5">
-                                    Kiểm kê cây/mét ống nhựa, cảnh báo tồn tối thiểu
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Feature 2: Bán hàng & Hạn mức nợ đại lý -->
-                        <div class="group flex items-center gap-3.5 p-3.5 rounded-2xl bg-[#0f1b35]/60 hover:bg-[#132244] border border-slate-700/50 hover:border-emerald-500/40 transition-all duration-200">
-                            <div class="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                                <i class="fa-solid fa-store text-sm"></i>
-                            </div>
-                            <div class="min-w-0">
-                                <div class="text-xs sm:text-[13px] font-bold text-white group-hover:text-emerald-200 transition-colors">
-                                    Bán hàng &amp; Hạn mức nợ đại lý
-                                </div>
-                                <div class="text-[11px] text-slate-400 truncate mt-0.5">
-                                    Thiết lập 4 mức giá tự động và trần chiết khấu
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Feature 3: Điều phối xe & Chấm công GPS -->
-                        <div class="group flex items-center gap-3.5 p-3.5 rounded-2xl bg-[#0f1b35]/60 hover:bg-[#132244] border border-slate-700/50 hover:border-indigo-500/40 transition-all duration-200">
-                            <div class="w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                                <i class="fa-solid fa-truck-fast text-sm"></i>
-                            </div>
-                            <div class="min-w-0">
-                                <div class="text-xs sm:text-[13px] font-bold text-white group-hover:text-indigo-200 transition-colors">
-                                    Điều phối xe &amp; Chấm công GPS
-                                </div>
-                                <div class="text-[11px] text-slate-400 truncate mt-0.5">
-                                    Lộ trình giao hàng xe tải và tính toán phụ cấp
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-
                 </div>
 
                 <!-- Left Footer Info -->
-                <div class="relative z-10 pt-6 mt-6 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+                <div class="relative z-10 pt-6 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
                     <div class="flex items-center gap-2 text-emerald-400/90 font-medium text-[11px] sm:text-xs">
                         <i class="fa-solid fa-shield-halved text-xs"></i>
-                        <span>Bảo mật dữ liệu cấp doanh nghiệp</span>
+                        <span>Bảo mật dữ liệu nội bộ</span>
                     </div>
                     <div class="text-slate-500 font-medium text-[11px] sm:text-xs">
-                        &copy; 2026 KBTech
+                        &copy; 2026 Đại Sơn
                     </div>
                 </div>
 
             </div>
 
             <!-- RIGHT COLUMN: Login Form -->
-            <div class="lg:col-span-5 p-6 sm:p-10 flex flex-col justify-center bg-[#0d1527] relative">
+            <div class="lg:col-span-6 p-6 sm:p-10 lg:p-12 flex flex-col justify-center bg-[#0d1527] relative">
                 
                 <div class="space-y-6">
 

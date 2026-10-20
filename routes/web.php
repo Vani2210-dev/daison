@@ -22,6 +22,9 @@ use App\Http\Controllers\BankingWebhookController;
 use App\Http\Controllers\GeoController;
 use App\Http\Controllers\DebtHandoverController;
 use App\Http\Controllers\WarehouseTransactionController;
+use App\Http\Controllers\WaterFilterController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ConsignmentOrderController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
@@ -51,6 +54,19 @@ Route::prefix('api')->group(function () {
     // Credit overrun approval workflow (lập đơn vượt hạn mức)
     Route::get('/dealers/{id}/credit-info', [OrderController::class, 'getDealerCreditInfo'])->middleware('permission:orders.view,dealers.view');
     Route::post('/orders/{id}/approve-credit-overrun', [OrderController::class, 'approveCreditOverrunAtCreation'])->middleware('permission:orders.approve,orders.edit,debt.approve');
+
+    // 2.1 Đơn Hàng Ôm (Consignment Orders APIs)
+    Route::get('/consignment-orders/master-data', [ConsignmentOrderController::class, 'masterData']);
+    Route::get('/consignment-orders', [ConsignmentOrderController::class, 'index']);
+    Route::post('/consignment-orders', [ConsignmentOrderController::class, 'store']);
+    Route::get('/consignment-orders/{id}', [ConsignmentOrderController::class, 'show']);
+    Route::post('/consignment-orders/{id}/approve', [ConsignmentOrderController::class, 'approve']);
+    Route::post('/consignment-orders/{id}/reject', [ConsignmentOrderController::class, 'reject']);
+    Route::post('/consignment-orders/{id}/dispatch', [ConsignmentOrderController::class, 'dispatchStock']);
+    Route::post('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'createRetailOrder']);
+    Route::get('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'retailOrders']);
+    Route::post('/consignment-orders/{id}/return', [ConsignmentOrderController::class, 'returnItems']);
+    Route::post('/consignment-orders/{id}/settle', [ConsignmentOrderController::class, 'settle']);
 
     // 3. Inventory, Products, Categories & Brands
     Route::post('/products', [InventoryController::class, 'saveProduct'])->middleware('permission:inventory.update_price,danhmuc.manage');
@@ -169,10 +185,18 @@ Route::prefix('api')->group(function () {
     Route::get('/sales-policies', [\App\Http\Controllers\SalesPolicyController::class, 'index'])->middleware('permission:sales_policy.view');
     Route::post('/sales-policies', [\App\Http\Controllers\SalesPolicyController::class, 'store'])->middleware('permission:sales_policy.create');
     Route::put('/sales-policies/{id}', [\App\Http\Controllers\SalesPolicyController::class, 'update'])->middleware('permission:sales_policy.edit');
-    Route::delete('/sales-policies/{id}', [\App\Http\Controllers\SalesPolicyController::class, 'destroy'])->middleware('permission:sales_policy.delete');
+    // 18. Notifications & Floating Alerts
+    Route::get('/notifications/poll', [NotificationController::class, 'poll']);
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
 });
 
 // Non-prefixed aliases
+Route::get('/notifications/poll', [NotificationController::class, 'poll']);
+Route::get('/notifications', [NotificationController::class, 'index']);
+Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
 Route::post('/delivery-dispatches/settle-cash', [DeliveryController::class, 'settleDriverCash']);
 Route::get('/delivery-dispatches/driver-cash-handovers', [DeliveryController::class, 'getDriverCashHandovers']);
 Route::get('/delivery-returns', [DeliveryController::class, 'getDeliveryReturns']);
@@ -187,6 +211,11 @@ Route::post('/van-sale-dispatches', [DebtHandoverController::class, 'createVanSa
 Route::get('/van-sale-dispatches', [DebtHandoverController::class, 'getVanSaleDispatches']);
 
 use App\Http\Controllers\WebViewController;
+
+// Public QR Scan & Machine Activation / Warranty Portal
+Route::get('/m/{token}', [WaterFilterController::class, 'scanQrMachine'])->name('water_filter.qr_scan');
+Route::post('/m/{token}/activate', [WaterFilterController::class, 'submitActivationRequest'])->name('water_filter.qr_activate');
+Route::post('/m/{token}/request-service', [WaterFilterController::class, 'customerRequestService'])->name('water_filter.qr_service');
 
 // Web Authentication Routes (Blade)
 Route::get('/login', [WebViewController::class, 'loginView'])->name('login');
@@ -206,6 +235,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/products/create', [WebViewController::class, 'productCreate'])->middleware('permission:inventory.create');
     Route::get('/cat_products/{id}/edit', [WebViewController::class, 'productEdit'])->name('products.edit')->middleware('permission:inventory.edit');
     Route::get('/products/{id}/edit', [WebViewController::class, 'productEdit'])->middleware('permission:inventory.edit');
+    Route::get('/cat_products/{id}/batches', [WebViewController::class, 'productBatches'])->name('products.batches')->middleware('permission:inventory.view');
+    Route::get('/products/{id}/batches', [WebViewController::class, 'productBatches'])->middleware('permission:inventory.view');
     Route::post('/cat_products/save', [WebViewController::class, 'productSave'])->name('products.save')->middleware('permission:inventory.create,inventory.edit');
     Route::post('/products/save', [WebViewController::class, 'productSave'])->middleware('permission:inventory.create,inventory.edit');
     Route::delete('/cat_products/{id}', [WebViewController::class, 'productDelete'])->name('products.delete')->middleware('permission:inventory.delete');
@@ -219,6 +250,23 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales/cod-verification', [DeliveryController::class, 'codVerificationPage']);
     Route::get('/cod-verification', [DeliveryController::class, 'codVerificationPage']);
     Route::get('/orders/{id}/edit', [WebViewController::class, 'orderEdit'])->name('orders.edit')->middleware('permission:orders.edit');
+    Route::post('/orders/save', [OrderController::class, 'saveOrder']);
+    Route::post('/orders/update-status', [OrderController::class, 'updateOrderStatus']);
+
+    // Consignment Orders (Trang tạo đơn riêng & Direct endpoints)
+    Route::get('/orders/consignments/create', [ConsignmentOrderController::class, 'create'])->name('orders.consignments.create')->middleware('permission:orders.create,orders.view,consignments.create,consignments.view');
+    Route::get('/consignment-orders/create', [ConsignmentOrderController::class, 'create']);
+    Route::get('/consignment-orders/master-data', [ConsignmentOrderController::class, 'masterData']);
+    Route::get('/consignment-orders', [ConsignmentOrderController::class, 'index']);
+    Route::post('/consignment-orders', [ConsignmentOrderController::class, 'store']);
+    Route::get('/consignment-orders/{id}', [ConsignmentOrderController::class, 'show']);
+    Route::post('/consignment-orders/{id}/approve', [ConsignmentOrderController::class, 'approve']);
+    Route::post('/consignment-orders/{id}/reject', [ConsignmentOrderController::class, 'reject']);
+    Route::post('/consignment-orders/{id}/dispatch', [ConsignmentOrderController::class, 'dispatchStock']);
+    Route::post('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'createRetailOrder']);
+    Route::get('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'retailOrders']);
+    Route::post('/consignment-orders/{id}/return', [ConsignmentOrderController::class, 'returnItems']);
+    Route::post('/consignment-orders/{id}/settle', [ConsignmentOrderController::class, 'settle']);
 
     // Dealers & Customers Management
     Route::get('/dealers', [WebViewController::class, 'dealers'])->name('dealers.index')->middleware('permission:dealers.view');
@@ -268,9 +316,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/inventory/transactions/{id}/print', [WarehouseTransactionController::class, 'print'])->name('inventory.transactions.print')->middleware('permission:inventory.view');
     Route::post('/inventory/transactions/{id}/cancel', [WarehouseTransactionController::class, 'cancel'])->name('inventory.transactions.cancel')->middleware('permission:inventory.delete,inventory.edit');
     Route::get('/api/inventory/search-products', [WarehouseTransactionController::class, 'searchProducts']);
+    Route::get('/inventory/batches', [WarehouseTransactionController::class, 'batchesView'])->name('inventory.batches')->middleware('permission:inventory.view');
+    Route::get('/warehouse/batches', [WarehouseTransactionController::class, 'batchesView']);
+    Route::get('/api/products/{id}/batches', [WarehouseTransactionController::class, 'getProductBatches'])->middleware('permission:inventory.view');
+    Route::get('/api/inventory/batches', [WarehouseTransactionController::class, 'getWarehouseBatches'])->middleware('permission:inventory.view');
 
-    // 4. Warehouse Returns Intake (Hoàn kho từ xe giao hàng)
+    // 4. Warehouse Returns Intake & Holding Stock Sale (Hoàn kho & Bán hàng từ kho ôm)
     Route::get('/inventory/import', [DeliveryController::class, 'returnsIntakePage'])->name('inventory.import')->middleware('permission:inventory.view,inv_import.view,returns.view');
+    Route::get('/inventory/holding-sale/create', [DeliveryController::class, 'holdingSaleCreate'])->name('inventory.holding_sale.create')->middleware('permission:orders.create,orders.view,inventory.view');
     Route::get('/warehouse/import', [DeliveryController::class, 'returnsIntakePage']);
     Route::get('/returns/intake', [DeliveryController::class, 'returnsIntakePage']);
     Route::get('/warehouse/returns-intake', [DeliveryController::class, 'returnsIntakePage']);
@@ -357,8 +410,9 @@ Route::middleware('auth')->group(function () {
     // Customer Debt & Credit Limits
     Route::get('/debt', [WebViewController::class, 'debt'])->name('debt.index')->middleware('permission:debt.view');
     Route::get('/debt/{id}', [WebViewController::class, 'dealerDebtDetail'])->name('debt.detail')->middleware('permission:debt.view');
-    Route::get('/dealers/{id}/debt', [WebViewController::class, 'dealerDebtDetail'])->name('dealers.debt_detail')->middleware('permission:debt.view,dealers.view');
     Route::get('/staff-debt', [WebViewController::class, 'staffDebt'])->name('staff.debt')->middleware('permission:debt.view,staff_list.view');
+    Route::get('/staff-debt/{id}', [WebViewController::class, 'staffDebtDetail'])->name('staff.debt.detail')->middleware('permission:debt.view,staff_list.view');
+    Route::get('/staff/{id}/debt', [WebViewController::class, 'staffDebtDetail'])->middleware('permission:debt.view,staff_list.view');
 
     // Reports Center
     Route::get('/reports', [WebViewController::class, 'reports'])->name('reports.index')->middleware('permission:dashboard.view,orders.view,inventory.view,funds.view,debt.view');
@@ -367,6 +421,71 @@ Route::middleware('auth')->group(function () {
     // Staff Profile & Personal Dashboard
     Route::get('/profile', [WebViewController::class, 'profile'])->name('profile');
     Route::get('/staff/personal', [WebViewController::class, 'profile']);
+
+    // Water Filter System (Phân hệ Lắp đặt & Sửa chữa Máy lọc nước - Bảng độc lập)
+    Route::middleware('permission:water_filter.view,water_filter.install_view,water_filter.repair_view,water_filter.parts_view')->group(function () {
+        Route::get('/water-filter', [WaterFilterController::class, 'index'])->name('water_filter.index');
+        Route::get('/may-loc-nuoc', [WaterFilterController::class, 'index']);
+        Route::get('/water-filter/installations/create', [WaterFilterController::class, 'createInstallation'])->name('water_filter.installations.create');
+        Route::get('/water-filter/installations/{id}/edit', [WaterFilterController::class, 'editInstallationView'])->name('water_filter.installations.edit');
+        Route::get('/lap-dat-may-loc/create', [WaterFilterController::class, 'createInstallation']);
+        Route::get('/lap-dat-may-loc/{id}/edit', [WaterFilterController::class, 'editInstallationView']);
+        Route::get('/lap-dat-may-loc', function(Request $request, WaterFilterController $controller) {
+            $request->merge(['tab' => 'installations']);
+            return $controller->index($request);
+        });
+        Route::get('/sua-chua-may-loc', function(Request $request, WaterFilterController $controller) {
+            $request->merge(['tab' => 'repairs']);
+            return $controller->index($request);
+        });
+        Route::get('/kho-phu-tung-may-loc', function(Request $request, WaterFilterController $controller) {
+            $request->merge(['tab' => 'parts']);
+            return $controller->index($request);
+        });
+        Route::get('/bao-hanh-may-loc', function(Request $request, WaterFilterController $controller) {
+            $request->merge(['tab' => 'installed_machines']);
+            return $controller->index($request);
+        });
+        Route::get('/bao-hanh-may-loc/print-qr', [WaterFilterController::class, 'printQrStickers'])->name('water_filter.qr_print');
+        Route::get('/water-filter/print-qr', [WaterFilterController::class, 'printQrStickers']);
+
+        // Water Filter APIs
+        Route::prefix('api/water-filter')->group(function () {
+            // Machine Models
+            Route::get('/machine-models', [WaterFilterController::class, 'getMachineModels']);
+            Route::post('/machine-models', [WaterFilterController::class, 'saveMachineModel']);
+            Route::delete('/machine-models/{id}', [WaterFilterController::class, 'deleteMachineModel']);
+
+            // Parts Warehouse
+            Route::get('/parts', [WaterFilterController::class, 'getParts']);
+            Route::post('/parts', [WaterFilterController::class, 'savePart']);
+            Route::delete('/parts/{id}', [WaterFilterController::class, 'deletePart']);
+            Route::post('/parts/import', [WaterFilterController::class, 'importStock']);
+            Route::get('/transactions', [WaterFilterController::class, 'getTransactions']);
+
+            // Installations
+            Route::get('/installations', [WaterFilterController::class, 'getInstallations']);
+            Route::post('/installations', [WaterFilterController::class, 'saveInstallation']);
+            Route::post('/installations/{id}/status', [WaterFilterController::class, 'updateInstallationStatus']);
+            Route::post('/installations/{id}/bind-qr', [WaterFilterController::class, 'bindQrToInstallation']);
+            Route::post('/installations/bind-qr', [WaterFilterController::class, 'bindQrToInstallation']);
+            Route::delete('/installations/{id}', [WaterFilterController::class, 'deleteInstallation']);
+
+            // Installed Machines & Warranty Management
+            Route::get('/installed-machines', [WaterFilterController::class, 'getInstalledMachines']);
+            Route::post('/installed-machines/generate-qr', [WaterFilterController::class, 'generateBlankQrCodes']);
+            Route::post('/installed-machines/{id}/activate', [WaterFilterController::class, 'activateMachine']);
+            Route::post('/installed-machines/{id}/update', [WaterFilterController::class, 'updateInstalledMachine']);
+            Route::delete('/installed-machines/{id}', [WaterFilterController::class, 'deleteInstalledMachine']);
+            Route::post('/installed-machines/{id}/warranty', [WaterFilterController::class, 'updateMachineWarranty']);
+
+            // Repairs
+            Route::get('/repairs', [WaterFilterController::class, 'getRepairs']);
+            Route::post('/repairs', [WaterFilterController::class, 'saveRepair']);
+            Route::post('/repairs/{id}/status', [WaterFilterController::class, 'updateRepairStatus']);
+            Route::delete('/repairs/{id}', [WaterFilterController::class, 'deleteRepair']);
+        });
+    });
 });
 
 // Fallback: If user accesses any unknown route, redirect to dashboard or login

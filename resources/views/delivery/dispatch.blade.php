@@ -40,13 +40,6 @@
 
         <!-- Top Right Actions & Nav -->
         <div class="flex flex-wrap items-center gap-2 sm:gap-2.5">
-            <!-- Nút + Xuất Hàng Lẻ Xe (Nổi bật) -->
-            <button type="button" @click="openVanSaleModal()"
-                    class="px-3.5 py-2 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/25 active:scale-95 cursor-pointer">
-                <i class="fa-solid fa-truck-ramp-box"></i>
-                <span>+ Xuất Hàng Lẻ Xe</span>
-            </button>
-
             <!-- Tab 1: Điều phối chuyến xe -->
             <button type="button" @click="currentMainTab = 'dispatch'"
                     class="px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border shadow-2xs cursor-pointer"

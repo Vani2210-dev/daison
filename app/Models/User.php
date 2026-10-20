@@ -98,6 +98,11 @@ class User extends Authenticatable
         return $this->hasMany(UserRolePermission::class);
     }
 
+    public function systemNotifications()
+    {
+        return $this->hasMany(SystemNotification::class, 'user_id');
+    }
+
     /**
      * Lấy toàn bộ danh sách quyền hợp nhất mà User đang được kích hoạt
      */
@@ -216,6 +221,30 @@ class User extends Authenticatable
     public function canDo(string $module, string $action): bool
     {
         return $this->hasPermission("{$module}.{$action}");
+    }
+
+    /**
+     * Kiểm tra người dùng có quyền Kế toán / Duyệt đơn ôm hay không
+     */
+    public function isAccountant(): bool
+    {
+        if ($this->id === 1) {
+            return true;
+        }
+
+        if ($this->hasRole('Manager') || $this->hasRole('Admin') || $this->hasRole('Sales_Accountant') || $this->hasRole('Finance_Accountant') || $this->hasRole('Accountant')) {
+            return true;
+        }
+
+        if ($this->hasPermission('consignments.approve') || $this->hasPermission('orders.approve')) {
+            return true;
+        }
+
+        if (in_array($this->department, ['Ban Giám Đốc', 'Quản Lý', 'Kế toán', 'Accounting', 'Executive'])) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

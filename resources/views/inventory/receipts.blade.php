@@ -12,7 +12,7 @@
     <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div class="flex items-center gap-3">
             <div class="w-11 h-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-900/20">
-                <i class="fa-solid fa-arrow-down-left-across-segments text-lg"></i>
+                <i class="fa-solid fa-dolly text-lg"></i>
             </div>
             <div>
                 <div class="flex items-center gap-2">
@@ -26,7 +26,7 @@
         <div class="flex items-center gap-2">
             <button type="button" @click="openCreateModal()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-700/20 cursor-pointer transition-all hover:scale-102">
                 <i class="fa-solid fa-plus text-sm"></i>
-                <span>+ Lập Phiếu Nhập Kho</span>
+                <span>Lập Phiếu Nhập Kho</span>
             </button>
             <button type="button" onclick="window.location.reload()" class="px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center gap-2 shadow-2xs cursor-pointer">
                 <i class="fa-solid fa-arrows-rotate text-[#1b4a8c]"></i>
@@ -280,7 +280,7 @@
                 <div class="bg-gradient-to-r from-emerald-700 to-teal-800 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-white/20 text-white flex items-center justify-center font-bold text-lg">
-                            <i class="fa-solid fa-arrow-down-left-across-segments"></i>
+                            <i class="fa-solid fa-dolly"></i>
                         </div>
                         <div>
                             <h3 class="font-black text-base sm:text-lg">Lập Phiếu Nhập Kho Mới</h3>
@@ -363,11 +363,17 @@
                             <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px]">
                                 <tr>
                                     <th class="p-2.5 w-10 text-center">#</th>
-                                    <th class="p-2.5">Sản Phẩm</th>
-                                    <th class="p-2.5 w-24 text-center">ĐVT</th>
-                                    <th class="p-2.5 w-28 text-center">Số Lượng</th>
-                                    <th class="p-2.5 w-36 text-right">Đơn Giá Nhập (đ)</th>
-                                    <th class="p-2.5 w-36 text-right">Thành Tiền (đ)</th>
+                                    <th class="p-2.5 min-w-[180px]">Sản Phẩm</th>
+                                    <th class="p-2.5 min-w-[260px] text-center bg-amber-50/70 border-x border-amber-200/60 text-amber-900">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <i class="fa-solid fa-calendar-check text-amber-600"></i>
+                                            <span>Số Lô & Hạn Sử Dụng (Date)</span>
+                                        </div>
+                                    </th>
+                                    <th class="p-2.5 w-20 text-center">ĐVT</th>
+                                    <th class="p-2.5 w-24 text-center">Số Lượng</th>
+                                    <th class="p-2.5 w-32 text-right">Đơn Giá Nhập (đ)</th>
+                                    <th class="p-2.5 w-32 text-right">Thành Tiền (đ)</th>
                                     <th class="p-2.5 w-12 text-center">Xóa</th>
                                 </tr>
                             </thead>
@@ -379,12 +385,46 @@
                                             <div class="font-bold text-slate-800" x-text="item.name"></div>
                                             <div class="text-[10px] text-slate-500 font-mono" x-text="item.sku"></div>
                                         </td>
+                                        
+                                        <!-- Cột Lô & Date -->
+                                        <td class="p-2 bg-amber-50/30 border-x border-amber-100">
+                                            <div class="space-y-1.5">
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="text-[10px] font-bold text-slate-500 w-10 shrink-0">Số Lô:</span>
+                                                    <input type="text" x-model="item.batch_code" placeholder="Mã lô NSX (VD: L2610-01)" class="flex-1 px-2 py-1 rounded-lg border border-slate-300 text-xs font-mono font-semibold focus:ring-1 focus:ring-emerald-500 bg-white">
+                                                </div>
+                                                <div class="grid grid-cols-2 gap-1.5">
+                                                    <div>
+                                                        <span class="block text-[9px] font-bold text-slate-400">NSX:</span>
+                                                        <input type="date" x-model="item.manufacturing_date" class="w-full px-1.5 py-1 rounded-lg border border-slate-300 text-[11px] font-mono focus:ring-1 focus:ring-emerald-500 bg-white">
+                                                    </div>
+                                                    <div>
+                                                        <span class="block text-[9px] font-bold text-amber-700 flex items-center justify-between">
+                                                            <span>HSD (Date):</span>
+                                                            <template x-if="item.expiry_date">
+                                                                <span class="text-emerald-700 font-black">✓</span>
+                                                            </template>
+                                                        </span>
+                                                        <input type="date" x-model="item.expiry_date" class="w-full px-1.5 py-1 rounded-lg border border-amber-300 text-[11px] font-mono font-bold text-amber-900 focus:ring-1 focus:ring-amber-500 bg-amber-50/40">
+                                                    </div>
+                                                </div>
+                                                <!-- Phím chọn nhanh HSD -->
+                                                <div class="flex items-center gap-1 pt-0.5">
+                                                    <span class="text-[9px] text-slate-400">Chọn nhanh HSD:</span>
+                                                    <button type="button" @click="setQuickExpiry(item, 6)" class="px-1.5 py-0.5 bg-white border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 rounded text-[9px] font-bold text-slate-600 transition-colors cursor-pointer">+6T</button>
+                                                    <button type="button" @click="setQuickExpiry(item, 12)" class="px-1.5 py-0.5 bg-white border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 rounded text-[9px] font-bold text-slate-600 transition-colors cursor-pointer">+12T</button>
+                                                    <button type="button" @click="setQuickExpiry(item, 24)" class="px-1.5 py-0.5 bg-white border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 rounded text-[9px] font-bold text-slate-600 transition-colors cursor-pointer">+24T</button>
+                                                    <button type="button" @click="setQuickExpiry(item, 36)" class="px-1.5 py-0.5 bg-white border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 rounded text-[9px] font-bold text-slate-600 transition-colors cursor-pointer">+36T</button>
+                                                </div>
+                                            </div>
+                                        </td>
+
                                         <td class="p-2.5 text-center text-slate-600 font-bold" x-text="item.unit"></td>
                                         <td class="p-2.5 text-center">
-                                            <input type="number" min="0.01" step="any" x-model.number="item.quantity" class="w-24 px-2.5 py-1.5 rounded-lg border border-slate-300 text-center font-mono font-bold focus:ring-2 focus:ring-emerald-500">
+                                            <input type="number" min="0.01" step="any" x-model.number="item.quantity" class="w-20 px-2 py-1.5 rounded-lg border border-slate-300 text-center font-mono font-bold focus:ring-2 focus:ring-emerald-500">
                                         </td>
                                         <td class="p-2.5 text-right">
-                                            <input type="number" min="0" step="1000" x-model.number="item.import_price" class="w-32 px-2.5 py-1.5 rounded-lg border border-slate-300 text-right font-mono font-bold focus:ring-2 focus:ring-emerald-500">
+                                            <input type="number" min="0" step="1000" x-model.number="item.import_price" class="w-28 px-2 py-1.5 rounded-lg border border-slate-300 text-right font-mono font-bold focus:ring-2 focus:ring-emerald-500">
                                         </td>
                                         <td class="p-2.5 text-right font-mono font-black text-emerald-800" x-text="formatNumber(item.quantity * item.import_price) + ' đ'"></td>
                                         <td class="p-2.5 text-center">
@@ -395,14 +435,14 @@
                                     </tr>
                                 </template>
                                 <tr x-show="form.items.length === 0">
-                                    <td colspan="7" class="text-center py-8 text-slate-400 italic">
+                                    <td colspan="8" class="text-center py-8 text-slate-400 italic">
                                         Chưa có sản phẩm nào trong phiếu. Hãy tìm kiếm ở ô phía trên để thêm sản phẩm.
                                     </td>
                                 </tr>
                             </tbody>
                             <tfoot x-show="form.items.length > 0" class="bg-slate-50 font-bold border-t border-slate-200">
                                 <tr>
-                                    <td colspan="3" class="p-2.5 text-right uppercase text-slate-600">Tổng Số Lượng:</td>
+                                    <td colspan="4" class="p-2.5 text-right uppercase text-slate-600">Tổng Số Lượng:</td>
                                     <td class="p-2.5 text-center font-mono font-black text-slate-900" x-text="totalQty()"></td>
                                     <td class="p-2.5 text-right uppercase text-slate-600">Tổng Tiền Phiếu:</td>
                                     <td class="p-2.5 text-right font-mono font-black text-base text-emerald-800" x-text="formatNumber(totalAmount()) + ' đ'"></td>
@@ -486,6 +526,7 @@
                                     <th class="p-2.5 w-10 text-center">#</th>
                                     <th class="p-2.5">Sản Phẩm</th>
                                     <th class="p-2.5 w-24 text-center">Mã SKU</th>
+                                    <th class="p-2.5 w-36 text-center">Số Lô / HSD (Date)</th>
                                     <th class="p-2.5 w-20 text-center">ĐVT</th>
                                     <th class="p-2.5 w-24 text-center">Số Lượng</th>
                                     <th class="p-2.5 w-32 text-right">Đơn Giá (đ)</th>
@@ -498,6 +539,12 @@
                                         <td class="p-2.5 text-center text-slate-400 font-mono" x-text="idx + 1"></td>
                                         <td class="p-2.5 font-bold text-slate-900" x-text="it.product?.name || 'Sản phẩm'"></td>
                                         <td class="p-2.5 text-center font-mono font-bold text-emerald-700" x-text="it.product?.sku || '-'"></td>
+                                        <td class="p-2.5 text-center text-xs">
+                                            <div class="font-mono font-bold text-slate-800" x-text="it.batch_code || '-'"></div>
+                                            <template x-if="it.expiry_date">
+                                                <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200" x-text="'HSD: ' + it.expiry_date"></span>
+                                            </template>
+                                        </td>
                                         <td class="p-2.5 text-center" x-text="it.product?.unit || 'cái'"></td>
                                         <td class="p-2.5 text-center font-mono font-bold" x-text="formatNumber(it.quantity)"></td>
                                         <td class="p-2.5 text-right font-mono" x-text="formatNumber(it.import_price) + ' đ'"></td>
@@ -507,7 +554,7 @@
                             </tbody>
                             <tfoot class="bg-slate-50 font-bold border-t border-slate-200">
                                 <tr>
-                                    <td colspan="6" class="p-2.5 text-right uppercase">Tổng Tiền:</td>
+                                    <td colspan="7" class="p-2.5 text-right uppercase">Tổng Tiền:</td>
                                     <td class="p-2.5 text-right font-mono font-black text-base text-emerald-800" x-text="formatNumber(detailTx?.total_amount || 0) + ' đ'"></td>
                                 </tr>
                             </tfoot>
@@ -538,7 +585,7 @@ function warehouseReceiptApp() {
         detailTx: null,
 
         form: {
-            warehouse_id: '{{ $warehouses->first()?->id ?? 1 }}',
+            warehouse_id: '{{ $warehouses->firstWhere('code', 'KHO-MQ-01')?->id ?? $warehouses->first()?->id ?? 1 }}',
             supplier_name: '',
             reference_order_code: '',
             notes: '',
@@ -547,7 +594,7 @@ function warehouseReceiptApp() {
 
         openCreateModal() {
             this.form = {
-                warehouse_id: '{{ $warehouses->first()?->id ?? 1 }}',
+                warehouse_id: '{{ $warehouses->firstWhere('code', 'KHO-MQ-01')?->id ?? $warehouses->first()?->id ?? 1 }}',
                 supplier_name: '',
                 reference_order_code: '',
                 notes: '',
@@ -576,23 +623,30 @@ function warehouseReceiptApp() {
         },
 
         addItem(p) {
-            // Kiểm tra xem đã có trong items chưa
-            const exist = this.form.items.find(x => x.product_id == p.id);
-            if (exist) {
-                exist.quantity += 1;
-            } else {
-                this.form.items.push({
-                    product_id: p.id,
-                    name: p.name,
-                    sku: p.sku,
-                    unit: p.unit,
-                    quantity: 1,
-                    import_price: p.cost_price || 0,
-                    notes: ''
-                });
-            }
+            this.form.items.push({
+                product_id: p.id,
+                name: p.name,
+                sku: p.sku,
+                unit: p.unit,
+                quantity: 1,
+                import_price: p.cost_price || 0,
+                batch_code: '',
+                manufacturing_date: '',
+                expiry_date: '',
+                notes: ''
+            });
             this.searchQuery = '';
             this.searchResults = [];
+        },
+
+        setQuickExpiry(item, months) {
+            const d = new Date();
+            d.setMonth(d.getMonth() + months);
+            item.expiry_date = d.toISOString().split('T')[0];
+            if (!item.batch_code) {
+                const ymd = (new Date()).toISOString().slice(2, 10).replace(/-/g, '');
+                item.batch_code = 'LÔ-' + ymd + '-' + (item.sku || 'SP');
+            }
         },
 
         removeItem(idx) {
@@ -650,11 +704,18 @@ function warehouseReceiptApp() {
 
         async viewDetail(id) {
             try {
-                const res = await fetch(`/inventory/transactions/${id}`);
+                const res = await fetch(`/inventory/transactions/${id}`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
                 const data = await res.json();
                 if (data.success) {
                     this.detailTx = data.transaction;
                     this.showDetailModal = true;
+                } else {
+                    alert(data.message || 'Không thể tìm thấy phiếu');
                 }
             } catch (e) {
                 alert('Không thể tải chi tiết phiếu: ' + e.message);

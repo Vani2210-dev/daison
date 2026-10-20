@@ -691,11 +691,18 @@ function warehouseIssueApp() {
 
         async viewDetail(id) {
             try {
-                const res = await fetch(`/inventory/transactions/${id}`);
+                const res = await fetch(`/inventory/transactions/${id}`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
                 const data = await res.json();
                 if (data.success) {
                     this.detailTx = data.transaction;
                     this.showDetailModal = true;
+                } else {
+                    alert(data.message || 'Không thể tìm thấy phiếu');
                 }
             } catch (e) {
                 alert('Không thể tải chi tiết phiếu: ' + e.message);
