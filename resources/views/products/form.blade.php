@@ -16,7 +16,7 @@
                     <span>{{ $product ? 'Chỉnh Sửa Thông Tin Sản Phẩm' : 'Thêm Mới Sản Phẩm' }}</span>
                 </h1>
                 <p class="text-xs text-slate-500 mt-0.5">
-                    Quản lý 2 tên gọi (Thương mại & Hóa đơn), quy cách quy đổi, liên kết danh mục kho bãi và bảng giá đa tầng theo cấu hình giá ERP.
+                    Quản lý 2 tên gọi (Thương mại & Hóa đơn), quy cách quy đổi, liên kết danh mục kho bãi, thiết lập giá vốn và giá bán sản phẩm.
                 </p>
             </div>
         </div>
@@ -231,116 +231,150 @@
             </div>
         </div>
 
-        <!-- 4. BẢNG GIÁ PHÂN KHÚC: CÀI ĐẶT THEO CẤU HÌNH GIÁ VÀ ĐƠN VỊ TÍNH / ĐƠN VỊ QUY ĐỔI -->
+        <!-- 4. THIẾT LẬP GIÁ VỐN & GIÁ BÁN -->
         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                <div class="flex items-center gap-2">
-                    <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">4</div>
-                    <div>
-                        <h2 class="text-sm font-extrabold text-slate-900">Bảng Giá Phân Khúc Bán Hàng (Đồng Bộ Cấu Hình Giá)</h2>
-                        <p class="text-[11px] text-slate-500">Cài đặt theo Đơn vị tính chuẩn và Đơn vị quy đổi cho từng phân khúc giá</p>
-                    </div>
-                </div>
-                <a href="{{ url('/cat_price_tiers') }}" target="_blank" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 transition-colors">
-                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-                    <span>Mở trang Cấu hình giá</span>
-                </a>
-            </div>
-
-            <!-- Giá Vốn BQ (Cost Price) -->
-            <div class="p-4 bg-amber-50/60 border border-amber-200 rounded-2xl space-y-3">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-extrabold text-amber-950 flex items-center gap-1.5">
-                        <i class="fa-solid fa-coins text-amber-600"></i>
-                        <span>Giá Vốn Bình Quân (Cost Price)</span>
-                    </span>
-                    <span class="text-[11px] text-amber-800 font-medium">Làm cơ sở kiểm soát lợi nhuận gộp</span>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div>
-                        <label class="block font-bold text-amber-900 mb-1">
-                            Giá Vốn theo <span class="text-slate-900 font-extrabold" x-text="'[' + (unit || 'ĐVT chuẩn') + ']'"></span> (VNĐ)
-                        </label>
-                        <input 
-                            type="text" 
-                            inputmode="numeric"
-                            x-money="cost_price" 
-                            placeholder="0" 
-                            class="w-full px-3.5 py-2.5 bg-white border border-amber-300 rounded-xl font-mono text-xs font-black text-amber-950 text-right outline-none focus:ring-2 focus:ring-amber-500/30"
-                        >
-                    </div>
-                    <div>
-                        <label class="block font-bold text-amber-900 mb-1">
-                            Giá Vốn theo <span class="text-slate-900 font-extrabold" x-text="'[' + (conversion_unit || 'ĐVT quy đổi') + ']'"></span> (VNĐ)
-                        </label>
-                        <input 
-                            type="text" 
-                            readonly 
-                            :value="calcConversionPrice(cost_price)" 
-                            class="w-full px-3.5 py-2.5 bg-amber-100/50 border border-amber-300 rounded-xl font-mono text-xs font-bold text-amber-900 text-right outline-none select-none cursor-not-allowed"
-                        >
-                    </div>
+            <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs">4</div>
+                <div>
+                    <h2 class="text-sm font-extrabold text-slate-900">Thiết Lập Giá Vốn & Giá Bán Sản Phẩm</h2>
+                    <p class="text-[11px] text-slate-500">Cài đặt giá vốn mua vào và giá bán sản phẩm theo đơn vị tính chuẩn và quy cách quy đổi</p>
                 </div>
             </div>
 
-            <!-- Các Mức Giá Bán Theo Cấu Hình Giá -->
-            <div class="overflow-x-auto border border-slate-200 rounded-xl">
-                <table class="w-full text-left border-collapse text-xs">
-                    <thead>
-                        <tr class="bg-slate-100 text-slate-700 font-bold uppercase text-[11px] border-b border-slate-200">
-                            <th class="py-3 px-3 w-12 text-center">STT</th>
-                            <th class="py-3 px-4 min-w-[200px]">Tên Mức Giá (Theo Cấu Hình Giá)</th>
-                            <th class="py-3 px-4 min-w-[220px] text-right bg-sky-50/80 text-sky-900 font-extrabold border-x border-sky-200">
-                                Giá Bán theo <span x-text="'[' + (unit || 'ĐVT Chuẩn') + ']'"></span> (VNĐ)
-                            </th>
-                            <th class="py-3 px-4 min-w-[220px] text-right bg-emerald-50/80 text-emerald-900 font-extrabold">
-                                Giá Bán theo <span x-text="'[' + (conversion_unit || 'ĐVT Quy Đổi') + ']'"></span> (VNĐ)
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <template x-for="(tier, idx) in price_tiers" :key="tier.name">
-                            <tr class="hover:bg-slate-50/80 transition-colors">
-                                <td class="py-3 px-3 text-center text-slate-400 font-bold" x-text="idx + 1"></td>
-                                <td class="py-3 px-4">
-                                    <div class="flex items-center gap-2">
-                                        <i class="fa-solid fa-tag text-sky-500 text-xs"></i>
-                                        <template x-if="tier.code">
-                                             <span class="px-2 py-0.5 rounded bg-sky-100 text-sky-800 font-mono font-bold text-[10px]" x-text="tier.code"></span>
-                                        </template>
-                                        <span class="font-extrabold text-slate-900 text-xs" x-text="tier.name"></span>
-                                    </div>
-                                </td>
-                                <!-- Giá theo ĐVT Chuẩn -->
-                                <td class="py-2.5 px-4 text-right bg-sky-50/30 border-x border-sky-100">
-                                    <input 
-                                        type="text" 
-                                        inputmode="numeric"
-                                        x-money="tier.price" 
-                                        @input="onTierPriceChange(tier)" 
-                                        placeholder="0" 
-                                        class="w-full px-3 py-1.5 bg-white border border-sky-300 rounded-lg font-mono text-xs font-bold text-sky-950 text-right outline-none focus:ring-2 focus:ring-sky-500/30"
-                                    >
-                                </td>
-                                <!-- Giá theo ĐVT Quy đổi -->
-                                <td class="py-2.5 px-4 text-right bg-emerald-50/30">
-                                    <input 
-                                        type="text" 
-                                        inputmode="numeric"
-                                        x-money="tier.conversion_price" 
-                                        placeholder="0" 
-                                        class="w-full px-3 py-1.5 bg-white border border-emerald-300 rounded-lg font-mono text-xs font-bold text-emerald-950 text-right outline-none focus:ring-2 focus:ring-emerald-500/30"
-                                    >
-                                </td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <!-- KHỐI 1: GIÁ VỐN (COST PRICE) -->
+                <div class="p-4 bg-amber-50/60 border border-amber-200 rounded-2xl space-y-3">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-extrabold text-amber-950 flex items-center gap-1.5">
+                            <i class="fa-solid fa-coins text-amber-600"></i>
+                            <span>1. Giá Vốn Bình Quân (Cost Price)</span>
+                        </span>
+                        <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">Giá Mua Vào</span>
+                    </div>
+
+                    <div class="space-y-3 text-xs">
+                        <!-- Giá Vốn theo ĐVT Chuẩn -->
+                        <div>
+                            <label class="block font-bold text-amber-900 mb-1.5">
+                                Giá Vốn theo ĐVT Chuẩn <span class="text-slate-900 font-black" x-text="'[' + (unit || 'ĐVT chuẩn') + ']'"></span> (VNĐ) <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    inputmode="numeric"
+                                    x-money="cost_price" 
+                                    placeholder="0" 
+                                    class="w-full px-3.5 py-2.5 bg-white border border-amber-300 rounded-xl font-mono text-xs font-black text-amber-950 text-right pr-9 outline-none focus:ring-2 focus:ring-amber-500/30"
+                                >
+                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-800 pointer-events-none">đ</span>
+                            </div>
+                            <p class="text-[11px] text-amber-800/80 mt-1">Cơ sở tính giá thành xuất kho và lợi nhuận gộp</p>
+                        </div>
+
+                        <!-- Giá Vốn theo ĐVT Quy đổi (nếu có) -->
+                        <div x-show="conversion_unit && Number(conversion_rate) > 1">
+                            <label class="block font-bold text-amber-900 mb-1.5">
+                                Giá Vốn theo ĐVT Quy Đổi <span class="text-slate-900 font-black" x-text="'[' + (conversion_unit || 'ĐVT quy đổi') + ']'"></span> (VNĐ)
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    readonly 
+                                    :value="calcConversionPrice(cost_price)" 
+                                    class="w-full px-3.5 py-2.5 bg-amber-100/50 border border-amber-300 rounded-xl font-mono text-xs font-bold text-amber-900 text-right pr-9 outline-none select-none cursor-not-allowed"
+                                >
+                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-800 pointer-events-none">đ</span>
+                            </div>
+                            <p class="text-[11px] text-amber-700/80 mt-1" x-text="'Tự động quy đổi: Giá vốn / ' + Number(conversion_rate) + ' ' + (conversion_unit || '')"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KHỐI 2: GIÁ BÁN (SELLING PRICE) -->
+                <div class="p-4 bg-sky-50/60 border border-sky-200 rounded-2xl space-y-3">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-extrabold text-sky-950 flex items-center gap-1.5">
+                            <i class="fa-solid fa-tag text-sky-600"></i>
+                            <span>2. Giá Bán Sản Phẩm (Selling Price)</span>
+                        </span>
+                        <span class="text-[10px] bg-sky-100 text-sky-800 font-bold px-2 py-0.5 rounded-full">Giá Xuất Bán</span>
+                    </div>
+
+                    <div class="space-y-3 text-xs">
+                        <!-- Giá Bán theo ĐVT Chuẩn -->
+                        <div>
+                            <label class="block font-bold text-sky-900 mb-1.5">
+                                Giá Bán theo ĐVT Chuẩn <span class="text-slate-900 font-black" x-text="'[' + (unit || 'ĐVT chuẩn') + ']'"></span> (VNĐ) <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    inputmode="numeric"
+                                    x-money="price" 
+                                    @input="onPriceChange()" 
+                                    placeholder="0" 
+                                    class="w-full px-3.5 py-2.5 bg-white border border-sky-300 rounded-xl font-mono text-xs font-black text-sky-950 text-right pr-9 outline-none focus:ring-2 focus:ring-sky-500/30"
+                                >
+                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-sky-800 pointer-events-none">đ</span>
+                            </div>
+                            <p class="text-[11px] text-sky-800/80 mt-1">Đơn giá áp dụng khi lập báo giá, đơn hàng và xuất bán</p>
+                        </div>
+
+                        <!-- Giá Bán theo ĐVT Quy Đổi -->
+                        <div x-show="conversion_unit && Number(conversion_rate) > 1">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block font-bold text-sky-900">
+                                    Giá Bán theo ĐVT Quy Đổi <span class="text-slate-900 font-black" x-text="'[' + (conversion_unit || 'ĐVT quy đổi') + ']'"></span> (VNĐ)
+                                </label>
+                                <button 
+                                    type="button" 
+                                    @click="autoCalcConversionPrice()"
+                                    class="text-[11px] text-sky-600 hover:text-sky-800 font-bold underline cursor-pointer"
+                                >
+                                    Tính theo tỉ lệ quy đổi
+                                </button>
+                            </div>
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    inputmode="numeric"
+                                    x-money="conversion_price" 
+                                    placeholder="0" 
+                                    class="w-full px-3.5 py-2.5 bg-white border border-sky-300 rounded-xl font-mono text-xs font-bold text-sky-950 text-right pr-9 outline-none focus:ring-2 focus:ring-sky-500/30"
+                                >
+                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-sky-800 pointer-events-none">đ</span>
+                            </div>
+                            <p class="text-[11px] text-sky-700/80 mt-1">Áp dụng khi bán lẻ theo đơn vị quy đổi (tự động tính hoặc tùy chỉnh)</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <p class="text-[11px] text-slate-400 italic">
-                * Khi nhập Giá theo ĐVT Chuẩn, hệ thống sẽ tự động tính gợi ý Giá theo ĐVT Quy Đổi dựa trên tỉ lệ quy đổi. Bạn có thể tự do điều chỉnh từng ô.
-            </p>
+
+            <!-- Box Lợi Nhuận Gộp Dự Kiến -->
+            <div x-show="Number(price) > 0 || Number(cost_price) > 0" class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" :class="profitAmount >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'">
+                        <i :class="profitAmount >= 0 ? 'fa-solid fa-arrow-trend-up' : 'fa-solid fa-arrow-trend-down'"></i>
+                    </div>
+                    <div>
+                        <div class="font-extrabold text-slate-800">
+                            Chênh Lệch Lợi Nhuận Gộp Dự Kiến: 
+                            <span class="font-mono font-black" :class="profitAmount >= 0 ? 'text-emerald-700' : 'text-rose-600'" x-text="formatCurrency(profitAmount)"></span>
+                            <span class="text-[11px] text-slate-500 font-medium" x-text="'/ ' + (unit || 'ĐVT')"></span>
+                        </div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">
+                            Tỷ suất lợi nhuận trên giá bán: 
+                            <span class="font-bold font-mono" :class="profitMargin >= 0 ? 'text-emerald-700' : 'text-rose-600'" x-text="profitMargin + '%'"></span>
+                            <span class="mx-1.5 text-slate-300">|</span>
+                            Tỷ lệ chênh lệch so với giá vốn: 
+                            <span class="font-bold font-mono text-slate-700" x-text="markupRate + '%'"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-[11px] font-semibold text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+                    Giá vốn: <span class="text-amber-800 font-bold" x-text="formatCurrency(cost_price)"></span> &bull; Giá bán: <span class="text-sky-700 font-bold" x-text="formatCurrency(price)"></span>
+                </div>
+            </div>
         </div>
 
         <!-- 5. TỒN KHO, KHO LƯU TRỮ, THUẾ SUẤT VAT & THIẾT LẬP -->
@@ -476,33 +510,29 @@
 <script>
 function productForm() {
     const rawProduct = @json($product ?? null);
-    const masterTiers = @json($priceTiers ?? []);
     const warehousesList = @json($warehouses ?? []);
     const subcategoriesList = @json($subcategories ?? []);
 
-    // Build initial price tiers synced with Master Price Tiers
-    let initialTiers = [];
-    const existingTiers = (rawProduct && Array.isArray(rawProduct.price_tiers)) ? rawProduct.price_tiers : [];
+    // Initial price & conversion price
+    let initPrice = Number(rawProduct?.price || 0);
+    if (!initPrice && rawProduct?.price_tiers) {
+        const tiers = Array.isArray(rawProduct.price_tiers) 
+            ? rawProduct.price_tiers 
+            : (typeof rawProduct.price_tiers === 'string' ? JSON.parse(rawProduct.price_tiers || '[]') : []);
+        if (Array.isArray(tiers) && tiers.length > 0) {
+            const retailTier = tiers.find(t => t.name && (t.name.toLowerCase().includes('bán lẻ') || t.name.toLowerCase().includes('tiêu chuẩn')));
+            if (retailTier && Number(retailTier.price) > 0) {
+                initPrice = Number(retailTier.price);
+            } else {
+                const posTier = tiers.find(t => Number(t.price) > 0);
+                if (posTier) initPrice = Number(posTier.price);
+            }
+        }
+    }
 
-    masterTiers.forEach(m => {
-        const found = existingTiers.find(t => (t.name || '').toLowerCase() === (m.name || '').toLowerCase());
-        initialTiers.push({
-            code: m.code || '',
-            name: m.name,
-            price: found ? Number(found.price || 0) : 0,
-            conversion_price: found ? Number(found.conversion_price || 0) : 0
-        });
-    });
-
-    // If no master tiers were found, fallback to defaults
-    if (initialTiers.length === 0) {
-        initialTiers = [
-            { name: 'Giá Đại lý Cấp 1', price: 0, conversion_price: 0 },
-            { name: 'Giá Đại lý Cấp 2', price: 0, conversion_price: 0 },
-            { name: 'Giá Bán lẻ', price: 0, conversion_price: 0 },
-            { name: 'Giá Dự án / Công trình', price: 0, conversion_price: 0 },
-            { name: 'Giá Thợ thi công', price: 0, conversion_price: 0 }
-        ];
+    let initConversionPrice = Number(rawProduct?.conversion_price || 0);
+    if (!initConversionPrice && initPrice > 0 && Number(rawProduct?.conversion_rate) > 1) {
+        initConversionPrice = Math.round(initPrice / Number(rawProduct.conversion_rate));
     }
 
     // Parse initial warehouse and rack location
@@ -539,9 +569,11 @@ function productForm() {
         subcategory: rawProduct?.subcategory || '',
         subcategoriesList: subcategoriesList,
         unit: rawProduct?.unit || 'cây',
-        conversion_unit: rawProduct?.conversion_unit || 'mét',
-        conversion_rate: Number(rawProduct?.conversion_rate) || 4,
+        conversion_unit: rawProduct?.conversion_unit || '',
+        conversion_rate: Number(rawProduct?.conversion_rate) || 1,
         cost_price: Number(rawProduct?.cost_price) || 0,
+        price: initPrice,
+        conversion_price: initConversionPrice,
         stock_quantity: Number(rawProduct?.stock_quantity) || 0,
         min_stock_alert: Number(rawProduct?.min_stock_alert) || 10,
         max_stock_alert: (rawProduct?.max_stock_alert !== null && rawProduct?.max_stock_alert !== undefined) ? Number(rawProduct.max_stock_alert) : '',
@@ -550,7 +582,6 @@ function productForm() {
         rack_detail: initRack,
         location: rawLoc || initWarehouse,
         is_active: rawProduct?.is_active !== undefined ? !!rawProduct.is_active : true,
-        price_tiers: initialTiers,
         isSaving: false,
 
         get filteredSubcategories() {
@@ -560,6 +591,27 @@ function productForm() {
                 const matchBrand = !this.brand_id || !s.brand_id || s.brand_id == this.brand_id;
                 return matchCat && matchBrand;
             });
+        },
+
+        get profitAmount() {
+            return Number(this.price || 0) - Number(this.cost_price || 0);
+        },
+
+        get profitMargin() {
+            const p = Number(this.price || 0);
+            if (p <= 0) return 0;
+            return ((this.profitAmount / p) * 100).toFixed(1);
+        },
+
+        get markupRate() {
+            const c = Number(this.cost_price || 0);
+            if (c <= 0) return 0;
+            return ((this.profitAmount / c) * 100).toFixed(1);
+        },
+
+        formatCurrency(val) {
+            const num = Number(val || 0);
+            return new Intl.NumberFormat('vi-VN').format(num) + ' đ';
         },
 
         onCategoryChange() {
@@ -607,11 +659,17 @@ function productForm() {
             return new Intl.NumberFormat('vi-VN').format(unitPrice) + ' đ';
         },
 
-        onTierPriceChange(tier) {
+        onPriceChange() {
             const rate = Number(this.conversion_rate || 1);
-            if (this.conversion_unit && rate > 1 && tier.price > 0) {
-                // Auto compute conversion price as price / conversion_rate
-                tier.conversion_price = Math.round(tier.price / rate);
+            if (this.conversion_unit && rate > 1 && Number(this.price) > 0) {
+                this.conversion_price = Math.round(Number(this.price) / rate);
+            }
+        },
+
+        autoCalcConversionPrice() {
+            const rate = Number(this.conversion_rate || 1);
+            if (rate > 1 && Number(this.price) > 0) {
+                this.conversion_price = Math.round(Number(this.price) / rate);
             }
         },
 
@@ -663,13 +721,14 @@ function productForm() {
                 conversion_rate: this.conversion_rate,
                 specification: autoSpec,
                 cost_price: this.cost_price,
+                price: this.price,
+                conversion_price: this.conversion_price,
                 stock_quantity: this.stock_quantity,
                 min_stock_alert: this.min_stock_alert,
                 max_stock_alert: (this.max_stock_alert !== '' && this.max_stock_alert !== null) ? Number(this.max_stock_alert) : null,
                 vat_rate: this.vat_rate,
                 location: this.location,
-                is_active: this.is_active,
-                price_tiers: this.price_tiers
+                is_active: this.is_active
             };
 
             try {

@@ -213,6 +213,64 @@
             </div>
         </div>
 
+        @if(!empty($machine->accessories))
+        <!-- Accessories Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 space-y-2.5">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                <span class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-boxes-stacked text-teal-600"></i>
+                    Phụ kiện kèm theo máy
+                </span>
+                <span class="text-[11px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200">
+                    {{ count($machine->accessories_list) }} phụ kiện
+                </span>
+            </h3>
+
+            @if(count($machine->accessories_list) > 0)
+                <div class="divide-y divide-slate-100 rounded-xl border border-slate-100 bg-slate-50/60 overflow-hidden text-xs">
+                    @foreach($machine->accessories_list as $acc)
+                        @php
+                            $accName = is_array($acc) ? ($acc['name'] ?? '') : (string)$acc;
+                            $accQty = is_array($acc) ? ($acc['quantity'] ?? $acc['qty'] ?? 1) : 1;
+                            $accUnit = is_array($acc) ? ($acc['unit'] ?? '') : '';
+                            $accDate = is_array($acc) ? ($acc['installed_date'] ?? null) : null;
+                        @endphp
+                        @if(!empty($accName))
+                            <div class="p-3 flex items-center justify-between gap-2.5">
+                                <div class="flex items-start gap-2.5 min-w-0">
+                                    <div class="w-6 h-6 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center text-[11px] shrink-0 mt-0.5">
+                                        <i class="fa-solid fa-check"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <span class="font-bold text-slate-800 block text-xs leading-snug">{{ $accName }}</span>
+                                        @if($accDate)
+                                            <span class="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5 font-medium">
+                                                <i class="fa-regular fa-calendar text-[9px] text-slate-400"></i>
+                                                Lắp ngày: <span class="font-mono text-slate-600">{{ date('d/m/Y', strtotime($accDate)) }}</span>
+                                            </span>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <span class="px-2 py-0.5 rounded-lg text-xs font-bold bg-white border border-slate-200 text-teal-800 font-mono shadow-2xs">
+                                        x{{ $accQty }} {{ $accUnit }}
+                                    </span>
+                                </div>
+                            </div>
+                        @endif
+                    @endforeach
+                </div>
+            @else
+                <div class="p-3 bg-teal-50/70 rounded-xl border border-teal-200/70 text-xs font-semibold text-teal-900 flex items-start gap-2.5">
+                    <i class="fa-solid fa-circle-check text-teal-600 mt-0.5 text-sm shrink-0"></i>
+                    <div class="leading-relaxed">
+                        {{ $machine->accessories }}
+                    </div>
+                </div>
+            @endif
+        </div>
+        @endif
+
         <!-- Service & Maintenance History -->
         @if(isset($repairs) && count($repairs) > 0)
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 space-y-3">

@@ -24,6 +24,7 @@ use App\Http\Controllers\DebtHandoverController;
 use App\Http\Controllers\WarehouseTransactionController;
 use App\Http\Controllers\WaterFilterController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ConsignmentOrderController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
@@ -53,6 +54,18 @@ Route::prefix('api')->group(function () {
     // Credit overrun approval workflow (lập đơn vượt hạn mức)
     Route::get('/dealers/{id}/credit-info', [OrderController::class, 'getDealerCreditInfo'])->middleware('permission:orders.view,dealers.view');
     Route::post('/orders/{id}/approve-credit-overrun', [OrderController::class, 'approveCreditOverrunAtCreation'])->middleware('permission:orders.approve,orders.edit,debt.approve');
+
+    // 2.1 Đơn Hàng Ôm (Consignment Orders)
+    Route::get('/consignment-orders/master-data', [ConsignmentOrderController::class, 'masterData']);
+    Route::get('/consignment-orders', [ConsignmentOrderController::class, 'index']);
+    Route::post('/consignment-orders', [ConsignmentOrderController::class, 'store']);
+    Route::get('/consignment-orders/{id}', [ConsignmentOrderController::class, 'show']);
+    Route::post('/consignment-orders/{id}/approve', [ConsignmentOrderController::class, 'approve']);
+    Route::post('/consignment-orders/{id}/reject', [ConsignmentOrderController::class, 'reject']);
+    Route::post('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'createRetailOrder']);
+    Route::get('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'retailOrders']);
+    Route::post('/consignment-orders/{id}/return', [ConsignmentOrderController::class, 'returnItems']);
+    Route::post('/consignment-orders/{id}/settle', [ConsignmentOrderController::class, 'settle']);
 
     // 3. Inventory, Products, Categories & Brands
     Route::post('/products', [InventoryController::class, 'saveProduct'])->middleware('permission:inventory.update_price,danhmuc.manage');
@@ -284,8 +297,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/inventory/transactions/{id}/cancel', [WarehouseTransactionController::class, 'cancel'])->name('inventory.transactions.cancel')->middleware('permission:inventory.delete,inventory.edit');
     Route::get('/api/inventory/search-products', [WarehouseTransactionController::class, 'searchProducts']);
 
-    // 4. Warehouse Returns Intake (Hoàn kho từ xe giao hàng)
+    // 4. Warehouse Returns Intake & Holding Stock Sale (Hoàn kho & Bán hàng từ kho ôm)
     Route::get('/inventory/import', [DeliveryController::class, 'returnsIntakePage'])->name('inventory.import')->middleware('permission:inventory.view,inv_import.view,returns.view');
+    Route::get('/inventory/holding-sale/create', [DeliveryController::class, 'holdingSaleCreate'])->name('inventory.holding_sale.create')->middleware('permission:orders.create,orders.view,inventory.view');
     Route::get('/warehouse/import', [DeliveryController::class, 'returnsIntakePage']);
     Route::get('/returns/intake', [DeliveryController::class, 'returnsIntakePage']);
     Route::get('/warehouse/returns-intake', [DeliveryController::class, 'returnsIntakePage']);

@@ -30,11 +30,11 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-2">
-            <a href="{{ url('/water-filter?tab=installations') }}" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 font-bold hover:bg-slate-50 transition text-xs cursor-pointer">
+        <div class="flex items-center gap-2 w-full md:w-auto">
+            <a href="{{ url('/water-filter?tab=installations') }}" class="flex-1 md:flex-none px-4 py-2.5 border border-slate-300 rounded-xl text-slate-600 font-bold hover:bg-slate-50 transition text-xs cursor-pointer text-center">
                 <i class="fa-solid fa-xmark mr-1"></i> Hủy bỏ
             </a>
-            <button @click="submitForm()" type="button" class="flex items-center gap-2 px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold shadow-md shadow-sky-600/20 transition text-xs cursor-pointer">
+            <button @click="submitForm()" type="button" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold shadow-md shadow-sky-600/20 transition text-xs cursor-pointer text-center">
                 <i class="fa-solid fa-floppy-disk text-sm"></i>
                 <span x-text="isEdit ? 'Lưu thay đổi' : 'Hoàn tất & Tạo đơn lắp đặt'"></span>
             </button>

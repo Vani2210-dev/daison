@@ -41,6 +41,7 @@ class FilterInstalledMachine extends Model
         'tds_in',
         'tds_out',
         'pressure',
+        'accessories',
         'activation_notes',
         'admin_notes',
         'view_count',
@@ -65,6 +66,7 @@ class FilterInstalledMachine extends Model
         'qr_url',
         'warranty_status',
         'warranty_days_remaining',
+        'accessories_list',
     ];
 
     public function modelCatalog()
@@ -85,6 +87,26 @@ class FilterInstalledMachine extends Model
     public function getQrUrlAttribute(): string
     {
         return url('/m/' . $this->qr_token);
+    }
+
+    public function getAccessoriesListAttribute(): array
+    {
+        if (empty($this->accessories)) {
+            return [];
+        }
+        if (is_array($this->accessories)) {
+            return $this->accessories;
+        }
+        $decoded = json_decode($this->accessories, true);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+        return [[
+            'name'           => (string) $this->accessories,
+            'quantity'       => 1,
+            'installed_date' => $this->installed_at ? $this->installed_at->format('Y-m-d') : null,
+            'unit'           => 'Cái',
+        ]];
     }
 
     public function getWarrantyStatusAttribute(): string

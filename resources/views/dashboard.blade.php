@@ -15,7 +15,7 @@
                     Hệ Thống Trực Tuyến
                 </span>
             </h1>
-            <p class="text-xs sm:text-sm text-slate-500 mt-1">Tổng hợp số liệu kinh doanh, kho bãi và tiến độ giao vận hôm nay ({{ now()->format('d/m/Y') }}).</p>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">Phân hệ phân phối hàng tiêu dùng & phân hệ máy lọc nước — Tổng hợp số liệu kinh doanh, kho bãi và tiến độ giao vận hôm nay ({{ now()->format('d/m/Y') }}).</p>
         </div>
         <div class="flex items-center gap-2.5">
             <a href="{{ url('/orders/create') }}" class="px-4 py-2.5 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white font-bold text-xs rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-2">

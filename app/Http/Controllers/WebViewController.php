@@ -175,34 +175,22 @@ class WebViewController extends Controller
         }
 
         $costPrice = (float)round((float)$request->input('cost_price', 0));
-        $convCostPrice = (float)$request->input('conversion_price', 0);
-        if ($convCostPrice <= 0 && $costPrice > 0) {
-            $convCostPrice = ($conversionRate > 1) ? (float)round($costPrice / $conversionRate) : $costPrice;
+        $price = (float)round((float)$request->input('price', 0));
+
+        $convPrice = (float)$request->input('conversion_price', 0);
+        if ($convPrice <= 0 && $price > 0 && $conversionRate > 1) {
+            $convPrice = (float)round($price / $conversionRate);
         } else {
-            $convCostPrice = (float)round($convCostPrice);
+            $convPrice = (float)round($convPrice);
         }
 
-        $priceTiersInput = $request->input('price_tiers', []);
-        $formattedPriceTiers = [];
-
-        if (is_array($priceTiersInput)) {
-            foreach ($priceTiersInput as $tier) {
-                if (!empty($tier['name'])) {
-                    $tierPrice = (float)round((float)($tier['price'] ?? 0));
-                    $tierConvPrice = (float)($tier['conversion_price'] ?? 0);
-                    if ($tierConvPrice <= 0 && $tierPrice > 0) {
-                        $tierConvPrice = ($conversionRate > 1) ? (float)round($tierPrice / $conversionRate) : $tierPrice;
-                    } else {
-                        $tierConvPrice = (float)round($tierConvPrice);
-                    }
-                    $formattedPriceTiers[] = [
-                        'name' => trim($tier['name']),
-                        'price' => $tierPrice,
-                        'conversion_price' => $tierConvPrice,
-                    ];
-                }
-            }
-        }
+        // Tự động duy trì cấu trúc price_tiers chuẩn để tương thích với các module đơn hàng, POS, ký gửi
+        $formattedPriceTiers = [
+            ['name' => 'Giá Bán', 'price' => $price, 'conversion_price' => $convPrice],
+            ['name' => 'Giá Bán lẻ', 'price' => $price, 'conversion_price' => $convPrice],
+            ['name' => 'Giá Đại lý Cấp 1', 'price' => $price, 'conversion_price' => $convPrice],
+            ['name' => 'Nguyên Giá', 'price' => $price, 'conversion_price' => $convPrice],
+        ];
 
         $data = [
             'sku' => trim($request->input('sku')),
@@ -216,8 +204,9 @@ class WebViewController extends Controller
             'unit' => $unit,
             'conversion_unit' => $conversionUnit ?: null,
             'conversion_rate' => $conversionRate,
-            'conversion_price' => $convCostPrice,
             'cost_price' => $costPrice,
+            'price' => $price,
+            'conversion_price' => $convPrice,
             'vat_rate' => (float)$request->input('vat_rate', 10),
             'price_tiers' => $formattedPriceTiers,
             'stock_quantity' => (float)$request->input('stock_quantity', 0),
@@ -403,7 +392,7 @@ class WebViewController extends Controller
             }
 
             return Product::where('is_active', true)
-                ->select('id', 'sku', 'name', 'unit', 'conversion_unit', 'conversion_rate', 'conversion_price', 'cost_price', 'price_tiers', 'vat_rate', 'stock_quantity')
+                ->select('id', 'sku', 'name', 'unit', 'conversion_unit', 'conversion_rate', 'conversion_price', 'cost_price', 'price', 'price_tiers', 'vat_rate', 'stock_quantity')
                 ->orderBy('name')
                 ->get()
                 ->map(function ($p) use ($stockMap) {
@@ -416,6 +405,7 @@ class WebViewController extends Controller
                         'conversion_rate' => (float)$p->conversion_rate,
                         'conversion_price' => (float)$p->conversion_price,
                         'cost_price' => (float)$p->cost_price,
+                        'price' => (float)$p->price,
                         'price_tiers' => $p->price_tiers,
                         'vat_rate' => (float)$p->vat_rate,
                         'stock_quantity' => (float)$p->stock_quantity,
@@ -467,31 +457,42 @@ class WebViewController extends Controller
                     'driver_name'          => $user->name,
                 ]
             ]);
-        } else {
-            // Admin, Quản lý, Sale, Kế toán: Có đầy đủ các kho công ty + các kho xe
-            $physicalWarehouses = Warehouse::where('is_active', true)->orderBy('id')->get(['id', 'name', 'code'])->map(function($w) {
-                return (object)[
-                    'id'                   => $w->id,
-                    'name'                 => $w->name,
-                    'code'                 => $w->code,
-                    'is_vehicle_warehouse' => false,
-                    'plate_number'         => '',
-                    'driver_name'          => '',
-                ];
-            });
+            Warehouse::syncEmployeeWarehouses();
 
-            $vehicleWarehouses = Vehicle::with('driver:id,name')->get()->map(function($v) {
-                return (object)[
-                    'id'                   => 'xe_' . $v->id,
-                    'name'                 => 'Kho Xe ' . $v->plate_number . ($v->driver ? ' (' . $v->driver->name . ')' : ''),
-                    'code'                 => $v->plate_number,
-                    'is_vehicle_warehouse' => true,
-                    'plate_number'         => $v->plate_number,
-                    'driver_name'          => $v->driver?->name ?? '',
-                ];
-            });
+            // Admin, Quản lý, Sale, Kế toán: Có đầy đủ các kho công ty + các kho hàng ôm nhân viên
+            $physicalWarehouses = Warehouse::where('is_active', true)
+                ->whereNotIn('type', ['Kho hàng ôm', 'Kho xe lưu động'])
+                ->orderBy('id')
+                ->get(['id', 'name', 'code'])
+                ->map(function($w) {
+                    return (object)[
+                        'id'                   => $w->id,
+                        'name'                 => $w->name,
+                        'code'                 => $w->code,
+                        'is_vehicle_warehouse' => false,
+                        'is_holding_warehouse' => false,
+                        'plate_number'         => '',
+                        'driver_name'          => '',
+                    ];
+                });
 
-            $warehouses = $physicalWarehouses->concat($vehicleWarehouses);
+            $holdingWarehouses = Warehouse::where('is_active', true)
+                ->whereIn('type', ['Kho hàng ôm', 'Kho xe lưu động'])
+                ->orderBy('name')
+                ->get()
+                ->map(function($w) {
+                    return (object)[
+                        'id'                   => $w->id,
+                        'name'                 => $w->name,
+                        'code'                 => $w->code,
+                        'is_vehicle_warehouse' => false,
+                        'is_holding_warehouse' => true,
+                        'plate_number'         => '',
+                        'driver_name'          => $w->manager_name,
+                    ];
+                });
+
+            $warehouses = $physicalWarehouses->concat($holdingWarehouses);
         }
 
         return [$warehouses, $isDriver, $driverVehicle];
@@ -1105,7 +1106,12 @@ class WebViewController extends Controller
             ->orderBy('name')
             ->get();
 
-        // 5. Thống kê nhanh
+        // 5. Danh mục phụ tùng / phụ kiện kho phục vụ cài đặt máy
+        $filterParts = \App\Models\FilterPart::where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'category', 'unit', 'stock_qty']);
+
+        // 6. Thống kê nhanh
         $myInstallPending = \App\Models\FilterInstallation::where('technician_id', $user?->id)
             ->whereIn('status', ['pending', 'confirmed', 'assigned', 'preparing', 'dispatching', 'in_progress'])
             ->count();
@@ -1122,6 +1128,7 @@ class WebViewController extends Controller
             'filterInstallations',
             'blankQrCodes',
             'machineModels',
+            'filterParts',
             'myInstallPending',
             'myInstallCompleted',
             'allInstallPending',

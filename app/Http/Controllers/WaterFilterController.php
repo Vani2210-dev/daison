@@ -1182,6 +1182,7 @@ class WaterFilterController extends Controller
                 'tds_in'                   => $m->tds_in,
                 'tds_out'                  => $m->tds_out,
                 'pressure'                 => $m->pressure,
+                'accessories'              => $m->accessories ?: '',
                 'view_count'               => $m->view_count,
                 'last_scanned_at'          => $m->last_scanned_at ? $m->last_scanned_at->format('d/m/Y H:i') : null,
                 'repairs_count'            => $repairsCount,
@@ -1341,6 +1342,7 @@ class WaterFilterController extends Controller
             'tds_in'                    => 'nullable|integer',
             'tds_out'                   => 'nullable|integer',
             'pressure'                  => 'nullable|string|max:100',
+            'accessories'               => 'nullable|string',
             'status'                    => 'nullable|string|in:unactivated,pending_activation,activated,expired',
             'admin_notes'               => 'nullable|string',
         ]);
@@ -1388,7 +1390,9 @@ class WaterFilterController extends Controller
 
     /**
      * Quét mã QR máy lọc nước (Public Route /m/{token})
-     * - Nếu máy trống/chờ duyệt: mở trang KTV điều phối nhập thông tin kích hoạt.
+     * - Nếu máy trống/chờ duyệt:
+     *   + Nếu người quét KHÔNG PHẢI TỪ WEB MÌNH (chưa đăng nhập): thông báo sản phẩm chưa được kích hoạt.
+     *   + Nếu là KTV/nhân viên nội bộ đã đăng nhập: mở trang kích hoạt.
      * - Nếu máy đã kích hoạt: mở trang Tra cứu bảo hành điện tử chính hãng cho Khách hàng.
      */
     public function scanQrMachine(Request $request, $token)
@@ -1402,6 +1406,12 @@ class WaterFilterController extends Controller
         $machine->update(['last_scanned_at' => now()]);
 
         if (in_array($machine->status, ['unactivated', 'pending_activation'])) {
+            // Nếu người quét không phải từ web mình (chưa đăng nhập tài khoản KTV / Nhân viên)
+            if (!Auth::check()) {
+                return view('water_filter.qr_not_activated', compact('machine'));
+            }
+
+            // KTV / Nhân viên từ web mình đã đăng nhập: Mở trang kích hoạt
             $machineModels = FilterMachineModel::where('is_active', true)->orderBy('brand')->orderBy('name')->get();
             $technicians = User::where('status', '!=', 'inactive')->select('id', 'name', 'phone', 'department')->orderBy('name')->get();
             return view('water_filter.qr_activation', compact('machine', 'machineModels', 'technicians'));
@@ -1438,6 +1448,7 @@ class WaterFilterController extends Controller
             'tds_in'                    => 'nullable|integer',
             'tds_out'                   => 'nullable|integer',
             'pressure'                  => 'nullable|string|max:100',
+            'accessories'               => 'nullable|string',
             'activation_notes'          => 'nullable|string',
             'filter_replacement_months' => 'nullable|integer|min:1',
         ]);
@@ -1475,6 +1486,53 @@ class WaterFilterController extends Controller
             'tds_in'                    => $data['tds_in'] ?? null,
             'tds_out'                   => $data['tds_out'] ?? null,
             'pressure'                  => $data['pressure'] ?? null,
+            'accessories'               => (function() use ($data, $machine, $installedAt) {
+                $rawAcc = $data['accessories'] ?? $machine->accessories;
+                if (empty($rawAcc)) return null;
+                $parsedItems = [];
+                if (is_array($rawAcc)) {
+                    $parsedItems = $rawAcc;
+                } elseif (is_string($rawAcc)) {
+                    $trimmed = trim($rawAcc);
+                    if (str_starts_with($trimmed, '[') || str_starts_with($trimmed, '{')) {
+                        $dec = json_decode($trimmed, true);
+                        if (is_array($dec)) $parsedItems = $dec;
+                    }
+                    if (empty($parsedItems) && !empty($trimmed)) {
+                        $parsedItems = [[
+                            'name'           => $trimmed,
+                            'quantity'       => 1,
+                            'installed_date' => $installedAt->format('Y-m-d'),
+                            'unit'           => 'Cái',
+                        ]];
+                    }
+                }
+                if (!empty($parsedItems) && is_array($parsedItems)) {
+                    $normalized = [];
+                    foreach ($parsedItems as $item) {
+                        if (is_array($item)) {
+                            $name = trim($item['name'] ?? $item['part_name'] ?? '');
+                            if (!empty($name)) {
+                                $normalized[] = [
+                                    'name'           => $name,
+                                    'quantity'       => (int) ($item['quantity'] ?? $item['qty'] ?? 1),
+                                    'installed_date' => !empty($item['installed_date']) ? substr($item['installed_date'], 0, 10) : $installedAt->format('Y-m-d'),
+                                    'unit'           => $item['unit'] ?? 'Cái',
+                                ];
+                            }
+                        } elseif (is_string($item) && !empty(trim($item))) {
+                            $normalized[] = [
+                                'name'           => trim($item),
+                                'quantity'       => 1,
+                                'installed_date' => $installedAt->format('Y-m-d'),
+                                'unit'           => 'Cái',
+                            ];
+                        }
+                    }
+                    return json_encode($normalized, JSON_UNESCAPED_UNICODE);
+                }
+                return null;
+            })(),
             'activation_notes'          => $data['activation_notes'] ?? null,
             'status'                    => $autoActivate ? 'activated' : 'pending_activation',
             'activated_at'              => $autoActivate ? now() : null,
@@ -1598,15 +1656,26 @@ class WaterFilterController extends Controller
             ], 422);
         }
 
-        // Nếu chuỗi chứa URL (vd: http://127.0.0.1:8001/m/ABC123456789), bóc tách token
+        // Nếu chuỗi chứa URL (vd: http://127.0.0.1:8001/m/ABC123456789), bóc tách mã
         if (str_contains($qrInput, '/m/')) {
             $parts = explode('/m/', $qrInput);
             $tokenCandidate = trim(end($parts), " /?#\t\n\r\0\x0B");
-            $machine = FilterInstalledMachine::where('qr_token', $tokenCandidate)->first();
+            $machine = FilterInstalledMachine::where('qr_token', $tokenCandidate)
+                ->orWhere('qr_code', $tokenCandidate)
+                ->first();
+            $cleanCode = $machine?->qr_code ?: $tokenCandidate;
+        } elseif (str_contains($qrInput, '/qr/')) {
+            $parts = explode('/qr/', $qrInput);
+            $codeCandidate = trim(end($parts), " /?#\t\n\r\0\x0B");
+            $machine = FilterInstalledMachine::where('qr_code', $codeCandidate)
+                ->orWhere('qr_token', $codeCandidate)
+                ->first();
+            $cleanCode = $codeCandidate;
         } else {
             $machine = FilterInstalledMachine::where('qr_code', $qrInput)
                 ->orWhere('qr_token', $qrInput)
                 ->first();
+            $cleanCode = $qrInput;
         }
 
         // Nếu tem QR chưa tồn tại trong hệ thống, tự động tạo mới tem QR để kích hoạt ngay!
@@ -1615,7 +1684,7 @@ class WaterFilterController extends Controller
             $newCode = 'QR-' . str_pad($lastId + 1, 5, '0', STR_PAD_LEFT);
             $machine = FilterInstalledMachine::create([
                 'machine_code'      => 'MLN-' . date('Ymd') . '-' . sprintf('%03d', $lastId + 1),
-                'qr_code'           => $qrInput ?: $newCode,
+                'qr_code'           => $cleanCode ?: $newCode,
                 'qr_token'          => \Illuminate\Support\Str::random(12),
                 'status'            => 'unactivated',
                 'created_by'        => Auth::id(),
@@ -1634,6 +1703,10 @@ class WaterFilterController extends Controller
         $tech = $techId ? User::find($techId) : null;
         $techName = $tech?->name ?? ($installation->technician_name ?: $user?->name);
 
+        $customerName = trim($request->input('customer_name') ?: $installation->customer_name);
+        $customerPhone = trim($request->input('customer_phone') ?: $installation->customer_phone);
+        $customerAddress = trim($request->input('customer_address') ?: $installation->customer_address);
+
         $machineModel = $request->input('machine_model', $installation->machine_model);
         $machineModelId = $request->input('machine_model_id', $installation->machine_model_id);
         $machineSerial = $request->input('machine_serial', $installation->machine_serial);
@@ -1643,11 +1716,62 @@ class WaterFilterController extends Controller
         $pressure = $request->input('pressure', $installation->pressure);
         $notes = $request->input('activation_notes', $installation->completion_notes);
 
+        // Chuẩn hóa phụ kiện kèm theo máy sang dạng JSON: [{name, quantity, installed_date, unit}]
+        $accessoriesInput = $request->input('accessories');
+        $accessoriesJson = null;
+        if (!empty($accessoriesInput)) {
+            $parsedItems = [];
+            if (is_array($accessoriesInput)) {
+                $parsedItems = $accessoriesInput;
+            } elseif (is_string($accessoriesInput)) {
+                $trimmed = trim($accessoriesInput);
+                if (str_starts_with($trimmed, '[') || str_starts_with($trimmed, '{')) {
+                    $decoded = json_decode($trimmed, true);
+                    if (is_array($decoded)) {
+                        $parsedItems = $decoded;
+                    }
+                }
+                if (empty($parsedItems) && !empty($trimmed)) {
+                    $parsedItems = [[
+                        'name'           => $trimmed,
+                        'quantity'       => 1,
+                        'installed_date' => date('Y-m-d'),
+                        'unit'           => 'Cái',
+                    ]];
+                }
+            }
+
+            if (!empty($parsedItems) && is_array($parsedItems)) {
+                $normalized = [];
+                foreach ($parsedItems as $item) {
+                    if (is_array($item)) {
+                        $name = trim($item['name'] ?? $item['part_name'] ?? '');
+                        if (!empty($name)) {
+                            $normalized[] = [
+                                'name'           => $name,
+                                'quantity'       => (int) ($item['quantity'] ?? $item['qty'] ?? 1),
+                                'installed_date' => !empty($item['installed_date']) ? substr($item['installed_date'], 0, 10) : date('Y-m-d'),
+                                'unit'           => $item['unit'] ?? 'Cái',
+                            ];
+                        }
+                    } elseif (is_string($item) && !empty(trim($item))) {
+                        $normalized[] = [
+                            'name'           => trim($item),
+                            'quantity'       => 1,
+                            'installed_date' => date('Y-m-d'),
+                            'unit'           => 'Cái',
+                        ];
+                    }
+                }
+                $accessoriesJson = json_encode($normalized, JSON_UNESCAPED_UNICODE);
+            }
+        }
+
         $machine->update([
             'installation_id'           => $installation->id,
-            'customer_name'             => $request->input('customer_name', $installation->customer_name),
-            'customer_phone'            => $request->input('customer_phone', $installation->customer_phone),
-            'customer_address'          => $request->input('customer_address', $installation->customer_address),
+            'customer_name'             => $customerName,
+            'customer_phone'            => $customerPhone,
+            'customer_address'          => $customerAddress,
             'water_source_type'         => $waterSource,
             'machine_model_id'          => $machineModelId,
             'machine_model'             => $machineModel,
@@ -1666,14 +1790,18 @@ class WaterFilterController extends Controller
             'tds_in'                    => $tdsIn,
             'tds_out'                   => $tdsOut,
             'pressure'                  => $pressure,
+            'accessories'               => $accessoriesJson,
             'activation_notes'          => $notes,
             'status'                    => 'activated',
         ]);
 
-        // Cập nhật trạng thái đơn lắp đặt thành 'completed'
+        // Cập nhật trạng thái đơn lắp đặt thành 'completed' và đồng bộ thông tin khách hàng mới
         $installation->update([
             'status'           => 'completed',
             'completed_date'   => now(),
+            'customer_name'    => $customerName,
+            'customer_phone'   => $customerPhone,
+            'customer_address' => $customerAddress,
             'machine_serial'   => $machineSerial,
             'water_source_type'=> $waterSource,
             'tds_in'           => $tdsIn,

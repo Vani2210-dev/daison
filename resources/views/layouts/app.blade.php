@@ -2,10 +2,19 @@
 <html lang="vi" class="h-full bg-[#f0f2f5]">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Hệ Thống Quản Trị ERP Điện Nước & Ống Nhựa PVC')</title>
+    <title>@yield('title', 'Hệ Thống Quản Trị ERP Đại Sơn')</title>
     <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}">
+
+    <!-- PWA Web App Manifest & Mobile Meta -->
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
+    <meta name="theme-color" content="#1a3a68">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Đại Sơn ERP">
+    <link rel="apple-touch-icon" href="{{ asset('images/logo.png') }}">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -251,29 +260,78 @@
         .overflow-x-auto, .table-scroll-container {
             -webkit-overflow-scrolling: touch;
         }
+
+        /* Drag-to-scroll horizontal tables */
+        .is-dragging-scroll {
+            cursor: grabbing !important;
+            user-select: none !important;
+        }
+        .is-dragging-scroll * {
+            cursor: grabbing !important;
+            user-select: none !important;
+            pointer-events: none !important;
+        }
+
+        /* Chuẩn hóa khoảng trống bottom trên toàn hệ thống (loại bỏ padding thừa lớn) */
+        main .pb-12, main .pb-14, main .pb-16, main .pb-20, main .pb-24, main .pb-28, main .pb-32, main .pb-36, main .pb-40, main .pb-48, main .pb-52, main .pb-64 {
+            padding-bottom: 0.75rem !important;
+        }
+
+        /* MEDIA QUERY: Tối ưu cho màn hình mobile (<= 768px) */
+        @media (max-width: 768px) {
+            header nav {
+                display: none !important;
+            }
+            main {
+                padding-top: 0 !important;
+                margin-top: 0 !important;
+                padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+            }
+            main > div {
+                margin-top: 0 !important;
+            }
+            main > div > div:first-child {
+                margin-top: 0 !important;
+            }
+            .mobile-bottom-nav {
+                display: flex !important;
+            }
+            main .pb-12, main .pb-14, main .pb-16, main .pb-20, main .pb-24, main .pb-28, main .pb-32, main .pb-36, main .pb-40, main .pb-48, main .pb-52, main .pb-64 {
+                padding-bottom: 0.5rem !important;
+            }
+        }
+
+        /* MEDIA QUERY: Màn hình desktop (> 768px) -> Ẩn thanh menu dưới và drawer mở rộng */
+        @media (min-width: 769px) {
+            .mobile-bottom-nav,
+            .mobile-drawer-backdrop,
+            .mobile-drawer-sheet {
+                display: none !important;
+            }
+        }
     </style>
     @stack('styles')
 </head>
-<body class="h-full flex flex-col antialiased text-slate-800 bg-[#f0f2f5] font-sans" x-data="{ openMenu: null }">
+<body class="h-full flex flex-col antialiased text-slate-800 bg-[#f0f2f5] font-sans" x-data="{ openMenu: null, mobileNavOpen: false, mobileDrawerTab: null }">
 
     <!-- TOP HEADER SECTION (IDENTICAL TO REACT ERP) -->
     <header class="w-full bg-white border-b border-slate-200/90 shadow-xs font-sans select-none sticky top-0 z-50">
         
         <!-- Top Bar: Corporate Identity & User Profile -->
-        <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-[#1a3a68] text-white px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-[#1a3a68] text-white px-3 py-1.5 sm:px-4 sm:py-2 flex items-center justify-between gap-2 sm:gap-3 text-xs">
             
             <!-- Left: Company Logo & Brand -->
-            <div class="flex items-center gap-3.5">
-                <a href="{{ url('/dashboard') }}" class="flex items-center gap-2.5 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-xs hover:bg-white/15 transition-all">
-                    <div class="h-9 px-2 rounded-xl bg-white flex items-center justify-center shadow-xs shrink-0 ring-1 ring-white/30">
-                        <img src="{{ asset('images/logo.png') }}?v={{ time() }}" alt="Logo Đại Sơn" class="h-7 w-auto object-contain">
+            <div class="flex items-center gap-2 sm:gap-3.5 min-w-0">
+                <a href="{{ url('/dashboard') }}" class="flex items-center gap-2 sm:gap-2.5 bg-white/10 backdrop-blur-md px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl border border-white/20 shadow-xs hover:bg-white/15 transition-all shrink-0">
+                    <div class="h-7 sm:h-9 px-1.5 sm:px-2 rounded-lg sm:rounded-xl bg-white flex items-center justify-center shadow-xs shrink-0 ring-1 ring-white/30">
+                        <img src="{{ asset('images/logo.png') }}?v={{ time() }}" alt="Logo Đại Sơn" class="h-5 sm:h-7 w-auto object-contain">
                     </div>
                     <div class="flex flex-col">
-                        <span class="font-extrabold text-white tracking-wide text-xs sm:text-sm flex items-center gap-1.5">
+                        <span class="font-extrabold text-white tracking-wide text-xs sm:text-sm flex items-center gap-1.5 leading-tight">
                             ĐẠI ĐẠI SƠN ERP
                         </span>
-                        <span class="text-[10px] text-slate-300 font-medium tracking-tight">
-                            Hệ Thống Phân Phối Máy Lọc Nước & Thiết Bị Xử Lý Nước
+                        <span class="hidden sm:block text-[10px] text-slate-300 font-medium tracking-tight">
+                            Phân Hệ Phân Phối Hàng Tiêu Dùng
                         </span>
                     </div>
                 </a>
@@ -293,13 +351,13 @@
             </div>
 
             <!-- Right: User Profile & Quick Actions -->
-            <div class="flex items-center gap-2 sm:gap-3 text-xs font-medium">
+            <div class="flex items-center gap-1.5 sm:gap-3 text-xs font-medium shrink-0">
                 @if(Auth::check())
                     <!-- NOTIFICATION BELL & DROPDOWN -->
                     <div class="relative" x-data @click.away="$store.notifications ? ($store.notifications.openDropdown = false) : null">
                         <button type="button" 
                                 @click="$store.notifications ? $store.notifications.toggleDropdown() : null"
-                                class="relative p-1.5 px-2.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold select-none"
+                                class="relative p-1.5 px-2 sm:px-2.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold select-none"
                                 :class="$store.notifications && $store.notifications.openDropdown ? 'ring-2 ring-sky-400 bg-white/25 text-white' : ''"
                                 title="Thông báo hệ thống">
                             <i class="fa-solid fa-bell text-xs" :class="$store.notifications && $store.notifications.unreadCount > 0 ? 'text-amber-300 animate-bounce' : 'text-slate-300'"></i>
@@ -395,8 +453,8 @@
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-2 bg-white/10 text-white px-3 py-1 rounded-lg border border-white/20 select-none">
-                        <div class="w-6 h-6 rounded-full bg-sky-500 text-white font-bold text-[11px] flex items-center justify-center shadow-xs">
+                    <div class="flex items-center gap-2 bg-white/10 text-white p-1 sm:px-3 sm:py-1 rounded-lg border border-white/20 select-none">
+                        <div class="w-6 h-6 rounded-full bg-sky-500 text-white font-bold text-[11px] flex items-center justify-center shadow-xs shrink-0">
                             {{ mb_substr(Auth::user()->name, 0, 1) }}
                         </div>
                         <div class="text-left leading-tight hidden sm:block">
@@ -407,16 +465,16 @@
                         </div>
                     </div>
 
-                    <button type="button" onclick="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()" class="p-1.5 px-2.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold" title="Phóng to toàn màn hình">
+                    <button type="button" onclick="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()" class="hidden md:flex p-1.5 px-2.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 hover:text-white transition-all cursor-pointer items-center gap-1.5 text-xs font-semibold" title="Phóng to toàn màn hình">
                         <i class="fa-solid fa-expand text-sky-300 text-xs"></i>
                         <span class="hidden md:inline">Toàn màn hình</span>
                     </button>
 
-                    <form action="{{ url('/logout') }}" method="POST" class="m-0 inline">
+                    <form action="{{ url('/logout') }}" method="POST" class="m-0 hidden md:inline">
                         @csrf
                         <button type="submit" class="p-1.5 px-2.5 rounded-lg bg-rose-500/20 hover:bg-rose-600 text-rose-200 hover:text-white border border-rose-400/30 font-bold transition-all cursor-pointer flex items-center gap-1 text-xs" title="Đăng xuất khỏi hệ thống">
                             <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
-                            <span class="hidden sm:inline">Thoát</span>
+                            <span>Thoát</span>
                         </button>
                     </form>
                 @else
@@ -425,8 +483,66 @@
                         <span>ĐĂNG NHẬP</span>
                     </a>
                 @endif
+
+                <!-- Nút bật/tắt Menu điều hướng trên Mobile (ẩn trên mobile theo yêu cầu) -->
+                <button type="button" 
+                        @click="mobileNavOpen = !mobileNavOpen" 
+                        class="hidden p-1.5 px-2.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold transition-all cursor-pointer items-center gap-1.5 text-xs select-none" 
+                        title="Menu điều hướng">
+                    <i :class="mobileNavOpen ? 'fa-solid fa-xmark text-sm' : 'fa-solid fa-bars text-sm'"></i>
+                    <span class="text-[11px]" x-text="mobileNavOpen ? 'Đóng' : 'Menu'"></span>
+                </button>
             </div>
 
+        </div>
+
+        <!-- Mobile Navigation Menu Drawer (Ẩn hoàn toàn mặc định, chỉ mở khi người dùng bấm nút Menu) -->
+        <div x-show="mobileNavOpen" 
+             x-cloak 
+             @click.away="mobileNavOpen = false"
+             class="md:hidden bg-slate-900 border-b border-slate-700 p-3 text-white space-y-2 max-h-[75vh] overflow-y-auto shadow-2xl transition-all text-xs">
+            <div class="grid grid-cols-2 gap-2 font-bold">
+                <a href="{{ url('/dashboard') }}" class="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center gap-2 border border-slate-700 {{ request()->is('dashboard') || request()->is('/') ? 'text-amber-300 border-amber-400/50' : 'text-slate-200' }}">
+                    <i class="fa-solid fa-chart-pie text-sky-400 w-4 text-center"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url('/orders') }}" class="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center gap-2 border border-slate-700 {{ request()->is('orders*') ? 'text-amber-300 border-amber-400/50' : 'text-slate-200' }}">
+                    <i class="fa-solid fa-cart-shopping text-emerald-400 w-4 text-center"></i>
+                    <span>Đơn hàng</span>
+                </a>
+                <a href="{{ url('/water-filter') }}" class="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center gap-2 border border-slate-700 {{ request()->is('water-filter*') || request()->is('bao-hanh-may-loc*') ? 'text-cyan-300 border-cyan-400/50' : 'text-slate-200' }}">
+                    <i class="fa-solid fa-faucet-drip text-cyan-400 w-4 text-center"></i>
+                    <span>Máy lọc nước</span>
+                </a>
+                <a href="{{ url('/inventory/stock') }}" class="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center gap-2 border border-slate-700 {{ request()->is('inventory*') ? 'text-amber-300 border-amber-400/50' : 'text-slate-200' }}">
+                    <i class="fa-solid fa-boxes-stacked text-teal-400 w-4 text-center"></i>
+                    <span>Tồn kho vật tư</span>
+                </a>
+                <a href="{{ url('/inventory/picking') }}" class="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center gap-2 border border-slate-700 {{ request()->is('*picking*') ? 'text-amber-300 border-amber-400/50' : 'text-slate-200' }}">
+                    <i class="fa-solid fa-dolly text-amber-400 w-4 text-center"></i>
+                    <span>Soạn hàng kho</span>
+                </a>
+                <a href="{{ url('/dealers') }}" class="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center gap-2 border border-slate-700 {{ request()->is('dealers*') ? 'text-amber-300 border-amber-400/50' : 'text-slate-200' }}">
+                    <i class="fa-solid fa-store text-purple-400 w-4 text-center"></i>
+                    <span>Đại lý & KH</span>
+                </a>
+                <a href="{{ url('/tasks') }}" class="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center gap-2 border border-slate-700 {{ request()->is('tasks*') ? 'text-amber-300 border-amber-400/50' : 'text-slate-200' }}">
+                    <i class="fa-solid fa-list-check text-sky-400 w-4 text-center"></i>
+                    <span>Giao việc</span>
+                </a>
+                <a href="{{ url('/debt') }}" class="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center gap-2 border border-slate-700 {{ request()->is('debt*') ? 'text-amber-300 border-amber-400/50' : 'text-slate-200' }}">
+                    <i class="fa-solid fa-credit-card text-rose-400 w-4 text-center"></i>
+                    <span>Công nợ</span>
+                </a>
+                <a href="{{ url('/funds') }}" class="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center gap-2 border border-slate-700 {{ request()->is('funds*') ? 'text-amber-300 border-amber-400/50' : 'text-slate-200' }}">
+                    <i class="fa-solid fa-wallet text-emerald-400 w-4 text-center"></i>
+                    <span>Sổ quỹ</span>
+                </a>
+                <a href="{{ url('/reports/sales') }}" class="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center gap-2 border border-slate-700 {{ request()->is('reports*') ? 'text-blue-300 border-blue-400/50' : 'text-slate-200' }}">
+                    <i class="fa-solid fa-chart-line text-blue-400 w-4 text-center"></i>
+                    <span>Báo cáo</span>
+                </a>
+            </div>
         </div>
 
         <!-- Main Horizontal Nav Bar: Exactly matching the React HorizontalNavbar -->
@@ -581,7 +697,7 @@
                     @if(!$authUser || $authUser->hasPermission('returns.view'))
                     <a href="{{ url('/inventory/import') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center justify-between border-b border-slate-100 font-semibold text-slate-700 {{ request()->is('inventory/import*') || request()->is('returns*') ? 'bg-sky-100/80 text-[#1b4a8c] font-bold border-l-4 border-l-[#1b4a8c]' : '' }}">
                         <div class="flex items-center gap-2.5">
-                            <i class="fa-solid fa-rotate-left text-blue-600 w-4"></i><span>Hoàn kho từ xe giao hàng</span>
+                            <i class="fa-solid fa-boxes-packing text-blue-600 w-4"></i><span>Kho hàng ôm nhân viên</span>
                         </div>
                         @if(($pendingReturnBadge ?? 0) > 0)
                             <span class="px-2 py-0.5 bg-rose-500 text-white rounded-full text-[10px] font-bold shadow-xs animate-pulse">{{ $pendingReturnBadge }}</span>
@@ -939,9 +1055,617 @@
         @yield('content')
     </main>
 
+    <!-- ============================================================== -->
+    <!-- MOBILE BOTTOM NAVIGATION & SLIDE-UP DRAWER (CHUẨN ERP HIỆN ĐẠI) -->
+    <!-- ============================================================== -->
+    @php
+        $isSalesActive = request()->is('orders*') || request()->is('returns*') || request()->is('quotation*') || request()->is('shipments*') || request()->is('supplier-orders*');
+        $isInventoryActive = request()->is('inventory*') || request()->is('warehouse*') || request()->is('*picking*');
+        $isWaterFilterActive = request()->is('water-filter*') || request()->is('bao-hanh-may-loc*') || request()->is('m/*');
+        $isTasksActive = request()->is('tasks*') || request()->is('dealers*') || request()->is('proposals*');
+        $isMoreActive = request()->is('projects*') || request()->is('debt*') || request()->is('funds*') || request()->is('reports*') || request()->is('staff*') || request()->is('attendance*') || request()->is('payroll*') || request()->is('kpi*') || request()->is('roles*') || request()->is('audit*') || request()->is('dashboard') || request()->is('/');
+    @endphp
+
+    <!-- Mobile Bottom Navigation Bar (Cố định ở dưới màn hình mobile) -->
+    <nav class="mobile-bottom-nav hidden fixed bottom-0 left-0 right-0 z-[9990] bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-2 py-1 items-center justify-around" style="padding-bottom: max(6px, env(safe-area-inset-bottom, 6px));">
+        
+        <!-- 1. Bán hàng -->
+        <button type="button" 
+                @click="mobileDrawerTab = (mobileDrawerTab === 'sales' ? null : 'sales')" 
+                class="flex flex-col items-center justify-center flex-1 py-1 px-1 transition-all select-none relative cursor-pointer" 
+                :class="(mobileDrawerTab === 'sales' || (!mobileDrawerTab && {{ $isSalesActive ? 'true' : 'false' }})) ? 'text-[#1b4a8c]' : 'text-slate-500 hover:text-slate-800'">
+            <div class="relative flex items-center justify-center">
+                <i class="fa-solid fa-cart-shopping text-lg transition-transform" :class="(mobileDrawerTab === 'sales' || (!mobileDrawerTab && {{ $isSalesActive ? 'true' : 'false' }})) ? 'scale-110' : ''"></i>
+                @if(($pendingCodBadge ?? 0) > 0 || ($pendingReturnBadge ?? 0) > 0)
+                    <span class="absolute -top-1 -right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white"></span>
+                @endif
+            </div>
+            <span class="text-[11px] mt-0.5 tracking-tight" :class="(mobileDrawerTab === 'sales' || (!mobileDrawerTab && {{ $isSalesActive ? 'true' : 'false' }})) ? 'font-extrabold text-[#1b4a8c]' : 'font-semibold'">Bán hàng</span>
+            <template x-if="mobileDrawerTab === 'sales' || (!mobileDrawerTab && {{ $isSalesActive ? 'true' : 'false' }})">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#1b4a8c] mt-0.5"></span>
+            </template>
+            <template x-if="!(mobileDrawerTab === 'sales' || (!mobileDrawerTab && {{ $isSalesActive ? 'true' : 'false' }}))">
+                <span class="w-1.5 h-1.5 mt-0.5 opacity-0"></span>
+            </template>
+        </button>
+
+        <!-- 2. Kho hàng -->
+        <button type="button" 
+                @click="mobileDrawerTab = (mobileDrawerTab === 'inventory' ? null : 'inventory')" 
+                class="flex flex-col items-center justify-center flex-1 py-1 px-1 transition-all select-none relative cursor-pointer" 
+                :class="(mobileDrawerTab === 'inventory' || (!mobileDrawerTab && {{ $isInventoryActive ? 'true' : 'false' }})) ? 'text-[#1b4a8c]' : 'text-slate-500 hover:text-slate-800'">
+            <div class="relative flex items-center justify-center">
+                <i class="fa-solid fa-boxes-stacked text-lg transition-transform" :class="(mobileDrawerTab === 'inventory' || (!mobileDrawerTab && {{ $isInventoryActive ? 'true' : 'false' }})) ? 'scale-110' : ''"></i>
+            </div>
+            <span class="text-[11px] mt-0.5 tracking-tight" :class="(mobileDrawerTab === 'inventory' || (!mobileDrawerTab && {{ $isInventoryActive ? 'true' : 'false' }})) ? 'font-extrabold text-[#1b4a8c]' : 'font-semibold'">Kho hàng</span>
+            <template x-if="mobileDrawerTab === 'inventory' || (!mobileDrawerTab && {{ $isInventoryActive ? 'true' : 'false' }})">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#1b4a8c] mt-0.5"></span>
+            </template>
+            <template x-if="!(mobileDrawerTab === 'inventory' || (!mobileDrawerTab && {{ $isInventoryActive ? 'true' : 'false' }}))">
+                <span class="w-1.5 h-1.5 mt-0.5 opacity-0"></span>
+            </template>
+        </button>
+
+        <!-- 3. Máy Lọc Nước (Phân hệ đặc thù Đại Sơn) -->
+        <button type="button" 
+                @click="mobileDrawerTab = (mobileDrawerTab === 'water_filter' ? null : 'water_filter')" 
+                class="flex flex-col items-center justify-center flex-1 py-1 px-1 transition-all select-none relative cursor-pointer" 
+                :class="(mobileDrawerTab === 'water_filter' || (!mobileDrawerTab && {{ $isWaterFilterActive ? 'true' : 'false' }})) ? 'text-cyan-700' : 'text-slate-500 hover:text-slate-800'">
+            <div class="relative flex items-center justify-center">
+                <div class="w-7 h-7 rounded-lg bg-cyan-100/80 text-cyan-700 flex items-center justify-center shadow-xs transition-transform" :class="(mobileDrawerTab === 'water_filter' || (!mobileDrawerTab && {{ $isWaterFilterActive ? 'true' : 'false' }})) ? 'scale-110 bg-cyan-600 text-white' : ''">
+                    <i class="fa-solid fa-faucet-drip text-sm"></i>
+                </div>
+            </div>
+            <span class="text-[11px] mt-0.5 tracking-tight" :class="(mobileDrawerTab === 'water_filter' || (!mobileDrawerTab && {{ $isWaterFilterActive ? 'true' : 'false' }})) ? 'font-extrabold text-cyan-800' : 'font-semibold'">Máy lọc</span>
+            <template x-if="mobileDrawerTab === 'water_filter' || (!mobileDrawerTab && {{ $isWaterFilterActive ? 'true' : 'false' }})">
+                <span class="w-1.5 h-1.5 rounded-full bg-cyan-600 mt-0.5"></span>
+            </template>
+            <template x-if="!(mobileDrawerTab === 'water_filter' || (!mobileDrawerTab && {{ $isWaterFilterActive ? 'true' : 'false' }}))">
+                <span class="w-1.5 h-1.5 mt-0.5 opacity-0"></span>
+            </template>
+        </button>
+
+        <!-- 4. Công việc & Đại lý -->
+        <button type="button" 
+                @click="mobileDrawerTab = (mobileDrawerTab === 'tasks' ? null : 'tasks')" 
+                class="flex flex-col items-center justify-center flex-1 py-1 px-1 transition-all select-none relative cursor-pointer" 
+                :class="(mobileDrawerTab === 'tasks' || (!mobileDrawerTab && {{ $isTasksActive ? 'true' : 'false' }})) ? 'text-[#1b4a8c]' : 'text-slate-500 hover:text-slate-800'">
+            <div class="relative flex items-center justify-center">
+                <i class="fa-solid fa-list-check text-lg transition-transform" :class="(mobileDrawerTab === 'tasks' || (!mobileDrawerTab && {{ $isTasksActive ? 'true' : 'false' }})) ? 'scale-110' : ''"></i>
+            </div>
+            <span class="text-[11px] mt-0.5 tracking-tight" :class="(mobileDrawerTab === 'tasks' || (!mobileDrawerTab && {{ $isTasksActive ? 'true' : 'false' }})) ? 'font-extrabold text-[#1b4a8c]' : 'font-semibold'">Công việc</span>
+            <template x-if="mobileDrawerTab === 'tasks' || (!mobileDrawerTab && {{ $isTasksActive ? 'true' : 'false' }})">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#1b4a8c] mt-0.5"></span>
+            </template>
+            <template x-if="!(mobileDrawerTab === 'tasks' || (!mobileDrawerTab && {{ $isTasksActive ? 'true' : 'false' }}))">
+                <span class="w-1.5 h-1.5 mt-0.5 opacity-0"></span>
+            </template>
+        </button>
+
+        <!-- 5. Thêm -->
+        <button type="button" 
+                @click="mobileDrawerTab = (mobileDrawerTab === 'more' ? null : 'more')" 
+                class="flex flex-col items-center justify-center flex-1 py-1 px-1 transition-all select-none relative cursor-pointer" 
+                :class="(mobileDrawerTab === 'more' || (!mobileDrawerTab && {{ $isMoreActive ? 'true' : 'false' }})) ? 'text-[#1b4a8c]' : 'text-slate-500 hover:text-slate-800'">
+            <div class="relative flex items-center justify-center">
+                <i class="fa-solid fa-bars text-lg transition-transform" :class="mobileDrawerTab === 'more' ? 'rotate-90 scale-110 text-[#1b4a8c]' : ''"></i>
+            </div>
+            <span class="text-[11px] mt-0.5 tracking-tight font-semibold" :class="(mobileDrawerTab === 'more' || (!mobileDrawerTab && {{ $isMoreActive ? 'true' : 'false' }})) ? 'font-extrabold text-[#1b4a8c]' : ''">Thêm</span>
+            <template x-if="mobileDrawerTab === 'more' || (!mobileDrawerTab && {{ $isMoreActive ? 'true' : 'false' }})">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#1b4a8c] mt-0.5"></span>
+            </template>
+            <template x-if="!(mobileDrawerTab === 'more' || (!mobileDrawerTab && {{ $isMoreActive ? 'true' : 'false' }}))">
+                <span class="w-1.5 h-1.5 mt-0.5 opacity-0"></span>
+            </template>
+        </button>
+    </nav>
+
+    <!-- MOBILE BOTTOM SHEET MODAL (DRAWER THÔNG MINH CHO TỪNG PHÂN HỆ) -->
+    <div x-show="mobileDrawerTab !== null" 
+         x-cloak
+         class="mobile-drawer-backdrop fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[9995] transition-opacity"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="mobileDrawerTab = null">
+    </div>
+
+    <div x-show="mobileDrawerTab !== null" 
+         x-cloak
+         class="mobile-drawer-sheet fixed bottom-0 left-0 right-0 z-[9996] bg-white rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col transition-transform"
+         x-transition:enter="transition ease-out duration-300 transform"
+         x-transition:enter-start="translate-y-full"
+         x-transition:enter-end="translate-y-0"
+         x-transition:leave="transition ease-in duration-200 transform"
+         x-transition:leave-start="translate-y-0"
+         x-transition:leave-end="translate-y-full"
+         style="padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));">
+        
+        <!-- Drag handle (Bấm để đóng) -->
+        <div class="pt-3 pb-1 flex justify-center cursor-pointer select-none" @click="mobileDrawerTab = null">
+            <div class="w-12 h-1.5 bg-slate-300 rounded-full hover:bg-slate-400 transition-colors"></div>
+        </div>
+
+        <!-- ==========================================
+             1. BẢNG CARD: BÁN HÀNG
+             ========================================== -->
+        <div x-show="mobileDrawerTab === 'sales'" class="flex flex-col">
+            <div class="px-5 py-2.5 border-b border-slate-100 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center text-sm shadow-sm">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-extrabold text-slate-800 leading-tight">Phân Hệ Bán Hàng</h3>
+                        <p class="text-[11px] text-slate-500">Đơn hàng, báo giá, kiểm COD & vận chuyển</p>
+                    </div>
+                </div>
+                <button type="button" @click="mobileDrawerTab = null" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-4 overflow-y-auto max-h-[70vh]">
+                <div class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                    <!-- 1. Danh sách đơn hàng -->
+                    <a href="{{ url('/orders') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('orders') && !request()->is('orders/create') ? 'border-[#1b4a8c] bg-sky-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-sky-200 bg-slate-50/70 hover:bg-sky-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-box"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">DS đơn hàng</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Tất cả đơn hàng</span>
+                    </a>
+
+                    <!-- 2. Báo giá đơn mới -->
+                    <a href="{{ url('/orders/create') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('orders/create') ? 'border-[#1b4a8c] bg-emerald-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-emerald-200 bg-slate-50/70 hover:bg-emerald-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-file-circle-plus"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Lên đơn mới</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Tạo đơn & báo giá</span>
+                    </a>
+
+                    <!-- 3. Kiểm COD -->
+                    <a href="{{ url('/orders/cod-verification') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('*cod-verification*') ? 'border-[#1b4a8c] bg-emerald-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-emerald-200 bg-slate-50/70 hover:bg-emerald-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform relative">
+                            <i class="fa-solid fa-money-bill-transfer"></i>
+                            @if(($pendingCodBadge ?? 0) > 0)
+                                <span class="absolute -top-1 -right-1 px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[9px] font-black">{{ $pendingCodBadge }}</span>
+                            @endif
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Kiểm COD</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Duyệt nộp tiền xe</span>
+                    </a>
+
+                    <!-- 4. Hàng hoàn -->
+                    <a href="{{ url('/returns') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('returns*') ? 'border-[#1b4a8c] bg-rose-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-rose-200 bg-slate-50/70 hover:bg-rose-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform relative">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            @if(($pendingReturnBadge ?? 0) > 0)
+                                <span class="absolute -top-1 -right-1 px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[9px] font-black">{{ $pendingReturnBadge }}</span>
+                            @endif
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Hàng hoàn</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Thu hồi từ xe</span>
+                    </a>
+
+                    <!-- 5. Đặt hàng NCC -->
+                    <a href="{{ url('/supplier-orders') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('supplier-orders*') ? 'border-[#1b4a8c] bg-amber-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-amber-200 bg-slate-50/70 hover:bg-amber-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-truck-field"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Đặt hàng NCC</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Đơn mua hàng</span>
+                    </a>
+
+                    <!-- 6. Điều phối xe -->
+                    <a href="{{ url('/shipments') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('shipments*') ? 'border-[#1b4a8c] bg-indigo-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-indigo-200 bg-slate-50/70 hover:bg-indigo-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-truck-ramp-box"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Giao hàng</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Điều phối tuyến xe</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             2. BẢNG CARD: KHO HÀNG
+             ========================================== -->
+        <div x-show="mobileDrawerTab === 'inventory'" class="flex flex-col">
+            <div class="px-5 py-2.5 border-b border-slate-100 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center text-sm shadow-sm">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-extrabold text-slate-800 leading-tight">Phân Hệ Kho Hàng</h3>
+                        <p class="text-[11px] text-slate-500">Tồn kho, soạn hàng xuất, nhập xuất kho & lắp ráp</p>
+                    </div>
+                </div>
+                <button type="button" @click="mobileDrawerTab = null" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-4 overflow-y-auto max-h-[70vh]">
+                <div class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                    <!-- 1. Tồn kho vật tư -->
+                    <a href="{{ url('/inventory/stock') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/stock*') ? 'border-[#1b4a8c] bg-teal-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-teal-200 bg-slate-50/70 hover:bg-teal-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-boxes-stacked"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Tồn kho</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Số dư vật tư</span>
+                    </a>
+
+                    <!-- 2. Soạn hàng / Bốc hàng -->
+                    <a href="{{ url('/inventory/picking') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('*picking*') ? 'border-[#1b4a8c] bg-amber-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-amber-200 bg-slate-50/70 hover:bg-amber-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-dolly"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Soạn đơn</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Bốc hàng theo đơn</span>
+                    </a>
+
+                    <!-- 3. Nhập kho -->
+                    <a href="{{ url('/inventory/import') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/import*') ? 'border-[#1b4a8c] bg-sky-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-sky-200 bg-slate-50/70 hover:bg-sky-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-arrow-down-to-bracket"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Nhập kho</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Phiếu nhập NCC</span>
+                    </a>
+
+                    <!-- 4. Xuất kho -->
+                    <a href="{{ url('/inventory/export') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/export*') ? 'border-[#1b4a8c] bg-rose-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-rose-200 bg-slate-50/70 hover:bg-rose-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-arrow-up-from-bracket"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Xuất kho</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Phiếu xuất hàng</span>
+                    </a>
+
+                    <!-- 5. Chuyển kho -->
+                    <a href="{{ url('/inventory/transfer') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/transfer*') ? 'border-[#1b4a8c] bg-indigo-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-indigo-200 bg-slate-50/70 hover:bg-indigo-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-right-left"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Chuyển kho</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Điều chuyển nội bộ</span>
+                    </a>
+
+                    <!-- 6. Lắp ráp / Đóng gói -->
+                    <a href="{{ url('/inventory/assembly') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/assembly*') ? 'border-[#1b4a8c] bg-purple-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-purple-200 bg-slate-50/70 hover:bg-purple-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-screwdriver-wrench"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Lắp ráp</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Gói combo máy</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             3. BẢNG CARD: MÁY LỌC NƯỚC (ĐẠI SƠN)
+             ========================================== -->
+        <div x-show="mobileDrawerTab === 'water_filter'" class="flex flex-col">
+            <div class="px-5 py-2.5 border-b border-slate-100 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-sky-500 text-white flex items-center justify-center text-sm shadow-sm">
+                        <i class="fa-solid fa-faucet-drip"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-extrabold text-slate-800 leading-tight">Dịch Vụ Máy Lọc Nước</h3>
+                        <p class="text-[11px] text-slate-500">Lắp đặt, sửa chữa bảo hành, quét mã QR & linh kiện</p>
+                    </div>
+                </div>
+                <button type="button" @click="mobileDrawerTab = null" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-4 overflow-y-auto max-h-[70vh]">
+                <div class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                    <!-- 1. Tổng quan Máy Lọc Nước -->
+                    <a href="{{ url('/water-filter') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('water-filter') && !request()->has('tab') ? 'border-cyan-600 bg-cyan-50/80 ring-2 ring-cyan-600/20 shadow-xs' : 'border-slate-100 hover:border-cyan-200 bg-slate-50/70 hover:bg-cyan-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-faucet-drip"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Tổng quan</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Trung tâm máy lọc</span>
+                    </a>
+
+                    <!-- 2. Lên đơn lắp đặt mới -->
+                    <a href="{{ url('/water-filter/installations/create') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('water-filter/installations/create') ? 'border-sky-600 bg-sky-50/80 ring-2 ring-sky-600/20 shadow-xs' : 'border-slate-100 hover:border-sky-200 bg-slate-50/70 hover:bg-sky-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-screwdriver-wrench"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">+ Lắp đặt mới</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Tạo đơn đi lắp máy</span>
+                    </a>
+
+                    <!-- 3. Quản lý tem QR & Kích hoạt -->
+                    <a href="{{ url('/bao-hanh-may-loc') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('bao-hanh-may-loc') && !request()->is('bao-hanh-may-loc/print-qr') ? 'border-blue-600 bg-blue-50/80 ring-2 ring-blue-600/20 shadow-xs' : 'border-slate-100 hover:border-blue-200 bg-slate-50/70 hover:bg-blue-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-qrcode"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Mã QR & BH</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Quản lý tem dán QR</span>
+                    </a>
+
+                    <!-- 4. Tiếp nhận sửa chữa -->
+                    <a href="{{ url('/water-filter?tab=repairs') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 border-slate-100 hover:border-amber-200 bg-slate-50/70 hover:bg-amber-50/40">
+                        <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-wrench"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Sửa chữa BH</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Phiếu sửa máy</span>
+                    </a>
+
+                    <!-- 5. In bảng tem dán QR -->
+                    <a href="{{ url('/bao-hanh-may-loc/print-qr') }}" target="_blank" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 border-slate-100 hover:border-emerald-200 bg-slate-50/70 hover:bg-emerald-50/40">
+                        <div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-print"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">In tem QR</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">In tem dán máy</span>
+                    </a>
+
+                    <!-- 6. Kho phụ tùng linh kiện -->
+                    <a href="{{ url('/water-filter?tab=parts') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 border-slate-100 hover:border-teal-200 bg-slate-50/70 hover:bg-teal-50/40">
+                        <div class="w-11 h-11 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-boxes-packing"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Kho linh kiện</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Lõi lọc & phụ kiện</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             4. BẢNG CARD: CÔNG VIỆC & ĐẠI LÝ
+             ========================================== -->
+        <div x-show="mobileDrawerTab === 'tasks'" class="flex flex-col">
+            <div class="px-5 py-2.5 border-b border-slate-100 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-sm shadow-sm">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-extrabold text-slate-800 leading-tight">Công Việc & Đại Lý</h3>
+                        <p class="text-[11px] text-slate-500">Giao việc, việc của tôi, đại lý khách hàng & đề xuất</p>
+                    </div>
+                </div>
+                <button type="button" @click="mobileDrawerTab = null" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-4 overflow-y-auto max-h-[70vh]">
+                <div class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                    <!-- 1. Giao việc -->
+                    <a href="{{ url('/tasks') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('tasks') && !request()->has('view') ? 'border-[#1b4a8c] bg-indigo-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-indigo-200 bg-slate-50/70 hover:bg-indigo-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-tasks"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Giao việc</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Phân công nhiệm vụ</span>
+                    </a>
+
+                    <!-- 2. Việc của tôi -->
+                    <a href="{{ url('/tasks?view=my_tasks') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 border-slate-100 hover:border-emerald-200 bg-slate-50/70 hover:bg-emerald-50/40">
+                        <div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-user-check"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Việc của tôi</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Nhiệm vụ cá nhân</span>
+                    </a>
+
+                    <!-- 3. Đại lý & KH -->
+                    <a href="{{ url('/dealers') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('dealers') ? 'border-[#1b4a8c] bg-amber-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-amber-200 bg-slate-50/70 hover:bg-amber-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-store"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Đại lý & KH</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Chăm sóc & GPS</span>
+                    </a>
+
+                    <!-- 4. Thêm Đại lý mới -->
+                    <a href="{{ url('/dealers/create') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 border-slate-100 hover:border-sky-200 bg-slate-50/70 hover:bg-sky-50/40">
+                        <div class="w-11 h-11 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-user-plus"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Thêm đại lý</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Mở mới điểm bán</span>
+                    </a>
+
+                    <!-- 5. Duyệt đề xuất & Trình ký -->
+                    <a href="{{ url('/proposals') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('proposals*') ? 'border-[#1b4a8c] bg-purple-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-purple-200 bg-slate-50/70 hover:bg-purple-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-file-circle-check"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Đề xuất</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Trình ký duyệt</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             5. BẢNG CARD: THÊM (CHỨC NĂNG MỞ RỘNG)
+             ========================================== -->
+        <div x-show="mobileDrawerTab === 'more'" class="flex flex-col">
+            <div class="px-5 py-2.5 border-b border-slate-100 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-slate-800 text-white flex items-center justify-center text-sm shadow-sm">
+                        <i class="fa-solid fa-grip"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-extrabold text-slate-800 leading-tight">Tất Cả Chức Năng</h3>
+                        <p class="text-[11px] text-slate-500">Tài chính, nhân sự, báo cáo & quản trị hệ thống</p>
+                    </div>
+                </div>
+                <button type="button" @click="mobileDrawerTab = null" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-4 overflow-y-auto max-h-[70vh] space-y-4">
+                <div class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                    
+                    <!-- Dashboard -->
+                    <a href="{{ url('/dashboard') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('dashboard') || request()->is('/') ? 'border-[#1b4a8c] bg-slate-200/80 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-slate-300 bg-slate-50/70 hover:bg-slate-100/60' }}">
+                        <div class="w-11 h-11 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-chart-pie"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Dashboard</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Tổng quan ERP</span>
+                    </a>
+
+                    <!-- Công trình / DA -->
+                    <a href="{{ url('/projects') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('projects*') ? 'border-[#1b4a8c] bg-indigo-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-indigo-200 bg-slate-50/70 hover:bg-indigo-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-helmet-safety"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Công trình</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Dự án công trình</span>
+                    </a>
+
+                    <!-- Nhà cung cấp -->
+                    <a href="{{ url('/suppliers') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('suppliers*') ? 'border-[#1b4a8c] bg-amber-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-amber-200 bg-slate-50/70 hover:bg-amber-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-truck-field"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Nhà cung cấp</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Đối tác vật tư</span>
+                    </a>
+
+                    <!-- Sổ quỹ, Thu chi -->
+                    <a href="{{ url('/funds') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('funds*') ? 'border-[#1b4a8c] bg-teal-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-teal-200 bg-slate-50/70 hover:bg-teal-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-wallet"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Sổ quỹ</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Thu chi & quỹ tiền</span>
+                    </a>
+
+                    <!-- Công nợ đại lý -->
+                    <a href="{{ url('/debt') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('debt*') ? 'border-[#1b4a8c] bg-rose-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-rose-200 bg-slate-50/70 hover:bg-rose-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-credit-card"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Công nợ</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Hạn mức nợ KH</span>
+                    </a>
+
+                    <!-- Báo cáo bán hàng -->
+                    <a href="{{ url('/reports/sales') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('reports/sales*') ? 'border-[#1b4a8c] bg-blue-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-blue-200 bg-slate-50/70 hover:bg-blue-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">BC Doanh thu</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Báo cáo bán hàng</span>
+                    </a>
+
+                    <!-- Báo cáo tồn kho -->
+                    <a href="{{ url('/reports/inventory') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('reports/inventory*') ? 'border-[#1b4a8c] bg-amber-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-amber-200 bg-slate-50/70 hover:bg-amber-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-boxes-stacked"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">BC Tồn kho</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Xuất nhập tồn kho</span>
+                    </a>
+
+                    <!-- Nhân sự -->
+                    <a href="{{ url('/staff') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('staff*') ? 'border-[#1b4a8c] bg-blue-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-blue-200 bg-slate-50/70 hover:bg-blue-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Nhân sự</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Danh sách nhân sự</span>
+                    </a>
+
+                    <!-- Chấm công GPS -->
+                    <a href="{{ url('/attendance') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('attendance*') ? 'border-[#1b4a8c] bg-rose-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-rose-200 bg-slate-50/70 hover:bg-rose-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-map-location-dot"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Chấm công</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Điểm danh GPS</span>
+                    </a>
+
+                    <!-- Bảng lương -->
+                    <a href="{{ url('/payroll') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('payroll*') ? 'border-[#1b4a8c] bg-emerald-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-emerald-200 bg-slate-50/70 hover:bg-emerald-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-money-check-dollar"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Bảng lương</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Lương & phụ cấp</span>
+                    </a>
+
+                    <!-- Phân quyền vai trò -->
+                    <a href="{{ url('/roles') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('roles*') ? 'border-[#1b4a8c] bg-purple-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-purple-200 bg-slate-50/70 hover:bg-purple-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Phân quyền</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Vai trò chức năng</span>
+                    </a>
+
+                    <!-- Nhật ký System Audit -->
+                    <a href="{{ url('/audit-logs') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('audit*') ? 'border-[#1b4a8c] bg-sky-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-sky-200 bg-slate-50/70 hover:bg-sky-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Nhật ký Audit</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Truy vết hệ thống</span>
+                    </a>
+
+                </div>
+
+                <!-- Profile bar & Logout -->
+                @if(Auth::check())
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-8 h-8 rounded-full bg-sky-500 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                            {{ mb_substr(Auth::user()->name, 0, 1) }}
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-xs font-bold text-slate-800 truncate">{{ Auth::user()->name }}</div>
+                            <div class="text-[10px] text-slate-500 truncate">{{ Auth::user()->department ?? 'Quản Trị Viên' }}</div>
+                        </div>
+                    </div>
+                    <form action="{{ url('/logout') }}" method="POST" class="m-0 shrink-0">
+                        @csrf
+                        <button type="submit" class="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                            <span>Đăng xuất</span>
+                        </button>
+                    </form>
+                </div>
+                @else
+                <div class="pt-3 border-t border-slate-100">
+                    <a href="{{ url('/login') }}" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        <span>ĐĂNG NHẬP VÀO HỆ THỐNG</span>
+                    </a>
+                </div>
+                @endif
+            </div>
+        </div>
+
+    </div>
+
     <!-- FOOTER -->
     <footer class="bg-white border-t border-slate-200 py-3 text-center text-xs text-slate-400">
-        <span>© 2026 CÔNG TY TNHH MÁY LỌC NƯỚC ĐẠI SƠN &bull; Hệ Thống ERP Phân Phối Máy Lọc Nước & Thiết Bị Xử Lý Nước</span>
+        <span>© 2026 CÔNG TY TNHH ĐẠI ĐẠI SƠN &bull; Phân Hệ Phân Phối Hàng Tiêu Dùng & Dịch Vụ Máy Lọc Nước</span>
     </footer>
 
     <!-- Global Table Click-and-Drag Horizontal Scroll -->

@@ -522,6 +522,12 @@
                                         <span class="text-slate-400 text-[10px]">Serial:</span>
                                         <span class="font-bold text-slate-700" x-text="item.machine_serial || '(Chưa có)'"></span>
                                     </div>
+                                    <template x-if="item.accessories">
+                                        <div class="text-[10px] text-teal-800 mt-1 flex items-center gap-1 bg-teal-50 border border-teal-200/70 rounded px-1.5 py-0.5" :title="'Phụ kiện: ' + item.accessories">
+                                            <i class="fa-solid fa-boxes-stacked text-[9px] text-teal-600"></i>
+                                            <span class="truncate max-w-[150px]" x-text="item.accessories"></span>
+                                        </div>
+                                    </template>
                                     <template x-if="item.repairs_count > 0">
                                         <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded mt-1">
                                             <i class="fa-solid fa-wrench text-[8px]"></i>
@@ -2026,6 +2032,15 @@
                 </div>
 
                 <div>
+                    <label class="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-boxes-stacked text-teal-600"></i>
+                        <span>Phụ kiện kèm theo máy</span>
+                    </label>
+                    <input type="text" x-model="machineEditForm.accessories" placeholder="Ví dụ: Vòi ngỗng Inox SUS304, bình áp 3.2G, khoá chia nước, cờ lê mở cốc..."
+                           class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white font-medium text-slate-800">
+                </div>
+
+                <div>
                     <label class="block font-bold text-slate-700 mb-1">Ghi chú quản lý</label>
                     <textarea x-model="machineEditForm.admin_notes" rows="2" placeholder="Ghi chú thêm..."
                               class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white font-medium"></textarea>
@@ -2130,6 +2145,7 @@ function waterFilterModule() {
             machine_model_id: '',
             machine_model: '',
             machine_serial: '',
+            accessories: '',
             technician_id: '',
             installed_at: '',
             warranty_months: 24,
@@ -3094,6 +3110,7 @@ function waterFilterModule() {
                 machine_model_id: item.machine_model_id || '',
                 machine_model: item.machine_model || '',
                 machine_serial: item.machine_serial || '',
+                accessories: item.accessories || '',
                 technician_id: item.technician_id || '',
                 installed_at: item.installed_at_raw || '',
                 warranty_months: Number(item.warranty_months || 24),

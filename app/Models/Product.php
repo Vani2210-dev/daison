@@ -23,6 +23,7 @@ class Product extends Model
         'conversion_rate',
         'conversion_price',
         'cost_price',
+        'price',
         'latest_cost_price',
         'price_tiers',
         'vat_rate',
@@ -38,6 +39,7 @@ class Product extends Model
 
     protected $casts = [
         'cost_price' => 'decimal:2',
+        'price' => 'decimal:2',
         'latest_cost_price' => 'decimal:2',
         'vat_rate' => 'decimal:2',
         'conversion_rate' => 'decimal:4',

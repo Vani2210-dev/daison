@@ -443,40 +443,46 @@ class DebtHandoverController extends Controller
         $items = $data['items'] ?? [];
 
         if (!$driverId) {
-            return response()->json(['success' => false, 'message' => 'Vui lòng chọn Người vận chuyển / Tài xế'], 422);
+            return response()->json(['success' => false, 'message' => 'Vui lòng chọn Nhân viên nhận hàng ôm'], 422);
         }
         if (empty($items) || !is_array($items)) {
-            return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 mặt hàng bốc lên xe'], 422);
+            return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 mặt hàng xuất giao ôm'], 422);
         }
 
         $driver = User::find($driverId);
         if (!$driver) {
-            return response()->json(['success' => false, 'message' => 'Không tìm thấy thông tin tài xế'], 404);
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy thông tin nhân viên'], 404);
         }
 
-        $code = 'XHL-' . date('Ymd') . '-' . str_pad((string)rand(100, 999), 3, '0', STR_PAD_LEFT);
-        $vehiclePlate = $data['vehicle_plate'] ?? ($data['vehiclePlate'] ?? 'Xe bán lưu động');
+        $code = 'XOM-' . date('Ymd') . '-' . str_pad((string)rand(100, 999), 3, '0', STR_PAD_LEFT);
+        $vehiclePlate = $data['vehicle_plate'] ?? ($data['vehiclePlate'] ?? ('NV: ' . $driver->name));
         $warehouseId = $data['warehouse_id'] ?? ($data['warehouseId'] ?? 1);
-        $notes = $data['notes'] ?? 'Hàng lẻ bốc lên xe đi bán dạo';
+        $notes = $data['notes'] ?? 'Xuất hàng ôm cho nhân viên đi thị trường';
 
-        // Tìm kho nguồn & kho xe lưu động trong bảng warehouses
+        // Tìm kho nguồn & kho hàng ôm nhân viên trong bảng warehouses
         $sourceWarehouse = Warehouse::find($warehouseId) ?: Warehouse::where('code', 'KHO-MQ-01')->first();
         $sourceWhId = $sourceWarehouse?->id ?: 1;
         $sourceWhName = $sourceWarehouse?->name ?: 'Kho Tổng Mê Linh';
 
-        // Tìm hoặc tạo kho xe tương ứng trong bảng warehouses
-        $targetVehicleWh = Warehouse::where('code', 'KHO-XE-' . $vehiclePlate)->first();
-        if (!$targetVehicleWh && $vehiclePlate) {
-            $targetVehicleWh = Warehouse::create([
-                'code'         => 'KHO-XE-' . $vehiclePlate,
-                'name'         => 'Kho Xe ' . $vehiclePlate . ' (' . $driver->name . ')',
-                'type'         => 'Kho xe lưu động',
+        // Tìm hoặc tạo kho hàng ôm tương ứng trong bảng warehouses
+        $targetWh = Warehouse::where('code', 'KHO-OM-' . $driver->id)->first();
+        if (!$targetWh) {
+            $targetWh = Warehouse::where('manager_name', $driver->name)->where('type', 'Kho hàng ôm')->first();
+        }
+        if (!$targetWh && !empty($vehiclePlate) && $vehiclePlate !== 'Xe bán lưu động') {
+            $targetWh = Warehouse::where('code', 'KHO-XE-' . $vehiclePlate)->first();
+        }
+        if (!$targetWh) {
+            $targetWh = Warehouse::create([
+                'code'         => 'KHO-OM-' . $driver->id,
+                'name'         => 'Kho Hàng Ôm - ' . $driver->name,
+                'type'         => 'Kho hàng ôm',
                 'manager_name' => $driver->name,
-                'address'      => 'Xe BKS ' . $vehiclePlate,
+                'address'      => 'Hàng ôm nhân viên: ' . $driver->name . ($driver->phone ? ' (' . $driver->phone . ')' : ''),
                 'is_active'    => true,
             ]);
         }
-        $targetWhId = $targetVehicleWh?->id;
+        $targetWhId = $targetWh?->id;
 
         DB::beginTransaction();
         try {
@@ -495,7 +501,7 @@ class DebtHandoverController extends Controller
                 'created_by_id' => auth()->id(),
             ]);
 
-            // Dùng chung bảng inventory_transactions: Tạo phiếu Xuất Kho Xe (PXK-XE)
+            // Dùng chung bảng inventory_transactions: Tạo phiếu Xuất Kho Hàng Ôm
             $invTx = \App\Models\InventoryTransaction::create([
                 'code'                 => $code,
                 'type'                 => 'export',
@@ -503,10 +509,10 @@ class DebtHandoverController extends Controller
                 'target_warehouse_id'  => $targetWhId,
                 'created_by_id'        => auth()->id() ?: 1,
                 'status'               => 'Hoàn thành',
-                'supplier_name'        => 'Lái xe: ' . $driver->name . ' (' . $vehiclePlate . ')',
-                'reference_order_code' => $vehiclePlate,
+                'supplier_name'        => 'Nhân viên ôm hàng: ' . $driver->name,
+                'reference_order_code' => $code,
                 'total_amount'         => 0,
-                'notes'                => "[Xuất Hàng Lẻ Xe Lưu Động] " . $notes,
+                'notes'                => "[Xuất Hàng Ôm Nhân Viên] " . $notes,
             ]);
 
             foreach ($items as $it) {
@@ -517,7 +523,7 @@ class DebtHandoverController extends Controller
                 $prod = Product::find($prodId);
                 if ($prod) {
                     if ($price <= 0) {
-                        $price = (float)($prod->getPriceForTier('Đại lý Cấp 1', 0) ?: $prod->cost_price);
+                        $price = (float)($prod->price ?: ($prod->getPriceForTier('Đại lý Cấp 1', 0) ?: $prod->cost_price));
                     }
                     $lineTotal = $qty * $price;
                     $totalAmount += $lineTotal;
@@ -540,7 +546,7 @@ class DebtHandoverController extends Controller
                         'quantity'                 => $qty,
                         'import_price'             => $price,
                         'cost_price_at_transaction' => $price,
-                        'notes'                    => "Bốc hàng lẻ lên xe {$vehiclePlate}",
+                        'notes'                    => "Xuất hàng ôm cho NV {$driver->name}",
                     ]);
 
                     // Trừ tồn kho tổng
@@ -553,13 +559,13 @@ class DebtHandoverController extends Controller
                     );
                     $srcStock->decrement('stock_quantity', $qty);
 
-                    // CỘNG tồn kho vào Kho xe lưu động trong warehouse_stocks
+                    // CỘNG tồn kho vào Kho hàng ôm của nhân viên trong warehouse_stocks
                     if ($targetWhId) {
-                        $carStock = \App\Models\WarehouseStock::firstOrCreate(
+                        $empStock = \App\Models\WarehouseStock::firstOrCreate(
                             ['product_id' => $prod->id, 'warehouse_id' => $targetWhId],
-                            ['stock_quantity' => 0, 'reserved_quantity' => 0, 'location' => 'Thùng xe ' . $vehiclePlate]
+                            ['stock_quantity' => 0, 'reserved_quantity' => 0, 'location' => 'Hàng ôm: ' . $driver->name]
                         );
-                        $carStock->increment('stock_quantity', $qty);
+                        $empStock->increment('stock_quantity', $qty);
                     }
                 }
             }

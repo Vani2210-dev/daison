@@ -1620,10 +1620,11 @@ class DeliveryController extends Controller
               ->whereYear('intake_at', now()->year);
         })->sum('returned_qty');
 
-        \App\Models\Warehouse::syncVehicleWarehouses();
+        \App\Models\Warehouse::syncEmployeeWarehouses();
+        \App\Models\ConsignmentOrder::syncAllHoldingStocks();
 
         $warehouses = \App\Models\Warehouse::all();
-        $physicalWarehouses = \App\Models\Warehouse::where('type', '!=', 'Kho xe lưu động')->where('is_active', true)->get();
+        $physicalWarehouses = \App\Models\Warehouse::whereNotIn('type', ['Kho hàng ôm', 'Kho xe lưu động'])->where('is_active', true)->get();
         $warehouseStaff = \App\Models\User::where(function($q) {
             $q->whereIn('department', ['Warehouse', 'Kho', 'Kho vận', 'Vận hành', 'Executive', 'Ban Giám Đốc'])
               ->orWhereHas('roles', function($rq) {
@@ -1631,50 +1632,104 @@ class DeliveryController extends Controller
               });
         })->where('status', '!=', 'Đã nghỉ việc')->get(['id', 'name', 'department', 'phone']);
 
-        // 2. Dữ liệu Xuất Hàng Lẻ Lên Xe (Bảng van_sale_dispatches & inventory_transactions)
+        $salesStaff = \App\Models\User::where('status', '!=', 'Đã nghỉ việc')
+            ->where(function($q) {
+                $q->whereIn('department', ['Sales', 'Logistics', 'Kinh doanh', 'Thị trường', 'Giao hàng', 'Executive'])
+                  ->orWhere('staff_type', 'company_sales');
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone', 'department', 'avatar', 'code']);
+
+        // 2. Dữ liệu Xuất Hàng Ôm Nhân Viên (Đơn hàng ôm & Ký gửi + Phiếu bàn giao legacy)
+        $consignmentOrders = \App\Models\ConsignmentOrder::with(['items.product', 'staff', 'warehouse'])
+            ->latest('id')
+            ->take(60)
+            ->get();
+        $totalConsignmentOrdersCount = \App\Models\ConsignmentOrder::count();
+        $totalConsignmentOrdersAmount = (float) \App\Models\ConsignmentOrder::sum('total_amount');
+        $totalConsignmentOrdersActive = \App\Models\ConsignmentOrder::whereIn('status', ['approved', 'in_progress'])->count();
+
         $vanDispatches = \App\Models\VanSaleDispatch::with(['items.product', 'driver', 'warehouse'])
             ->latest('id')
             ->take(60)
             ->get();
-        $totalVanDispatchesCount = \App\Models\VanSaleDispatch::count();
-        $totalVanDispatchesAmount = (float) \App\Models\VanSaleDispatch::sum('total_amount');
-        $totalVanDispatchesToday = \App\Models\VanSaleDispatch::whereDate('dispatch_date', today())->count();
+        $totalVanDispatchesCount = \App\Models\VanSaleDispatch::count() + $totalConsignmentOrdersCount;
+        $totalVanDispatchesAmount = (float) \App\Models\VanSaleDispatch::sum('total_amount') + $totalConsignmentOrdersAmount;
+        $totalVanDispatchesToday = \App\Models\VanSaleDispatch::whereDate('dispatch_date', today())->count()
+            + \App\Models\ConsignmentOrder::whereDate('created_at', today())->count();
 
-        // 3. Dữ liệu Tồn Kho Xe Lưu Động (Dùng chung bảng warehouses & warehouse_stocks)
-        $vehicleWarehouses = \App\Models\Warehouse::where('type', 'Kho xe lưu động')
+        // 3. Dữ liệu Tồn Kho Hàng Ôm Nhân Viên (Dùng chung bảng warehouses & warehouse_stocks)
+        $employeeWarehouses = \App\Models\Warehouse::whereIn('type', ['Kho hàng ôm', 'Kho xe lưu động'])
             ->with(['stocks.product'])
             ->get()
             ->map(function ($wh) {
-                $stocks = $wh->stocks->filter(fn($st) => (float)$st->stock_quantity > 0);
-                $plate = str_replace('KHO-XE-', '', $wh->code);
+                $stocks = $wh->stocks->filter(fn($st) => (float)$st->stock_quantity > 0)->values();
                 $totalQty = $stocks->sum('stock_quantity');
                 $totalVal = $stocks->sum(function($st) {
                     return (float)$st->stock_quantity * (float)($st->product?->cost_price ?: 0);
                 });
+                $matchedUser = null;
+                if (preg_match('/KHO-OM-(\d+)/', $wh->code, $m)) {
+                    $matchedUser = \App\Models\User::find($m[1]);
+                }
+                if (!$matchedUser) {
+                    $matchedUser = \App\Models\User::where('name', $wh->manager_name)->first();
+                }
+                $empCode = $matchedUser?->code ?: ('NV-' . str_pad((string)$wh->id, 3, '0', STR_PAD_LEFT));
+                $empPhone = $matchedUser?->phone ?: '---';
+                $empDept = $matchedUser?->department ?: 'Kinh doanh';
+                $empAvatar = $matchedUser?->avatar;
+                $empId = $matchedUser?->id;
+                $empDebt = (float)($matchedUser?->current_debt ?? 0);
+
+                $activeOrders = $empId ? \App\Models\ConsignmentOrder::where('staff_id', $empId)
+                    ->whereIn('status', ['approved', 'in_progress'])
+                    ->latest('id')
+                    ->get(['id', 'code', 'total_amount', 'remaining_amount', 'status']) : collect();
+
                 return (object)[
                     'id'           => $wh->id,
                     'code'         => $wh->code,
                     'name'         => $wh->name,
-                    'plate_number' => $plate,
+                    'employee_id'  => $empId,
+                    'employee_name'=> $wh->manager_name,
+                    'employee_code'=> $empCode,
+                    'phone'        => $empPhone,
+                    'department'   => $empDept,
+                    'avatar'       => $empAvatar,
+                    'debt'         => $empDebt,
+                    'active_orders'=> $activeOrders,
+                    'orders_count' => $activeOrders->count(),
+                    'plate_number' => $wh->manager_name,
                     'driver_name'  => $wh->manager_name,
                     'total_skus'   => $stocks->count(),
                     'total_qty'    => $totalQty,
                     'total_val'    => $totalVal,
                     'stocks'       => $stocks,
                 ];
-            });
+            })
+            // Chỉ hiển thị những kho nhân viên ôm có dữ liệu
+            ->filter(function ($wh) {
+                return (float)$wh->total_qty > 0;
+            })
+            ->values();
 
+        $vehicleWarehouses = $employeeWarehouses; // alias for backwards compatibility
         $vehicles = \App\Models\Vehicle::with('driver')->get();
-        $productsCatalog = \App\Models\Product::select('id', 'name', 'sku', 'unit', 'cost_price', 'price_tiers', 'stock_quantity')
+        $dealers = \App\Models\Dealer::select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt')
+            ->orderBy('name')
+            ->get();
+
+        $productsCatalog = \App\Models\Product::select('id', 'name', 'sku', 'unit', 'cost_price', 'price', 'price_tiers', 'stock_quantity')
             ->where('is_active', true)
             ->orderBy('name')
             ->get()
             ->map(function ($p) {
-                $p->retail_price = (float)($p->getPriceForTier('Đại lý Cấp 1') ?: ($p->getPriceForTier('Bán Lẻ') ?: $p->cost_price));
+                $p->retail_price = (float)($p->price ?: ($p->getPriceForTier('Đại lý Cấp 1') ?: ($p->getPriceForTier('Bán Lẻ') ?: $p->cost_price)));
                 return $p;
             });
 
-        $activeTab = $request->query('tab', 'returns');
+        $activeTab = $request->query('tab', 'stocks');
 
         return view('inventory.import', compact(
             'returns',
@@ -1693,14 +1748,96 @@ class DeliveryController extends Controller
             'warehouses',
             'physicalWarehouses',
             'warehouseStaff',
+            'salesStaff',
+            'dealers',
             'vanDispatches',
+            'consignmentOrders',
+            'totalConsignmentOrdersCount',
+            'totalConsignmentOrdersAmount',
+            'totalConsignmentOrdersActive',
             'totalVanDispatchesCount',
             'totalVanDispatchesAmount',
             'totalVanDispatchesToday',
+            'employeeWarehouses',
             'vehicleWarehouses',
             'vehicles',
             'productsCatalog',
             'activeTab'
+        ));
+    }
+
+    /**
+     * Trang riêng: Tạo đơn bán hàng trực tiếp từ kho hàng ôm của nhân viên
+     */
+    public function holdingSaleCreate(Request $request)
+    {
+        \App\Models\Warehouse::syncEmployeeWarehouses();
+        \App\Models\ConsignmentOrder::syncAllHoldingStocks();
+
+        // Danh sách các kho hàng ôm có dữ liệu tồn
+        $employeeWarehouses = \App\Models\Warehouse::whereIn('type', ['Kho hàng ôm', 'Kho xe lưu động'])
+            ->with(['stocks.product'])
+            ->get()
+            ->map(function ($wh) {
+                $stocks = $wh->stocks->filter(fn($st) => (float)$st->stock_quantity > 0)->values()->map(function($st) {
+                    $prod = $st->product;
+                    $defPrice = (float)($prod?->price ?: ($prod?->retail_price ?: ($prod?->cost_price ?: 0)));
+                    return [
+                        'product_id'     => $st->product_id,
+                        'sku'            => $st->sku ?: ($prod?->sku ?: ''),
+                        'product_name'   => $st->name ?: ($prod?->name ?: ''),
+                        'unit'           => $st->unit ?: ($prod?->unit ?: 'cái'),
+                        'stock_quantity' => (float)$st->stock_quantity,
+                        'cost_price'     => (float)($st->cost_price ?: ($prod?->cost_price ?: 0)),
+                        'selling_price'  => $defPrice > 0 ? $defPrice : (float)($st->cost_price ?: ($prod?->cost_price ?: 0)),
+                    ];
+                });
+
+                $matchedUser = null;
+                if (preg_match('/KHO-OM-(\d+)/', $wh->code, $m)) {
+                    $matchedUser = \App\Models\User::find($m[1]);
+                }
+                if (!$matchedUser) {
+                    $matchedUser = \App\Models\User::where('name', $wh->manager_name)->first();
+                }
+
+                return (object)[
+                    'id'           => $wh->id,
+                    'code'         => $wh->code,
+                    'name'         => $wh->name,
+                    'employee_id'  => $matchedUser?->id,
+                    'employee_name'=> $wh->manager_name,
+                    'employee_code'=> $matchedUser?->code ?: ('NV-' . str_pad((string)$wh->id, 3, '0', STR_PAD_LEFT)),
+                    'phone'        => $matchedUser?->phone ?: '---',
+                    'department'   => $matchedUser?->department ?: 'Kinh doanh',
+                    'total_skus'   => $stocks->count(),
+                    'total_qty'    => $stocks->sum('stock_quantity'),
+                    'stocks'       => $stocks,
+                ];
+            })
+            ->filter(fn($wh) => (float)$wh->total_qty > 0)
+            ->values();
+
+        $warehouseId = $request->query('warehouse_id');
+        $currentWarehouse = null;
+        if ($warehouseId) {
+            $currentWarehouse = $employeeWarehouses->firstWhere('id', (int)$warehouseId);
+        }
+        if (!$currentWarehouse) {
+            $currentWarehouse = $employeeWarehouses->first();
+        }
+
+        $preselectedProductId = $request->query('product_id');
+
+        $dealers = \App\Models\Dealer::select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt')
+            ->orderBy('name')
+            ->get();
+
+        return view('inventory.holding_sale_create', compact(
+            'employeeWarehouses',
+            'currentWarehouse',
+            'dealers',
+            'preselectedProductId'
         ));
     }
 
