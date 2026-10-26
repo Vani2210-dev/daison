@@ -60,6 +60,10 @@ class Order extends Model
         'credit_overrun_reason',
         'credit_overrun_payment_due_date',
         'credit_overrun_note_for_dealer',
+        'parent_order_id',
+        'parent_order_code',
+        'backorder_status',
+        'has_shortage_warning',
     ];
 
     protected $casts = [
@@ -72,8 +76,19 @@ class Order extends Model
         'total_returned_amount' => 'decimal:2',
         'settled_with_accountant' => 'boolean',
         'shortage_reported' => 'boolean',
+        'has_shortage_warning' => 'boolean',
         'stock_deducted' => 'boolean',
     ];
+
+    public function parentOrder()
+    {
+        return $this->belongsTo(Order::class, 'parent_order_id');
+    }
+
+    public function backOrders()
+    {
+        return $this->hasMany(Order::class, 'parent_order_id');
+    }
 
     public function deliveryReturns()
     {

@@ -285,7 +285,7 @@
             main {
                 padding-top: 0 !important;
                 margin-top: 0 !important;
-                padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+                padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
             }
             main > div {
                 margin-top: 0 !important;
@@ -610,11 +610,11 @@
             <!-- 3. Bán hàng (Active in Orders) -->
             @if(!$authUser || $authUser->hasAnyPermission('orders.view', 'orders.create', 'quotation.view', 'quotation.create', 'returns.view', 'supplier_orders.view'))
             <div class="nav-item-group relative shrink-0">
-                <button type="button" class="flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-bold transition-colors select-none rounded-t-lg relative whitespace-nowrap cursor-pointer {{ request()->is('orders*') ? 'bg-white text-[#1b4a8c] shadow-md' : 'text-white hover:bg-white/15' }}">
-                    <i class="fa-solid fa-cart-shopping text-sm {{ request()->is('orders*') ? 'text-[#1b4a8c]' : 'text-sky-200' }}"></i>
+                <button type="button" class="flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-bold transition-colors select-none rounded-t-lg relative whitespace-nowrap cursor-pointer {{ request()->is('orders*') || request()->is('promotion-advances*') ? 'bg-white text-[#1b4a8c] shadow-md' : 'text-white hover:bg-white/15' }}">
+                    <i class="fa-solid fa-cart-shopping text-sm {{ request()->is('orders*') || request()->is('promotion-advances*') ? 'text-[#1b4a8c]' : 'text-sky-200' }}"></i>
                     <span>Bán hàng</span>
-                    <i class="fa-solid fa-chevron-down text-[10px] ml-0.5 {{ request()->is('orders*') ? 'text-[#1b4a8c]' : 'opacity-70' }}"></i>
-                    @if(request()->is('orders*'))
+                    <i class="fa-solid fa-chevron-down text-[10px] ml-0.5 {{ request()->is('orders*') || request()->is('promotion-advances*') ? 'text-[#1b4a8c]' : 'opacity-70' }}"></i>
+                    @if(request()->is('orders*') || request()->is('promotion-advances*'))
                         <span class="absolute bottom-0 left-2 right-2 h-0.5 bg-amber-400 rounded-full"></span>
                     @endif
                 </button>
@@ -648,10 +648,13 @@
                     </a>
                     @endif
                     @if(!$authUser || $authUser->hasPermission('supplier_orders.view'))
-                    <a href="{{ url('/orders') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center gap-2.5 font-semibold text-slate-700">
-                        <i class="fa-solid fa-cart-flatbed text-blue-600 w-4"></i><span>Đặt hàng NCC</span>
+                    <a href="{{ url('/supplier-orders') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center gap-2.5 border-b border-slate-100 font-semibold text-slate-700 {{ request()->is('supplier-orders*') ? 'bg-sky-100/80 text-[#1b4a8c] font-bold border-l-4 border-l-[#1b4a8c]' : '' }}">
+                        <i class="fa-solid fa-cart-shopping text-blue-600 w-4"></i><span>Đặt hàng NCC</span>
                     </a>
                     @endif
+                    <a href="{{ url('/promotion-advances') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center gap-2.5 font-semibold text-slate-700 {{ request()->is('promotion-advances*') ? 'bg-amber-100/80 text-amber-800 font-bold border-l-4 border-l-amber-600' : '' }}">
+                        <i class="fa-solid fa-gift text-amber-600 w-4"></i><span>Ứng khuyến mãi kho</span>
+                    </a>
                 </div>
             </div>
             @endif
@@ -760,6 +763,12 @@
                             <i class="fa-solid fa-shield-halved text-emerald-600 w-4"></i><span>Danh sách máy đã lắp</span>
                         </div>
                         <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">Bảo hành</span>
+                    </a>
+                    <a href="{{ url('/lich-bao-duong-may-loc') }}" class="w-full text-left px-4 py-2.5 hover:bg-purple-50 flex items-center justify-between border-b border-slate-100 font-semibold text-slate-700">
+                        <div class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-calendar-check text-purple-600 w-4"></i><span>Lịch bảo dưỡng & thay lõi</span>
+                        </div>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">Định kỳ</span>
                     </a>
                     @endif
                     @if(!$authUser || $authUser->hasAnyPermission('water_filter.view', 'water_filter.repair_view'))
@@ -995,24 +1004,27 @@
             @endif
 
             <!-- 10. Hệ thống -->
-            @if(!$authUser || $authUser->hasAnyPermission('audit.view', 'permissions.view'))
+            @if(!$authUser || $authUser->hasAnyPermission('audit.view', 'permissions.view', 'settings.view', 'settings.manage'))
             <div class="nav-item-group relative shrink-0">
-                <button type="button" class="flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-bold transition-colors select-none rounded-t-lg relative whitespace-nowrap cursor-pointer {{ request()->is('audit*') ? 'bg-white text-[#1b4a8c] shadow-md' : 'text-white hover:bg-white/15' }}">
-                    <i class="fa-solid fa-gear text-sm {{ request()->is('audit*') ? 'text-[#1b4a8c]' : 'text-sky-200' }}"></i>
+                <button type="button" class="flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-bold transition-colors select-none rounded-t-lg relative whitespace-nowrap cursor-pointer {{ request()->is('audit*') || request()->is('system-settings*') || request()->is('settings*') || request()->is('roles*') ? 'bg-white text-[#1b4a8c] shadow-md' : 'text-white hover:bg-white/15' }}">
+                    <i class="fa-solid fa-gear text-sm {{ request()->is('audit*') || request()->is('system-settings*') || request()->is('settings*') || request()->is('roles*') ? 'text-[#1b4a8c]' : 'text-sky-200' }}"></i>
                     <span>Hệ thống</span>
                     <i class="fa-solid fa-chevron-down text-[10px] ml-0.5 opacity-70"></i>
-                    @if(request()->is('audit*'))
+                    @if(request()->is('audit*') || request()->is('system-settings*') || request()->is('settings*') || request()->is('roles*'))
                         <span class="absolute bottom-0 left-2 right-2 h-0.5 bg-amber-400 rounded-full"></span>
                     @endif
                 </button>
-                <div class="nav-submenu hidden absolute left-0 top-full z-[9999] bg-white text-slate-800 border border-slate-200 shadow-2xl rounded-b-xl rounded-tr-xl min-w-[260px] py-2 text-xs">
+                <div class="nav-submenu hidden absolute left-0 top-full z-[9999] bg-white text-slate-800 border border-slate-200 shadow-2xl rounded-b-xl rounded-tr-xl min-w-[270px] py-2 text-xs">
+                    <a href="{{ url('/system-settings') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center gap-2.5 border-b border-slate-100 font-semibold text-slate-700 {{ request()->is('system-settings*') || request()->is('settings*') ? 'bg-sky-100/80 text-[#1b4a8c] font-bold border-l-4 border-l-[#1b4a8c]' : '' }}">
+                        <i class="fa-solid fa-sliders text-amber-600 w-4"></i><span>Cấu hình Hệ thống & Công ty</span>
+                    </a>
                     @if(!$authUser || $authUser->hasPermission('audit.view'))
-                    <a href="{{ url('/audit-logs') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center gap-2.5 border-b border-slate-100 font-semibold text-slate-700">
+                    <a href="{{ url('/audit-logs') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center gap-2.5 border-b border-slate-100 font-semibold text-slate-700 {{ request()->is('audit*') ? 'bg-sky-100/80 text-[#1b4a8c] font-bold border-l-4 border-l-[#1b4a8c]' : '' }}">
                         <i class="fa-solid fa-shield-halved text-sky-600 w-4"></i><span>Nhật ký Truy vết System Audit</span>
                     </a>
                     @endif
                     @if(!$authUser || $authUser->hasPermission('permissions.view'))
-                    <a href="{{ url('/roles') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center gap-2.5 font-semibold text-slate-700">
+                    <a href="{{ url('/roles') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center gap-2.5 font-semibold text-slate-700 {{ request()->is('roles*') ? 'bg-sky-100/80 text-[#1b4a8c] font-bold border-l-4 border-l-[#1b4a8c]' : '' }}">
                         <i class="fa-solid fa-diagram-project text-purple-600 w-4"></i><span>Sơ đồ Phân quyền & Vai trò</span>
                     </a>
                     @endif
@@ -1059,11 +1071,11 @@
     <!-- MOBILE BOTTOM NAVIGATION & SLIDE-UP DRAWER (CHUẨN ERP HIỆN ĐẠI) -->
     <!-- ============================================================== -->
     @php
-        $isSalesActive = request()->is('orders*') || request()->is('returns*') || request()->is('quotation*') || request()->is('shipments*') || request()->is('supplier-orders*');
+        $isSalesActive = request()->is('orders*') || request()->is('returns*') || request()->is('quotation*') || request()->is('shipments*') || request()->is('supplier-orders*') || request()->is('promotion-advances*');
         $isInventoryActive = request()->is('inventory*') || request()->is('warehouse*') || request()->is('*picking*');
         $isWaterFilterActive = request()->is('water-filter*') || request()->is('bao-hanh-may-loc*') || request()->is('m/*');
         $isTasksActive = request()->is('tasks*') || request()->is('dealers*') || request()->is('proposals*');
-        $isMoreActive = request()->is('projects*') || request()->is('debt*') || request()->is('funds*') || request()->is('reports*') || request()->is('staff*') || request()->is('attendance*') || request()->is('payroll*') || request()->is('kpi*') || request()->is('roles*') || request()->is('audit*') || request()->is('dashboard') || request()->is('/');
+        $isMoreActive = request()->is('projects*') || request()->is('debt*') || request()->is('funds*') || request()->is('reports*') || request()->is('staff*') || request()->is('attendance*') || request()->is('payroll*') || request()->is('kpi*') || request()->is('roles*') || request()->is('audit*') || request()->is('system-settings*') || request()->is('settings*') || request()->is('dashboard') || request()->is('/');
     @endphp
 
     <!-- Mobile Bottom Navigation Bar (Cố định ở dưới màn hình mobile) -->
@@ -1259,6 +1271,15 @@
                         </div>
                         <span class="text-xs font-bold text-slate-800 leading-tight">Đặt hàng NCC</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Đơn mua hàng</span>
+                    </a>
+
+                    <!-- 5b. Ứng KM Kho -->
+                    <a href="{{ url('/promotion-advances') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('promotion-advances*') ? 'border-amber-600 bg-amber-50/70 ring-2 ring-amber-600/20 shadow-xs' : 'border-slate-100 hover:border-amber-200 bg-slate-50/70 hover:bg-amber-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-gift"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Ứng KM kho</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Theo dõi nợ KM</span>
                     </a>
 
                     <!-- 6. Điều phối xe -->
@@ -1626,6 +1647,15 @@
                         </div>
                         <span class="text-xs font-bold text-slate-800 leading-tight">Nhật ký Audit</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Truy vết hệ thống</span>
+                    </a>
+
+                    <!-- Cấu hình Hệ thống & Công ty -->
+                    <a href="{{ url('/system-settings') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('system-settings*') || request()->is('settings*') ? 'border-[#1b4a8c] bg-amber-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-amber-200 bg-slate-50/70 hover:bg-amber-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-sliders"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Cấu hình</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Công ty & Ngân hàng</span>
                     </a>
 
                 </div>

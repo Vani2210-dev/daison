@@ -229,6 +229,47 @@ class OrderController extends Controller
         if ($order) {
             $oldStatus = $order->status;
 
+            // Chặn chuyển sang "Soạn hàng" nếu kho không đủ hàng tồn thực tế / khả dụng
+            if (in_array($status, ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng'])) {
+                $order->load(['items.product']);
+                $itemsData = $order->items->map(function ($it) {
+                    return [
+                        'product_id'    => $it->product_id,
+                        'sku'           => $it->sku,
+                        'quantity'      => (float) $it->quantity,
+                        'gift_quantity' => (float) ($it->gift_quantity ?? 0),
+                        'unit'          => $it->unit,
+                    ];
+                })->toArray();
+
+                $targetWh = $order->warehouse ?: 'Kho Tổng Mê Linh (MQ)';
+                $check = \App\Services\InventoryAvailabilityService::checkItemsAvailability($targetWh, $itemsData, $order->id);
+
+                if (!$check['is_valid']) {
+                    $shortageLines = [];
+                    foreach ($check['shortages'] as $sh) {
+                        $shortageLines[] = "• [{$sh['sku']}] {$sh['name']}: Cần {$sh['requested']} {$sh['unit']} | Khả dụng: {$sh['available']} (Tồn thực tế: {$sh['on_hand']}, thiếu {$sh['diff']})";
+                    }
+                    $shortageText = implode("\n", $shortageLines);
+
+                    $order->status = 'Chờ hàng';
+                    $order->has_shortage_warning = true;
+                    $order->backorder_status = 'pending_stock';
+                    $order->save();
+
+                    return response()->json([
+                        'success'   => false,
+                        'message'   => "Kho [{$targetWh}] không đủ hàng tồn để chuyển sang Soạn hàng!\n\n{$shortageText}\n\nĐơn hàng đã được chuyển sang trạng thái [Chờ hàng]. Vui lòng chờ nhập thêm hàng hoặc dùng chức năng Tách đơn nợ để giao trước phần có sẵn.",
+                        'shortages' => $check['shortages']
+                    ], 422);
+                } else {
+                    $order->has_shortage_warning = false;
+                    if ($order->backorder_status === 'pending_stock') {
+                        $order->backorder_status = 'ready_to_pick';
+                    }
+                }
+            }
+
             // Chặn chuyển sang "Đã bốc xong" nếu các nhóm chưa hoàn thành 100% việc bốc hàng
             if (in_array($status, ['Đã bốc xong', 'Kho đã xuất đủ'])) {
                 $order->load('items.product.category');
@@ -375,6 +416,8 @@ class OrderController extends Controller
                     ];
                 });
 
+            \App\Services\InventoryAvailabilityService::clearCache();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Cập nhật trạng thái đơn hàng thành công',
@@ -408,6 +451,30 @@ class OrderController extends Controller
                 'status'    => $newOrder->status,
             ]
         ]);
+    }
+
+    /**
+     * API: Kiểm tra nhanh tồn kho khả dụng thời gian thực cho danh sách mặt hàng
+     */
+    public function checkStockAvailability(Request $request)
+    {
+        $raw = [];
+        if ($request->getContent()) {
+            $raw = json_decode($request->getContent(), true) ?: [];
+        }
+        $data = array_merge($request->all(), $raw);
+
+        $warehouse = $data['warehouse'] ?? ($data['warehouse_name'] ?? null);
+        $items = $data['items'] ?? [];
+        $orderId = $data['order_id'] ?? ($data['orderId'] ?? ($data['id'] ?? null));
+
+        $result = \App\Services\InventoryAvailabilityService::checkItemsAvailability(
+            $warehouse,
+            is_array($items) ? $items : [],
+            $orderId ? (int)$orderId : null
+        );
+
+        return response()->json($result);
     }
 
     /**
@@ -641,7 +708,20 @@ class OrderController extends Controller
                 }
                 return $n;
             })(),
+            'parent_order_id'        => $data['parentOrderId'] ?? ($data['parent_order_id'] ?? ($order?->parent_order_id ?? null)),
+            'parent_order_code'      => $data['parentOrderCode'] ?? ($data['parent_order_code'] ?? ($order?->parent_order_code ?? null)),
+            'backorder_status'       => $isBackOrder ? ($data['backorderStatus'] ?? ($data['backorder_status'] ?? ($order?->backorder_status ?? 'pending_stock'))) : null,
+            'has_shortage_warning'   => isset($data['hasShortageWarning']) 
+                ? (bool)$data['hasShortageWarning'] 
+                : (isset($data['has_shortage_warning']) 
+                    ? (bool)$data['has_shortage_warning'] 
+                    : ($order?->has_shortage_warning ?? false)),
         ];
+
+        if (empty($orderAttributes['parent_order_id']) && !empty($orderAttributes['parent_order_code'])) {
+            $pOrd = Order::where('order_code', $orderAttributes['parent_order_code'])->first(['id']);
+            if ($pOrd) $orderAttributes['parent_order_id'] = $pOrd->id;
+        }
 
         // Cache existing items if updating so we don't accidentally wipe picking status if not provided
         $existingItemsMap = $order ? $order->items->keyBy(function($item) {
@@ -719,6 +799,48 @@ class OrderController extends Controller
                             'assigned_staff' => $oldItem->assigned_staff,
                             'message'        => "Đã xóa sản phẩm khỏi đơn (trước đó {$oldTotalQty} {$oldItem->unit})",
                         ];
+                    }
+                }
+            }
+        }
+
+        // Kiểm tra tồn kho thực tế / khả dụng: nếu thiếu hàng thì đặt trạng thái "Chờ hàng" và has_shortage_warning = true
+        if (!in_array($orderAttributes['status'], ['Đã giao', 'Giao thành công', 'Hủy', 'Đã hủy'])) {
+            $itemsToCheck = [];
+            if (is_array($items) && count($items) > 0) {
+                foreach ($items as $it) {
+                    $itemsToCheck[] = [
+                        'product_id'    => $it['product_id'] ?? ($it['item_id'] ?? ($it['itemId'] ?? null)),
+                        'sku'           => $it['sku'] ?? ($it['product_sku'] ?? null),
+                        'quantity'      => (float)($it['quantity'] ?? ($it['qty'] ?? 1)),
+                        'gift_quantity' => (float)($it['gift_quantity'] ?? ($it['giftQty'] ?? 0)),
+                        'unit'          => $it['unit'] ?? null,
+                    ];
+                }
+            } elseif ($order) {
+                $order->load(['items.product']);
+                $itemsToCheck = $order->items->map(fn($it) => [
+                    'product_id'    => $it->product_id,
+                    'sku'           => $it->sku,
+                    'quantity'      => (float)$it->quantity,
+                    'gift_quantity' => (float)($it->gift_quantity ?? 0),
+                    'unit'          => $it->unit,
+                ])->toArray();
+            }
+
+            if (!empty($itemsToCheck)) {
+                $targetWh = $orderAttributes['warehouse'] ?: 'Kho Tổng Mê Linh (MQ)';
+                $check = \App\Services\InventoryAvailabilityService::checkItemsAvailability($targetWh, $itemsToCheck, $order?->id);
+                if (!$check['is_valid']) {
+                    $orderAttributes['has_shortage_warning'] = true;
+                    $orderAttributes['backorder_status'] = 'pending_stock';
+                    if (in_array($orderAttributes['status'], ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Chốt đơn', 'Chờ hàng', 'Chờ hàng về', 'Giao sau', 'Nợ hàng'])) {
+                        $orderAttributes['status'] = 'Chờ hàng';
+                    }
+                } else {
+                    $orderAttributes['has_shortage_warning'] = false;
+                    if ($orderAttributes['status'] === 'Chờ hàng' || $orderAttributes['status'] === 'Chờ hàng về') {
+                        $orderAttributes['status'] = 'Chốt đơn';
                     }
                 }
             }

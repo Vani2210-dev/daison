@@ -3080,8 +3080,8 @@ class DeliveryController extends Controller
                 $q->where('creator_id', $user->id)
                   ->orWhere('sales_rep_id', $user->id)
                   ->orWhere('order_creator', $userName)
-                  ->orWhereHas('dealer', function($dq) use ($userName) {
-                      $dq->where('staff_in_charge', $userName);
+                  ->orWhereHas('dealer', function($dq) use ($user) {
+                      $dq->where('sales_rep_id', $user->id);
                   });
             });
         }
@@ -3092,7 +3092,7 @@ class DeliveryController extends Controller
             $creatorName = $order->order_creator 
                 ?: ($order->creator?->name 
                 ?: ($order->salesRep?->name 
-                ?: ($order->dealer?->staff_in_charge ?: 'Người lên đơn')));
+                ?: ($order->dealer?->salesRep?->name ?: 'Người lên đơn')));
 
             $driverName = $order->assignedDriver?->name 
                 ?: ($order->assigned_driver_id ?: 'Lái xe giao hàng');

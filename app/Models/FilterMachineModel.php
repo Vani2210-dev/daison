@@ -19,12 +19,14 @@ class FilterMachineModel extends Model
         'type',
         'standard_price',
         'description',
+        'default_parts',
         'is_active',
     ];
 
     protected $casts = [
         'filter_stages'  => 'integer',
         'standard_price' => 'decimal:2',
+        'default_parts'  => 'array',
         'is_active'      => 'boolean',
     ];
 

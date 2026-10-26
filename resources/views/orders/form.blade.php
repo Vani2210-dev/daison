@@ -22,7 +22,7 @@
                 'product_id' => $it->product_id,
                 'sku' => $it->sku,
                 'name' => $it->name,
-                'searchQuery' => '[' . $it->sku . '] ' . $it->name,
+                'searchQuery' => (string) $it->name,
                 'unit' => $it->unit ?? '',
                 'quantity' => $qty > 0 ? $qty : 1,
                 'gift_quantity' => $giftQty,
@@ -472,26 +472,38 @@
                     </div>
                 </div>
 
-                <!-- Cảnh báo tồn kho -->
-                <div x-show="getOverStockItems().length > 0" class="p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3 shadow-xs">
-                    <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 font-bold">
-                        <i class="fa-solid fa-boxes-stacked text-sm"></i>
+                <!-- Cảnh báo tồn kho khả dụng -->
+                <div x-show="getOverStockItems().length > 0" class="p-3 border rounded-xl flex items-start gap-3 shadow-xs"
+                     :class="getPhysicalShortageItems().length > 0 ? 'bg-rose-50 border-rose-300' : 'bg-amber-50 border-amber-300'">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold"
+                         :class="getPhysicalShortageItems().length > 0 ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'">
+                        <i :class="getPhysicalShortageItems().length > 0 ? 'fa-solid fa-circle-exclamation text-sm' : 'fa-solid fa-boxes-stacked text-sm'"></i>
                     </div>
-                    <div class="text-xs text-amber-900 leading-relaxed flex-1">
-                        <div class="font-black uppercase tracking-wider text-amber-800 text-[11px] mb-0.5 flex items-center gap-1.5">
-                            <span>CẢNH BÁO THIẾU TỒN KHO TẠI [<span x-text="formData.warehouse || 'Kho xuất'"></span>]</span>
-                            <span class="px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px] font-bold" x-text="getOverStockItems().length + ' sản phẩm vượt tồn kho này'"></span>
+                    <div class="text-xs leading-relaxed flex-1"
+                         :class="getPhysicalShortageItems().length > 0 ? 'text-rose-900' : 'text-amber-900'">
+                        <div class="font-black uppercase tracking-wider text-[11px] mb-1 flex items-center gap-1.5 flex-wrap"
+                             :class="getPhysicalShortageItems().length > 0 ? 'text-rose-800' : 'text-amber-800'">
+                            <span>CẢNH BÁO TỒN KHO TẠI [<span x-text="formData.warehouse || 'Kho xuất'"></span>]</span>
+                            <template x-if="getPhysicalShortageItems().length > 0">
+                                <span class="px-1.5 py-0.5 rounded bg-rose-200 text-rose-900 text-[10px] font-bold" x-text="getPhysicalShortageItems().length + ' SP vượt tồn thực tế'"></span>
+                            </template>
+                            <template x-if="getReservedShortageItems().length > 0">
+                                <span class="px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px] font-bold" x-text="getReservedShortageItems().length + ' SP tranh chấp đơn khác'"></span>
+                            </template>
                         </div>
-                        <div>
-                            Có <strong class="font-bold text-amber-950" x-text="getOverStockItems().length"></strong> sản phẩm đặt vượt quá số lượng tồn khả dụng tại kho này:
+                        <div class="space-y-1">
                             <template x-for="(it, idx) in getOverStockItems()" :key="idx">
-                                <span class="inline-block mr-2 my-0.5 px-2 py-0.5 bg-amber-100/80 border border-amber-300 rounded font-medium text-[11px]">
-                                    <span class="font-bold text-slate-800" x-text="it.name || it.sku"></span>: 
-                                    đặt <span class="font-bold text-rose-600" x-text="it.quantity + ' ' + (it.unit || '')"></span> 
-                                    (tại kho còn <span class="font-bold text-slate-700" x-text="formatNumber(getItemAvailableStockInUnit(it)) + ' ' + (it.unit || '')"></span> &rarr; 
-                                    <span class="text-rose-700 font-bold">thiếu <span x-text="formatNumber(getItemOverStockQty(it))"></span></span>, 
-                                    <span class="text-slate-500 text-[10px]">tổng toàn bộ kho: <span class="font-semibold text-slate-700" x-text="formatNumber(getProduct(it.product_id)?.stock_quantity || 0)"></span></span>)
-                                </span>
+                                <div class="inline-block mr-2 my-0.5 px-2.5 py-1 rounded-lg border font-medium text-[11px]"
+                                     :class="isItemPhysicalShortage(it) ? 'bg-rose-100/90 border-rose-300 text-rose-950' : 'bg-amber-100/90 border-amber-300 text-amber-950'">
+                                    <span class="font-bold" x-text="it.name || it.sku"></span>: 
+                                    đặt <span class="font-bold text-rose-700" x-text="it.quantity + ' ' + (it.unit || '')"></span> 
+                                    (Khả dụng: <span class="font-bold font-mono" x-text="formatNumber(getItemAvailableStockInUnit(it)) + ' ' + (it.unit || '')"></span> &bull; 
+                                    Kho thực tế: <span class="font-bold font-mono" x-text="formatNumber(getItemOnHandStockInUnit(it)) + ' ' + (it.unit || '')"></span>
+                                    <template x-if="getItemReservedStockInUnit(it) > 0">
+                                        <span> | Đang giữ: <b class="text-amber-800 font-mono" x-text="formatNumber(getItemReservedStockInUnit(it)) + ' ' + (it.unit || '')"></b></span>
+                                    </template>
+                                    &rarr; <b :class="isItemPhysicalShortage(it) ? 'text-rose-700 underline' : 'text-amber-800'">thiếu <span x-text="formatNumber(getItemOverStockQty(it))"></span> <span x-text="it.unit || ''"></span></b>)
+                                </div>
                             </template>
                         </div>
                     </div>
@@ -618,9 +630,9 @@
                                 <div class="text-[11px] font-bold text-slate-700 uppercase">TIỀN CHIẾT KHẤU</div>
                                 <div class="mt-1 flex items-center justify-center">
                                     <div class="inline-flex items-center gap-1 bg-white border border-sky-300 rounded px-1.5 py-0.5 shadow-2xs hover:border-sky-400 focus-within:ring-1 focus-within:ring-sky-400 transition-all">
-                                        <span class="text-[10px] text-slate-500 font-semibold tracking-normal lowercase">tất cả:</span>
                                         <input type="number" min="0" max="100" step="any"
                                                x-model.number="bulkDiscountPercent"
+                                               autocomplete="off"
                                                @input="applyBulkDiscountPercent()"
                                                @focus="$event.target.select()"
                                                placeholder="%"
@@ -738,11 +750,16 @@
                                                             <span class="text-sky-600 font-mono mr-1" x-text="'[' + p.sku + ']'"></span>
                                                             <span x-text="p.name"></span>
                                                         </div>
-                                                        <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                                        <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5 flex-wrap">
                                                             <span class="font-semibold text-slate-700" x-text="'ĐVT: ' + (p.unit || '') + (p.conversion_unit && p.conversion_unit.trim().toLowerCase() !== (p.unit || '').trim().toLowerCase() ? ' / ' + p.conversion_unit : '')"></span>
                                                             <span>&bull;</span>
-                                                            <span :class="getProductStockInWarehouse(p, formData.warehouse) > 0 ? 'text-emerald-600 font-semibold' : 'text-rose-500'" 
-                                                                  x-text="'Tồn ' + (formData.warehouse ? '[' + formData.warehouse.replace(/\s*\(.*?\)/, '') + ']: ' : ': ') + formatNumber(getProductStockInWarehouse(p, formData.warehouse)) + ' ' + (p.unit || '') + ' (Tổng: ' + formatNumber(p.stock_quantity) + ')'"></span>
+                                                            <span class="inline-flex items-center gap-1.5">
+                                                                <span class="px-1.5 py-0.2 rounded font-bold text-[10px]"
+                                                                      :class="getProductStockData(p, formData.warehouse).available > 0 ? 'bg-emerald-100 text-emerald-800' : (getProductStockData(p, formData.warehouse).on_hand > 0 ? 'bg-amber-100 text-amber-900 ring-1 ring-amber-300' : 'bg-rose-100 text-rose-700')"
+                                                                      x-text="'Khả dụng: ' + formatNumber(getProductStockData(p, formData.warehouse).available) + ' ' + (p.unit || '')"></span>
+                                                                <span class="text-slate-400 text-[10px]"
+                                                                      x-text="'(Kho: ' + formatNumber(getProductStockData(p, formData.warehouse).on_hand) + (getProductStockData(p, formData.warehouse).reserved > 0 ? ' | Giữ: ' + formatNumber(getProductStockData(p, formData.warehouse).reserved) : '') + ')'"></span>
+                                                            </span>
                                                         </div>
                                                     </div>
                                                     <div class="shrink-0 text-right">
@@ -754,14 +771,25 @@
                                     </div>
                                     <!-- Hiển thị tồn kho khả dụng dưới ô tìm sản phẩm -->
                                     <div x-show="item.product_id" x-cloak class="mt-1 flex items-center gap-1.5 text-[10px] flex-wrap">
-                                        <span class="text-slate-400 font-medium" x-text="'Tồn tại ' + (formData.warehouse ? formData.warehouse.replace(/\s*\(.*?\)/, '') : 'kho') + ':'"></span>
-                                        <span class="font-bold font-mono" :class="isItemOverStock(item) ? 'text-rose-600 font-black' : 'text-emerald-600'" x-text="formatNumber(getItemAvailableStockInUnit(item)) + ' ' + (item.unit || '')"></span>
+                                        <span class="text-slate-400 font-medium" x-text="'Kho [' + (formData.warehouse ? formData.warehouse.replace(/\s*\(.*?\)/, '') : '') + ']:'"></span>
+                                        <span class="font-bold font-mono px-1 py-0.2 rounded" 
+                                              :class="getItemStockStatus(item) === 'ok' ? 'bg-emerald-100 text-emerald-800' : (getItemStockStatus(item) === 'warning' ? 'bg-amber-100 text-amber-900 font-black ring-1 ring-amber-300' : 'bg-rose-100 text-rose-800 font-black ring-1 ring-rose-300')" 
+                                              x-text="'Khả dụng: ' + formatNumber(getItemAvailableStockInUnit(item)) + ' ' + (item.unit || '')"></span>
+                                        <span class="text-slate-400 font-mono text-[9px]" x-text="'(Kho: ' + formatNumber(getItemOnHandStockInUnit(item)) + (getItemReservedStockInUnit(item) > 0 ? ' | Đang giữ: ' + formatNumber(getItemReservedStockInUnit(item)) : '') + ')'"></span>
                                         <span class="text-slate-300">&bull;</span>
-                                        <span class="text-slate-400 font-medium" x-text="'Tổng các kho: ' + formatNumber(item.unit === getProduct(item.product_id)?.conversion_unit ? Math.round(Number(getProduct(item.product_id)?.stock_quantity || 0) * Number(getProduct(item.product_id)?.conversion_rate || 1)) : Number(getProduct(item.product_id)?.stock_quantity || 0)) + ' ' + (item.unit || '')"></span>
-                                        <span x-show="isItemOverStock(item)" class="px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 font-bold text-[9px] flex items-center gap-0.5">
-                                            <i class="fa-solid fa-triangle-exclamation"></i>
-                                            <span>Vượt tồn kho này</span>
-                                        </span>
+                                        <span class="text-slate-400 font-medium" x-text="'Tổng toàn cty: ' + formatNumber(item.unit === getProduct(item.product_id)?.conversion_unit ? Math.round(Number(getProduct(item.product_id)?.stock_quantity || 0) * Number(getProduct(item.product_id)?.conversion_rate || 1)) : Number(getProduct(item.product_id)?.stock_quantity || 0)) + ' ' + (item.unit || '')"></span>
+                                        <template x-if="getItemStockStatus(item) === 'warning'">
+                                            <span class="px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold text-[9px] flex items-center gap-0.5 border border-amber-300" title="Kho còn hàng thực tế nhưng đã bị giữ bởi các đơn hàng khác chưa xuất">
+                                                <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+                                                <span>Lẹm hàng đơn khác</span>
+                                            </span>
+                                        </template>
+                                        <template x-if="getItemStockStatus(item) === 'danger'">
+                                            <span class="px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 font-bold text-[9px] flex items-center gap-0.5 border border-rose-300" title="Vượt quá tổng tồn kho thực tế hiện có">
+                                                <i class="fa-solid fa-circle-exclamation text-rose-600"></i>
+                                                <span>Vượt tồn kho thực tế</span>
+                                            </span>
+                                        </template>
                                     </div>
                                     </template>
                                 </td>
@@ -789,6 +817,7 @@
                                             <input type="text" 
                                                    inputmode="numeric" 
                                                    :id="'row-price-input-' + index"
+                                                   autocomplete="off"
                                                    x-money="item.unitPrice" 
                                                    @input="item.price_type = 'Tùy chỉnh'; updateLineTotal(index)" 
                                                    @keydown.up.prevent="increasePrice(index)"
@@ -815,13 +844,14 @@
                                                         title="Giảm số lượng (Phím ↓)">-</button>
                                                 <input type="text" inputmode="decimal" 
                                                        :id="'row-qty-input-' + index"
+                                                       autocomplete="off"
                                                        x-number="item.quantity" 
                                                        @input="updateLineTotal(index)" 
                                                        @keydown.up.prevent="increaseQty(index)"
                                                        @keydown.down.prevent="decreaseQty(index)"
                                                        @keydown.enter.prevent="addNewRow()"
                                                        title="Phím ↑ tăng SL, phím ↓ giảm SL"
-                                                       :class="isItemOverStock(item) ? 'bg-rose-50 border-2 border-rose-500 text-rose-800 ring-2 ring-rose-200 font-black' : 'bg-white border-y border-slate-300 text-slate-900 font-bold hover:border-slate-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-200'"
+                                                       :class="getItemStockStatus(item) === 'danger' ? 'bg-rose-50 border-2 border-rose-500 text-rose-800 ring-2 ring-rose-200 font-black' : (getItemStockStatus(item) === 'warning' ? 'bg-amber-50 border-2 border-amber-500 text-amber-900 ring-2 ring-amber-200 font-black' : 'bg-white border-y border-slate-300 text-slate-900 font-bold hover:border-slate-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-200')"
                                                        class="w-full h-7 px-1 text-center text-xs shadow-2xs outline-none transition-all rounded-none min-w-[32px]">
                                                 <button type="button" 
                                                         @click="increaseQty(index)" 
@@ -830,9 +860,10 @@
                                             </div>
                                             
                                             <!-- Cảnh báo thiếu tồn kho dưới ô số lượng -->
-                                            <div x-show="isItemOverStock(item)" x-cloak class="mt-1 text-[10px] text-rose-600 font-bold flex items-center justify-center gap-0.5 leading-tight">
+                                            <div x-show="getItemStockStatus(item) !== 'ok'" x-cloak class="mt-1 text-[10px] font-bold flex items-center justify-center gap-0.5 leading-tight"
+                                                 :class="getItemStockStatus(item) === 'danger' ? 'text-rose-600' : 'text-amber-700'">
                                                 <i class="fa-solid fa-triangle-exclamation text-[9px]"></i>
-                                                <span>Thiếu: <span x-text="formatNumber(getItemOverStockQty(item))"></span></span>
+                                                <span x-text="getItemStockStatus(item) === 'danger' ? 'Thiếu kho: ' + formatNumber(getItemOverStockQty(item)) : 'Lẹm giữ: ' + formatNumber(getItemOverStockQty(item))"></span>
                                             </div>
                                         </div>
                                     </template>
@@ -844,13 +875,14 @@
                                                         class="w-5 h-7 flex items-center justify-center bg-emerald-100 hover:bg-emerald-200 active:bg-emerald-300 text-emerald-800 rounded-l border border-r-0 border-emerald-300 font-black text-xs select-none transition-colors cursor-pointer shrink-0" 
                                                         title="Giảm số lượng">-</button>
                                                 <input type="text" inputmode="decimal" 
-                                                        :id="'row-qty-input-' + index"
-                                                        x-number="item.quantity" 
-                                                        @input="item._manualQty = true; updateLineTotal(index)" 
-                                                        @keydown.up.prevent="increaseQty(index)"
-                                                        @keydown.down.prevent="decreaseQty(index)"
-                                                        title="Số lượng quà tặng (có thể sửa)"
-                                                        class="w-full h-7 px-1 text-center text-xs shadow-2xs outline-none transition-all rounded-none min-w-[32px] bg-emerald-50 border-y border-emerald-400 text-emerald-900 font-black">
+                                                       :id="'row-qty-input-' + index"
+                                                       autocomplete="off"
+                                                       x-number="item.quantity" 
+                                                       @input="item._manualQty = true; updateLineTotal(index)" 
+                                                       @keydown.up.prevent="increaseQty(index)"
+                                                       @keydown.down.prevent="decreaseQty(index)"
+                                                       title="Số lượng quà tặng (có thể sửa)"
+                                                       class="w-full h-7 px-1 text-center text-xs shadow-2xs outline-none transition-all rounded-none min-w-[32px] bg-emerald-50 border-y border-emerald-400 text-emerald-900 font-black">
                                                 <button type="button" 
                                                         @click="increaseQty(index)" 
                                                         class="w-5 h-7 flex items-center justify-center bg-emerald-100 hover:bg-emerald-200 active:bg-emerald-300 text-emerald-800 rounded-r border border-l-0 border-emerald-300 font-black text-xs select-none transition-colors cursor-pointer shrink-0" 
@@ -871,6 +903,7 @@
                                                         title="Giảm SL tặng">-</button>
                                                 <input type="text" inputmode="decimal" 
                                                        :id="'row-gift-qty-input-' + index"
+                                                       autocomplete="off"
                                                        x-number="item.gift_quantity" 
                                                        @input="onGiftQtyChange(index)" 
                                                        @keydown.up.prevent="increaseGiftQty(index)"
@@ -908,6 +941,7 @@
                                                 <div class="flex items-center gap-0.5 shrink-0">
                                                     <input type="number" min="0" max="100" step="any" 
                                                            x-model.number="item.discount_percent" 
+                                                           autocomplete="off"
                                                            @input="onLineDiscountPercentChange(index)" 
                                                            placeholder="%" 
                                                            title="Tỷ lệ chiết khấu (%)"
@@ -918,6 +952,7 @@
                                                 <div class="flex items-center gap-0.5 flex-1 min-w-0">
                                                     <input type="text" inputmode="numeric" 
                                                            x-money="item.discount_amount" 
+                                                           autocomplete="off"
                                                            @input="onLineDiscountAmountChange(index)" 
                                                            placeholder="0" 
                                                            title="Số tiền chiết khấu (đ)"
@@ -940,7 +975,7 @@
                                     <template x-if="!item.isPromotionalGift">
                                         <div class="flex items-center gap-1 justify-between">
                                             <div class="flex items-center gap-0.5">
-                                                <input type="number" min="0" max="100" step="any" x-model.number="item.vat_percent" @input="updateLineTotal(index)" placeholder="10" class="w-10 px-1 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded text-center text-xs font-semibold focus:outline-none shadow-2xs transition-colors">
+                                                <input type="number" min="0" max="100" step="any" x-model.number="item.vat_percent" autocomplete="off" @input="updateLineTotal(index)" placeholder="10" class="w-10 px-1 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded text-center text-xs font-semibold focus:outline-none shadow-2xs transition-colors">
                                                 <span class="text-[10px] text-slate-400">%</span>
                                             </div>
                                             <span class="text-[11px] font-mono text-slate-700 font-semibold truncate text-right w-16" x-text="formatNumber(item.vat_amount) + ' đ'"></span>
@@ -1283,9 +1318,10 @@
                     </span>
                 </template>
                 <template x-if="getOverStockItems().length > 0">
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
-                        <i class="fa-solid fa-boxes-stacked"></i>
-                        <span>Thiếu kho (<span x-text="getOverStockItems().length"></span> SP)</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1"
+                          :class="getPhysicalShortageItems().length > 0 ? 'bg-rose-100 text-rose-800 border border-rose-300' : 'bg-amber-100 text-amber-800 border border-amber-300'">
+                        <i :class="getPhysicalShortageItems().length > 0 ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-boxes-stacked'"></i>
+                        <span x-text="getPhysicalShortageItems().length > 0 ? 'Vượt kho (' + getPhysicalShortageItems().length + ' SP)' : 'Lẹm giữ (' + getReservedShortageItems().length + ' SP)'"></span>
                     </span>
                 </template>
             </div>
@@ -1939,46 +1975,106 @@ function orderFormApp() {
             this.calculateTotals();
         },
 
-        getProductStockInWarehouse(p, whName) {
-            if (!p) return 0;
+        getProductStockData(p, whName) {
+            if (!p) return { on_hand: 0, reserved: 0, available: 0, holding_orders: [] };
             const targetWarehouse = (whName || this.formData.warehouse || '').trim();
             if (targetWarehouse && p.warehouse_stocks && typeof p.warehouse_stocks === 'object') {
-                if (p.warehouse_stocks[targetWarehouse] !== undefined) {
-                    return Number(p.warehouse_stocks[targetWarehouse]) || 0;
+                let found = p.warehouse_stocks[targetWarehouse];
+                if (!found) {
+                    const matchedKey = Object.keys(p.warehouse_stocks).find(k => 
+                        k.toLowerCase().includes(targetWarehouse.toLowerCase()) || 
+                        targetWarehouse.toLowerCase().includes(k.toLowerCase())
+                    );
+                    if (matchedKey !== undefined) {
+                        found = p.warehouse_stocks[matchedKey];
+                    }
                 }
-                const matchedKey = Object.keys(p.warehouse_stocks).find(k => 
-                    k.toLowerCase().includes(targetWarehouse.toLowerCase()) || 
-                    targetWarehouse.toLowerCase().includes(k.toLowerCase())
-                );
-                if (matchedKey !== undefined) {
-                    return Number(p.warehouse_stocks[matchedKey]) || 0;
+                if (found !== undefined) {
+                    if (typeof found === 'object' && found !== null) {
+                        return {
+                            on_hand: Number(found.on_hand) || 0,
+                            reserved: Number(found.reserved) || 0,
+                            available: Number(found.available) || 0,
+                            holding_orders: Array.isArray(found.holding_orders) ? found.holding_orders : [],
+                        };
+                    } else {
+                        const num = Number(found) || 0;
+                        return { on_hand: num, reserved: 0, available: num, holding_orders: [] };
+                    }
                 }
             }
-            return Number(p.stock_quantity) || 0;
+            const onHand = Number(p.stock_quantity) || 0;
+            const reserved = Number(p.reserved_stock) || 0;
+            const available = Number(p.available_stock !== undefined ? p.available_stock : Math.max(0, onHand - reserved));
+            return { on_hand: onHand, reserved: reserved, available: available, holding_orders: [] };
         },
 
-        getItemAvailableStockInUnit(item, whName) {
-            if (!item || !item.product_id) return 0;
-            const p = this.getProduct(item.product_id);
-            if (!p) return 0;
+        getProductStockInWarehouse(p, whName) {
+            return this.getProductStockData(p, whName).available;
+        },
 
-            const baseStock = this.getProductStockInWarehouse(p, whName);
+        getProductOnHandStockInWarehouse(p, whName) {
+            return this.getProductStockData(p, whName).on_hand;
+        },
+
+        getProductReservedStockInWarehouse(p, whName) {
+            return this.getProductStockData(p, whName).reserved;
+        },
+
+        getItemStockDataInUnit(item, whName) {
+            if (!item || !item.product_id) return { on_hand: 0, reserved: 0, available: 0, holding_orders: [] };
+            const p = this.getProduct(item.product_id);
+            if (!p) return { on_hand: 0, reserved: 0, available: 0, holding_orders: [] };
+
+            const baseData = this.getProductStockData(p, whName);
             const curUnit = (item.unit || '').trim().toLowerCase();
             const baseUnit = (p.unit || '').trim().toLowerCase();
             const convUnit = (p.conversion_unit || '').trim().toLowerCase();
             const rate = Number(p.conversion_rate) > 0 ? Number(p.conversion_rate) : 1;
 
             if (convUnit && curUnit === convUnit && convUnit !== baseUnit) {
-                return Math.round(baseStock * rate * 100) / 100;
+                return {
+                    on_hand: Math.round(baseData.on_hand * rate * 100) / 100,
+                    reserved: Math.round(baseData.reserved * rate * 100) / 100,
+                    available: Math.round(baseData.available * rate * 100) / 100,
+                    holding_orders: baseData.holding_orders,
+                };
             }
-            return baseStock;
+            return baseData;
+        },
+
+        getItemAvailableStockInUnit(item, whName) {
+            return this.getItemStockDataInUnit(item, whName).available;
+        },
+
+        getItemOnHandStockInUnit(item, whName) {
+            return this.getItemStockDataInUnit(item, whName).on_hand;
+        },
+
+        getItemReservedStockInUnit(item, whName) {
+            return this.getItemStockDataInUnit(item, whName).reserved;
+        },
+
+        getItemStockStatus(item) {
+            if (!item || !item.product_id) return 'ok';
+            const data = this.getItemStockDataInUnit(item);
+            const reqQty = (Number(item.quantity) || 0) + (Number(item.gift_quantity) || 0);
+            if (reqQty <= 0) return 'ok';
+            if (reqQty > data.on_hand) return 'danger';
+            if (reqQty > data.available) return 'warning';
+            return 'ok';
         },
 
         isItemOverStock(item) {
-            if (!item || !item.product_id) return false;
-            const avail = this.getItemAvailableStockInUnit(item);
-            const reqQty = (Number(item.quantity) || 0) + (Number(item.gift_quantity) || 0);
-            return reqQty > avail;
+            return this.getItemStockStatus(item) !== 'ok';
+        },
+
+        isItemPhysicalShortage(item) {
+            return this.getItemStockStatus(item) === 'danger';
+        },
+
+        isItemReservedShortage(item) {
+            return this.getItemStockStatus(item) === 'warning';
         },
 
         getItemOverStockQty(item) {
@@ -1990,6 +2086,14 @@ function orderFormApp() {
 
         getOverStockItems() {
             return (this.items || []).filter(it => it.product_id && this.isItemOverStock(it));
+        },
+
+        getPhysicalShortageItems() {
+            return (this.items || []).filter(it => it.product_id && this.isItemPhysicalShortage(it));
+        },
+
+        getReservedShortageItems() {
+            return (this.items || []).filter(it => it.product_id && this.isItemReservedShortage(it));
         },
 
         getItemUnits(item) {
@@ -2157,7 +2261,7 @@ function orderFormApp() {
             item.product_id = p.id;
             item.sku = p.sku;
             item.name = p.name;
-            item.searchQuery = `[${p.sku}] ${p.name}`;
+            item.searchQuery = p.name;
             item.unit = p.unit || 'cái';
 
             item.originalPrice = Number(p.cost_price || 0);
@@ -2790,7 +2894,7 @@ function orderFormApp() {
                                         product_id: freeProd?.id || item.product_id,
                                         sku: freeSku,
                                         name: freeName,
-                                        searchQuery: `[${freeSku}] ${freeName}`,
+                                        searchQuery: freeName,
                                         unit: freeUnit,
                                         quantity: totalFreeQty,
                                         gift_quantity: 0,
@@ -3015,7 +3119,7 @@ function orderFormApp() {
                         product_id: prodId,
                         sku: it.sku || '',
                         name: it.name || '',
-                        searchQuery: `[${it.sku || ''}] ${it.name || ''}`,
+                        searchQuery: it.name || '',
                         unit: it.unit || 'cái',
                         quantity: qty,
                         gift_quantity: 0,
@@ -3159,22 +3263,28 @@ function orderFormApp() {
                 }
             }
 
-            // 2. Cảnh báo xác nhận khi vượt quá tồn kho thực tế của kho đã chọn
+            // 2. Cảnh báo xác nhận khi vượt quá tồn kho khả dụng hoặc tồn kho thực tế
             const overStockList = this.getOverStockItems();
             if (overStockList.length > 0) {
                 const targetWh = this.formData.warehouse || 'Kho xuất';
                 const itemsDesc = overStockList.map((it, i) => {
                     const avail = this.getItemAvailableStockInUnit(it);
+                    const onHand = this.getItemOnHandStockInUnit(it);
+                    const reserved = this.getItemReservedStockInUnit(it);
                     const diff = this.getItemOverStockQty(it);
-                    const prod = this.getProduct(it.product_id);
-                    const totalAcrossWh = prod ? Number(prod.stock_quantity) || 0 : avail;
-                    return `${i + 1}. [${it.sku || 'SP'}] ${it.name}: Đặt ${it.quantity} ${it.unit} (Tại kho "${targetWh}" chỉ còn ${this.formatNumber(avail)} ${it.unit} -> Thiếu ${this.formatNumber(diff)} ${it.unit} | Tổng toàn công ty: ${this.formatNumber(totalAcrossWh)} ${it.unit})`;
+                    const isPhysical = this.isItemPhysicalShortage(it);
+                    const statusText = isPhysical 
+                        ? `🚨 THIẾU TỒN THỰC TẾ (Kho chỉ có ${this.formatNumber(onHand)} ${it.unit} -> Thiếu ${this.formatNumber(diff)} ${it.unit})`
+                        : `⚠️ TRANH CHẤP ĐƠN KHÁC (Kho có ${this.formatNumber(onHand)} ${it.unit} nhưng đã giữ ${this.formatNumber(reserved)} ${it.unit} cho đơn khác -> Khả dụng còn ${this.formatNumber(avail)} ${it.unit})`;
+                    return `${i + 1}. [${it.sku || 'SP'}] ${it.name}: Đặt ${it.quantity} ${it.unit}\n   ${statusText}`;
                 }).join('\n');
+                
+                const hasPhysical = this.getPhysicalShortageItems().length > 0;
                 const confirmMsg = 
-                    `⚠️ CẢNH BÁO THIẾU TỒN KHO TẠI [${targetWh.toUpperCase()}]!\n\n` +
-                    `Có ${overStockList.length} sản phẩm trong đơn vượt quá tồn kho khả dụng tại kho này:\n` +
+                    (hasPhysical ? `🚨 CẢNH BÁO THIẾU TỒN THỰC TẾ TẠI [${targetWh.toUpperCase()}]!\n\n` : `⚠️ CẢNH BÁO TRANH CHẤP TỒN KHẢ DỤNG TẠI [${targetWh.toUpperCase()}]!\n\n`) +
+                    `Có ${overStockList.length} sản phẩm vượt quá tồn kho khả dụng:\n` +
                     `${itemsDesc}\n\n` +
-                    `Bạn có chắc chắn muốn tiếp tục lưu đơn (chấp nhận xuất âm kho này / tạo đơn nợ hàng) không?`;
+                    `Bạn có chắc chắn muốn tiếp tục lưu đơn này không?`;
                 if (!confirm(confirmMsg)) {
                     return;
                 }
@@ -3209,6 +3319,8 @@ function orderFormApp() {
                 discountAmount: this.formData.discount_amount,
                 taxAmount: this.formData.tax_amount,
                 totalAmount: this.totalAmount,
+                hasShortageWarning: this.getOverStockItems().length > 0,
+                has_shortage_warning: this.getOverStockItems().length > 0,
                 items: validItems.map(it => ({
                     id: it.id || undefined,
                     itemId: it.product_id,

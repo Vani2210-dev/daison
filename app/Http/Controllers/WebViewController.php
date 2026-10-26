@@ -26,6 +26,7 @@ use App\Models\Warehouse;
 use App\Models\WarehouseStock;
 use App\Services\CategoryExcelImportService;
 use App\Services\ProductExcelImportService;
+use App\Services\InventoryAvailabilityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -115,7 +116,10 @@ class WebViewController extends Controller
         $categories = Category::orderBy('name')->get();
         $brands = Brand::orderBy('name')->get();
         $subcategories = Subcategory::where('is_active', true)->orderBy('name')->get();
-        $warehouses = Warehouse::orderBy('name')->get();
+        $warehouses = Warehouse::where('is_active', true)
+            ->orderByRaw("CASE WHEN name LIKE '%Mê Linh%' THEN 0 WHEN is_vehicle_warehouse = 1 THEN 2 WHEN name LIKE '%Ôm%' THEN 3 ELSE 1 END")
+            ->orderBy('name')
+            ->get();
         $priceTiers = PriceTier::where('status', 'Hoạt động')->orderBy('order_num')->orderBy('id')->get();
         return view('products.form', [
             'product' => null,
@@ -136,7 +140,10 @@ class WebViewController extends Controller
         $categories = Category::orderBy('name')->get();
         $brands = Brand::orderBy('name')->get();
         $subcategories = Subcategory::where('is_active', true)->orderBy('name')->get();
-        $warehouses = Warehouse::orderBy('name')->get();
+        $warehouses = Warehouse::where('is_active', true)
+            ->orderByRaw("CASE WHEN name LIKE '%Mê Linh%' THEN 0 WHEN is_vehicle_warehouse = 1 THEN 2 WHEN name LIKE '%Ôm%' THEN 3 ELSE 1 END")
+            ->orderBy('name')
+            ->get();
         $priceTiers = PriceTier::where('status', 'Hoạt động')->orderBy('order_num')->orderBy('id')->get();
         return view('products.form', [
             'product' => $product,
@@ -252,6 +259,47 @@ class WebViewController extends Controller
             $message = 'Thêm mới sản phẩm thành công!';
         }
 
+        // Tự động đồng bộ số lượng tồn kho sang bảng warehouse_stocks
+        $warehouseName = trim($request->input('warehouse_name', ''));
+        if (empty($warehouseName) && !empty($data['location'])) {
+            $parts = explode(' - ', $data['location']);
+            $warehouseName = trim($parts[0]);
+        }
+
+        $targetWh = null;
+        if (!empty($warehouseName)) {
+            $targetWh = Warehouse::where('name', $warehouseName)->orWhere('code', $warehouseName)->first();
+            if (!$targetWh) {
+                $targetWh = Warehouse::where('name', 'like', '%' . $warehouseName . '%')->first();
+            }
+        }
+        if (!$targetWh) {
+            $targetWh = Warehouse::where('name', 'like', '%Mê Linh%')->first() ?: Warehouse::first();
+        }
+
+        if ($targetWh) {
+            WarehouseStock::updateOrCreate(
+                [
+                    'product_id'   => $product->id,
+                    'warehouse_id' => $targetWh->id,
+                ],
+                [
+                    'stock_quantity' => $data['stock_quantity'],
+                    'location'       => $data['location'],
+                ]
+            );
+
+            // Nếu đây là kho chính và các kho khác có tồn cũ vượt quá số lượng mới nhập, đưa các kho khác về 0
+            $otherStocks = WarehouseStock::where('product_id', $product->id)
+                ->where('warehouse_id', '!=', $targetWh->id)
+                ->get();
+            if ($otherStocks->sum('stock_quantity') + $data['stock_quantity'] > $data['stock_quantity']) {
+                WarehouseStock::where('product_id', $product->id)
+                    ->where('warehouse_id', '!=', $targetWh->id)
+                    ->update(['stock_quantity' => 0]);
+            }
+        }
+
         self::clearPosProductsCache();
 
         if ($request->wantsJson() || $request->ajax()) {
@@ -341,6 +389,13 @@ class WebViewController extends Controller
      */
     public function orders(Request $request)
     {
+        if ($request->input('tab') === 'suppliers') {
+            return app(SupplierOrderController::class)->index($request);
+        }
+        if ($request->input('tab') === 'promotions') {
+            return app(\App\Http\Controllers\PromotionAdvanceController::class)->index($request);
+        }
+
         $query = Order::companyOrders()->with(['dealer', 'items', 'creator', 'assignedDriver']);
 
         if ($search = $request->input('search')) {
@@ -356,6 +411,11 @@ class WebViewController extends Controller
                 $query->whereIn('status', ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng']);
             } elseif ($status === 'Chốt đơn') {
                 $query->whereIn('status', ['Chốt đơn', 'Đã duyệt', 'Chờ duyệt', 'Chờ kế toán duyệt']);
+            } elseif (in_array($status, ['Chờ hàng', 'Chờ hàng về'])) {
+                $query->where(function ($q) {
+                    $q->where('has_shortage_warning', true)
+                      ->orWhereIn('status', ['Chờ hàng', 'Chờ hàng về']);
+                });
             } elseif ($status === 'Kiểm hàng') {
                 $query->whereIn('status', ['Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng', 'Sẵn sàng xuất xe']);
             } elseif ($status === 'Đang vận chuyển') {
@@ -369,8 +429,16 @@ class WebViewController extends Controller
                     $q->where('shortage_reported', true)
                       ->orWhere('status', 'Kho báo thiếu hàng');
                 });
+            } elseif ($status === 'Đã đủ hàng' || $status === 'ready_to_deliver') {
+                $query->where(function ($q) {
+                    $q->where('backorder_status', 'ready_to_deliver')
+                      ->orWhere('status', 'Đã đủ hàng');
+                });
             } elseif (in_array($status, ['Giao sau', 'Đơn giao sau', 'Đơn nợ', 'Nợ hàng'])) {
-                $query->whereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng']);
+                $query->where(function ($q) {
+                    $q->where('order_type', 'backorder')
+                      ->orWhereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng']);
+                });
             } else {
                 $query->where('status', $status);
             }
@@ -421,51 +489,16 @@ class WebViewController extends Controller
      * Create Order Form
      */
     /**
-     * Get optimized, cached products catalog for Order creation / POS
+     * Get optimized, cached products catalog for Order creation / POS kèm Tồn kho khả dụng
      */
-    public static function getPosProductsCatalog()
+    public static function getPosProductsCatalog(?int $excludeOrderId = null)
     {
-        return Cache::remember('orders_products_catalog_v1', 900, function () {
-            $warehouses = Warehouse::where('is_active', true)->get(['id', 'name', 'code'])->keyBy('id');
-            $stocks = WarehouseStock::select('product_id', 'warehouse_id', 'stock_quantity')->get();
-            $stockMap = [];
-            foreach ($stocks as $s) {
-                if (isset($warehouses[$s->warehouse_id])) {
-                    $wh = $warehouses[$s->warehouse_id];
-                    $stockMap[$s->product_id][$wh->name] = (float)$s->stock_quantity;
-                    $stockMap[$s->product_id][$wh->code] = (float)$s->stock_quantity;
-                    $stockMap[$s->product_id][$wh->id] = (float)$s->stock_quantity;
-                }
-            }
-
-            return Product::where('is_active', true)
-                ->select('id', 'sku', 'name', 'unit', 'conversion_unit', 'conversion_rate', 'conversion_price', 'cost_price', 'price', 'price_tiers', 'vat_rate', 'stock_quantity')
-                ->orderBy('name')
-                ->get()
-                ->map(function ($p) use ($stockMap) {
-                    return [
-                        'id' => $p->id,
-                        'sku' => $p->sku,
-                        'name' => $p->name,
-                        'unit' => $p->unit,
-                        'conversion_unit' => $p->conversion_unit,
-                        'conversion_rate' => (float)$p->conversion_rate,
-                        'conversion_price' => (float)$p->conversion_price,
-                        'cost_price' => (float)$p->cost_price,
-                        'price' => (float)$p->price,
-                        'price_tiers' => $p->price_tiers,
-                        'vat_rate' => (float)$p->vat_rate,
-                        'stock_quantity' => (float)$p->stock_quantity,
-                        'warehouse_stocks' => $stockMap[$p->id] ?? [],
-                    ];
-                })
-                ->all();
-        });
+        return InventoryAvailabilityService::getPosCatalogWithAvailability($excludeOrderId);
     }
 
     public static function clearPosProductsCache()
     {
-        Cache::forget('orders_products_catalog_v1');
+        InventoryAvailabilityService::clearCache();
     }
 
     /**
@@ -573,7 +606,7 @@ class WebViewController extends Controller
             ->orderBy('name')
             ->get();
         [$warehouses, $isDriverUser, $driverVehicle] = $this->getAvailableWarehousesForUser();
-        $products = self::getPosProductsCatalog();
+        $products = self::getPosProductsCatalog($order->id);
         $drivers = User::select('id', 'name', 'phone')->get();
         $priceTiers = PriceTier::where('status', 'Hoạt động')
             ->orderByRaw("CASE WHEN name LIKE '%Nguyên Giá%' THEN 0 ELSE 1 END")
@@ -1107,38 +1140,95 @@ class WebViewController extends Controller
             $view = $isTechnician ? 'my_tasks' : 'all';
         }
 
-        // 1. Phân loại nhiệm vụ chung (TaskAssignment)
+        $activeTab = $request->input('tab', 'installations');
+        if (!in_array($activeTab, ['installations', 'tasks', 'maintenance', 'warehouse_export'])) {
+            $activeTab = 'installations';
+        }
+
+        // 1. Phân loại nhiệm vụ chung (TaskAssignment) có phân trang
         $tasksQuery = \App\Models\TaskAssignment::with(['creator', 'assignedTo'])->latest('id');
         if ($view === 'my_tasks' && $user) {
             $tasksQuery->where('assigned_to_id', $user->id);
         }
-        $tasks = $tasksQuery->paginate(20)->withQueryString();
+        $tasks = $tasksQuery->paginate(10, ['*'], 'task_page')->withQueryString();
 
-        // 2. Danh sách đơn hàng lắp đặt máy lọc nước (FilterInstallation)
+        // 2. Danh sách đơn hàng lắp đặt máy lọc nước (FilterInstallation) có phân trang & tìm kiếm
         $installQuery = \App\Models\FilterInstallation::with(['items', 'installedMachine', 'technician'])->latest('id');
         if ($view === 'my_tasks' && $user) {
             $installQuery->where('technician_id', $user->id);
         }
-        $filterInstallations = $installQuery->get();
+        if ($request->filled('search')) {
+            $s = trim($request->input('search'));
+            $installQuery->where(function($q) use ($s) {
+                $q->where('code', 'like', "%{$s}%")
+                  ->orWhere('customer_name', 'like', "%{$s}%")
+                  ->orWhere('customer_phone', 'like', "%{$s}%")
+                  ->orWhere('customer_address', 'like', "%{$s}%")
+                  ->orWhere('machine_model', 'like', "%{$s}%");
+            });
+        }
+        $filterInstallations = $installQuery->paginate(8, ['*'], 'install_page')->withQueryString();
 
-        // 3. Danh sách tem QR chưa kích hoạt sẵn sàng để gán
+        // 3. Danh sách đơn bảo dưỡng & thay lõi định kỳ (FilterInstalledMachine) cho KTV
+        $maintQuery = \App\Models\FilterInstalledMachine::with(['modelCatalog', 'technician'])
+            ->whereNotNull('customer_name')
+            ->where('customer_name', '!=', '')
+            ->where('status', '!=', 'unactivated')
+            ->whereNotNull('next_maintenance_date');
+
+        if ($view === 'my_tasks' && $user) {
+            $maintQuery->where('technician_id', $user->id);
+        }
+        if ($request->filled('search')) {
+            $s = trim($request->input('search'));
+            $maintQuery->where(function($q) use ($s) {
+                $q->where('customer_name', 'like', "%{$s}%")
+                  ->orWhere('customer_phone', 'like', "%{$s}%")
+                  ->orWhere('customer_address', 'like', "%{$s}%")
+                  ->orWhere('machine_model', 'like', "%{$s}%")
+                  ->orWhere('machine_serial', 'like', "%{$s}%")
+                  ->orWhere('qr_code', 'like', "%{$s}%");
+            });
+        }
+        if ($request->input('maint_filter') === 'unclaimed') {
+            $maintQuery->whereNull('technician_id');
+        } elseif ($request->input('maint_filter') === 'overdue') {
+            $maintQuery->where('next_maintenance_date', '<', now()->startOfDay());
+        } elseif ($request->input('maint_filter') === 'due_soon') {
+            $maintQuery->where('next_maintenance_date', '>=', now()->startOfDay())
+                       ->where('next_maintenance_date', '<=', now()->addDays(30)->endOfDay());
+        }
+
+        $maintenanceMachines = $maintQuery->orderBy('next_maintenance_date', 'asc')
+                                          ->latest('id')
+                                          ->paginate(8, ['*'], 'maint_page')
+                                          ->withQueryString();
+
+        // Dữ liệu mở modal QR độc lập không bị giới hạn trang hiện tại
+        $installationsData = \App\Models\FilterInstallation::with(['items', 'installedMachine', 'technician'])
+            ->when($view === 'my_tasks' && $user, fn($q) => $q->where('technician_id', $user->id))
+            ->latest('id')
+            ->take(100)
+            ->get();
+
+        // 4. Danh sách tem QR chưa kích hoạt sẵn sàng để gán
         $blankQrCodes = \App\Models\FilterInstalledMachine::where('status', 'unactivated')
             ->orderBy('id', 'asc')
             ->take(50)
             ->get();
 
-        // 4. Danh mục model máy lọc
+        // 5. Danh mục model máy lọc
         $machineModels = \App\Models\FilterMachineModel::where('is_active', true)
             ->orderBy('brand')
             ->orderBy('name')
             ->get();
 
-        // 5. Danh mục phụ tùng / phụ kiện kho phục vụ cài đặt máy
+        // 6. Danh mục phụ tùng / phụ kiện kho phục vụ cài đặt máy
         $filterParts = \App\Models\FilterPart::where('status', 'active')
             ->orderBy('name')
-            ->get(['id', 'code', 'name', 'category', 'unit', 'stock_qty']);
+            ->get(['id', 'code', 'name', 'category', 'unit', 'stock_qty', 'out_price']);
 
-        // 6. Thống kê nhanh
+        // 7. Thống kê nhanh
         $myInstallPending = \App\Models\FilterInstallation::where('technician_id', $user?->id)
             ->whereIn('status', ['pending', 'confirmed', 'assigned', 'preparing', 'dispatching', 'in_progress'])
             ->count();
@@ -1148,18 +1238,63 @@ class WebViewController extends Controller
         $allInstallPending = \App\Models\FilterInstallation::whereIn('status', ['pending', 'confirmed', 'assigned', 'preparing', 'dispatching', 'in_progress'])->count();
         $allInstallCompleted = \App\Models\FilterInstallation::where('status', 'completed')->count();
 
+        $myMaintCount = \App\Models\FilterInstalledMachine::where('technician_id', $user?->id)
+            ->whereNotNull('next_maintenance_date')
+            ->count();
+        $allMaintCount = \App\Models\FilterInstalledMachine::whereNotNull('next_maintenance_date')->count();
+        $unclaimedMaintCount = \App\Models\FilterInstalledMachine::whereNull('technician_id')
+            ->whereNotNull('next_maintenance_date')
+            ->count();
+
+        // 8. Lịch sử KTV lấy hàng từ kho đi lắp đặt, bảo dưỡng, sửa chữa
+        $techExportQuery = \App\Models\FilterPartTransaction::with(['part', 'creator'])
+            ->where(function($q) {
+                $q->where('type', 'like', 'export_tech%')
+                  ->orWhere('type', 'return_tech_part');
+            })
+            ->latest('id');
+
+        if ($view === 'my_tasks' && $user) {
+            $techExportQuery->where('created_by', $user->id);
+        }
+        if ($request->filled('export_search')) {
+            $es = trim($request->input('export_search'));
+            $techExportQuery->where(function($q) use ($es) {
+                $q->where('reference_code', 'like', "%{$es}%")
+                  ->orWhere('note', 'like', "%{$es}%")
+                  ->orWhere('created_by_name', 'like', "%{$es}%")
+                  ->orWhereHas('part', function($pq) use ($es) {
+                      $pq->where('name', 'like', "%{$es}%")
+                         ->orWhere('code', 'like', "%{$es}%");
+                  });
+            });
+        }
+        $techExportTransactions = $techExportQuery->paginate(12, ['*'], 'export_page')->withQueryString();
+
+        $myExportCount = \App\Models\FilterPartTransaction::where('type', 'like', 'export_tech%')
+            ->when($view === 'my_tasks' && $user, fn($q) => $q->where('created_by', $user->id))
+            ->count();
+
         return view('tasks.index', compact(
             'tasks',
             'view',
+            'activeTab',
             'isTechnician',
             'filterInstallations',
+            'maintenanceMachines',
+            'installationsData',
             'blankQrCodes',
             'machineModels',
             'filterParts',
             'myInstallPending',
             'myInstallCompleted',
             'allInstallPending',
-            'allInstallCompleted'
+            'allInstallCompleted',
+            'myMaintCount',
+            'allMaintCount',
+            'unclaimedMaintCount',
+            'techExportTransactions',
+            'myExportCount'
         ));
     }
 
@@ -2073,7 +2208,7 @@ class WebViewController extends Controller
     public function loginView()
     {
         if (Auth::check()) {
-            return redirect('/dashboard');
+            return redirect('/attendance');
         }
 
         return view('auth.login');
@@ -2110,7 +2245,7 @@ class WebViewController extends Controller
 
         Auth::login($user, $request->has('remember'));
 
-        return redirect()->intended('/dashboard')->with('success', 'Đăng nhập thành công! Chào mừng ' . $user->name);
+        return redirect('/attendance')->with('success', 'Đăng nhập thành công! Chào mừng ' . $user->name);
     }
 
     /**

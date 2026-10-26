@@ -9,14 +9,28 @@
         'Tất cả' => \App\Models\Order::companyOrders()->count(),
         'Báo giá' => \App\Models\Order::companyOrders()->where('status', 'Báo giá')->count(),
         'Chốt đơn' => \App\Models\Order::companyOrders()->whereIn('status', ['Chốt đơn', 'Đã duyệt', 'Chờ duyệt', 'Chờ kế toán duyệt'])->count(),
+        'Chờ hàng' => \App\Models\Order::companyOrders()->where(function ($q) {
+            $q->where('has_shortage_warning', true)
+              ->orWhereIn('status', ['Chờ hàng', 'Chờ hàng về']);
+        })->count(),
         'Soạn hàng' => \App\Models\Order::companyOrders()->whereIn('status', ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong', 'Đang kiểm hàng'])->count(),
         'Soạn bốc' => \App\Models\Order::companyOrders()->whereIn('status', ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong', 'Đang kiểm hàng'])->count(),
         'Đơn thiếu' => \App\Models\Order::companyOrders()->where(function ($q) {
             $q->where('shortage_reported', true)
               ->orWhereIn('status', ['Kho báo thiếu hàng', 'Báo thiếu']);
         })->count(),
-        'Giao sau' => \App\Models\Order::companyOrders()->whereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng'])->count(),
-        'Đơn nợ' => \App\Models\Order::companyOrders()->whereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng'])->count(),
+        'Giao sau' => \App\Models\Order::companyOrders()->where(function ($q) {
+            $q->where('order_type', 'backorder')
+              ->orWhereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng']);
+        })->count(),
+        'Đơn nợ' => \App\Models\Order::companyOrders()->where(function ($q) {
+            $q->where('order_type', 'backorder')
+              ->orWhereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng']);
+        })->count(),
+        'Đã đủ hàng' => \App\Models\Order::companyOrders()->where(function ($q) {
+            $q->where('backorder_status', 'ready_to_deliver')
+              ->orWhere('status', 'Đã đủ hàng');
+        })->count(),
         'Kiểm hàng' => \App\Models\Order::companyOrders()->whereIn('status', ['Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng', 'Sẵn sàng xuất xe'])->count(),
         'Đang vận chuyển' => \App\Models\Order::companyOrders()->whereIn('status', ['Đang vận chuyển', 'Đang giao hàng'])->count(),
         'Đã giao' => \App\Models\Order::companyOrders()->whereIn('status', ['Đã giao', 'Giao thành công'])->count(),
@@ -46,6 +60,11 @@
         <a href="{{ url('/orders?tab=suppliers') }}" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer {{ $currentTab === 'suppliers' ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200' }}">
             <i class="fa-solid fa-cart-shopping text-sm"></i>
             <span>Đặt hàng NCC</span>
+        </a>
+
+        <a href="{{ url('/promotion-advances') }}" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer {{ $currentTab === 'promotions' || request()->is('promotion-advances*') ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200' }}">
+            <i class="fa-solid fa-gift text-sm"></i>
+            <span>Ứng khuyến mãi</span>
         </a>
     </div>
 
@@ -108,21 +127,28 @@
         
         <!-- Status Tabs (Pills) -->
         <div class="flex items-center gap-2 overflow-x-auto pb-1">
-            @foreach(['Tất cả', 'Báo giá', 'Chốt đơn', 'Soạn hàng', 'Đơn thiếu', 'Giao sau', 'Kiểm hàng', 'Đang vận chuyển', 'Đã giao', 'Hủy'] as $pill)
+            @foreach(['Tất cả', 'Báo giá', 'Chốt đơn', 'Chờ hàng', 'Soạn hàng', 'Đơn thiếu', 'Giao sau', 'Đã đủ hàng', 'Kiểm hàng', 'Đang vận chuyển', 'Đã giao', 'Hủy'] as $pill)
                 @php
                     $isSel = (request('status') === $pill) 
                         || (!request('status') && $pill === 'Tất cả') 
                         || (request('status') === 'Soạn bốc' && $pill === 'Soạn hàng')
+                        || (in_array(request('status'), ['Chờ hàng', 'Chờ hàng về']) && $pill === 'Chờ hàng')
                         || (in_array(request('status'), ['Đơn nợ', 'Nợ hàng', 'Đơn giao sau']) && $pill === 'Giao sau');
                     $badgeCount = $counts[$pill] ?? 0;
 
                     $pillClass = match($pill) {
+                        'Chờ hàng' => $isSel 
+                            ? 'bg-amber-600 text-white shadow-2xs ring-2 ring-amber-600/30 font-black' 
+                            : ($badgeCount > 0 ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-400 font-black' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'),
                         'Đơn thiếu' => $isSel 
                             ? 'bg-rose-600 text-white shadow-2xs ring-2 ring-rose-600/30 font-black' 
                             : ($badgeCount > 0 ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-300 font-bold' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'),
                         'Giao sau', 'Đơn nợ' => $isSel 
                             ? 'bg-amber-600 text-white shadow-2xs ring-2 ring-amber-600/30 font-black' 
                             : ($badgeCount > 0 ? 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-300 font-bold' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'),
+                        'Đã đủ hàng' => $isSel 
+                            ? 'bg-emerald-600 text-white shadow-2xs ring-2 ring-emerald-600/30 font-black' 
+                            : ($badgeCount > 0 ? 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300 font-bold' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'),
                         default => $isSel 
                             ? 'bg-sky-600 text-white shadow-2xs ring-2 ring-sky-600/20' 
                             : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
@@ -131,6 +157,7 @@
                     $badgePillClass = match($pill) {
                         'Đơn thiếu' => $isSel ? 'bg-white/25 text-white' : ($badgeCount > 0 ? 'bg-rose-200 text-rose-800 font-black' : 'bg-slate-200 text-slate-600'),
                         'Giao sau', 'Đơn nợ' => $isSel ? 'bg-white/25 text-white' : ($badgeCount > 0 ? 'bg-amber-200 text-amber-900 font-black' : 'bg-slate-200 text-slate-600'),
+                        'Đã đủ hàng' => $isSel ? 'bg-white/25 text-white' : ($badgeCount > 0 ? 'bg-emerald-200 text-emerald-900 font-black' : 'bg-slate-200 text-slate-600'),
                         default => $isSel ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-600'
                     };
                 @endphp
@@ -139,6 +166,8 @@
                         <i class="fa-solid fa-triangle-exclamation text-[11px] {{ $isSel ? 'text-white' : 'text-rose-600 animate-pulse' }}"></i>
                     @elseif(in_array($pill, ['Giao sau', 'Đơn nợ']) && $badgeCount > 0)
                         <i class="fa-solid fa-clipboard-list text-[11px] {{ $isSel ? 'text-white' : 'text-amber-600' }}"></i>
+                    @elseif($pill === 'Đã đủ hàng' && $badgeCount > 0)
+                        <i class="fa-solid fa-circle-check text-[11px] {{ $isSel ? 'text-white' : 'text-emerald-600' }}"></i>
                     @endif
                     <span>{{ $pill }}</span>
                     <span class="px-1.5 py-0.2 rounded-full text-[10px] font-black {{ $badgePillClass }}">
@@ -205,8 +234,8 @@
                 <label class="font-bold text-slate-500 text-[11px]">Trạng thái</label>
                 <select name="status" class="w-full p-2 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:outline-none focus:border-sky-500 bg-white cursor-pointer">
                     <option value="">Tất cả trạng thái</option>
-                    @foreach(['Báo giá', 'Chốt đơn', 'Soạn hàng', 'Đơn thiếu', 'Giao sau', 'Kiểm hàng', 'Đang vận chuyển', 'Đã giao', 'Hủy'] as $st)
-                        <option value="{{ $st }}" {{ (request('status') === $st || (request('status') === 'Soạn bốc' && $st === 'Soạn hàng') || (in_array(request('status'), ['Đơn nợ', 'Nợ hàng', 'Đơn giao sau']) && $st === 'Giao sau')) ? 'selected' : '' }}>{{ $st }}</option>
+                    @foreach(['Báo giá', 'Chốt đơn', 'Chờ hàng', 'Soạn hàng', 'Đơn thiếu', 'Giao sau', 'Kiểm hàng', 'Đang vận chuyển', 'Đã giao', 'Hủy'] as $st)
+                        <option value="{{ $st }}" {{ (request('status') === $st || (request('status') === 'Soạn bốc' && $st === 'Soạn hàng') || (in_array(request('status'), ['Chờ hàng', 'Chờ hàng về']) && $st === 'Chờ hàng') || (in_array(request('status'), ['Đơn nợ', 'Nợ hàng', 'Đơn giao sau']) && $st === 'Giao sau')) ? 'selected' : '' }}>{{ $st }}</option>
                     @endforeach
                 </select>
             </div>
@@ -295,9 +324,12 @@
                             $payMethod = $order->payment_method ?: 'Ghi nợ đại lý';
                             $creator = $order->order_creator ?: ($order->creator?->name ?? 'Admin KBTech');
                             $st = $order->status ?: 'Báo giá';
-                            $isBackOrder = in_array($st, ['Giao sau', 'Đơn giao sau', 'Nợ hàng']) || ($order->order_type === 'backorder');
+                            $isBackOrder = in_array($st, ['Giao sau', 'Đơn giao sau', 'Nợ hàng', 'Đã đủ hàng']) || ($order->order_type === 'backorder');
+                            $isReadyBackOrder = ($isBackOrder && ($order->backorder_status === 'ready_to_deliver' || $order->status === 'Đã đủ hàng'));
                             $rowClass = 'hover:bg-sky-50/50';
-                            if ($order->shortage_reported) {
+                            if ($isReadyBackOrder) {
+                                $rowClass = 'bg-emerald-50/70 hover:bg-emerald-100/70 border-l-4 border-emerald-500';
+                            } elseif ($order->shortage_reported) {
                                 $rowClass = 'bg-rose-50/60 hover:bg-rose-100/60 border-l-4 border-rose-500';
                             } elseif ($isBackOrder) {
                                 $rowClass = 'bg-amber-50/60 hover:bg-amber-100/60 border-l-4 border-amber-500';
@@ -316,9 +348,14 @@
 
                             <!-- MÃ CHỨNG TỪ -->
                             <td class="py-3 px-3 font-bold text-sky-700">
-                                <a href="{{ url('/orders/' . $order->id . '/edit') }}" class="hover:underline text-left cursor-pointer font-bold font-mono text-slate-900" title="Bấm để xem và sửa chi tiết chứng từ">
-                                    {{ $orderCode }}
-                                </a>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <a href="{{ url('/orders/' . $order->id . '/edit') }}" class="hover:underline text-left cursor-pointer font-bold font-mono text-slate-900" title="Bấm để xem và sửa chi tiết chứng từ">
+                                        {{ $orderCode }}
+                                    </a>
+                                    @if($order->has_shortage_warning)
+                                        <span class="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[9px] font-bold border border-amber-300" title="Đơn đặt khi kho thiếu tồn">⚠️ Thiếu kho</span>
+                                    @endif
+                                </div>
                             </td>
 
                             <!-- LOẠI ĐƠN HÀNG -->
@@ -335,9 +372,20 @@
                                         @endif
                                     </div>
                                 @elseif($isBackOrder)
-                                    <span class="px-2.5 py-1 rounded-md bg-amber-100 text-amber-900 font-extrabold text-[11px] border border-amber-300 shadow-2xs shrink-0 inline-flex items-center gap-1" title="Đơn giao sau / nợ hàng">
-                                        <span>📋 Giao sau</span>
-                                    </span>
+                                    <div class="flex flex-col items-start gap-0.5">
+                                        @if($isReadyBackOrder)
+                                            <span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 font-black text-[10px] border border-emerald-300 shadow-2xs shrink-0 inline-flex items-center gap-1" title="Kho đã có đủ hàng, có thể xuất giao ngay!">
+                                                <span>🟢 Đã đủ hàng</span>
+                                            </span>
+                                        @else
+                                            <span class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-extrabold text-[10px] border border-amber-300 shadow-2xs shrink-0 inline-flex items-center gap-1" title="Đơn giao sau / nợ hàng đang chờ hàng về">
+                                                <span>📋 Giao sau</span>
+                                            </span>
+                                        @endif
+                                        @if($order->parent_order_code)
+                                            <span class="text-[9px] text-slate-500 font-mono">Nợ từ: {{ $order->parent_order_code }}</span>
+                                        @endif
+                                    </div>
                                 @else
                                     <span class="px-2.5 py-1 rounded-md bg-sky-50 text-sky-800 font-extrabold text-[11px] border border-sky-200 shrink-0 inline-flex items-center gap-1">
                                         <span>🛒 Thương mại</span>
@@ -397,17 +445,19 @@
                                 <div class="flex items-center justify-between gap-2">
                                     <div class="flex flex-col gap-0.5 min-w-[110px]">
                                         @php
-                                            $badgeConfig = match($st) {
-                                                'Báo giá' => ['bg' => 'bg-amber-50 text-amber-800 border-amber-300', 'icon' => '📋', 'label' => 'Báo giá', 'sub' => 'Phiếu báo giá'],
-                                                'Chốt đơn', 'Đã duyệt' => ['bg' => 'bg-blue-50 text-blue-800 border-blue-300', 'icon' => '🤝', 'label' => 'Chốt đơn', 'sub' => 'Đơn bán hàng'],
-                                                'Giao sau', 'Đơn giao sau', 'Nợ hàng' => ['bg' => 'bg-amber-50 text-amber-800 border-amber-300', 'icon' => '📋', 'label' => 'Giao sau', 'sub' => 'Đơn giao sau'],
-                                                'Soạn hàng', 'Đang bốc hàng', 'Soạn bốc', 'Kho đang soạn' => ['bg' => 'bg-purple-50 text-purple-800 border-purple-300', 'icon' => '📦', 'label' => 'Soạn hàng', 'sub' => 'Đơn bán hàng'],
-                                                'Đã bốc xong', 'Kho đã xuất đủ' => ['bg' => 'bg-indigo-50 text-indigo-800 border-indigo-300', 'icon' => '📦', 'label' => 'Đã bốc xong', 'sub' => 'Đơn bán hàng'],
-                                                'Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng' => ['bg' => 'bg-teal-50 text-teal-800 border-teal-300', 'icon' => '🛡️', 'label' => 'Đang kiểm hàng', 'sub' => 'Đơn bán hàng'],
-                                                'Đang vận chuyển' => ['bg' => 'bg-cyan-50 text-cyan-800 border-cyan-300', 'icon' => '🚚', 'label' => 'Đang vận chuyển', 'sub' => 'Đơn bán hàng'],
-                                                'Đã gộp đơn' => ['bg' => 'bg-indigo-50 text-indigo-800 border-indigo-300', 'icon' => '🔀', 'label' => 'Đã gộp đơn', 'sub' => 'Đã gộp vào đơn khác'],
-                                                'Đã giao', 'Đã quyết toán', 'Giao thành công' => ['bg' => 'bg-emerald-50 text-emerald-800 border-emerald-300', 'icon' => '✅', 'label' => 'Đã giao', 'sub' => 'Đơn bán hàng'],
-                                                'Hủy', 'Đã hủy' => ['bg' => 'bg-rose-50 text-rose-800 border-rose-300', 'icon' => '❌', 'label' => 'Đã hủy', 'sub' => 'Đơn hủy'],
+                                            $isWaitingStock = in_array($st, ['Chờ hàng', 'Chờ hàng về']) || ($order->has_shortage_warning && !in_array($st, ['Đã giao', 'Hủy', 'Đã hủy', 'Báo giá']));
+                                            $badgeConfig = match(true) {
+                                                $isWaitingStock => ['bg' => 'bg-amber-100 text-amber-900 border-amber-300 font-black', 'icon' => '⏳', 'label' => 'Chờ hàng', 'sub' => 'Kho chưa đủ hàng'],
+                                                $st === 'Báo giá' => ['bg' => 'bg-amber-50 text-amber-800 border-amber-300', 'icon' => '📋', 'label' => 'Báo giá', 'sub' => 'Phiếu báo giá'],
+                                                in_array($st, ['Chốt đơn', 'Đã duyệt']) => ['bg' => 'bg-blue-50 text-blue-800 border-blue-300', 'icon' => '🤝', 'label' => 'Chốt đơn', 'sub' => 'Đơn bán hàng'],
+                                                in_array($st, ['Giao sau', 'Đơn giao sau', 'Nợ hàng']) => ['bg' => 'bg-amber-50 text-amber-800 border-amber-300', 'icon' => '📋', 'label' => 'Giao sau', 'sub' => 'Đơn giao sau'],
+                                                in_array($st, ['Soạn hàng', 'Đang bốc hàng', 'Soạn bốc', 'Kho đang soạn']) => ['bg' => 'bg-purple-50 text-purple-800 border-purple-300', 'icon' => '📦', 'label' => 'Soạn hàng', 'sub' => 'Đơn bán hàng'],
+                                                in_array($st, ['Đã bốc xong', 'Kho đã xuất đủ']) => ['bg' => 'bg-indigo-50 text-indigo-800 border-indigo-300', 'icon' => '📦', 'label' => 'Đã bốc xong', 'sub' => 'Đơn bán hàng'],
+                                                in_array($st, ['Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng']) => ['bg' => 'bg-teal-50 text-teal-800 border-teal-300', 'icon' => '🛡️', 'label' => 'Đang kiểm hàng', 'sub' => 'Đơn bán hàng'],
+                                                $st === 'Đang vận chuyển' => ['bg' => 'bg-cyan-50 text-cyan-800 border-cyan-300', 'icon' => '🚚', 'label' => 'Đang vận chuyển', 'sub' => 'Đơn bán hàng'],
+                                                $st === 'Đã gộp đơn' => ['bg' => 'bg-indigo-50 text-indigo-800 border-indigo-300', 'icon' => '🔀', 'label' => 'Đã gộp đơn', 'sub' => 'Đã gộp vào đơn khác'],
+                                                in_array($st, ['Đã giao', 'Đã quyết toán', 'Giao thành công']) => ['bg' => 'bg-emerald-50 text-emerald-800 border-emerald-300', 'icon' => '✅', 'label' => 'Đã giao', 'sub' => 'Đơn bán hàng'],
+                                                in_array($st, ['Hủy', 'Đã hủy']) => ['bg' => 'bg-rose-50 text-rose-800 border-rose-300', 'icon' => '❌', 'label' => 'Đã hủy', 'sub' => 'Đơn hủy'],
                                                 default => ['bg' => 'bg-slate-100 text-slate-800 border-slate-300', 'icon' => '📄', 'label' => $st, 'sub' => 'Đơn bán hàng']
                                             };
                                         @endphp
@@ -436,7 +486,15 @@
                                                 <i class="fa-solid fa-circle-check text-blue-600 text-xs"></i>
                                                 <span>Chốt đơn</span>
                                             </button>
-                                        @elseif(in_array($st, ['Chốt đơn', 'Đã duyệt']))
+                                        @elseif($isWaitingStock)
+                                            <button type="button" 
+                                                    disabled
+                                                    class="px-2.5 py-1 rounded-xl border border-slate-200 text-slate-400 bg-slate-100 font-bold text-[11px] flex items-center gap-1.5 opacity-40 cursor-not-allowed select-none shadow-none pointer-events-none" 
+                                                    title="Kho chưa đủ hàng tồn. Không thể soạn hàng!">
+                                                <i class="fa-solid fa-boxes-stacked text-slate-400 text-xs"></i>
+                                                <span>Soạn hàng</span>
+                                            </button>
+                                        @elseif(in_array($st, ['Chốt đơn', 'Đã duyệt', 'Giao sau', 'Đơn giao sau', 'Nợ hàng']))
                                             <button type="button" 
                                                     @click="openPickingModal({
                                                         id: '{{ $order->id }}',
@@ -476,6 +534,8 @@
                                                     address: '{{ addslashes($customerAddr) }}',
                                                     total: {{ (float)$order->total_amount }},
                                                     status: '{{ $st }}',
+                                                    has_shortage_warning: {{ $order->has_shortage_warning ? 'true' : 'false' }},
+                                                    picking_date: '{{ $order->picking_date ? \Carbon\Carbon::parse($order->picking_date)->format('Y-m-d') : date('Y-m-d') }}',
                                                     warehouse: '{{ addslashes($whName) }}',
                                                     driver: '{{ addslashes($order->driver?->name ?? 'Chưa phân công') }}',
                                                     vehicle: '{{ $order->assigned_vehicle_plate ?? 'Chưa có xe' }}',
@@ -539,11 +599,20 @@
                 </template>
 
                 <!-- 2.5 Soạn hàng (Nếu đã chốt đơn) -->
-                <template x-if="['Chốt đơn', 'Đã duyệt'].includes(activeActionOrder?.status)">
+                <template x-if="['Chốt đơn', 'Đã duyệt'].includes(activeActionOrder?.status) && !activeActionOrder?.has_shortage_warning">
                     <button type="button" @click="openPickingModal(activeActionOrder)" class="w-full text-left px-3.5 py-2 hover:bg-purple-50 flex items-center gap-3 text-purple-900 transition-colors font-bold cursor-pointer">
                         <i class="fa-solid fa-boxes-stacked text-purple-600 w-5 text-center text-sm"></i>
                         <span>Soạn hàng xuất kho</span>
                     </button>
+                </template>
+                <template x-if="activeActionOrder?.has_shortage_warning || ['Chờ hàng', 'Chờ hàng về'].includes(activeActionOrder?.status)">
+                    <div class="w-full text-left px-3.5 py-2 flex items-center justify-between text-slate-400 opacity-50 cursor-not-allowed select-none bg-slate-50/50" title="Kho chưa đủ hàng tồn khả dụng, không thể soạn hàng">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-boxes-stacked text-slate-400 w-5 text-center text-sm"></i>
+                            <span class="font-medium line-through">Soạn hàng xuất kho</span>
+                        </div>
+                        <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Chờ hàng</span>
+                    </div>
                 </template>
 
                 <!-- 3. Bổ sung sản phẩm / Sửa -->

@@ -202,6 +202,8 @@ class WarehouseTransactionController extends Controller
             }
 
             DB::commit();
+            \App\Services\InventoryAvailabilityService::clearCache();
+            \App\Services\BackorderService::checkAndNotifyBackordersOnStockArrival();
 
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
@@ -414,6 +416,7 @@ class WarehouseTransactionController extends Controller
             }
 
             DB::commit();
+            \App\Services\InventoryAvailabilityService::clearCache();
 
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
@@ -504,6 +507,7 @@ class WarehouseTransactionController extends Controller
             $tx->save();
 
             DB::commit();
+            \App\Services\InventoryAvailabilityService::clearCache();
 
             return response()->json([
                 'success' => true,

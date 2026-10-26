@@ -144,20 +144,20 @@
                     <h3 class="text-sm font-bold text-slate-800">Thông tin khách hàng & Địa điểm lắp</h3>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">
-                        Họ và tên khách hàng <span class="text-red-500">*</span>
-                    </label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                            <i class="fa-solid fa-user text-xs"></i>
-                        </span>
-                        <input type="text" x-model="form.customer_name" required placeholder="Ví dụ: Nguyễn Văn An"
-                               class="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 font-medium">
-                    </div>
-                </div>
-
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">
+                            Họ và tên khách hàng <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                <i class="fa-solid fa-user text-xs"></i>
+                            </span>
+                            <input type="text" x-model="form.customer_name" required placeholder="Ví dụ: Nguyễn Văn An"
+                                   class="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 font-medium">
+                        </div>
+                    </div>
+
                     <div>
                         <label class="block text-xs font-semibold text-slate-700 mb-1">
                             Số điện thoại khách hàng <span class="text-red-500">*</span>
@@ -168,19 +168,6 @@
                             </span>
                             <input type="tel" x-model="form.customer_phone" required placeholder="0912 xxx xxx"
                                    class="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 font-medium">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-700 mb-1">Nguồn nước sử dụng</label>
-                        <div class="relative">
-                            <select x-model="form.water_source_type"
-                                    class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 font-medium">
-                                <option value="Nước máy thành phố">Nước máy thành phố</option>
-                                <option value="Nước giếng khoan / Nước ngầm">Nước giếng khoan / Nước ngầm</option>
-                                <option value="Nước mưa / Bể trữ ngầm">Nước mưa / Bể trữ ngầm</option>
-                                <option value="Khác">Nguồn nước khác</option>
-                            </select>
                         </div>
                     </div>
                 </div>
@@ -417,7 +404,6 @@
                     customer_name: @json($machine->customer_name ?? ''),
                     customer_phone: @json($machine->customer_phone ?? ''),
                     customer_address: @json($machine->customer_address ?? ''),
-                    water_source_type: @json($machine->water_source_type ?? 'Nước máy thành phố'),
                     machine_model_id: @json($machine->machine_model_id ?? ''),
                     machine_model: @json($machine->machine_model ?? ''),
                     machine_serial: @json($machine->machine_serial ?? ''),
@@ -425,9 +411,6 @@
                     installed_at: @json($machine->installed_at ? date('Y-m-d\TH:i', strtotime($machine->installed_at)) : date('Y-m-d\TH:i')),
                     warranty_months: @json($machine->warranty_months ?: 24),
                     filter_replacement_months: @json($machine->filter_replacement_months ?: 6),
-                    tds_in: @json($machine->tds_in ?? ''),
-                    tds_out: @json($machine->tds_out ?? ''),
-                    pressure: @json($machine->pressure ?? ''),
                     technician_id: @json($machine->technician_id ?? (Auth::check() ? Auth::id() : '')),
                     technician_name: @json($machine->technician_name ?? (Auth::check() ? Auth::user()->name : '')),
                     activation_notes: @json($machine->activation_notes ?? '')
