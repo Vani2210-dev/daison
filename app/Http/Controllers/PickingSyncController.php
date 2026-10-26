@@ -771,15 +771,33 @@ class PickingSyncController extends Controller
                 if (!empty($orderToPick->delivery_date)) {
                     $isDebt = ($orderToPick->status === 'Nợ hàng') || str_contains($orderToPick->notes ?? '', '[ĐƠN NỢ HÀNG]') || str_starts_with($orderToPick->order_code ?? '', 'DH-NO');
                     if (!$isDebt) {
-                        if (in_array($orderToPick->status, ['Chốt đơn', 'Đã duyệt', 'pending', 'approved'])) {
-                            $orderToPick->status = 'Soạn hàng';
+                        $orderToPick->load('items.product');
+                        $itemsData = $orderToPick->items->map(fn($it) => [
+                            'product_id'    => $it->product_id,
+                            'sku'           => $it->sku,
+                            'quantity'      => (float)$it->quantity,
+                            'gift_quantity' => (float)($it->gift_quantity ?? 0),
+                            'unit'          => $it->unit,
+                        ])->toArray();
+                        $targetWh = $orderToPick->warehouse ?: 'Kho Tổng Mê Linh (MQ)';
+                        $check = \App\Services\InventoryAvailabilityService::checkItemsAvailability($targetWh, $itemsData, $orderToPick->id);
+
+                        if ($check['is_valid']) {
+                            if (in_array($orderToPick->status, ['Chốt đơn', 'Đã duyệt', 'pending', 'approved'])) {
+                                $orderToPick->status = 'Soạn hàng';
+                            }
+                            if ($request->filled('picking_date')) {
+                                $orderToPick->picking_date = $request->query('picking_date');
+                            } elseif (empty($orderToPick->picking_date)) {
+                                $orderToPick->picking_date = now()->format('Y-m-d');
+                            }
+                            $orderToPick->has_shortage_warning = false;
+                            $orderToPick->save();
+                        } else {
+                            $orderToPick->has_shortage_warning = true;
+                            $orderToPick->backorder_status = 'pending_stock';
+                            $orderToPick->save();
                         }
-                        if ($request->filled('picking_date')) {
-                            $orderToPick->picking_date = $request->query('picking_date');
-                        } elseif (empty($orderToPick->picking_date)) {
-                            $orderToPick->picking_date = now()->format('Y-m-d');
-                        }
-                        $orderToPick->save();
                     }
                 }
             }
@@ -1231,6 +1249,30 @@ class PickingSyncController extends Controller
             'completed_picking_groups' => $completedPickingCount,
             'completed_qc_groups' => $completedQcCount,
         ];
+    }
+
+    /**
+     * API: Tự động tách Đơn Giao Sau (Backorder) cho các mặt hàng bốc thiếu khi xuất kho
+     */
+    public function splitBackorder(\Illuminate\Http\Request $request)
+    {
+        $raw = json_decode($request->getContent(), true) ?? [];
+        $orderId = $request->input('orderId') ?? ($raw['orderId'] ?? null);
+        $shortageItems = $request->input('shortageItems') ?? ($raw['shortageItems'] ?? []);
+        $note = $request->input('note') ?? ($raw['note'] ?? null);
+
+        if (!$orderId) {
+            return response()->json(['success' => false, 'message' => 'Missing orderId'], 422);
+        }
+
+        $order = \App\Models\Order::with('items')->where('id', $orderId)->orWhere('order_code', $orderId)->first();
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Order not found'], 404);
+        }
+
+        $result = \App\Services\BackorderService::splitOrderOnShortage($order, $shortageItems, $note);
+
+        return response()->json($result, $result['success'] ? 200 : 422);
     }
 }
 

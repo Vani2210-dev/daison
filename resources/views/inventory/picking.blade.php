@@ -3,7 +3,7 @@
 @section('title', 'Soạn Đơn & Kiểm Hàng Xuất Kho | ERP Đại Sơn')
 
 @section('content')
-<div x-data="pickingApp()" x-init="initApp()" class="space-y-4 max-w-[1920px] mx-auto pb-12">
+<div x-data="pickingApp()" x-init="initApp()" class="space-y-2.5 sm:space-y-4 max-w-[1920px] mx-auto pb-1 sm:pb-6">
 
     <!-- Toast Notification -->
     <div x-show="toast.show" x-cloak
@@ -71,29 +71,36 @@
         </div>
     </div>
 
-    <!-- 1. Page Header (Exact style from mockup) -->
-    <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div class="flex items-center gap-3.5">
-            <div class="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/25">
-                <i class="fa-solid fa-clipboard-check text-xl"></i>
+    <!-- 1. Page Header (Tối giản & Gọn nhẹ) -->
+    <div class="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+         :class="mobileView === 'detail' ? 'hidden lg:flex' : 'flex'">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <i class="fa-solid fa-clipboard-check text-sm"></i>
+                </div>
+                <div>
+                    <h1 class="text-sm sm:text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
+                        <span>Soạn Đơn & Kiểm Hàng</span>
+                    </h1>
+                </div>
             </div>
-            <div>
-                <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                    <span>Soạn Đơn & Kiểm Hàng Xuất Kho</span>
-                </h1>
-                <p class="text-xs text-slate-500 font-medium mt-0.5">
-                    Quy trình 2 bước: 1. Soạn & bốc hàng (tách đơn hoặc gộp đơn) - 2. Kiểm hàng đối chiếu trước khi bàn giao xe xuất kho
-                </p>
+
+            <!-- Mobile compact badges -->
+            <div class="flex items-center gap-1 sm:hidden">
+                <span class="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-bold"
+                      x-text="countPendingPick + ' bốc'"></span>
+                <span class="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-900 text-[10px] font-bold"
+                      x-text="countReadyQc + ' kiểm'"></span>
             </div>
         </div>
 
-        <!-- Top Right Filter & Badges -->
-        <div class="flex flex-wrap items-center gap-2.5 sm:gap-3">
+        <!-- Filter & Badges: Thiết kế 1 hàng gọn nhẹ -->
+        <div class="flex flex-wrap items-center gap-2 text-xs">
             <!-- Branch Filter -->
-            <div class="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700">
-                <i class="fa-solid fa-building text-slate-400"></i>
-                <span class="text-slate-500 font-medium">Chi nhánh:</span>
-                <select x-model="selectedBranch" class="bg-transparent font-bold text-slate-800 focus:outline-none cursor-pointer">
+            <div class="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200 text-slate-700">
+                <i class="fa-solid fa-building text-slate-400 text-xs"></i>
+                <select x-model="selectedBranch" class="bg-transparent font-bold text-slate-800 focus:outline-none cursor-pointer text-xs">
                     <option value="">Toàn bộ chi nhánh</option>
                     @foreach($branches as $br)
                         <option value="{{ $br->name }}">{{ $br->name }}</option>
@@ -101,77 +108,75 @@
                 </select>
             </div>
 
-            <!-- Date Filter: Bộ lọc ngày soạn hàng (Mặc định hôm nay) -->
-            <div class="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700">
-                <i class="fa-solid fa-calendar-day text-amber-600"></i>
-                <span class="text-slate-500 font-medium">Lọc ngày soạn:</span>
+            <!-- Date Filter: Bộ lọc ngày soạn hàng -->
+            <div class="flex items-center gap-1 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 font-medium">
+                <i class="fa-solid fa-calendar-day text-amber-600 text-xs"></i>
                 <input type="date" x-model="filterPickingDate"
                        class="bg-transparent font-bold font-mono text-slate-800 focus:outline-none cursor-pointer text-xs">
-                <button type="button" x-show="filterPickingDate === '{{ date('Y-m-d') }}'" @click="filterPickingDate = ''"
-                        class="text-[10px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-md cursor-pointer transition-colors" title="Đang lọc hôm nay. Nhấn để xem tất cả ngày">
+                <button type="button" x-show="filterPickingDate && filterPickingDate !== '{{ date('Y-m-d') }}'" @click="filterPickingDate = '{{ date('Y-m-d') }}'"
+                        class="text-[10px] font-bold text-slate-600 bg-slate-200 hover:bg-slate-300 px-1.5 py-0.5 rounded cursor-pointer transition-colors" title="Chuyển về hôm nay">
                     Hôm nay
                 </button>
-                <button type="button" x-show="filterPickingDate && filterPickingDate !== '{{ date('Y-m-d') }}'" @click="filterPickingDate = '{{ date('Y-m-d') }}'"
-                        class="text-[10px] font-bold text-slate-600 bg-slate-200 hover:bg-slate-300 px-2 py-0.5 rounded-md cursor-pointer transition-colors" title="Chuyển về hôm nay">
-                    Về hôm nay
-                </button>
                 <button type="button" x-show="filterPickingDate" @click="filterPickingDate = ''"
-                        class="text-slate-400 hover:text-rose-600 ml-0.5 text-xs cursor-pointer" title="Xem tất cả các ngày">
+                        class="text-slate-400 hover:text-rose-600 text-xs cursor-pointer ml-0.5" title="Xem tất cả ngày">
                     <i class="fa-solid fa-circle-xmark"></i>
                 </button>
             </div>
 
-            <!-- Badges -->
-            <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold">
-                <i class="fa-solid fa-clock text-amber-600"></i>
-                <span x-text="countPendingPick + ' đơn chờ bốc'"></span>
-            </div>
+            <!-- Desktop Badges -->
+            <div class="hidden sm:flex items-center gap-1.5">
+                <div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">
+                    <i class="fa-solid fa-clock text-amber-600 text-[11px]"></i>
+                    <span x-text="countPendingPick + ' chờ bốc'"></span>
+                </div>
 
-            <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
-                <i class="fa-solid fa-shield-halved text-emerald-600"></i>
-                <span x-text="countReadyQc + ' đơn sẵn sàng kiểm'"></span>
-            </div>
+                <div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold">
+                    <i class="fa-solid fa-shield-halved text-emerald-600 text-[11px]"></i>
+                    <span x-text="countReadyQc + ' chờ kiểm'"></span>
+                </div>
 
-            <button type="button" @click="setOrderTypeFilter(filterOrderType === 'consignment' ? 'all' : 'consignment')" 
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border"
-                    :class="filterOrderType === 'consignment' ? 'bg-amber-600 text-white border-amber-700 shadow-2xs ring-2 ring-amber-500/30' : 'bg-white hover:bg-amber-50 border-amber-300 text-amber-900 shadow-2xs'"
-                    title="Nhấn để xem riêng danh sách đơn hàng ôm của nhân viên">
-                <i class="fa-solid fa-boxes-stacked text-amber-600" :class="{'text-white': filterOrderType === 'consignment'}"></i>
-                <span x-text="countConsignmentOrders + ' đơn hàng ôm'"></span>
-            </button>
+                <button type="button" @click="setOrderTypeFilter(filterOrderType === 'consignment' ? 'all' : 'consignment')" 
+                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer border"
+                        :class="filterOrderType === 'consignment' ? 'bg-amber-600 text-white border-amber-700 shadow-2xs' : 'bg-white hover:bg-amber-50 border-amber-300 text-amber-900'"
+                        title="Xem đơn hàng ôm">
+                    <i class="fa-solid fa-boxes-stacked text-[11px]" :class="filterOrderType === 'consignment' ? 'text-white' : 'text-amber-600'"></i>
+                    <span x-text="countConsignmentOrders + ' hàng ôm'"></span>
+                </button>
+            </div>
         </div>
     </div>
 
     <!-- Category & Staff Group Authorization Banner -->
-    <div class="bg-white rounded-2xl p-3.5 sm:px-5 border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs">
-        <div class="flex items-center gap-2.5 flex-wrap">
+    <div class="bg-white rounded-2xl p-3 sm:px-4 border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-2.5 text-xs"
+         :class="mobileView === 'detail' ? 'hidden lg:flex' : 'flex'">
+        <div class="flex items-center gap-2 flex-wrap">
             <!-- Mode 1: Có quyền xem bốc xếp không phân loại sản phẩm (Toàn quyền mọi loại sản phẩm) -->
             <template x-if="canViewAllCategories">
-                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 font-bold">
-                    <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
-                    <i class="fa-solid fa-layer-group text-indigo-600 text-sm"></i>
-                    <span>Quyền xem bốc xếp: <strong class="text-indigo-950 font-black">Không phân loại sản phẩm (Toàn bộ ngành hàng)</strong></span>
-                    <span class="px-2 py-0.5 rounded-md bg-indigo-200/70 text-indigo-900 font-extrabold text-[10px] uppercase">Toàn quyền</span>
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-900 font-bold text-xs">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                    <i class="fa-solid fa-layer-group text-indigo-600 text-xs"></i>
+                    <span>Quyền xem: <strong class="text-indigo-950 font-black">Toàn bộ ngành hàng</strong></span>
+                    <span class="px-1.5 py-0.5 rounded bg-indigo-200/70 text-indigo-900 font-extrabold text-[9px] uppercase">Toàn quyền</span>
                 </div>
             </template>
 
             <!-- Mode 2: Phân loại theo Nhóm nhân sự phụ trách -->
             <template x-if="!canViewAllCategories">
                 <div class="flex items-center gap-2 flex-wrap">
-                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 font-bold">
-                        <i class="fa-solid fa-users-gear text-amber-600 text-sm"></i>
-                        <span>Nhóm của bạn: <strong class="text-amber-900 font-black" x-text="userGroupsSummary"></strong></span>
+                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-950 font-bold text-xs">
+                        <i class="fa-solid fa-users-gear text-amber-600 text-xs"></i>
+                        <span>Nhóm: <strong class="text-amber-900 font-black" x-text="userGroupsSummary"></strong></span>
                     </div>
 
-                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-sky-50 border border-sky-200 text-sky-950 font-bold">
-                        <i class="fa-solid fa-boxes-stacked text-sky-600 text-sm"></i>
-                        <span>Phụ trách loại SP: <strong class="text-sky-900 font-black" x-text="userCategoriesSummary"></strong></span>
+                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-200 text-sky-950 font-bold text-xs">
+                        <i class="fa-solid fa-boxes-stacked text-sky-600 text-xs"></i>
+                        <span>Phụ trách: <strong class="text-sky-900 font-black" x-text="userCategoriesSummary"></strong></span>
                     </div>
 
-                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold"
+                    <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold"
                           :class="(Array.isArray(leaderCategoryIds) ? leaderCategoryIds.length : Object.keys(leaderCategoryIds || {}).length) > 0 ? 'bg-purple-50 text-purple-900 border border-purple-200' : 'bg-slate-100 text-slate-700 border border-slate-200'">
                         <i :class="(Array.isArray(leaderCategoryIds) ? leaderCategoryIds.length : Object.keys(leaderCategoryIds || {}).length) > 0 ? 'fa-solid fa-crown text-purple-600' : 'fa-solid fa-user text-slate-500'"></i>
-                        <span x-text="(Array.isArray(leaderCategoryIds) ? leaderCategoryIds.length : Object.keys(leaderCategoryIds || {}).length) > 0 ? 'Vai trò: Trưởng nhóm (Được quyền phân người soạn)' : 'Vai trò: Thành viên (Tự nhận khi chưa có người)'"></span>
+                        <span x-text="(Array.isArray(leaderCategoryIds) ? leaderCategoryIds.length : Object.keys(leaderCategoryIds || {}).length) > 0 ? 'Trưởng nhóm' : 'Thành viên'"></span>
                     </div>
                 </div>
             </template>
@@ -180,64 +185,65 @@
         <div class="text-slate-500 text-[11px] flex items-center gap-2 font-medium" x-show="userCategoryIds.length === 0 && !canViewAllCategories">
             <span class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 font-bold border border-rose-200 flex items-center gap-1">
                 <i class="fa-solid fa-triangle-exclamation"></i>
-                <span>Chưa được gán nhóm phụ trách loại sản phẩm. Vui lòng liên hệ Quản lý kho.</span>
+                <span>Chưa được gán nhóm phụ trách. Vui lòng liên hệ Quản lý kho.</span>
             </span>
         </div>
     </div>
 
     <!-- 2. Main Process Tabs -->
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-2 sm:gap-3" :class="mobileView === 'detail' ? 'hidden lg:flex' : 'flex'">
         <!-- Tab 1: Soạn & Bốc Hàng -->
         <button type="button" @click="switchTab('picking')"
-                class="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 cursor-pointer shadow-xs"
+                class="flex-1 sm:flex-initial px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                 :class="activeTab === 'picking' ? 'bg-amber-500 text-white shadow-amber-500/25 ring-2 ring-amber-500/20' : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'">
             <i class="fa-solid fa-box-open"></i>
-            <span>1. Soạn & Bốc Hàng</span>
-            <span class="px-2 py-0.5 rounded-full text-[11px] font-black"
+            <span>1. Soạn & Bốc</span>
+            <span class="px-1.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black"
                   :class="activeTab === 'picking' ? 'bg-black/20 text-white' : 'bg-amber-100 text-amber-800'"
                   x-text="countPendingPick"></span>
         </button>
 
         <!-- Tab 2: Kiểm Hàng (QC Soạn Đơn) -->
         <button type="button" @click="switchTab('qc')"
-                class="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 cursor-pointer shadow-xs"
+                class="flex-1 sm:flex-initial px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                 :class="activeTab === 'qc' ? 'bg-emerald-600 text-white shadow-emerald-600/25 ring-2 ring-emerald-600/20' : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'">
             <i class="fa-solid fa-circle-check"></i>
-            <span>2. Kiểm Hàng (QC Soạn Đơn)</span>
-            <span class="px-2 py-0.5 rounded-full text-[11px] font-black"
+            <span>2. Kiểm Hàng (QC)</span>
+            <span class="px-1.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black"
                   :class="activeTab === 'qc' ? 'bg-black/20 text-white' : 'bg-emerald-100 text-emerald-800'"
                   x-text="countReadyQc"></span>
         </button>
     </div>
 
     <!-- 3. Sub-toolbar: Chế độ soạn / kiểm kho & Mã đơn đang xem -->
-    <div class="bg-white rounded-2xl px-5 py-3 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
-        <div class="flex items-center gap-4">
-            <span class="font-bold text-slate-600" x-text="activeTab === 'picking' ? 'Chế độ soạn kho:' : 'Chế độ kiểm kho:'"></span>
+    <div class="bg-white rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-xs"
+         :class="mobileView === 'detail' ? 'hidden lg:flex' : 'flex'">
+        <div class="flex items-center gap-3">
+            <span class="font-bold text-slate-600 hidden sm:inline" x-text="activeTab === 'picking' ? 'Chế độ soạn:' : 'Chế độ kiểm:'"></span>
             
-            <div class="inline-flex rounded-xl p-0.5 bg-slate-100 border border-slate-200">
+            <div class="inline-flex rounded-xl p-0.5 bg-slate-100 border border-slate-200 w-full sm:w-auto">
                 <button type="button" @click="fulfillmentMode = 'single'"
-                        class="px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                        class="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer text-xs"
                         :class="fulfillmentMode === 'single' ? 'bg-white text-sky-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'">
                     <i class="fa-solid fa-list-check text-xs"></i>
-                    <span>Tách từng đơn lẻ</span>
+                    <span>Từng đơn lẻ</span>
                 </button>
                 <button type="button" @click="fulfillmentMode = 'batch'"
-                        class="px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                        class="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer text-xs"
                         :class="fulfillmentMode === 'batch' ? 'bg-white text-sky-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'">
                     <i class="fa-solid fa-layer-group text-xs"></i>
-                    <span x-text="activeTab === 'picking' ? 'Gộp nhiều đơn (Soạn tổng hợp)' : 'Gộp nhiều đơn (Kiểm tra tổng hợp)'"></span>
+                    <span x-text="activeTab === 'picking' ? 'Gộp nhiều đơn' : 'Kiểm tra gộp'"></span>
                 </button>
             </div>
         </div>
 
         <!-- Right Label: Viewing Order Code (single) OR Batch selection count (batch) -->
-        <div x-show="fulfillmentMode === 'single' && activeOrder" class="text-slate-500 font-medium">
-            <span x-text="activeTab === 'picking' ? 'Đang xem chi tiết đơn: ' : 'Đang kiểm tra chi tiết đơn: '"></span>
+        <div x-show="fulfillmentMode === 'single' && activeOrder" class="text-slate-500 font-medium hidden sm:block">
+            <span x-text="activeTab === 'picking' ? 'Đang xem đơn: ' : 'Đang kiểm đơn: '"></span>
             <span class="font-mono font-black text-slate-800 text-sm bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200" x-text="activeOrder ? activeOrder.order_code : ''"></span>
         </div>
         <div x-show="fulfillmentMode === 'batch'" class="text-slate-600 font-medium">
-            <span class="px-3 py-1.5 rounded-xl bg-sky-50 text-sky-800 border border-sky-200 font-bold text-xs shadow-2xs"
+            <span class="px-2.5 py-1 rounded-xl bg-sky-50 text-sky-800 border border-sky-200 font-bold text-xs shadow-2xs"
                   x-text="'Đang chọn gộp: ' + selectedBatchOrderIds.length + ' / ' + filteredOrders.length + ' đơn'"></span>
         </div>
     </div>
@@ -248,7 +254,7 @@
         <!-- ========================================== -->
         <!-- LEFT COLUMN: Order List Sidebar (3.5 cols) -->
         <!-- ========================================== -->
-        <div class="lg:col-span-4 xl:col-span-3 space-y-3">
+        <div class="lg:col-span-4 xl:col-span-3 space-y-3" :class="mobileView === 'detail' ? 'hidden lg:block' : 'block'">
             <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs space-y-3.5">
                 
                 <!-- Sidebar Header -->
@@ -341,8 +347,17 @@
                     </button>
                 </div>
 
+                <!-- Nút chuyển sang xem sản phẩm gộp trên mobile -->
+                <div x-show="fulfillmentMode === 'batch'" class="lg:hidden pt-1 pb-1">
+                    <button type="button" @click="mobileView = 'detail'; $nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }))"
+                            class="w-full py-2.5 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-sky-600/30 transition-all cursor-pointer">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                        <span x-text="'Xem chi tiết sản phẩm gom (' + selectedBatchOrderIds.length + ' đơn) →'"></span>
+                    </button>
+                </div>
+
                 <!-- Order Cards Scrollable List -->
-                <div class="space-y-2.5 max-h-[calc(100vh-330px)] overflow-y-auto pr-1">
+                <div class="space-y-2.5 lg:max-h-[calc(100vh-330px)] lg:overflow-y-auto pr-1">
                     <template x-for="ord in filteredOrders" :key="ord.id">
                         <div @click="fulfillmentMode === 'batch' ? toggleBatchOrder(ord.id) : selectOrder(ord)"
                              class="p-3.5 rounded-2xl border transition-all cursor-pointer relative space-y-2"
@@ -457,6 +472,15 @@
                                             </template>
                                         </div>
                                     </template>
+
+                                    <!-- Mobile Click Action Indicator -->
+                                    <div x-show="fulfillmentMode === 'single'" class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] lg:hidden">
+                                        <span class="text-slate-400 font-medium">Chạm để soạn sản phẩm</span>
+                                        <span class="font-bold text-sky-600 flex items-center gap-1">
+                                            <span>Xem sản phẩm</span>
+                                            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -473,7 +497,32 @@
         <!-- ========================================== -->
         <!-- RIGHT COLUMN: Order Detail Workspace (8.5 cols) -->
         <!-- ========================================== -->
-        <div class="lg:col-span-8 xl:col-span-9">
+        <div class="lg:col-span-8 xl:col-span-9" :class="mobileView === 'list' ? 'hidden lg:block' : 'block'">
+
+            <!-- Mobile Sticky Header Navigation (Quay lại danh sách đơn trên điện thoại) -->
+            <div class="lg:hidden mb-3.5 sticky top-2 z-30">
+                <button type="button" @click="mobileView = 'list'; $nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }))"
+                        class="w-full py-2.5 px-3.5 rounded-2xl bg-slate-900/95 hover:bg-slate-900 active:bg-slate-950 backdrop-blur-md text-white font-bold text-xs flex items-center justify-between shadow-lg shadow-slate-900/25 active:scale-[0.99] transition-all cursor-pointer border border-slate-700/60">
+                    <span class="flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-left text-sky-400 text-sm"></i>
+                        <span class="font-extrabold tracking-tight">Danh sách đơn hàng</span>
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <template x-if="fulfillmentMode === 'single' && activeOrder">
+                            <span class="px-2 py-0.5 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-400/30 font-mono text-[11px] font-black"
+                                  x-text="activeOrder.order_code"></span>
+                        </template>
+                        <template x-if="fulfillmentMode === 'batch'">
+                            <span class="px-2 py-0.5 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-400/30 font-mono text-[11px] font-black"
+                                  x-text="selectedBatchOrderIds.length + ' đơn gộp'"></span>
+                        </template>
+                        <span class="text-slate-400 text-[11px] flex items-center gap-1">
+                            <span>Đổi đơn</span>
+                            <i class="fa-solid fa-chevron-right text-[9px]"></i>
+                        </span>
+                    </div>
+                </button>
+            </div>
 
             <!-- Active Order Single Mode -->
             <template x-if="fulfillmentMode === 'single' && activeOrder">
@@ -484,135 +533,86 @@
                     <!-- =============================================== -->
                     <div x-show="activeTab === 'picking'" class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden mt-0">
                         
-                        <!-- Panel Header -->
-                        <div class="px-5 py-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <!-- Panel Header (Tối giản) -->
+                        <div class="px-3.5 py-3 sm:px-5 sm:py-3.5 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                             <div>
-                                <h3 class="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2 flex-wrap">
+                                <h3 class="text-sm sm:text-base font-black text-slate-900 tracking-tight flex items-center gap-1.5 flex-wrap">
                                     <span class="text-sky-700 font-mono" x-text="activeOrder.order_code"></span>
                                     <template x-if="activeOrder.is_consignment">
-                                        <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-xs inline-flex items-center gap-1">
+                                        <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-[10px] inline-flex items-center gap-1">
                                             <i class="fa-solid fa-boxes-stacked text-amber-600"></i>
-                                            <span>Đơn Hàng Ôm (Xuất NVKD)</span>
+                                            <span>Hàng Ôm</span>
                                         </span>
                                     </template>
-                                    <span class="text-slate-400">|</span>
-                                    <span x-text="activeOrder.customer_name"></span>
+                                    <span class="text-slate-300">|</span>
+                                    <span x-text="activeOrder.customer_name" class="font-bold"></span>
                                 </h3>
-                                <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-500 mt-1">
-                                    <span>Địa điểm kho: <strong class="text-slate-700 font-bold" x-text="activeOrder.warehouse || 'Kho Tổng Mê Linh (MQ)'"></strong></span>
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500 mt-1">
+                                    <span>Kho: <strong class="text-slate-700" x-text="activeOrder.warehouse || 'Kho Tổng Mê Linh (MQ)'"></strong></span>
                                     <span>·</span>
-                                    <span>Ngày lên đơn: <strong class="text-slate-700 font-bold font-mono" x-text="formatDate(activeOrder.created_at)"></strong></span>
+                                    <span>Lên đơn: <strong class="text-slate-700 font-mono" x-text="formatDate(activeOrder.created_at)"></strong></span>
                                     <template x-if="activeOrder.delivery_date">
-                                        <div class="flex items-center gap-1.5">
-                                            <span>·</span>
-                                            <span class="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-900 px-2 py-0.5 rounded-lg border border-emerald-200">
-                                                <i class="fa-solid fa-truck-fast text-emerald-600 text-xs"></i>
-                                                <span class="font-bold">Ngày giao hàng:</span>
-                                                <strong class="font-mono font-bold text-emerald-950" x-text="formatDate(activeOrder.delivery_date)"></strong>
-                                            </span>
-                                        </div>
+                                        <span>· Giao: <strong class="text-emerald-700 font-mono font-bold" x-text="formatDate(activeOrder.delivery_date)"></strong></span>
                                     </template>
                                     <template x-if="activeOrder.picking_date">
-                                        <div class="flex items-center gap-1.5">
-                                            <span>·</span>
-                                            <span class="inline-flex items-center gap-1.5 bg-amber-50 text-amber-900 px-2 py-0.5 rounded-lg border border-amber-200">
-                                                <i class="fa-solid fa-calendar-day text-amber-600 text-xs"></i>
-                                                <span class="font-bold">Ngày soạn hàng:</span>
-                                                <strong class="font-mono font-bold text-amber-950" x-text="formatDate(activeOrder.picking_date)"></strong>
-                                            </span>
-                                        </div>
-                                    </template>
-                                    <template x-if="!activeOrder.picking_date">
-                                        <div class="flex items-center gap-1.5">
-                                            <span>·</span>
-                                            <span class="inline-flex items-center gap-1.5 bg-rose-50 text-rose-800 px-2 py-0.5 rounded-lg border border-rose-200">
-                                                <i class="fa-solid fa-calendar-xmark text-rose-600 text-xs"></i>
-                                                <span class="font-bold">Chưa có ngày soạn hàng</span>
-                                            </span>
-                                        </div>
+                                        <span>· Soạn: <strong class="text-amber-800 font-mono font-bold" x-text="formatDate(activeOrder.picking_date)"></strong></span>
                                     </template>
                                 </div>
                             </div>
 
                             <!-- Action Buttons -->
-                            <div class="flex items-center gap-2.5 shrink-0">
+                            <div class="flex items-center gap-2 shrink-0">
                                 <!-- Bốc đủ nhanh -->
                                 <button type="button" @click="quickPickAllActiveOrder()"
-                                        class="px-3.5 py-2 rounded-xl text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-300 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs">
-                                    <i class="fa-solid fa-bolt-lightning text-sky-600"></i>
-                                    <span x-text="'Bốc đủ nhanh (' + activeOrder.items.length + ')'"></span>
+                                        class="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs">
+                                    <i class="fa-solid fa-bolt-lightning text-sky-600 text-xs"></i>
+                                    <span x-text="'Bốc đủ (' + activeOrder.items.length + ')'"></span>
                                 </button>
 
                                 <!-- Hoàn Tất Bốc & Chuyển Kiểm -->
                                 <button type="button" @click="completePickingAndSendToQc()"
-                                        class="px-4 py-2 rounded-xl text-xs font-black text-white bg-amber-500 hover:bg-amber-600 transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-amber-500/20">
-                                    <i class="fa-solid fa-circle-check"></i>
-                                    <span>Hoàn Tất Bốc & Chuyển Kiểm</span>
+                                        class="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-black text-white bg-amber-500 hover:bg-amber-600 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/20">
+                                    <i class="fa-solid fa-circle-check text-xs"></i>
+                                    <span>Hoàn Tất Bốc</span>
                                 </button>
                             </div>
                         </div>
 
-                        <!-- GROUP-LEVEL PROGRESS TRACKER (Tiến độ theo từng nhóm bốc hàng) -->
+                        <!-- GROUP-LEVEL PROGRESS TRACKER (Tiến độ theo từng nhóm bốc hàng - Tối giản) -->
                         <template x-if="activeOrder && activeOrder.groups_progress && activeOrder.groups_progress.length > 0">
-                            <div class="m-5 mb-1 p-4 rounded-2xl bg-gradient-to-r from-slate-50 via-sky-50/40 to-slate-50 border border-slate-200 shadow-2xs space-y-3">
-                                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-200/80 pb-2.5">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                                            <i class="fa-solid fa-users-gear text-sm"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
-                                                <span>Tiến Độ Theo Nhóm Bốc Hàng & Kiểm Hàng</span>
-                                                <span class="text-[10px] font-bold text-slate-400 font-mono" x-text="'(' + activeOrder.groups_progress.length + ' nhóm phụ trách)'"></span>
-                                            </h4>
-                                            <p class="text-[11px] text-slate-500 font-medium">
-                                                Soạn & kiểm hàng theo loại SP (ví dụ: phụ kiện bốc xong là kiểm được ngay, không cần chờ loại khác). Đơn hàng hoàn tất khi <strong class="text-sky-700 font-bold">100% các nhóm</strong> hoàn thành.
-                                            </p>
-                                        </div>
+                            <div class="m-3 sm:m-4 mb-1 p-2.5 sm:p-3 rounded-xl bg-slate-50 border border-slate-200/90 shadow-2xs space-y-2">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="flex items-center gap-1.5">
+                                        <i class="fa-solid fa-users-gear text-sky-600 text-xs"></i>
+                                        <span class="text-xs font-black text-slate-800 uppercase tracking-wide">Tiến độ nhóm:</span>
+                                        <span class="text-[10px] font-bold text-slate-400 font-mono" x-text="'(' + activeOrder.groups_progress.length + ' nhóm)'"></span>
                                     </div>
                                     
                                     <!-- Overall Completion Status Badge -->
                                     <div class="shrink-0">
-                                        <template x-if="activeTab === 'picking'">
-                                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black border shadow-2xs transition-all"
-                                                  :class="isAllGroupsPickingCompleted(activeOrder) ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse'">
-                                                <i class="fa-solid" :class="isAllGroupsPickingCompleted(activeOrder) ? 'fa-circle-check text-emerald-600' : 'fa-hourglass-half text-amber-600'"></i>
-                                                <span x-text="isAllGroupsPickingCompleted(activeOrder) ? '100% CÁC NHÓM ĐÃ BỐC XONG' : 'ĐANG CHỜ CÁC NHÓM HOÀN TẤT'"></span>
-                                            </span>
-                                        </template>
-                                        <template x-if="activeTab === 'qc'">
-                                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black border shadow-2xs transition-all"
-                                                  :class="isAllGroupsQcCompleted(activeOrder) ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse'">
-                                                <i class="fa-solid" :class="isAllGroupsQcCompleted(activeOrder) ? 'fa-shield-check text-emerald-600' : 'fa-hourglass-half text-amber-600'"></i>
-                                                <span x-text="isAllGroupsQcCompleted(activeOrder) ? '100% CÁC NHÓM ĐÃ KIỂM ĐẠT QC' : 'ĐANG CHỜ CÁC NHÓM KIỂM HÀNG'"></span>
-                                            </span>
-                                        </template>
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border shadow-2xs transition-all"
+                                              :class="isAllGroupsPickingCompleted(activeOrder) ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300'">
+                                            <i class="fa-solid" :class="isAllGroupsPickingCompleted(activeOrder) ? 'fa-circle-check text-emerald-600' : 'fa-hourglass-half text-amber-600'"></i>
+                                            <span x-text="isAllGroupsPickingCompleted(activeOrder) ? '100% ĐÃ XONG' : 'ĐANG CHỜ HOÀN TẤT'"></span>
+                                        </span>
                                     </div>
                                 </div>
 
-                                <!-- Cards for each StaffGroup -->
-                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                                <!-- Cards for each StaffGroup: Compact Chips -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
                                     <template x-for="grp in activeOrder.groups_progress" :key="grp.group_id">
-                                        <div class="p-3 rounded-xl border bg-white shadow-2xs space-y-2 transition-all"
+                                        <div class="px-2.5 py-1.5 rounded-lg border bg-white flex items-center justify-between text-xs gap-2 shadow-2xs"
                                              :class="(activeTab === 'picking' ? grp.is_picking_completed : grp.is_qc_completed) ? 'border-emerald-200 bg-emerald-50/20' : (grp.has_shortage ? 'border-rose-200 bg-rose-50/20' : 'border-amber-200 bg-amber-50/20')">
-                                            
-                                            <div class="flex items-center justify-between gap-1.5">
-                                                <div class="font-bold text-xs text-slate-800 truncate" x-text="grp.group_name"></div>
-                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black border shrink-0"
-                                                      :class="(activeTab === 'picking' ? grp.is_picking_completed : grp.is_qc_completed) ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : (grp.has_shortage ? 'bg-rose-100 text-rose-700 border-rose-300' : 'bg-amber-100 text-amber-800 border-amber-300')">
-                                                    <span x-text="activeTab === 'picking' ? (grp.is_picking_completed ? '✓ Đã bốc đủ' : (grp.has_shortage ? 'Báo thiếu' : 'Đang bốc')) : (grp.is_qc_completed ? '✓ Đã kiểm' : 'Chờ kiểm')"></span>
-                                                </span>
+                                            <div class="flex items-center gap-1.5 min-w-0">
+                                                <span class="w-1.5 h-1.5 rounded-full shrink-0"
+                                                      :class="(activeTab === 'picking' ? grp.is_picking_completed : grp.is_qc_completed) ? 'bg-emerald-500' : (grp.has_shortage ? 'bg-rose-500' : 'bg-amber-500')"></span>
+                                                <span class="font-bold text-slate-800 truncate text-[11px]" x-text="grp.group_name"></span>
                                             </div>
-
-                                            <div class="text-[11px] text-slate-500 flex items-center justify-between">
-                                                <span>Trưởng nhóm: <strong class="text-slate-700" x-text="grp.leader_name || 'Admin Kho'"></strong></span>
-                                                <span class="font-mono font-bold text-slate-700" x-text="(activeTab === 'picking' ? grp.picked_count : grp.checked_count) + '/' + grp.items_count + ' món'"></span>
-                                            </div>
-
-                                            <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                <div class="h-full rounded-full transition-all duration-300"
-                                                     :class="(activeTab === 'picking' ? grp.is_picking_completed : grp.is_qc_completed) ? 'bg-emerald-500' : (grp.has_shortage ? 'bg-rose-500' : 'bg-amber-500')"
-                                                     :style="'width: ' + (activeTab === 'picking' ? grp.picking_progress_percent : grp.qc_progress_percent) + '%'"></div>
+                                            <div class="flex items-center gap-1.5 shrink-0 font-mono text-[11px]">
+                                                <span class="font-bold text-slate-700" x-text="(activeTab === 'picking' ? grp.picked_count : grp.checked_count) + '/' + grp.items_count"></span>
+                                                <span class="px-1.5 py-0.2 rounded text-[9px] font-black"
+                                                      :class="(activeTab === 'picking' ? grp.is_picking_completed : grp.is_qc_completed) ? 'bg-emerald-100 text-emerald-700' : (grp.has_shortage ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800')"
+                                                      x-text="activeTab === 'picking' ? (grp.is_picking_completed ? 'Xong' : (grp.has_shortage ? 'Thiếu' : 'Bốc')) : (grp.is_qc_completed ? 'Đạt' : 'Chờ')"></span>
                                             </div>
                                         </div>
                                     </template>
@@ -642,11 +642,19 @@
                                         </div>
                                     </div>
                                 </div>
-                                <button type="button" @click="reportShortageActiveOrder()"
-                                        class="px-5 py-2.5 bg-[#e11d48] hover:bg-rose-700 text-white text-xs font-bold rounded-full shrink-0 cursor-pointer shadow-md transition-all flex items-center gap-2">
-                                    <i class="fa-solid fa-bell"></i>
-                                    <span>Báo thiếu hàng</span>
-                                </button>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <button type="button" @click="autoSplitBackOrderActiveOrder()"
+                                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-full shrink-0 cursor-pointer shadow-md transition-all flex items-center gap-2"
+                                            title="Tự động cắt đơn gốc theo số thực bốc và sinh đơn giao sau cho phần thiếu">
+                                        <i class="fa-solid fa-code-fork"></i>
+                                        <span>Tự động tách đơn nợ (Giao sau)</span>
+                                    </button>
+                                    <button type="button" @click="reportShortageActiveOrder()"
+                                            class="px-4 py-2 bg-[#e11d48] hover:bg-rose-700 text-white text-xs font-bold rounded-full shrink-0 cursor-pointer shadow-md transition-all flex items-center gap-2">
+                                        <i class="fa-solid fa-bell"></i>
+                                        <span>Báo thiếu hàng</span>
+                                    </button>
+                                </div>
                             </div>
                         </template>
 
@@ -675,14 +683,10 @@
                         </div>
 
                         <!-- Info Banner & Staff Filter & Quick Assign -->
-                        <div class="px-5 py-3 bg-amber-50/70 border-b border-amber-200/80 flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs">
-                            <div class="flex items-center gap-2 text-amber-900 font-bold">
-                                <i class="fa-solid fa-lock text-amber-600" x-show="isOrderLockedForPicking(activeOrder)"></i>
-                                <span x-show="isOrderLockedForPicking(activeOrder)">Đơn hàng đã kiểm xong - Đã khóa người bốc</span>
-                                <span x-show="!isOrderLockedForPicking(activeOrder)" class="text-amber-800 font-semibold flex items-center gap-1.5">
-                                    <i class="fa-solid fa-truck-ramp-box text-amber-600"></i>
-                                    <span>Tách soạn theo loại SP • Trưởng nhóm phân công người soạn, thành viên tự nhận mặt hàng</span>
-                                </span>
+                        <div class="px-3.5 py-2 sm:px-5 sm:py-2.5 bg-amber-50/70 border-b border-amber-200/80 flex flex-col md:flex-row md:items-center md:justify-between gap-2.5 text-xs">
+                            <div class="flex items-center gap-2 text-amber-900 font-bold" x-show="isOrderLockedForPicking(activeOrder)">
+                                <i class="fa-solid fa-lock text-amber-600"></i>
+                                <span>Đơn hàng đã kiểm xong - Đã khóa người bốc</span>
                             </div>
 
                             <!-- Right Controls: Phân công nhanh & Lọc người soạn -->
@@ -805,8 +809,8 @@
                                         </div>
                                     </div>
 
-                                    <!-- Table for this category -->
-                                    <div class="overflow-x-auto">
+                                    <!-- Table for this category (Desktop) -->
+                                    <div class="hidden lg:block overflow-x-auto">
                                         <table class="w-full text-left text-xs border-collapse min-w-[950px]">
                                             <thead>
                                                 <tr class="bg-slate-50/80 text-slate-700 font-bold text-[11px] uppercase tracking-wider border-b border-slate-200">
@@ -968,7 +972,7 @@
                                                     <!-- If item has gift quantity, display breakdown badge -->
                                                     <template x-if="Number(it.gift_quantity || 0) > 0">
                                                         <div class="mt-0.5 inline-block px-1.5 py-0.5 rounded bg-amber-100 border border-amber-300 text-amber-900 font-bold text-[10px]">
-                                                            <span x-text="Number(it.quantity) + ' bán + ' + Number(it.gift_quantity) + ' tặng'"></span>
+                                                             <span x-text="Number(it.quantity) + ' bán + ' + Number(it.gift_quantity) + ' tặng'"></span>
                                                         </div>
                                                     </template>
                                                 </td>
@@ -1052,6 +1056,176 @@
                                     </tbody>
                                 </table>
                             </div>
+
+                            <!-- Cards for this category (Mobile: Thẻ sản phẩm tối ưu điện thoại) -->
+                            <div class="block lg:hidden p-2.5 space-y-2.5">
+                                <template x-for="(it, idx) in catGroup.items" :key="it.id || (it.sku + '_' + idx)">
+                                    <div class="p-3 rounded-xl border transition-all space-y-2.5"
+                                         :class="isItemShort(it) 
+                                            ? 'bg-rose-50/75 border-rose-300 ring-1 ring-rose-300' 
+                                            : (it._justModified 
+                                                ? 'bg-amber-50/90 border-amber-300 ring-1 ring-amber-300' 
+                                                : (it.is_picked ? 'bg-emerald-50/40 border-emerald-300' : 'bg-white border-slate-200 shadow-2xs'))">
+                                        
+                                        <!-- Row 1: Checkbox + SKU + Badge SL sửa + ĐVT + Trạng thái -->
+                                        <div class="flex items-start justify-between gap-2">
+                                            <div class="flex items-center gap-2">
+                                                <input type="checkbox" x-model="it.is_picked"
+                                                       :disabled="isOrderLockedForPicking(activeOrder) || !canUserPickItem(it)"
+                                                       @change="handlePickCheckChange(it)"
+                                                       class="w-5 h-5 rounded text-sky-600 focus:ring-0 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                                                <div class="flex items-center gap-1.5 flex-wrap">
+                                                    <span class="font-mono font-bold text-sky-700 text-xs" x-text="it.sku"></span>
+                                                    <template x-if="it._justModified">
+                                                        <span class="px-1.5 py-0.5 rounded bg-rose-600 text-white font-black text-[9px] animate-pulse flex items-center gap-1">
+                                                            <i class="fa-solid fa-triangle-exclamation text-[8px]"></i>
+                                                            <span>Sửa SL</span>
+                                                        </span>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center gap-1.5 shrink-0">
+                                                <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold text-[10px] uppercase font-mono" x-text="it.unit || 'CÂY'"></span>
+                                                <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border"
+                                                      :class="getItemStatusBadgeClass(it)"
+                                                      x-text="(Number(it.picked_qty || 0) >= (Number(it.quantity || 0) + Number(it.gift_quantity || 0)) && (Number(it.quantity || 0) + Number(it.gift_quantity || 0)) > 0) ? 'Đủ hàng' : (it.item_status || 'Chờ bốc')"></span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Row 2: Product Name -->
+                                        <div class="text-xs font-bold text-slate-800 leading-snug" x-text="it.name"></div>
+
+                                        <!-- Row 3: Kho xuất & Người soạn hàng -->
+                                        <div class="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
+                                            <div class="text-[11px] text-slate-500 flex items-center gap-1 truncate">
+                                                <i class="fa-solid fa-warehouse text-slate-400 text-[10px]"></i>
+                                                <span class="truncate" x-text="activeOrder.warehouse || 'Kho Tổng Mê Linh (MQ)'"></span>
+                                            </div>
+
+                                            <!-- Người soạn -->
+                                            <div>
+                                                <!-- Case 1: Trưởng nhóm / Admin phân công -->
+                                                <template x-if="canAssignItem(it)">
+                                                    <div class="flex items-center gap-1.5">
+                                                        <template x-if="isItemStaffLocked(it)">
+                                                            <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-950 border border-amber-300">
+                                                                <i class="fa-solid fa-user-check text-[10px] text-amber-600"></i>
+                                                                <span x-text="it.assigned_staff + (it.assigned_staff === currentUserName ? ' (Tôi)' : '')"></span>
+                                                                <button type="button" x-show="!isOrderLockedForPicking(activeOrder)"
+                                                                        @click="it._forceUnlock = true"
+                                                                        class="text-[10px] text-sky-700 underline font-bold ml-1">Đổi</button>
+                                                            </div>
+                                                        </template>
+                                                        <template x-if="!isItemStaffLocked(it)">
+                                                            <select :value="it.assigned_staff || ''"
+                                                                    @change="updateItemAssignedStaff(it, $event.target.value)"
+                                                                    class="w-full text-xs font-bold p-1 rounded border border-amber-300 bg-amber-50/60 text-amber-950">
+                                                                <option value="">-- Chỉ định người bốc --</option>
+                                                                <template x-for="st in availableStaffForCategory(it.category_id)" :key="st.id">
+                                                                    <option :value="st.name" :selected="it.assigned_staff === st.name" x-text="st.name"></option>
+                                                                </template>
+                                                            </select>
+                                                        </template>
+                                                    </div>
+                                                </template>
+
+                                                <!-- Case 2: Thành viên tự nhận -->
+                                                <template x-if="!canAssignItem(it)">
+                                                    <div>
+                                                        <template x-if="!it.assigned_staff">
+                                                            <button type="button" @click="claimItem(it)"
+                                                                    :disabled="isOrderLockedForPicking(activeOrder)"
+                                                                    class="px-2 py-1 rounded bg-amber-500 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs">
+                                                                <i class="fa-solid fa-hand text-[10px]"></i>
+                                                                <span>Tự nhận</span>
+                                                            </button>
+                                                        </template>
+                                                        <template x-if="it.assigned_staff && it.assigned_staff === currentUserName">
+                                                            <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[11px] font-bold border border-emerald-300">
+                                                                <i class="fa-solid fa-check text-[10px]"></i>
+                                                                <span>Tôi phụ trách</span>
+                                                                <button type="button" x-show="!isOrderLockedForPicking(activeOrder) && !it.is_picked && Number(it.picked_qty || 0) === 0"
+                                                                        @click="unclaimItem(it)" class="text-[9px] text-rose-600 underline ml-1 font-semibold">Hủy</button>
+                                                            </div>
+                                                        </template>
+                                                        <template x-if="it.assigned_staff && it.assigned_staff !== currentUserName">
+                                                            <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[11px] font-medium border border-slate-200" x-text="it.assigned_staff"></span>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+
+                                        <!-- Row 4: Quantities (Cần bốc vs Đã bốc) -->
+                                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 bg-slate-50/80 -mx-3 -mb-3 p-2.5 rounded-b-xl">
+                                            <!-- Cần bốc -->
+                                            <div class="flex items-center gap-1.5 text-xs">
+                                                <span class="text-slate-500 font-semibold">Cần:</span>
+                                                <span class="font-mono font-black text-slate-900 text-sm" x-text="Number(it.quantity || 0) + Number(it.gift_quantity || 0)"></span>
+                                                <template x-if="Number(it.gift_quantity || 0) > 0">
+                                                    <span class="text-[9px] font-bold text-amber-800 bg-amber-100 px-1 py-0.2 rounded"
+                                                          x-text="'(' + it.quantity + '+' + it.gift_quantity + ' tặng)'"></span>
+                                                </template>
+                                            </div>
+
+                                            <!-- Đã bốc input + button Đủ -->
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-slate-500 font-semibold text-xs">Đã bốc:</span>
+                                                <template x-if="canUserPickItem(it)">
+                                                    <div class="flex items-center gap-1">
+                                                        <input type="number" step="any" min="0"
+                                                               :max="Number(it.quantity || 0) + Number(it.gift_quantity || 0)"
+                                                               x-model.number="it.picked_qty"
+                                                               @input="validateAndSavePickedQty(it)"
+                                                               class="w-14 p-1 text-center font-mono font-bold text-xs rounded-lg border bg-white focus:outline-none"
+                                                               :class="isItemShort(it) ? 'border-rose-400 text-rose-700 bg-rose-50/50 font-black' : 'border-slate-300 text-slate-900 focus:border-sky-500'">
+                                                        <button type="button" @click="pickFullItem(it)"
+                                                                class="px-2.5 py-1 bg-sky-600 active:bg-sky-700 text-white font-black text-xs rounded-lg shadow-2xs">
+                                                            Đủ
+                                                        </button>
+                                                    </div>
+                                                </template>
+                                                <template x-if="!canUserPickItem(it)">
+                                                    <span class="px-2 py-0.5 bg-slate-200 text-slate-600 font-mono font-bold text-xs rounded flex items-center gap-1">
+                                                        <i class="fa-solid fa-lock text-[9px]"></i>
+                                                        <span x-text="Number(it.picked_qty || 0)"></span>
+                                                    </span>
+                                                </template>
+                                            </div>
+                                        </div>
+
+                                        <!-- Row 5: Shortage reason & report button if short -->
+                                        <template x-if="isItemShort(it)">
+                                            <div class="mt-2 pt-2 border-t border-rose-200 space-y-1.5">
+                                                <div class="flex items-center justify-between text-[11px]">
+                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-800 text-[10px] border border-rose-300">
+                                                        <i class="fa-solid fa-triangle-exclamation text-[9px]"></i>
+                                                        <span x-text="'Thiếu ' + getShortageQty(it) + ' ' + (it.unit || 'cây').toLowerCase()"></span>
+                                                    </span>
+                                                    <button type="button" @click="reportShortageItem(it)"
+                                                            class="text-[10px] text-rose-600 font-bold underline flex items-center gap-1">
+                                                        <i class="fa-solid fa-bell text-[9px]"></i>
+                                                        <span>Báo thiếu</span>
+                                                    </button>
+                                                </div>
+                                                <select x-model="it.shortage_reason"
+                                                        @change="saveItemShortageReason(it)"
+                                                        class="w-full p-1 text-[11px] font-semibold rounded-lg border border-rose-300 bg-white text-slate-800">
+                                                    <option value="Hết hàng trên kệ kho">Hết hàng trên kệ kho</option>
+                                                    <option value="Hàng lỗi / vỡ / hỏng">Hàng lỗi / vỡ / hỏng</option>
+                                                    <option value="Không tìm thấy hàng trong kho">Không tìm thấy hàng trong kho</option>
+                                                    <option value="Chờ lô hàng nhập mới">Chờ lô hàng nhập mới</option>
+                                                    <option value="Lý do khác">Lý do khác</option>
+                                                </select>
+                                            </div>
+                                        </template>
+
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
                         </div>
                     </template>
                 </div>
@@ -1063,125 +1237,95 @@
                     <!-- =============================================== -->
                     <div x-show="activeTab === 'qc'" class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden mt-0">
                         
-                        <!-- Panel Header -->
-                        <div class="px-5 py-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <!-- Panel Header (Tối giản) -->
+                        <div class="px-3.5 py-3 sm:px-5 sm:py-3.5 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                             <div>
-                                <h3 class="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2 flex-wrap">
+                                <h3 class="text-sm sm:text-base font-black text-slate-900 tracking-tight flex items-center gap-1.5 flex-wrap">
                                     <span class="text-emerald-700 font-mono" x-text="activeOrder.order_code"></span>
                                     <template x-if="activeOrder.is_consignment">
-                                        <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-xs inline-flex items-center gap-1">
+                                        <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-[10px] inline-flex items-center gap-1">
                                             <i class="fa-solid fa-boxes-stacked text-amber-600"></i>
-                                            <span>Đơn Hàng Ôm (Xuất NVKD)</span>
+                                            <span>Hàng Ôm</span>
                                         </span>
                                     </template>
-                                    <span class="text-slate-400">|</span>
-                                    <span x-text="activeOrder.customer_name"></span>
-                                    <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                                        Đang kiểm hàng
+                                    <span class="text-slate-300">|</span>
+                                    <span x-text="activeOrder.customer_name" class="font-bold"></span>
+                                    <span class="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                        Đang kiểm
                                     </span>
                                 </h3>
-                                <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-500 mt-1">
-                                    <span>Kho hàng: <strong class="text-slate-700 font-bold" x-text="activeOrder.warehouse || 'Kho Tổng Mê Linh (MQ)'"></strong></span>
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500 mt-1">
+                                    <span>Kho: <strong class="text-slate-700" x-text="activeOrder.warehouse || 'Kho Tổng Mê Linh (MQ)'"></strong></span>
                                     <span>·</span>
-                                    <span>Tiến độ kiểm: <strong class="text-emerald-700 font-bold font-mono" x-text="getProgressRatio(activeOrder)"></strong></span>
+                                    <span>Tiến độ: <strong class="text-emerald-700 font-bold font-mono" x-text="getProgressRatio(activeOrder)"></strong></span>
                                     <template x-if="activeOrder.delivery_date">
-                                        <div class="flex items-center gap-1.5">
-                                            <span>·</span>
-                                            <span class="inline-flex items-center gap-1 text-emerald-800 font-medium">
-                                                <i class="fa-solid fa-truck-fast text-emerald-600 text-[10px]"></i>
-                                                <span>Ngày giao: <strong class="font-mono font-bold" x-text="formatDate(activeOrder.delivery_date)"></strong></span>
-                                            </span>
-                                        </div>
-                                    </template>
-                                    <template x-if="activeOrder.picking_date">
-                                        <div class="flex items-center gap-1.5">
-                                            <span>·</span>
-                                            <span>Ngày soạn: <strong class="text-amber-800 font-bold font-mono" x-text="formatDate(activeOrder.picking_date)"></strong></span>
-                                        </div>
+                                        <span>· Giao: <strong class="text-emerald-700 font-mono font-bold" x-text="formatDate(activeOrder.delivery_date)"></strong></span>
                                     </template>
                                 </div>
                             </div>
 
                             <!-- Button Xác nhận QC hoàn tất -->
                             <button type="button" @click="confirmQcAndReadyForDelivery()"
-                                    class="px-4 py-2.5 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-emerald-600/20">
-                                <i class="fa-solid fa-shield-check"></i>
-                                <span>Xác Nhận Đã Kiểm & Bàn Giao Xe Xuất Kho</span>
+                                    class="px-3.5 py-1.5 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/20">
+                                <i class="fa-solid fa-shield-check text-xs"></i>
+                                <span>Xác Nhận Đã Kiểm & Bàn Giao Xe</span>
                             </button>
                         </div>
 
-                        <!-- Sub-bar: QC Inspector & Batch Action -->
-                        <div class="px-5 py-3 bg-slate-50/90 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
-                            <div class="flex items-center gap-2">
-                                <span class="font-bold text-slate-600">
-                                    <i class="fa-solid fa-user-shield text-slate-400 mr-1"></i>Người kiểm hàng (QC/Thủ kho):
+                        <!-- Sub-bar: QC Inspector & Batch Action (Tối giản) -->
+                        <div class="px-3.5 py-2.5 sm:px-5 sm:py-3 bg-slate-50/90 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-xs">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-bold text-slate-600 text-xs">
+                                    <i class="fa-solid fa-user-shield text-slate-400 mr-1"></i>QC:
                                 </span>
-                                <select x-model="qcInspector" class="p-1.5 bg-white rounded-lg border border-slate-300 text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
+                                <select x-model="qcInspector" class="p-1 bg-white rounded-lg border border-slate-300 text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
                                     @foreach($staff as $st)
                                         <option value="{{ $st->name }} ({{ $st->department }})">{{ $st->name }} ({{ $st->department }})</option>
                                     @endforeach
                                 </select>
-                                <span class="ml-2 text-slate-400 font-medium">· Đơn đã kiểm xong - Đã khóa người kiểm</span>
                             </div>
 
                             <!-- Button Tích kiểm tất cả -->
                             <button type="button" @click="qcCheckAllActiveOrder()"
-                                    class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs">
-                                <i class="fa-solid fa-square-check text-emerald-600"></i>
+                                    class="px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs">
+                                <i class="fa-solid fa-square-check text-emerald-600 text-xs"></i>
                                 <span>Tích kiểm tất cả</span>
                             </button>
                         </div>
 
-                        <!-- GROUP-LEVEL PROGRESS TRACKER IN QC TAB -->
+                        <!-- GROUP-LEVEL PROGRESS TRACKER IN QC TAB (Tối giản) -->
                         <template x-if="activeOrder && activeOrder.groups_progress && activeOrder.groups_progress.length > 0">
-                            <div class="m-5 mb-1 p-4 rounded-2xl bg-gradient-to-r from-emerald-50/60 via-slate-50 to-emerald-50/40 border border-emerald-200 shadow-2xs space-y-3">
-                                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-emerald-200/70 pb-2.5">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                                            <i class="fa-solid fa-clipboard-check text-sm"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
-                                                <span>Tiến Độ Kiểm Hàng Theo Nhóm (QC)</span>
-                                                <span class="text-[10px] font-bold text-emerald-700 font-mono" x-text="'(' + activeOrder.groups_progress.length + ' nhóm phụ trách)'"></span>
-                                            </h4>
-                                            <p class="text-[11px] text-slate-500 font-medium">
-                                                Kiểm tra độc lập theo loại SP (loại nào bốc xong là kiểm được ngay). Toàn đơn đạt <span class="font-bold text-slate-700">"Đã kiểm hàng (Sẵn sàng xuất xe)"</span> khi <strong class="text-emerald-700 font-bold">100% các nhóm</strong> hoàn thành QC.
-                                            </p>
-                                        </div>
+                            <div class="m-3 sm:m-4 mb-1 p-2.5 sm:p-3 rounded-xl bg-slate-50 border border-slate-200/90 shadow-2xs space-y-2">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="flex items-center gap-1.5">
+                                        <i class="fa-solid fa-clipboard-check text-emerald-600 text-xs"></i>
+                                        <span class="text-xs font-black text-slate-800 uppercase tracking-wide">Tiến độ QC nhóm:</span>
+                                        <span class="text-[10px] font-bold text-slate-400 font-mono" x-text="'(' + activeOrder.groups_progress.length + ' nhóm)'"></span>
                                     </div>
                                     
                                     <div class="shrink-0">
-                                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black border shadow-2xs transition-all"
-                                              :class="isAllGroupsQcCompleted(activeOrder) ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse'">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border shadow-2xs transition-all"
+                                              :class="isAllGroupsQcCompleted(activeOrder) ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300'">
                                             <i class="fa-solid" :class="isAllGroupsQcCompleted(activeOrder) ? 'fa-shield-check text-emerald-600' : 'fa-hourglass-half text-amber-600'"></i>
-                                            <span x-text="isAllGroupsQcCompleted(activeOrder) ? '100% CÁC NHÓM ĐÃ KIỂM ĐẠT QC' : 'ĐANG CHỜ CÁC NHÓM KIỂM HÀNG'"></span>
+                                            <span x-text="isAllGroupsQcCompleted(activeOrder) ? '100% ĐẠT QC' : 'ĐANG CHỜ KIỂM'"></span>
                                         </span>
                                     </div>
                                 </div>
 
-                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
                                     <template x-for="grp in activeOrder.groups_progress" :key="grp.group_id">
-                                        <div class="p-3 rounded-xl border bg-white shadow-2xs space-y-2 transition-all"
+                                        <div class="px-2.5 py-1.5 rounded-lg border bg-white flex items-center justify-between text-xs gap-2 shadow-2xs"
                                              :class="grp.is_qc_completed ? 'border-emerald-200 bg-emerald-50/20' : 'border-amber-200 bg-amber-50/20'">
-                                            
-                                            <div class="flex items-center justify-between gap-1.5">
-                                                <div class="font-bold text-xs text-slate-800 truncate" x-text="grp.group_name"></div>
-                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black border shrink-0"
-                                                      :class="grp.is_qc_completed ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300'">
-                                                    <span x-text="grp.is_qc_completed ? '✓ Đã kiểm xong' : 'Đang chờ kiểm'"></span>
-                                                </span>
+                                            <div class="flex items-center gap-1.5 min-w-0">
+                                                <span class="w-1.5 h-1.5 rounded-full shrink-0"
+                                                      :class="grp.is_qc_completed ? 'bg-emerald-500' : 'bg-amber-500'"></span>
+                                                <span class="font-bold text-slate-800 truncate text-[11px]" x-text="grp.group_name"></span>
                                             </div>
-
-                                            <div class="text-[11px] text-slate-500 flex items-center justify-between">
-                                                <span>Trưởng nhóm: <strong class="text-slate-700" x-text="grp.leader_name || 'Admin Kho'"></strong></span>
-                                                <span class="font-mono font-bold text-slate-700" x-text="grp.checked_count + '/' + grp.items_count + ' món'"></span>
-                                            </div>
-
-                                            <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                <div class="h-full rounded-full transition-all duration-300"
-                                                     :class="grp.is_qc_completed ? 'bg-emerald-500' : 'bg-amber-500'"
-                                                     :style="'width: ' + grp.qc_progress_percent + '%'"></div>
+                                            <div class="flex items-center gap-1.5 shrink-0 font-mono text-[11px]">
+                                                <span class="font-bold text-slate-700" x-text="grp.checked_count + '/' + grp.items_count"></span>
+                                                <span class="px-1.5 py-0.2 rounded text-[9px] font-black"
+                                                      :class="grp.is_qc_completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'"
+                                                      x-text="grp.is_qc_completed ? 'Đạt' : 'Chờ'"></span>
                                             </div>
                                         </div>
                                     </template>
@@ -1223,8 +1367,8 @@
                                         </div>
                                     </div>
 
-                                    <!-- Table for this category QC -->
-                                    <div class="overflow-x-auto">
+                                    <!-- Table for this category QC (Desktop) -->
+                                    <div class="hidden lg:block overflow-x-auto">
                                         <table class="w-full text-left text-xs border-collapse min-w-[1050px]">
                                             <thead>
                                                 <tr class="bg-slate-50/80 text-slate-600 font-black text-[11px] uppercase tracking-wider border-b border-slate-200">
@@ -1334,6 +1478,82 @@
                                                 </template>
                                             </tbody>
                                         </table>
+                                    </div>
+
+                                    <!-- Cards for this category QC (Mobile: Thẻ kiểm hàng QC tối ưu điện thoại) -->
+                                    <div class="block lg:hidden p-2.5 space-y-2.5">
+                                        <template x-for="(it, idx) in catGroup.items" :key="it.id || idx">
+                                            <div class="p-3 rounded-xl border transition-all space-y-2.5"
+                                                 :class="it.is_checked ? 'bg-emerald-50/40 border-emerald-300' : 'bg-white border-slate-200 shadow-2xs'">
+                                                
+                                                <!-- Row 1: Checkbox QC + SKU + Badge SL sửa + ĐVT + Trạng thái -->
+                                                <div class="flex items-start justify-between gap-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <input type="checkbox" x-model="it.is_checked"
+                                                               :disabled="!it.is_picked && Number(it.picked_qty || 0) <= 0"
+                                                               @change="handleQcCheckChange(it)"
+                                                               class="w-5 h-5 rounded text-emerald-600 focus:ring-0 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
+                                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                                            <span class="font-mono font-black text-slate-800 text-xs" x-text="it.sku"></span>
+                                                            <template x-if="it._justModified">
+                                                                <span class="px-1.5 py-0.5 rounded bg-amber-500 text-white font-black text-[9px] animate-pulse">
+                                                                    Sửa SL
+                                                                </span>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-center gap-1.5 shrink-0">
+                                                        <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold text-[10px] uppercase font-mono" x-text="it.unit || 'CÂY'"></span>
+                                                        <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border"
+                                                              :class="it.is_checked ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-500 border-slate-200'"
+                                                              x-text="it.is_checked ? 'Đã kiểm' : 'Chưa kiểm'"></span>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Row 2: Product Name -->
+                                                <div class="text-xs font-semibold text-slate-700 leading-snug" x-text="it.name"></div>
+
+                                                <!-- Row 3: Người đã soạn & Trạng thái soạn -->
+                                                <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
+                                                    <div class="flex items-center gap-1 text-[11px] text-slate-600">
+                                                        <i class="fa-solid fa-user-check text-slate-400 text-[10px]"></i>
+                                                        <span class="font-medium text-slate-400">Soạn:</span>
+                                                        <span class="font-bold text-slate-700" x-text="it.assigned_staff || 'Chưa phân công'"></span>
+                                                    </div>
+                                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                                                          :class="Number(it.picked_qty) >= (Number(it.quantity) + Number(it.gift_quantity || 0)) ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : (Number(it.picked_qty) > 0 ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-100 text-slate-500')"
+                                                          x-text="Number(it.picked_qty) >= (Number(it.quantity) + Number(it.gift_quantity || 0)) ? 'Đã bốc đủ' : (Number(it.picked_qty) > 0 ? 'Đang bốc' : 'Chưa bốc')"></span>
+                                                </div>
+
+                                                <!-- Row 4: Quantities (Cần / Đã bốc / Thực kiểm) -->
+                                                <div class="pt-2 border-t border-slate-100 grid grid-cols-3 gap-2 bg-slate-50/80 -mx-3 p-2.5 text-center text-xs">
+                                                    <div>
+                                                        <span class="text-[10px] text-slate-400 block font-medium">SL Cần</span>
+                                                        <span class="font-mono font-black text-slate-800 text-xs" x-text="Number(it.quantity || 0) + Number(it.gift_quantity || 0)"></span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-[10px] text-slate-400 block font-medium">Đã bốc</span>
+                                                        <span class="font-mono font-black text-sky-700 text-xs" x-text="Number(it.picked_qty || 0)"></span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-[10px] text-emerald-700 block font-bold">Thực kiểm</span>
+                                                        <input type="number" step="any" min="0"
+                                                               x-model.number="it.checked_qty"
+                                                               @input.debounce.400ms="saveItemQcQty(it)"
+                                                               class="w-14 p-1 text-center font-mono font-bold text-xs rounded border border-slate-300 focus:border-emerald-500 bg-white mx-auto">
+                                                    </div>
+                                                </div>
+
+                                                <!-- Row 5: Ghi chú KCS -->
+                                                <div class="pt-2 border-t border-slate-100">
+                                                    <input type="text" x-model="it.check_notes"
+                                                           @blur="saveItemCheckNotes(it)"
+                                                           placeholder="Ghi chú tem kiện, KCS..."
+                                                           class="w-full p-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 focus:outline-none focus:border-emerald-500 bg-slate-50/50 focus:bg-white placeholder:text-slate-400">
+                                                </div>
+
+                                            </div>
+                                        </template>
                                     </div>
                                 </div>
                             </template>
@@ -1713,7 +1933,12 @@
             <!-- Empty State when no order selected -->
             <div x-show="fulfillmentMode === 'single' && !activeOrder" class="py-20 text-center text-slate-400 bg-white rounded-2xl border border-slate-200 mt-0">
                 <i class="fa-solid fa-clipboard-question text-4xl text-slate-300 mb-3"></i>
-                <p class="font-bold text-slate-600 text-sm">Vui lòng chọn một đơn hàng từ danh sách bên trái để tiến hành soạn bốc hoặc kiểm tra QC.</p>
+                <p class="font-bold text-slate-600 text-sm">Vui lòng chọn một đơn hàng từ danh sách để tiến hành soạn bốc hoặc kiểm tra QC.</p>
+                <div class="mt-4 lg:hidden">
+                    <button type="button" @click="mobileView = 'list'; $nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }))" class="px-4 py-2 bg-sky-600 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> Về danh sách đơn
+                    </button>
+                </div>
             </div>
 
         </div>
@@ -1727,6 +1952,7 @@ function pickingApp() {
     return {
         activeTab: 'picking', // 'picking' | 'qc'
         fulfillmentMode: 'single', // 'single' | 'batch'
+        mobileView: 'list', // 'list' | 'detail' (trên mobile điều hướng giữa danh sách đơn và chi tiết sản phẩm)
         selectedBranch: '',
         filterPickingDate: '{{ date("Y-m-d") }}',
         filterOrderType: 'all', // 'all' | 'sales' | 'consignment'
@@ -1786,6 +2012,7 @@ function pickingApp() {
 
             if (reqOrderId && this.orders.some(o => String(o.id) === String(reqOrderId))) {
                 this.activeOrderId = Number(reqOrderId);
+                this.mobileView = 'detail';
             } else if (this.filteredOrders.length > 0) {
                 this.activeOrderId = this.filteredOrders[0].id;
             } else if (this.orders.length > 0) {
@@ -1899,6 +2126,9 @@ function pickingApp() {
 
         switchTab(tab) {
             this.activeTab = tab;
+            if (window.innerWidth < 1024) {
+                this.mobileView = 'list';
+            }
             setTimeout(() => {
                 const list = this.filteredOrders;
                 if (list.length > 0 && !list.some(o => o.id === this.activeOrderId)) {
@@ -2055,6 +2285,12 @@ function pickingApp() {
 
         selectOrder(ord) {
             this.activeOrderId = ord.id;
+            this.mobileView = 'detail';
+            this.$nextTick(() => {
+                if (window.innerWidth < 1024) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            });
         },
 
         get userGroupsSummary() {
@@ -3279,6 +3515,60 @@ function pickingApp() {
             }
         },
 
+        async autoSplitBackOrderActiveOrder() {
+            if (!this.activeOrder) return;
+            const shortItems = this.getShortageItems(this.activeOrder);
+            if (shortItems.length === 0) {
+                this.showToast('Không có sản phẩm nào bị thiếu trong đơn này!', 'warning');
+                return;
+            }
+
+            const confirmMsg = `Xác nhận Xuất kho theo số lượng thực tế và TỰ ĐỘNG TÁCH ĐƠN NỢ HÀNG (Backorder)?\n\n` +
+                `• Đơn gốc #${this.activeOrder.order_code} sẽ chốt theo số lượng thực bốc để giao đợt 1.\n` +
+                `• Hệ thống sẽ tự động sinh 1 đơn mới cho ${shortItems.length} sản phẩm thiếu (trạng thái: Giao sau).\n` +
+                `• Khi nhập hàng về kho, hệ thống sẽ tự động quét và báo đơn sẵn sàng giao.`;
+
+            if (!confirm(confirmMsg)) return;
+
+            const payloadItems = shortItems.map(it => ({
+                id: it.id,
+                sku: it.sku,
+                name: it.name,
+                unit: it.unit || 'cây',
+                req_qty: Number(it.quantity || 0) + Number(it.gift_quantity || 0),
+                picked_qty: Number(it.picked_qty || 0),
+                shortage_qty: this.getShortageQty(it),
+                reason: it.shortage_reason || 'Hết hàng trên kệ kho'
+            }));
+
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const res = await fetch('/inventory/picking/split-backorder', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token || ''
+                    },
+                    body: JSON.stringify({
+                        orderId: this.activeOrder.id,
+                        shortageItems: payloadItems,
+                        note: 'Tách tự động tại màn hình Soạn hàng'
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ ${data.message}\n\nMã đơn nợ hàng mới: ${data.backorder?.order_code || 'Giao sau'}`);
+                    window.location.reload();
+                } else {
+                    alert('Lỗi: ' + (data.message || 'Không thể tách đơn nợ hàng'));
+                }
+            } catch (err) {
+                alert('Lỗi kết nối: ' + err.message);
+            }
+        },
+
         async reportShortageItem(it) {
             if (!this.activeOrder) return;
             const supervisor = this.getOrderSupervisor(this.activeOrder);
@@ -3556,6 +3846,12 @@ function pickingApp() {
                 this.activeOrderId = ord.id;
                 this.pickerFilter = 'all';
                 this.activeTab = 'picking';
+                this.mobileView = 'detail';
+                this.$nextTick(() => {
+                    if (window.innerWidth < 1024) {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                });
             }
             this.showToast('Đang hiển thị đơn: ' + (alert.orderCode || ''));
         },

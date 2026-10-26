@@ -728,6 +728,7 @@ function productForm() {
                 max_stock_alert: (this.max_stock_alert !== '' && this.max_stock_alert !== null) ? Number(this.max_stock_alert) : null,
                 vat_rate: this.vat_rate,
                 location: this.location,
+                warehouse_name: this.warehouse_name,
                 is_active: this.is_active
             };
 

@@ -20,6 +20,7 @@ class FilterInstallationItem extends Model
         'quantity',
         'unit_price',
         'total_price',
+        'is_free',
         'note',
     ];
 
@@ -27,6 +28,7 @@ class FilterInstallationItem extends Model
         'quantity'    => 'integer',
         'unit_price'  => 'decimal:2',
         'total_price' => 'decimal:2',
+        'is_free'     => 'boolean',
     ];
 
     public function installation()

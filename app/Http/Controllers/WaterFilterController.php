@@ -44,6 +44,17 @@ class WaterFilterController extends Controller
      */
     public function index(Request $request)
     {
+        // Nếu URL truyền thẳng install_id hoặc mã đơn cụ thể LD-... (từ thông báo), điều hướng thẳng đến đơn đó
+        if ($request->filled('install_id')) {
+            return redirect()->to(url('/water-filter/installations/' . $request->input('install_id') . '/edit'));
+        }
+        if ($request->filled('search') && str_starts_with(strtoupper(trim($request->input('search'))), 'LD-')) {
+            $exactInst = FilterInstallation::where('code', trim($request->input('search')))->first();
+            if ($exactInst && $request->input('tab', 'installations') === 'installations') {
+                return redirect()->to(url('/water-filter/installations/' . $exactInst->id . '/edit'));
+            }
+        }
+
         $tab = $request->input('tab', 'installations');
 
         // Thống kê tổng quan nhanh
@@ -78,6 +89,11 @@ class WaterFilterController extends Controller
                 $q->whereNull('warranty_until')->orWhere('warranty_until', '>=', today());
             })->count();
 
+        $maintenanceDueCount = FilterInstalledMachine::whereNotNull('next_maintenance_date')
+            ->where('next_maintenance_date', '<=', now()->addDays(30))
+            ->where('status', '!=', 'unactivated')
+            ->count();
+
         $statuses = self::getInstallationStatuses();
 
         return view('water_filter.index', compact(
@@ -90,6 +106,7 @@ class WaterFilterController extends Controller
             'unactivatedCount',
             'pendingActivationCount',
             'activeWarrantyCount',
+            'maintenanceDueCount',
             'technicians',
             'parts',
             'machineModels',
@@ -309,10 +326,34 @@ class WaterFilterController extends Controller
             'type'           => 'nullable|string|max:100',
             'standard_price' => 'nullable|numeric|min:0',
             'description'    => 'nullable|string',
+            'default_parts'  => 'nullable|array',
         ]);
 
         $id = $data['id'] ?? null;
         unset($data['id']);
+
+        // Xử lý và làm sạch danh sách phụ tùng cấu hình mặc định
+        if (isset($data['default_parts']) && is_array($data['default_parts'])) {
+            $cleaned = [];
+            foreach ($data['default_parts'] as $dp) {
+                $name = trim($dp['part_name'] ?? '');
+                $partId = !empty($dp['part_id']) ? (int)$dp['part_id'] : null;
+                if (!empty($name) || !empty($partId)) {
+                    $cleaned[] = [
+                        'part_id'         => $partId,
+                        'part_code'       => trim($dp['part_code'] ?? ''),
+                        'part_name'       => $name,
+                        'quantity'        => !empty($dp['quantity']) ? max(1, (int)$dp['quantity']) : 1,
+                        'position'        => trim($dp['position'] ?? ''),
+                        'lifespan_months' => !empty($dp['lifespan_months']) ? (int)$dp['lifespan_months'] : null,
+                        'note'            => trim($dp['note'] ?? ''),
+                    ];
+                }
+            }
+            $data['default_parts'] = $cleaned;
+        } else {
+            $data['default_parts'] = [];
+        }
 
         if ($id) {
             $model = FilterMachineModel::findOrFail($id);
@@ -342,6 +383,28 @@ class WaterFilterController extends Controller
             'success' => true,
             'message' => 'Đã xóa model máy lọc!',
         ]);
+    }
+
+    /**
+     * Mở trang tạo mới Model máy lọc nước (Không dùng modal)
+     */
+    public function createModelView(Request $request)
+    {
+        $parts = FilterPart::where('status', 'active')->orderBy('name')->get();
+        $model = null;
+
+        return view('water_filter.models.form', compact('parts', 'model'));
+    }
+
+    /**
+     * Mở trang chỉnh sửa Model máy lọc nước (Không dùng modal)
+     */
+    public function editModelView(Request $request, $id)
+    {
+        $model = FilterMachineModel::findOrFail($id);
+        $parts = FilterPart::where('status', 'active')->orderBy('name')->get();
+
+        return view('water_filter.models.form', compact('parts', 'model'));
     }
 
     /* -------------------------------------------------------------
@@ -376,7 +439,7 @@ class WaterFilterController extends Controller
      */
     public function editInstallationView(Request $request, $id)
     {
-        $installation = FilterInstallation::with(['items', 'technician', 'modelCatalog'])->findOrFail($id);
+        $installation = FilterInstallation::with(['items', 'technician', 'modelCatalog', 'installedMachine'])->findOrFail($id);
         $technicians = User::where('status', '!=', 'inactive')
             ->select('id', 'name', 'phone', 'department')
             ->orderBy('name')
@@ -434,8 +497,8 @@ class WaterFilterController extends Controller
             'id', 'machine_model_id', 'technician_id', 'appointment_date',
             'installed_at', 'warranty_until', 'warranty_card_code', 'warranty_notes',
             'next_maintenance_date', 'warranty_months', 'filter_replacement_months',
-            'tds_in', 'tds_out', 'pressure', 'customer_notes',
-            'completion_notes', 'machine_serial', 'water_source_type'
+            'customer_notes', 'completion_notes', 'machine_serial',
+            'machine_price', 'discount_amount', 'surcharge_amount'
         ];
         foreach ($nullIfEmpty as $key) {
             if (isset($input[$key]) && trim((string)$input[$key]) === '') {
@@ -447,8 +510,13 @@ class WaterFilterController extends Controller
                 if (isset($it['part_id']) && trim((string)$it['part_id']) === '') {
                     $it['part_id'] = null;
                 }
-                if (isset($it['unit_price']) && trim((string)$it['unit_price']) === '') {
+                $isFree = !empty($it['is_free']) || (isset($it['unit_price']) && (float)$it['unit_price'] <= 0);
+                if ($isFree) {
                     $it['unit_price'] = 0;
+                    $it['is_free'] = true;
+                } else {
+                    $it['unit_price'] = (isset($it['unit_price']) && trim((string)$it['unit_price']) !== '') ? (float)$it['unit_price'] : 0;
+                    $it['is_free'] = false;
                 }
             }
             unset($it);
@@ -462,8 +530,10 @@ class WaterFilterController extends Controller
             'customer_address'          => 'required|string',
             'machine_model_id'          => 'nullable|integer',
             'machine_model'             => 'nullable|string|max:255',
+            'machine_price'             => 'nullable|numeric|min:0',
+            'surcharge_amount'          => 'nullable|numeric|min:0',
+            'discount_amount'           => 'nullable|numeric|min:0',
             'machine_serial'            => 'nullable|string|max:100',
-            'water_source_type'         => 'nullable|string|max:100',
             'technician_id'             => 'nullable|integer',
             'appointment_date'          => 'nullable|date',
             'installed_at'              => 'nullable|date',
@@ -474,18 +544,15 @@ class WaterFilterController extends Controller
             'filter_replacement_months' => 'nullable|integer|min:0',
             'next_maintenance_date'     => 'nullable|date',
             'status'                    => 'nullable|string|in:' . $statusKeys,
-            'service_fee'               => 'nullable|numeric|min:0',
             'payment_status'            => 'nullable|string|in:unpaid,paid,free',
             'customer_notes'            => 'nullable|string',
-            'tds_in'                    => 'nullable|integer',
-            'tds_out'                   => 'nullable|integer',
-            'pressure'                  => 'nullable|string',
             'completion_notes'          => 'nullable|string',
             'items'                     => 'nullable|array',
             'items.*.part_id'           => 'nullable|integer',
             'items.*.part_name'         => 'required|string',
             'items.*.unit'              => 'nullable|string',
             'items.*.quantity'          => 'required|integer|min:1',
+            'items.*.is_free'           => 'nullable|boolean',
             'items.*.unit_price'        => 'nullable|numeric|min:0',
             'items.*.note'              => 'nullable|string',
         ]);
@@ -499,14 +566,13 @@ class WaterFilterController extends Controller
             $data['machine_model_id'] = !empty($data['machine_model_id']) ? (int)$data['machine_model_id'] : null;
             $data['technician_id'] = !empty($data['technician_id']) ? (int)$data['technician_id'] : null;
             $data['appointment_date'] = !empty($data['appointment_date']) ? date('Y-m-d H:i:s', strtotime($data['appointment_date'])) : null;
-            $data['service_fee'] = isset($data['service_fee']) ? (float)$data['service_fee'] : 0;
             $data['status'] = $data['status'] ?? 'pending';
             $data['payment_status'] = $data['payment_status'] ?? 'unpaid';
             $data['warranty_months'] = isset($data['warranty_months']) && is_numeric($data['warranty_months']) ? (int)$data['warranty_months'] : 24;
             $data['filter_replacement_months'] = isset($data['filter_replacement_months']) && is_numeric($data['filter_replacement_months']) ? (int)$data['filter_replacement_months'] : 6;
 
             // Xử lý Ngày Lắp Đặt & Hạn Bảo Hành
-            if (($data['status'] === 'completed' || !empty($data['tds_out'])) && empty($data['installed_at'])) {
+            if ($data['status'] === 'completed' && empty($data['installed_at'])) {
                 $data['installed_at'] = now();
             }
 
@@ -533,13 +599,26 @@ class WaterFilterController extends Controller
                 $data['machine_model'] = 'Máy lọc nước RO tiêu chuẩn';
             }
 
-            // Tính tổng tiền phụ kiện
+            // [Phương án 3] Tính toán giá máy, phụ kiện phát sinh, phụ thu nâng cấp, chiết khấu và tổng cần thu
+            $machinePrice = (float)($data['machine_price'] ?? 0);
+            $surchargeAmount = (float)($data['surcharge_amount'] ?? 0);
+            $discountAmount = (float)($data['discount_amount'] ?? 0);
+
             $partsFee = 0;
-            foreach ($itemsData as $it) {
-                $partsFee += ((int)($it['quantity'] ?? 1) * (float)($it['unit_price'] ?? 0));
+            foreach ($itemsData as &$it) {
+                $isFree = !empty($it['is_free']) || ((float)($it['unit_price'] ?? 0) <= 0);
+                $unitPrice = $isFree ? 0 : (float)($it['unit_price'] ?? 0);
+                $it['unit_price'] = $unitPrice;
+                $it['is_free'] = $isFree;
+                $partsFee += ((int)($it['quantity'] ?? 1) * $unitPrice);
             }
+            unset($it);
+
+            $data['machine_price'] = $machinePrice;
             $data['parts_fee'] = $partsFee;
-            $data['total_amount'] = ($data['service_fee'] ?? 0) + $partsFee;
+            $data['surcharge_amount'] = $surchargeAmount;
+            $data['discount_amount'] = $discountAmount;
+            $data['total_amount'] = max(0, $machinePrice + $partsFee + $surchargeAmount - $discountAmount);
 
             if ($data['technician_id']) {
                 $tech = User::find($data['technician_id']);
@@ -557,6 +636,18 @@ class WaterFilterController extends Controller
                 $oldTechId = $installation->technician_id;
                 $installation->update($data);
                 $message = 'Cập nhật đơn lắp đặt thành công!';
+
+                // Gửi thông báo cho người tạo đơn nếu người sửa là người khác
+                if ($installation->created_by && $installation->created_by != Auth::id()) {
+                    \App\Models\SystemNotification::send(
+                        $installation->created_by,
+                        '📝 Đơn lắp đặt [' . $installation->code . '] vừa được cập nhật',
+                        (Auth::user()->name ?? 'Nhân viên') . " vừa cập nhật lại thông tin đơn lắp đặt [{$installation->code}] cho KH {$installation->customer_name}.",
+                        url('/water-filter/installations/' . $installation->id . '/edit'),
+                        'installation_updated',
+                        $installation
+                    );
+                }
             } else {
                 $data['code'] = 'LD-' . date('Ymd') . '-' . sprintf('%03d', FilterInstallation::whereDate('created_at', today())->count() + 1);
                 $data['created_by'] = Auth::id();
@@ -575,6 +666,7 @@ class WaterFilterController extends Controller
                     'part_name'  => $it['part_name'],
                     'unit'       => $it['unit'] ?? ($part?->unit ?? 'Cái'),
                     'quantity'   => (int)($it['quantity'] ?? 1),
+                    'is_free'    => !empty($it['is_free']),
                     'unit_price' => (float)($it['unit_price'] ?? 0),
                     'total_price'=> (int)($it['quantity'] ?? 1) * (float)($it['unit_price'] ?? 0),
                     'note'       => $it['note'] ?? null,
@@ -642,18 +734,13 @@ class WaterFilterController extends Controller
         $statusKeys = implode(',', array_keys(self::getInstallationStatuses()));
 
         $input = $request->all();
-        foreach (['tds_in', 'tds_out', 'pressure', 'completion_notes'] as $k) {
-            if (isset($input[$k]) && trim((string)$input[$k]) === '') {
-                $input[$k] = null;
-            }
+        if (isset($input['completion_notes']) && trim((string)$input['completion_notes']) === '') {
+            $input['completion_notes'] = null;
         }
         $request->merge($input);
 
         $data = $request->validate([
             'status'           => 'required|string|in:' . $statusKeys,
-            'tds_in'           => 'nullable|integer',
-            'tds_out'          => 'nullable|integer',
-            'pressure'         => 'nullable|string',
             'completion_notes' => 'nullable|string',
             'payment_status'   => 'nullable|string|in:unpaid,paid,free',
         ]);
@@ -664,9 +751,6 @@ class WaterFilterController extends Controller
             $newStatus = $data['status'];
 
             $installation->status = $newStatus;
-            if (isset($data['tds_in'])) $installation->tds_in = $data['tds_in'];
-            if (isset($data['tds_out'])) $installation->tds_out = $data['tds_out'];
-            if (isset($data['pressure'])) $installation->pressure = $data['pressure'];
             if (isset($data['completion_notes'])) $installation->completion_notes = $data['completion_notes'];
             if (isset($data['payment_status'])) $installation->payment_status = $data['payment_status'];
 
@@ -724,7 +808,6 @@ class WaterFilterController extends Controller
                         'customer_name'             => $installation->customer_name,
                         'customer_phone'            => $installation->customer_phone,
                         'customer_address'          => $installation->customer_address,
-                        'water_source_type'         => $installation->water_source_type ?? 'Nước máy thành phố',
                         'machine_model_id'          => $installation->machine_model_id,
                         'machine_model'             => $installation->machine_model,
                         'machine_serial'            => $installation->machine_serial,
@@ -739,9 +822,6 @@ class WaterFilterController extends Controller
                         'warranty_card_code'        => $installation->warranty_card_code ?: $installation->code,
                         'filter_replacement_months' => $installation->filter_replacement_months ?: 6,
                         'next_maintenance_date'     => $installation->next_maintenance_date,
-                        'tds_in'                    => $installation->tds_in,
-                        'tds_out'                   => $installation->tds_out,
-                        'pressure'                  => $installation->pressure,
                         'created_by'                => Auth::id(),
                     ]);
                 } else {
@@ -758,9 +838,6 @@ class WaterFilterController extends Controller
                         'activated_at'              => now(),
                         'warranty_months'           => $installation->warranty_months ?: 24,
                         'warranty_until'            => $installation->warranty_until,
-                        'tds_in'                    => $installation->tds_in,
-                        'tds_out'                   => $installation->tds_out,
-                        'pressure'                  => $installation->pressure,
                     ]);
                 }
             }
@@ -1327,7 +1404,6 @@ class WaterFilterController extends Controller
             'customer_name'             => 'nullable|string|max:255',
             'customer_phone'            => 'nullable|string|max:30',
             'customer_address'          => 'nullable|string',
-            'water_source_type'         => 'nullable|string|max:100',
             'machine_model_id'          => 'nullable|integer',
             'machine_model'             => 'nullable|string|max:255',
             'machine_serial'            => 'nullable|string|max:100',
@@ -1437,7 +1513,6 @@ class WaterFilterController extends Controller
             'customer_name'             => 'required|string|max:255',
             'customer_phone'            => 'required|string|max:30',
             'customer_address'          => 'required|string',
-            'water_source_type'         => 'nullable|string|max:100',
             'machine_model_id'          => 'nullable|integer',
             'machine_model'             => 'required|string|max:255',
             'machine_serial'            => 'nullable|string|max:100',
@@ -1445,9 +1520,6 @@ class WaterFilterController extends Controller
             'technician_name'           => 'nullable|string|max:255',
             'installed_at'              => 'nullable|date',
             'warranty_months'           => 'required|integer|min:1',
-            'tds_in'                    => 'nullable|integer',
-            'tds_out'                   => 'nullable|integer',
-            'pressure'                  => 'nullable|string|max:100',
             'accessories'               => 'nullable|string',
             'activation_notes'          => 'nullable|string',
             'filter_replacement_months' => 'nullable|integer|min:1',
@@ -1472,7 +1544,6 @@ class WaterFilterController extends Controller
             'customer_name'             => $data['customer_name'],
             'customer_phone'            => $data['customer_phone'],
             'customer_address'          => $data['customer_address'],
-            'water_source_type'         => $data['water_source_type'] ?? 'Nước máy thành phố',
             'machine_model_id'          => $data['machine_model_id'] ?? null,
             'machine_model'             => $data['machine_model'],
             'machine_serial'            => $data['machine_serial'] ?? null,
@@ -1710,11 +1781,7 @@ class WaterFilterController extends Controller
         $machineModel = $request->input('machine_model', $installation->machine_model);
         $machineModelId = $request->input('machine_model_id', $installation->machine_model_id);
         $machineSerial = $request->input('machine_serial', $installation->machine_serial);
-        $waterSource = $request->input('water_source_type', $installation->water_source_type ?? 'Nước máy thành phố');
-        $tdsIn = $request->filled('tds_in') ? (int) $request->input('tds_in') : $installation->tds_in;
-        $tdsOut = $request->filled('tds_out') ? (int) $request->input('tds_out') : $installation->tds_out;
-        $pressure = $request->input('pressure', $installation->pressure);
-        $notes = $request->input('activation_notes', $installation->completion_notes);
+        $notes = $request->has('activation_notes') ? $request->input('activation_notes') : $installation->completion_notes;
 
         // Chuẩn hóa phụ kiện kèm theo máy sang dạng JSON: [{name, quantity, installed_date, unit}]
         $accessoriesInput = $request->input('accessories');
@@ -1747,19 +1814,27 @@ class WaterFilterController extends Controller
                     if (is_array($item)) {
                         $name = trim($item['name'] ?? $item['part_name'] ?? '');
                         if (!empty($name)) {
+                            $isFree = isset($item['is_free']) ? (bool)$item['is_free'] : (!empty($item['unit_price']) ? false : true);
+                            $unitPrice = $isFree ? 0 : (float)($item['unit_price'] ?? 0);
                             $normalized[] = [
-                                'name'           => $name,
-                                'quantity'       => (int) ($item['quantity'] ?? $item['qty'] ?? 1),
-                                'installed_date' => !empty($item['installed_date']) ? substr($item['installed_date'], 0, 10) : date('Y-m-d'),
-                                'unit'           => $item['unit'] ?? 'Cái',
+                                'name'               => $name,
+                                'quantity'           => (int) ($item['quantity'] ?? $item['qty'] ?? 1),
+                                'installed_date'     => !empty($item['installed_date']) ? substr($item['installed_date'], 0, 10) : date('Y-m-d'),
+                                'unit'               => $item['unit'] ?? 'Cái',
+                                'maintenance_months' => isset($item['maintenance_months']) ? (int) $item['maintenance_months'] : 6,
+                                'is_free'            => $isFree,
+                                'unit_price'         => $unitPrice,
                             ];
                         }
                     } elseif (is_string($item) && !empty(trim($item))) {
                         $normalized[] = [
-                            'name'           => trim($item),
-                            'quantity'       => 1,
-                            'installed_date' => date('Y-m-d'),
-                            'unit'           => 'Cái',
+                            'name'               => trim($item),
+                            'quantity'           => 1,
+                            'installed_date'     => date('Y-m-d'),
+                            'unit'               => 'Cái',
+                            'maintenance_months' => 6,
+                            'is_free'            => true,
+                            'unit_price'         => 0,
                         ];
                     }
                 }
@@ -1767,12 +1842,33 @@ class WaterFilterController extends Controller
             }
         }
 
+        // Ghi nhận các thông tin KTV đã thay đổi so với đơn ban đầu
+        $changes = [];
+        if (!empty($customerName) && $customerName !== $installation->customer_name) {
+            $changes[] = "Tên KH: '{$installation->customer_name}' ➔ '{$customerName}'";
+        }
+        if (!empty($customerPhone) && $customerPhone !== $installation->customer_phone) {
+            $changes[] = "SĐT: '{$installation->customer_phone}' ➔ '{$customerPhone}'";
+        }
+        if (!empty($customerAddress) && $customerAddress !== $installation->customer_address) {
+            $changes[] = "Địa chỉ: '{$installation->customer_address}' ➔ '{$customerAddress}'";
+        }
+        if (!empty($machineModel) && $machineModel !== $installation->machine_model) {
+            $changes[] = "Model máy: '{$installation->machine_model}' ➔ '{$machineModel}'";
+        }
+        if (!empty($machineSerial) && $machineSerial !== $installation->machine_serial) {
+            $changes[] = "Số Serial: " . ($installation->machine_serial ?: '(trống)') . " ➔ '{$machineSerial}'";
+        }
+        if (!empty($normalized)) {
+            $partNames = array_column($normalized, 'name');
+            $changes[] = "Phụ kiện đi kèm (" . count($normalized) . "): " . implode(', ', array_slice($partNames, 0, 3)) . (count($partNames) > 3 ? '...' : '');
+        }
+
         $machine->update([
             'installation_id'           => $installation->id,
             'customer_name'             => $customerName,
             'customer_phone'            => $customerPhone,
             'customer_address'          => $customerAddress,
-            'water_source_type'         => $waterSource,
             'machine_model_id'          => $machineModelId,
             'machine_model'             => $machineModel,
             'machine_serial'            => $machineSerial,
@@ -1787,28 +1883,80 @@ class WaterFilterController extends Controller
             'warranty_card_code'        => $machine->qr_code,
             'filter_replacement_months' => $filterReplacementMonths,
             'next_maintenance_date'     => $nextMaintenanceDate,
-            'tds_in'                    => $tdsIn,
-            'tds_out'                   => $tdsOut,
-            'pressure'                  => $pressure,
             'accessories'               => $accessoriesJson,
             'activation_notes'          => $notes,
             'status'                    => 'activated',
         ]);
 
-        // Cập nhật trạng thái đơn lắp đặt thành 'completed' và đồng bộ thông tin khách hàng mới
+        // Cập nhật trạng thái đơn lắp đặt thành 'completed' và đồng bộ toàn bộ thông tin KTV đã điều chỉnh
         $installation->update([
-            'status'           => 'completed',
-            'completed_date'   => now(),
-            'customer_name'    => $customerName,
-            'customer_phone'   => $customerPhone,
-            'customer_address' => $customerAddress,
-            'machine_serial'   => $machineSerial,
-            'water_source_type'=> $waterSource,
-            'tds_in'           => $tdsIn,
-            'tds_out'          => $tdsOut,
-            'pressure'         => $pressure,
-            'completion_notes' => $notes,
+            'status'                    => 'completed',
+            'completed_date'            => now(),
+            'customer_name'             => $customerName,
+            'customer_phone'            => $customerPhone,
+            'customer_address'          => $customerAddress,
+            'machine_model_id'          => $machineModelId,
+            'machine_model'             => $machineModel,
+            'machine_serial'            => $machineSerial,
+            'warranty_months'           => $warrantyMonths,
+            'warranty_until'            => $warrantyUntil,
+            'warranty_card_code'        => $machine->qr_code,
+            'filter_replacement_months' => $filterReplacementMonths,
+            'next_maintenance_date'     => $nextMaintenanceDate,
+            'installed_at'              => $installedAt,
+            'completion_notes'          => $notes,
         ]);
+
+        // Đồng bộ phụ kiện KTV lắp đặt vào danh sách items của đơn hàng
+        if (!empty($normalized)) {
+            $existingItems = $installation->items()->get()->keyBy(function($it) {
+                return mb_strtolower(trim($it->part_name));
+            });
+
+            $installation->items()->delete();
+            $partsFee = 0;
+            foreach ($normalized as $item) {
+                $pName = trim($item['name'] ?? '');
+                if (empty($pName)) continue;
+
+                $existing = $existingItems->get(mb_strtolower($pName));
+                $part = FilterPart::where('name', $pName)->orWhere('code', $pName)->first();
+
+                // Xác định phụ kiện này có tính tiền thêm không hay kèm theo máy (0đ)
+                $isFree = isset($item['is_free']) ? (bool)$item['is_free'] : ($existing ? (bool)$existing->is_free : true);
+                if (isset($item['unit_price']) && (float)$item['unit_price'] > 0) {
+                    $unitPrice = (float)$item['unit_price'];
+                    $isFree = false;
+                } else {
+                    $unitPrice = $isFree ? 0 : ($existing ? (float)$existing->unit_price : ($part ? (float)$part->out_price : 0));
+                }
+
+                $qty = (int)($item['quantity'] ?? 1);
+                $totalPrice = $isFree ? 0 : ($qty * $unitPrice);
+                $partsFee += $totalPrice;
+
+                $noteText = $existing?->note ?? ($item['note'] ?? null);
+
+                $installation->items()->create([
+                    'part_id'    => $existing?->part_id ?: $part?->id,
+                    'part_code'  => $existing?->part_code ?: $part?->code,
+                    'part_name'  => $pName,
+                    'unit'       => $item['unit'] ?? ($existing?->unit ?: ($part?->unit ?? 'Cái')),
+                    'quantity'   => $qty,
+                    'is_free'    => $isFree,
+                    'unit_price' => $unitPrice,
+                    'total_price'=> $totalPrice,
+                    'note'       => $noteText,
+                ]);
+            }
+            $machinePrice = (float)($installation->machine_price ?? 0);
+            $surchargeAmount = (float)($installation->surcharge_amount ?? 0);
+            $discountAmount = (float)($installation->discount_amount ?? 0);
+            $installation->update([
+                'parts_fee'    => $partsFee,
+                'total_amount' => max(0, $machinePrice + $partsFee + $surchargeAmount - $discountAmount),
+            ]);
+        }
 
         // Cập nhật TaskAssignment nếu có
         $task = \App\Models\TaskAssignment::where('related_order_code', $installation->code)->first();
@@ -1821,16 +1969,60 @@ class WaterFilterController extends Controller
             ]);
         }
 
-        // Gửi thông báo nổi tới Quản trị viên
-        $admins = User::whereHas('roles', function($q) { $q->where('name', 'admin'); })->get();
-        foreach ($admins as $admin) {
+        // 1. Xác định Người Tạo Đơn, Người Giao Việc & Ban Quản Trị để gửi thông báo
+        $orderCreatorId = $installation->created_by;
+        $taskCreatorId = $task?->created_by_id;
+
+        $relatedSalesOrder = null;
+        if (!empty($installation->code)) {
+            $relatedSalesOrder = \App\Models\Order::where('order_code', $installation->code)->first();
+        }
+        if (!$relatedSalesOrder && !empty($installation->customer_phone)) {
+            $relatedSalesOrder = \App\Models\Order::where('customer_phone', $installation->customer_phone)->latest('id')->first();
+        }
+        $salesOrderCreatorId = $relatedSalesOrder?->creator_id;
+
+        // Tập hợp danh sách người nhận (loại bỏ trùng lặp và null)
+        $creatorRecipients = collect([$orderCreatorId, $taskCreatorId, $salesOrderCreatorId])
+            ->filter()
+            ->unique();
+
+        $admins = User::whereHas('roles', function($q) { $q->where('name', 'admin'); })->pluck('id');
+        $allNotifyUserIds = $creatorRecipients->merge($admins)->unique();
+
+        $hasChanges = !empty($changes);
+        $notifyTitle = $hasChanges
+            ? "📝 [{$installation->code}] KTV đã cập nhật thông tin đơn & nghiệm thu máy"
+            : "✅ [{$installation->code}] KTV đã lắp đặt & kích hoạt QR: " . $machine->qr_code;
+
+        $changeDetails = $hasChanges
+            ? "\n• Thông tin được KTV điều chỉnh:\n  - " . implode("\n  - ", $changes)
+            : "";
+
+        $notifyMessage = "KTV {$techName} vừa hoàn tất nghiệm thu đơn lắp đặt [{$installation->code}] cho KH {$customerName} ({$customerPhone})."
+            . $changeDetails
+            . "\n• Mã tem QR bảo hành: {$machine->qr_code}"
+            . ($machineSerial ? " | Serial: {$machineSerial}" : "");
+
+        $actionUrl = url('/water-filter/installations/' . $installation->id . '/edit');
+
+        foreach ($allNotifyUserIds as $targetUserId) {
             SystemNotification::send(
-                $admin->id,
-                '✅ KTV đã lắp đặt & kích hoạt QR: ' . $machine->qr_code,
-                "KTV {$techName} vừa hoàn tất lắp đặt đơn [{$installation->code}] cho KH {$installation->customer_name} ({$installation->customer_phone}) và kích hoạt tem QR bảo hành.",
-                url('/m/' . $machine->qr_token),
-                'machine_activated',
-                $machine
+                $targetUserId,
+                $notifyTitle,
+                $notifyMessage,
+                $actionUrl,
+                $hasChanges ? 'order_info_updated' : 'machine_activated',
+                $machine,
+                [
+                    'installation_id'   => $installation->id,
+                    'installation_code' => $installation->code,
+                    'qr_code'           => $machine->qr_code,
+                    'qr_token'          => $machine->qr_token,
+                    'changes'           => $changes,
+                    'technician_name'   => $techName,
+                    'passport_url'      => url('/m/' . $machine->qr_token),
+                ]
             );
         }
 
@@ -1842,5 +2034,571 @@ class WaterFilterController extends Controller
             'passport_url' => url('/m/' . $machine->qr_token),
             'qr_code'      => $machine->qr_code,
         ]);
+    }
+
+    /* -------------------------------------------------------------
+     * 7. LỊCH BẢO DƯỠNG & THAY LÕI ĐỊNH KỲ
+     * ------------------------------------------------------------- */
+
+    /**
+     * Danh sách lịch bảo dưỡng & thay lõi định kỳ
+     */
+    public function getMaintenanceSchedule(Request $request)
+    {
+        $now = Carbon::today();
+        $in7Days = (clone $now)->addDays(7);
+        $in30Days = (clone $now)->addDays(30);
+        $endOfMonth = (clone $now)->endOfMonth();
+
+        $query = FilterInstalledMachine::with(['modelCatalog', 'technician'])
+            ->whereNotNull('customer_name')
+            ->where('customer_name', '!=', '')
+            ->where('status', '!=', 'unactivated');
+
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('customer_name', 'like', "%{$search}%")
+                  ->orWhere('customer_phone', 'like', "%{$search}%")
+                  ->orWhere('customer_address', 'like', "%{$search}%")
+                  ->orWhere('machine_model', 'like', "%{$search}%")
+                  ->orWhere('machine_serial', 'like', "%{$search}%")
+                  ->orWhere('qr_code', 'like', "%{$search}%");
+            });
+        }
+
+        if ($techId = $request->input('technician_id')) {
+            $query->where('technician_id', $techId);
+        }
+
+        $filterStatus = $request->input('filter_status', 'all');
+
+        if ($filterStatus === 'overdue') {
+            $query->whereNotNull('next_maintenance_date')->where('next_maintenance_date', '<', $now);
+        } elseif ($filterStatus === 'due_7_days') {
+            $query->whereNotNull('next_maintenance_date')->where('next_maintenance_date', '>=', $now)->where('next_maintenance_date', '<=', $in7Days);
+        } elseif ($filterStatus === 'due_30_days') {
+            $query->whereNotNull('next_maintenance_date')->where('next_maintenance_date', '>=', $now)->where('next_maintenance_date', '<=', $in30Days);
+        } elseif ($filterStatus === 'this_month') {
+            $query->whereNotNull('next_maintenance_date')->where('next_maintenance_date', '>=', $now)->where('next_maintenance_date', '<=', $endOfMonth);
+        }
+
+        $machines = $query->orderByRaw('CASE WHEN next_maintenance_date IS NULL THEN 2 ELSE 1 END')
+                          ->orderBy('next_maintenance_date', 'asc')
+                          ->latest('id')
+                          ->paginate(30);
+
+        $transformed = $machines->getCollection()->map(function ($m) use ($now, $in7Days, $in30Days) {
+            $maintDate = $m->next_maintenance_date ? Carbon::parse($m->next_maintenance_date)->startOfDay() : null;
+            $status = 'upcoming';
+            $daysDiff = 0;
+
+            if (!$maintDate) {
+                $status = 'not_set';
+            } elseif ($maintDate < $now) {
+                $status = 'overdue';
+                $daysDiff = (int) $now->diffInDays($maintDate, false);
+            } elseif ($maintDate <= $in7Days) {
+                $status = 'due_7_days';
+                $daysDiff = (int) $now->diffInDays($maintDate);
+            } elseif ($maintDate <= $in30Days) {
+                $status = 'due_30_days';
+                $daysDiff = (int) $now->diffInDays($maintDate);
+            } else {
+                $status = 'upcoming';
+                $daysDiff = (int) $now->diffInDays($maintDate);
+            }
+
+            $defaultParts = $m->modelCatalog?->default_parts ?? [];
+
+            return [
+                'id'                        => $m->id,
+                'customer_name'             => $m->customer_name ?: '(Chưa có tên)',
+                'customer_phone'            => $m->customer_phone ?: '',
+                'customer_address'          => $m->customer_address ?: '',
+                'machine_model'             => $m->machine_model ?: '(Chưa chọn model)',
+                'machine_serial'            => $m->machine_serial ?: '',
+                'qr_code'                   => $m->qr_code,
+                'qr_token'                  => $m->qr_token,
+                'qr_url'                    => $m->qr_url,
+                'technician_id'             => $m->technician_id,
+                'technician_name'           => $m->technician_name ?: ($m->technician?->name ?? 'Chưa phân công'),
+                'installed_at'              => $m->installed_at ? $m->installed_at->format('d/m/Y') : '-',
+                'filter_replacement_months' => (int) ($m->filter_replacement_months ?: 6),
+                'next_maintenance_date'     => $m->next_maintenance_date ? $m->next_maintenance_date->format('d/m/Y') : 'Chưa đặt lịch',
+                'next_maintenance_raw'      => $m->next_maintenance_date ? $m->next_maintenance_date->format('Y-m-d') : '',
+                'maintenance_status'        => $status,
+                'days_diff'                 => $daysDiff,
+                'warranty_until'            => $m->warranty_until ? $m->warranty_until->format('d/m/Y') : '-',
+                'warranty_status'           => $m->warranty_status,
+                'warranty_notes'            => $m->warranty_notes ?: '',
+                'default_parts'             => $defaultParts,
+            ];
+        });
+
+        $machines->setCollection($transformed);
+
+        $baseQ = FilterInstalledMachine::whereNotNull('customer_name')->where('customer_name', '!=', '')->where('status', '!=', 'unactivated');
+        $overdueCount = (clone $baseQ)->whereNotNull('next_maintenance_date')->where('next_maintenance_date', '<', $now)->count();
+        $due7Count = (clone $baseQ)->whereNotNull('next_maintenance_date')->where('next_maintenance_date', '>=', $now)->where('next_maintenance_date', '<=', $in7Days)->count();
+        $due30Count = (clone $baseQ)->whereNotNull('next_maintenance_date')->where('next_maintenance_date', '>=', $now)->where('next_maintenance_date', '<=', $in30Days)->count();
+        $totalCount = (clone $baseQ)->count();
+
+        return response()->json([
+            'success'   => true,
+            'machines'  => $machines,
+            'stats'     => [
+                'total'       => $totalCount,
+                'overdue'     => $overdueCount,
+                'due_7_days'  => $due7Count,
+                'due_30_days' => $due30Count,
+            ]
+        ]);
+    }
+
+    /**
+     * Dời / Đặt lịch bảo dưỡng
+     */
+    public function rescheduleMaintenance(Request $request, $id)
+    {
+        $machine = FilterInstalledMachine::findOrFail($id);
+        $data = $request->validate([
+            'next_maintenance_date'     => 'required|date',
+            'technician_id'             => 'nullable|integer',
+            'filter_replacement_months' => 'nullable|integer|min:1|max:36',
+            'notes'                     => 'nullable|string',
+        ]);
+
+        $updates = [
+            'next_maintenance_date' => $data['next_maintenance_date'],
+        ];
+
+        if (!empty($data['filter_replacement_months'])) {
+            $updates['filter_replacement_months'] = (int) $data['filter_replacement_months'];
+        }
+
+        if (!empty($data['technician_id'])) {
+            $tech = User::find($data['technician_id']);
+            if ($tech) {
+                $updates['technician_id'] = $tech->id;
+                $updates['technician_name'] = $tech->name;
+            }
+        }
+
+        if (!empty($data['notes'])) {
+            $timestamp = now()->format('d/m/Y H:i');
+            $user = Auth::user()?->name ?? 'Hệ thống';
+            $log = "[{$timestamp} - {$user}]: Dời lịch hẹn bảo dưỡng sang ngày " . date('d/m/Y', strtotime($data['next_maintenance_date'])) . ". Ghi chú: {$data['notes']}";
+            $updates['warranty_notes'] = ($machine->warranty_notes ? $machine->warranty_notes . "\n" : '') . $log;
+        }
+
+        $machine->update($updates);
+
+        if ($machine->installation_id) {
+            FilterInstallation::where('id', $machine->installation_id)->update([
+                'next_maintenance_date' => $data['next_maintenance_date']
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Đã dời ngày hẹn bảo dưỡng cho máy của KH {$machine->customer_name} thành công!",
+            'machine' => $machine
+        ]);
+    }
+
+    /**
+     * Hoàn tất lần bảo dưỡng & tự động cộng kỳ hẹn tiếp theo, ghi nhận phụ tùng thay thế (tính phí hoặc miễn phí)
+     */
+    public function completeMaintenance(Request $request, $id)
+    {
+        $machine = FilterInstalledMachine::findOrFail($id);
+        $data = $request->validate([
+            'notes'                     => 'nullable|string',
+            'parts_replaced'            => 'nullable|string',
+            'filter_replacement_months' => 'nullable|integer|min:1|max:36',
+            'next_maintenance_date'     => 'nullable|date',
+            'items'                     => 'nullable|array',
+            'items.*.part_id'           => 'nullable|integer',
+            'items.*.part_code'         => 'nullable|string',
+            'items.*.part_name'         => 'nullable|string',
+            'items.*.unit'              => 'nullable|string',
+            'items.*.quantity'          => 'nullable|integer|min:1',
+            'items.*.unit_price'        => 'nullable|numeric|min:0',
+            'items.*.is_free'           => 'nullable',
+            'items.*.note'              => 'nullable|string',
+            'labor_fee'                 => 'nullable|numeric|min:0',
+            'discount'                  => 'nullable|numeric|min:0',
+            'payment_status'            => 'nullable|string|in:paid,unpaid,free',
+        ]);
+
+        $rMonths = !empty($data['filter_replacement_months']) ? (int)$data['filter_replacement_months'] : ($machine->filter_replacement_months ?: 6);
+        $nextDate = !empty($data['next_maintenance_date']) 
+            ? date('Y-m-d', strtotime($data['next_maintenance_date']))
+            : now()->addMonths($rMonths)->format('Y-m-d');
+
+        $laborFee = (float)($data['labor_fee'] ?? 0);
+        $discount = (float)($data['discount'] ?? 0);
+        $items = $data['items'] ?? [];
+
+        // Tính tiền phụ tùng
+        $partsFee = 0;
+        $itemsReplacedSummary = [];
+        $sanitizedItems = [];
+
+        foreach ($items as $it) {
+            $name = trim($it['part_name'] ?? '');
+            if (!$name) continue;
+
+            $qty = max(1, (int)($it['quantity'] ?? 1));
+            $isFree = filter_var($it['is_free'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $uPrice = $isFree ? 0 : (float)($it['unit_price'] ?? 0);
+            $lineTotal = $isFree ? 0 : ($qty * $uPrice);
+            $partsFee += $lineTotal;
+
+            $feeText = $isFree ? 'Miễn phí' : number_format($lineTotal, 0, ',', '.') . 'đ';
+            $itemsReplacedSummary[] = "{$name} (x{$qty} {$feeText})";
+
+            $sanitizedItems[] = [
+                'part_id'    => !empty($it['part_id']) ? (int)$it['part_id'] : null,
+                'part_code'  => $it['part_code'] ?? null,
+                'part_name'  => $name,
+                'unit'       => $it['unit'] ?? 'Cái',
+                'quantity'   => $qty,
+                'unit_price' => $uPrice,
+                'total_price'=> $lineTotal,
+                'is_warranty'=> $isFree,
+                'note'       => $it['note'] ?? null,
+            ];
+        }
+
+        $totalAmount = max(0, $partsFee + $laborFee - $discount);
+        $paymentStatus = $totalAmount == 0 ? 'free' : ($data['payment_status'] ?? 'paid');
+
+        $partsSummaryString = !empty($itemsReplacedSummary) ? implode(', ', $itemsReplacedSummary) : (!empty($data['parts_replaced']) ? $data['parts_replaced'] : 'Không thay phụ tùng');
+        $financialSummary = $totalAmount > 0 
+            ? " | Thu phí: " . number_format($totalAmount, 0, ',', '.') . "đ ({$paymentStatus})"
+            : " | Dịch vụ miễn phí (0đ)";
+
+        $timestamp = now()->format('d/m/Y H:i');
+        $user = Auth::user()?->name ?? 'Hệ thống';
+        $log = "[{$timestamp} - {$user}]: Hoàn tất bảo dưỡng. Linh kiện thay thế: {$partsSummaryString}.{$financialSummary}. Hẹn kỳ tới (+{$rMonths} tháng): " . date('d/m/Y', strtotime($nextDate)) . (!empty($data['notes']) ? " | Ghi chú: {$data['notes']}" : '');
+
+        // 1. Cập nhật linh kiện trong accessories của FilterInstalledMachine
+        $existingAccessories = $machine->accessories_list;
+        $updatedAccessories = $existingAccessories;
+
+        foreach ($sanitizedItems as $sItem) {
+            $found = false;
+            foreach ($updatedAccessories as &$acc) {
+                if (
+                    (!empty($sItem['part_id']) && !empty($acc['part_id']) && $acc['part_id'] == $sItem['part_id']) ||
+                    (mb_strtolower($acc['name'] ?? '') === mb_strtolower($sItem['part_name']))
+                ) {
+                    $acc['quantity'] = $sItem['quantity'];
+                    $acc['installed_date'] = now()->format('Y-m-d');
+                    $acc['is_free'] = $sItem['is_warranty'];
+                    $acc['unit_price'] = $sItem['unit_price'];
+                    $found = true;
+                    break;
+                }
+            }
+            unset($acc);
+
+            if (!$found) {
+                $updatedAccessories[] = [
+                    'part_id'        => $sItem['part_id'],
+                    'part_code'      => $sItem['part_code'],
+                    'name'           => $sItem['part_name'],
+                    'quantity'       => $sItem['quantity'],
+                    'unit'           => $sItem['unit'],
+                    'unit_price'     => $sItem['unit_price'],
+                    'is_free'        => $sItem['is_warranty'],
+                    'installed_date' => now()->format('Y-m-d'),
+                    'maintenance_months' => $rMonths,
+                ];
+            }
+        }
+
+        // 2. Cập nhật FilterInstalledMachine
+        $machine->update([
+            'next_maintenance_date'     => $nextDate,
+            'filter_replacement_months' => $rMonths,
+            'accessories'               => $updatedAccessories,
+            'warranty_notes'            => ($machine->warranty_notes ? $machine->warranty_notes . "\n" : '') . $log,
+        ]);
+
+        if ($machine->installation_id) {
+            FilterInstallation::where('id', $machine->installation_id)->update([
+                'next_maintenance_date' => $nextDate,
+            ]);
+        }
+
+        // 3. Tạo phiếu FilterRepair và các FilterRepairItem
+        $repairCode = 'BD-' . date('Ymd') . '-' . sprintf('%03d', FilterRepair::whereDate('created_at', today())->count() + 1);
+        $repair = FilterRepair::create([
+            'code'             => $repairCode,
+            'customer_name'    => $machine->customer_name,
+            'customer_phone'   => $machine->customer_phone,
+            'customer_address' => $machine->customer_address,
+            'repair_type'      => 'at_home',
+            'warranty_type'    => ($totalAmount > 0) ? 'out_warranty' : 'in_warranty',
+            'machine_model'    => $machine->machine_model,
+            'machine_serial'   => $machine->machine_serial,
+            'technician_id'    => $machine->technician_id ?: Auth::id(),
+            'technician_name'  => $machine->technician_name ?: Auth::user()?->name,
+            'symptom'          => "Bảo dưỡng & thay lõi lọc định kỳ (+{$rMonths} tháng)",
+            'solution'         => !empty($data['notes']) ? $data['notes'] : "Đã kiểm tra chất lượng máy và thay thế linh kiện: {$partsSummaryString}",
+            'status'           => 'completed',
+            'completed_at'     => now(),
+            'parts_fee'        => $partsFee,
+            'labor_fee'        => $laborFee,
+            'discount'         => $discount,
+            'total_amount'     => $totalAmount,
+            'payment_status'   => $paymentStatus,
+            'notes'            => $log,
+            'created_by'       => Auth::id(),
+        ]);
+
+        // Tạo FilterRepairItem & Trừ kho phụ tùng
+        foreach ($sanitizedItems as $sItem) {
+            $repair->items()->create([
+                'part_id'     => $sItem['part_id'],
+                'part_code'   => $sItem['part_code'],
+                'part_name'   => $sItem['part_name'],
+                'unit'        => $sItem['unit'],
+                'quantity'    => $sItem['quantity'],
+                'unit_price'  => $sItem['unit_price'],
+                'total_price' => $sItem['total_price'],
+                'is_warranty' => $sItem['is_warranty'],
+                'note'        => $sItem['note'],
+            ]);
+
+            // Trừ kho nếu có part_id
+            if (!empty($sItem['part_id'])) {
+                $part = FilterPart::lockForUpdate()->find($sItem['part_id']);
+                if ($part) {
+                    $oldStock = $part->stock_qty;
+                    $newStock = max(0, $oldStock - $sItem['quantity']);
+                    $part->stock_qty = $newStock;
+                    $part->save();
+
+                    FilterPartTransaction::create([
+                        'part_id'        => $part->id,
+                        'type'           => 'export_repair',
+                        'quantity'       => -$sItem['quantity'],
+                        'balance_before' => $oldStock,
+                        'balance_after'  => $newStock,
+                        'unit_price'     => $sItem['unit_price'],
+                        'total_price'    => $sItem['total_price'],
+                        'reference_code' => $repair->code,
+                        'note'           => "Xuất phụ tùng bảo dưỡng cho khách {$machine->customer_name}" . ($sItem['is_warranty'] ? ' (Miễn phí / Bảo hành)' : ' (Thu tiền)'),
+                        'created_by'     => Auth::id(),
+                        'created_by_name'=> Auth::user()?->name ?? 'Admin',
+                    ]);
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Đã ghi nhận bảo dưỡng hoàn tất cho KH {$machine->customer_name}!" . ($totalAmount > 0 ? " Tổng thu: " . number_format($totalAmount, 0, ',', '.') . "đ." : " (Miễn phí).") . " Lịch hẹn tiếp theo: " . date('d/m/Y', strtotime($nextDate)),
+            'machine' => $machine,
+            'repair'  => $repair->load('items'),
+        ]);
+    }
+
+    /**
+     * Kỹ thuật viên tự nhận đơn bảo dưỡng
+     */
+    public function claimMaintenance(Request $request, $id)
+    {
+        $machine = FilterInstalledMachine::findOrFail($id);
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Vui lòng đăng nhập để nhận việc!'], 401);
+        }
+
+        $timestamp = now()->format('d/m/Y H:i');
+        $log = "[{$timestamp}]: KTV {$user->name} đã tự nhận phụ trách đơn bảo dưỡng này.";
+
+        $machine->update([
+            'technician_id'   => $user->id,
+            'technician_name' => $user->name,
+            'warranty_notes'  => ($machine->warranty_notes ? $machine->warranty_notes . "\n" : '') . $log,
+        ]);
+
+        if ($machine->installation_id) {
+            FilterInstallation::where('id', $machine->installation_id)->update([
+                'technician_id' => $user->id,
+            ]);
+        }
+
+        return response()->json([
+            'success'         => true,
+            'message'         => "Bạn đã nhận thành công đơn bảo dưỡng máy cho khách hàng {$machine->customer_name}!",
+            'technician_id'   => $user->id,
+            'technician_name' => $user->name,
+            'machine'         => $machine,
+        ]);
+    }
+
+    /**
+     * Kỹ thuật viên tự tạo phiếu lấy phụ tùng từ kho để đi lắp đặt, bảo dưỡng, sửa chữa
+     */
+    public function exportPartsForTechnician(Request $request)
+    {
+        $data = $request->validate([
+            'purpose'      => 'required|string|in:install,maintenance,repair,general',
+            'target_name'  => 'nullable|string|max:255',
+            'notes'        => 'nullable|string|max:1000',
+            'items'        => 'required|array|min:1',
+            'items.*.part_id'  => 'required|exists:filter_parts,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.note'     => 'nullable|string|max:255',
+        ]);
+
+        $purposeMap = [
+            'install'     => 'Đi Lắp Đặt Máy Lọc Mới',
+            'maintenance' => 'Đi Bảo Dưỡng & Thay Lõi Định Kỳ',
+            'repair'      => 'Đi Sửa Chữa Máy Sự Cố / Hỏng',
+            'general'     => 'Bổ Sung Túi Đồ Nghề / Vật Tư Dự Phòng',
+        ];
+
+        $purposeText = $purposeMap[$data['purpose']] ?? 'KTV Lấy Hàng Đi Làm';
+        $targetInfo = !empty($data['target_name']) ? "Mục tiêu: {$data['target_name']}" : '';
+        $user = Auth::user();
+        $techName = $user?->name ?? 'KTV';
+        $refCode = 'XK-KTV-' . date('ymd') . '-' . sprintf('%03d', FilterPartTransaction::whereDate('created_at', today())->where('type', 'like', 'export_tech%')->count() + 1);
+
+        try {
+            return DB::transaction(function () use ($data, $purposeText, $targetInfo, $refCode, $user, $techName) {
+                $exportedItems = [];
+
+                foreach ($data['items'] as $item) {
+                    $qty = (int)$item['quantity'];
+                    if ($qty <= 0) continue;
+
+                    $part = FilterPart::lockForUpdate()->find($item['part_id']);
+                    if (!$part) {
+                        throw new \Exception("Không tìm thấy phụ tùng ID #{$item['part_id']}!");
+                    }
+
+                    if ($part->stock_qty < $qty) {
+                        throw new \Exception("Linh kiện [{$part->name}] hiện chỉ còn tồn {$part->stock_qty} {$part->unit} trong kho, không đủ xuất {$qty} {$part->unit}!");
+                    }
+
+                    $oldStock = $part->stock_qty;
+                    $newStock = $oldStock - $qty;
+                    $part->stock_qty = $newStock;
+                    $part->save();
+
+                    $unitPrice = (float)($part->out_price ?: $part->in_price ?: 0);
+                    $totalPrice = $unitPrice * $qty;
+
+                    $itemNoteParts = [];
+                    $itemNoteParts[] = "[{$purposeText}]";
+                    if ($targetInfo) $itemNoteParts[] = $targetInfo;
+                    if (!empty($item['note'])) $itemNoteParts[] = $item['note'];
+                    if (!empty($data['notes'])) $itemNoteParts[] = "Ghi chú: " . $data['notes'];
+                    $fullNote = implode(' | ', $itemNoteParts);
+
+                    FilterPartTransaction::create([
+                        'part_id'        => $part->id,
+                        'type'           => 'export_tech_' . $data['purpose'],
+                        'quantity'       => -$qty,
+                        'balance_before' => $oldStock,
+                        'balance_after'  => $newStock,
+                        'unit_price'     => $unitPrice,
+                        'total_price'    => $totalPrice,
+                        'reference_code' => $refCode,
+                        'note'           => $fullNote,
+                        'created_by'     => $user?->id,
+                        'created_by_name'=> $techName,
+                    ]);
+
+                    $exportedItems[] = [
+                        'part_name'  => $part->name,
+                        'part_code'  => $part->code,
+                        'quantity'   => $qty,
+                        'unit'       => $part->unit,
+                        'unit_price' => $unitPrice,
+                        'remaining'  => $newStock,
+                    ];
+                }
+
+                return response()->json([
+                    'success'        => true,
+                    'message'        => "Đã xuất kho thành công phiếu [{$refCode}] cho KTV {$techName}! Tổng cộng: " . count($exportedItems) . " loại linh kiện.",
+                    'reference_code' => $refCode,
+                    'items'          => $exportedItems,
+                ]);
+            });
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Kỹ thuật viên hoàn trả linh kiện thừa về kho
+     */
+    public function returnTechPartsToWarehouse(Request $request)
+    {
+        $data = $request->validate([
+            'part_id'                 => 'required|exists:filter_parts,id',
+            'quantity'                => 'required|integer|min:1',
+            'original_reference_code' => 'nullable|string|max:50',
+            'note'                    => 'nullable|string|max:500',
+        ]);
+
+        $user = Auth::user();
+        $techName = $user?->name ?? 'KTV';
+        $refCode = 'NK-HOAN-' . date('ymd') . '-' . rand(100, 999);
+
+        try {
+            return DB::transaction(function () use ($data, $user, $techName, $refCode) {
+                $part = FilterPart::lockForUpdate()->findOrFail($data['part_id']);
+                $qty = (int)$data['quantity'];
+                $oldStock = $part->stock_qty;
+                $newStock = $oldStock + $qty;
+                $part->stock_qty = $newStock;
+                $part->save();
+
+                $unitPrice = (float)($part->out_price ?: $part->in_price ?: 0);
+                $totalPrice = $unitPrice * $qty;
+
+                $origRef = !empty($data['original_reference_code']) ? "Từ phiếu xuất {$data['original_reference_code']}" : "Linh kiện mang đi làm còn dư";
+                $note = "[KTV Hoàn kho: {$techName}] {$origRef}" . (!empty($data['note']) ? " | Ghi chú: {$data['note']}" : '');
+
+                $tx = FilterPartTransaction::create([
+                    'part_id'        => $part->id,
+                    'type'           => 'return_tech_part',
+                    'quantity'       => +$qty,
+                    'balance_before' => $oldStock,
+                    'balance_after'  => $newStock,
+                    'unit_price'     => $unitPrice,
+                    'total_price'    => $totalPrice,
+                    'reference_code' => $refCode,
+                    'note'           => $note,
+                    'created_by'     => $user?->id,
+                    'created_by_name'=> $techName,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Đã hoàn trả {$qty} {$part->unit} [{$part->name}] về kho thành công! Tồn kho hiện tại: {$newStock}.",
+                    'transaction' => $tx,
+                    'new_stock'   => $newStock,
+                ]);
+            });
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
     }
 }

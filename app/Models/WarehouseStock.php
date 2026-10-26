@@ -31,4 +31,12 @@ class WarehouseStock extends Model
     {
         return $this->belongsTo(Warehouse::class);
     }
+
+    /**
+     * Tồn kho khả dụng của sản phẩm tại kho cụ thể này (Tồn thực tế - Tồn tạm giữ)
+     */
+    public function getAvailableStockAttribute(): float
+    {
+        return max(0, (float) ($this->stock_quantity - $this->reserved_quantity));
+    }
 }

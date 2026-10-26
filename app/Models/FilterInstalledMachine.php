@@ -22,7 +22,6 @@ class FilterInstalledMachine extends Model
         'customer_name',
         'customer_phone',
         'customer_address',
-        'water_source_type',
         'machine_model_id',
         'machine_model',
         'machine_serial',
@@ -38,9 +37,6 @@ class FilterInstalledMachine extends Model
         'filter_replacement_months',
         'next_maintenance_date',
         'warranty_notes',
-        'tds_in',
-        'tds_out',
-        'pressure',
         'accessories',
         'activation_notes',
         'admin_notes',
@@ -58,8 +54,6 @@ class FilterInstalledMachine extends Model
         'warranty_months'           => 'integer',
         'filter_replacement_months' => 'integer',
         'view_count'                => 'integer',
-        'tds_in'                    => 'integer',
-        'tds_out'                   => 'integer',
     ];
 
     protected $appends = [

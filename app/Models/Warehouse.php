@@ -58,7 +58,9 @@ class Warehouse extends Model
         return $query->where('is_active', true)
             ->whereNotIn('type', ['Kho hàng ôm', 'Kho xe lưu động'])
             ->where('name', 'not like', '%Kho Hàng Ôm%')
-            ->where('name', 'not like', '%Kho Xe%');
+            ->where('name', 'not like', '%Kho Xe%')
+            ->where('code', 'not like', 'KHO-OM-%')
+            ->where('code', 'not like', 'KHO-XE-%');
     }
 
     /**
