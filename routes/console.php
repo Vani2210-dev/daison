@@ -76,7 +76,15 @@ Artisan::command('db:wipe-except-auth {--force : Bỏ qua bước xác nhận c�
     return 0;
 })->purpose('Xóa toàn bộ dữ liệu nghiệp vụ các bảng, chỉ giữ lại bảng phân quyền và tài khoản admin');
 
-Artisan::command('db:import-products {file=Book1.xlsx : Đường dẫn file Excel}', function ($file) {
+Artisan::command('db:import-products {file=Book1.xlsx : Đường dẫn file Excel} {--wipe : Xóa sạch toàn bộ sản phẩm và tồn kho cũ}', function ($file) {
+    if ($this->option('wipe')) {
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS = 0;');
+        \App\Models\WarehouseStock::truncate();
+        \App\Models\Product::truncate();
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS = 1;');
+        $this->info("✓ Đã xóa sạch dữ liệu sản phẩm và tồn kho cũ thành công.");
+    }
+
     $filePath = base_path($file);
     if (!file_exists($filePath)) {
         $this->error("Không tìm thấy file: {$filePath}");
@@ -226,19 +234,24 @@ Artisan::command('db:import-products {file=Book1.xlsx : Đường dẫn file Exc
         // Price tiers
         $priceNpp = $p['price_npp'] > 0 ? $p['price_npp'] : round($p['price'] * 0.97);
         $priceBuon = round($p['price'] * 0.95);
-        $priceTiers = [
-            ['name' => 'Giá Nhà Phân Phối / Cấp 1', 'price' => (float)$priceNpp],
-            ['name' => 'Giá Bán Buôn / Đại Lý', 'price' => (float)$priceBuon],
-            ['name' => 'Giá Bán Lẻ Tiêu Chuẩn', 'price' => (float)$p['price']],
-        ];
 
         // Tách đơn vị quy đổi nếu có (VD: Kiện 200 hộp -> conversion_unit = 'Kiện', conversion_rate = 200)
         $conversionUnit = null;
         $conversionRate = 1;
-        if (preg_match('/(Kiện|Thùng)\s+(\d+)/ui', $p['specification'], $matches)) {
+        if (preg_match('/(Kiện|Thùng|Bao)\s+(\d+)/ui', $p['specification'], $matches)) {
             $conversionUnit = $matches[1];
             $conversionRate = (float)$matches[2];
         }
+
+        $conversionPrice = ($conversionUnit && $conversionRate > 1) ? round($p['price'] * $conversionRate) : null;
+        $conversionPriceNpp = ($conversionUnit && $conversionRate > 1) ? round($priceNpp * $conversionRate) : null;
+        $conversionPriceBuon = ($conversionUnit && $conversionRate > 1) ? round($priceBuon * $conversionRate) : null;
+
+        $priceTiers = [
+            ['name' => 'Giá Nhà Phân Phối / Cấp 1', 'price' => (float)$priceNpp, 'conversion_price' => (float)$conversionPriceNpp],
+            ['name' => 'Giá Bán Buôn / Đại Lý', 'price' => (float)$priceBuon, 'conversion_price' => (float)$conversionPriceBuon],
+            ['name' => 'Giá Bán Lẻ Tiêu Chuẩn', 'price' => (float)$p['price'], 'conversion_price' => (float)$conversionPrice],
+        ];
 
         $product = \App\Models\Product::updateOrCreate(
             ['sku' => $p['sku']],
@@ -251,6 +264,7 @@ Artisan::command('db:import-products {file=Book1.xlsx : Đường dẫn file Exc
                 'specification' => $p['specification'],
                 'conversion_unit' => $conversionUnit,
                 'conversion_rate' => $conversionRate,
+                'conversion_price' => $conversionPrice,
                 'price' => $p['price'],
                 'cost_price' => $priceNpp,
                 'latest_cost_price' => $priceNpp,
