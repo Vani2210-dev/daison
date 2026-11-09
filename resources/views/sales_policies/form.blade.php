@@ -531,6 +531,20 @@
                     <h3 class="font-bold text-slate-800 uppercase tracking-wide text-[11px]">3.1. Phân Khúc & Khách Hàng Áp Dụng</h3>
                 </div>
 
+                <!-- Phân khúc cấp bậc khách hàng -->
+                <div class="flex items-center gap-1.5 flex-wrap pt-1">
+                    <span class="text-slate-500 font-semibold mr-1">Chọn nhanh theo cấp bậc:</span>
+                    <template x-for="scope in availableScopes" :key="scope">
+                        <button 
+                            type="button" 
+                            @click="selectCustomerSegment(scope)" 
+                            :class="selectedCustomerSegment === scope ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold'"
+                            class="px-2.5 py-1 rounded-lg text-xs transition cursor-pointer"
+                            x-text="scope"
+                        ></button>
+                    </template>
+                </div>
+
 
 
                 <!-- Danh sách khách hàng cụ thể (tùy chọn) -->
@@ -808,9 +822,11 @@ function salesPolicyForm() {
         selectedCustomerSegment: '{{ ($policy && $policy->target_customer_ids && count($policy->target_customer_ids) > 0) ? "Tùy chọn" : "Đại lý toàn hệ thống" }}',
         availableScopes: [
             'Đại lý toàn hệ thống',
+            'GT - Khách hàng Sỉ',
+            'GT - Khách hàng Lẻ lớn',
+            'GT - Khách hàng Lẻ nhỏ',
             'Đại lý Cấp 1',
-            'Đại lý Cấp 2',
-            'Khách Dự Án'
+            'Đại lý Cấp 2'
         ],
         formData: {
             id: '{{ $policy ? $policy->id : "" }}',

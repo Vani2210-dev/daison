@@ -131,9 +131,11 @@
                 </div>
                 <select name="tier" onchange="this.form.submit()" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white">
                     <option value="">Tất cả phân cấp</option>
+                    <option value="GT - Khách hàng Sỉ" {{ request('tier') === 'GT - Khách hàng Sỉ' ? 'selected' : '' }}>GT - Khách hàng Sỉ</option>
+                    <option value="GT - Khách hàng Lẻ lớn" {{ request('tier') === 'GT - Khách hàng Lẻ lớn' ? 'selected' : '' }}>GT - Khách hàng Lẻ lớn</option>
+                    <option value="GT - Khách hàng Lẻ nhỏ" {{ request('tier') === 'GT - Khách hàng Lẻ nhỏ' ? 'selected' : '' }}>GT - Khách hàng Lẻ nhỏ</option>
                     <option value="Cấp 1" {{ request('tier') === 'Cấp 1' ? 'selected' : '' }}>Đại lý Cấp 1</option>
                     <option value="Cấp 2" {{ request('tier') === 'Cấp 2' ? 'selected' : '' }}>Đại lý Cấp 2</option>
-                    <option value="Đại lý tỉnh" {{ request('tier') === 'Đại lý tỉnh' ? 'selected' : '' }}>Đại lý tỉnh</option>
                     <option value="Khách lẻ" {{ request('tier') === 'Khách lẻ' ? 'selected' : '' }}>Khách lẻ</option>
                 </select>
                 <select name="debt_status" onchange="this.form.submit()" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white">
@@ -189,7 +191,7 @@
                             </td>
                             <td class="py-2.5 px-3">
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold 
-                                    {{ $d->tier === 'Cấp 1' ? 'bg-amber-100 text-amber-800' : ($d->tier === 'Cấp 2' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700') }}">
+                                    {{ (str_contains($d->tier, 'Sỉ') || $d->tier === 'Cấp 1') ? 'bg-amber-100 text-amber-800' : ((str_contains($d->tier, 'Lẻ lớn') || $d->tier === 'Cấp 2') ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700') }}">
                                     {{ $d->tier ?: 'Mặc định' }}
                                 </span>
                             </td>

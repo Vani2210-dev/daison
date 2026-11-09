@@ -69,7 +69,13 @@
                 <label class="block text-slate-500 mb-1 text-[11px] font-bold">Cấp bậc đại lý</label>
                 <select name="tier" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all cursor-pointer">
                     <option value="">-- Tất cả cấp bậc --</option>
-                    @foreach(['Đại lý Cấp 1', 'Đại lý Cấp 2', 'Bán lẻ', 'Dự án', 'Khách Dự Án', 'Thợ'] as $t)
+                    @php
+                        $customTiers = \App\Models\Dealer::whereNotNull('tier')->where('tier', '!=', '')->distinct()->orderBy('tier')->pluck('tier')->toArray();
+                        if (empty($customTiers)) {
+                            $customTiers = ['GT - Khách hàng Sỉ', 'GT - Khách hàng Lẻ lớn', 'GT - Khách hàng Lẻ nhỏ', 'Đại lý Cấp 1', 'Đại lý Cấp 2', 'Bán lẻ', 'Dự án', 'Thợ'];
+                        }
+                    @endphp
+                    @foreach($customTiers as $t)
                         <option value="{{ $t }}" {{ request('tier') === $t ? 'selected' : '' }}>{{ $t }}</option>
                     @endforeach
                 </select>
@@ -141,15 +147,16 @@
                                     <div class="flex items-center gap-1.5">
                                         @php
                                             $tColor = match($d->tier) {
-                                                'Đại lý Cấp 1' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                                                'Đại lý Cấp 2' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                                                'Khách Dự Án', 'Dự án' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                                                'Thợ' => 'bg-amber-50 text-amber-700 border-amber-200',
-                                                default => 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                'GT - Khách hàng Sỉ', 'Đại lý Cấp 1' => 'bg-amber-50 text-amber-700 border-amber-200',
+                                                'GT - Khách hàng Lẻ lớn', 'Đại lý Cấp 2' => 'bg-sky-50 text-sky-700 border-sky-200',
+                                                'GT - Khách hàng Lẻ nhỏ', 'Bán lẻ' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                                'Khách Dự Án', 'Dự án' => 'bg-purple-50 text-purple-700 border-purple-200',
+                                                'Thợ' => 'bg-orange-50 text-orange-700 border-orange-200',
+                                                default => 'bg-slate-50 text-slate-700 border-slate-200'
                                             };
                                         @endphp
                                         <span class="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-semibold border {{ $tColor }}">
-                                            {{ $d->tier ?? 'Đại lý Cấp 1' }}
+                                            {{ $d->tier ?? 'GT - Khách hàng Lẻ nhỏ' }}
                                         </span>
                                         <a href="{{ url('/dealers/' . $d->id . '/edit') }}" 
                                            class="text-slate-400 hover:text-sky-600 transition-colors p-0.5" 
@@ -307,8 +314,18 @@
                             </td>
 
                             <td class="py-3.5 px-4 text-center">
-                                <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200">
-                                    {{ $d->tier ?? 'Đại lý Cấp 1' }}
+                                @php
+                                    $tColorRow = match($d->tier) {
+                                        'GT - Khách hàng Sỉ', 'Đại lý Cấp 1' => 'bg-amber-50 text-amber-700 border-amber-200',
+                                        'GT - Khách hàng Lẻ lớn', 'Đại lý Cấp 2' => 'bg-sky-50 text-sky-700 border-sky-200',
+                                        'GT - Khách hàng Lẻ nhỏ', 'Bán lẻ' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                        'Khách Dự Án', 'Dự án' => 'bg-purple-50 text-purple-700 border-purple-200',
+                                        'Thợ' => 'bg-orange-50 text-orange-700 border-orange-200',
+                                        default => 'bg-slate-50 text-slate-700 border-slate-200'
+                                    };
+                                @endphp
+                                <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border {{ $tColorRow }}">
+                                    {{ $d->tier ?? 'GT - Khách hàng Lẻ nhỏ' }}
                                 </span>
                             </td>
 

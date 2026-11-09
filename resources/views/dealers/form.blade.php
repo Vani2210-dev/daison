@@ -147,6 +147,9 @@
                         </label>
                         <select x-model="formData.tier"
                                 class="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-purple-500 shadow-2xs transition-all cursor-pointer">
+                            <option value="GT - Khách hàng Sỉ">GT - Khách hàng Sỉ</option>
+                            <option value="GT - Khách hàng Lẻ lớn">GT - Khách hàng Lẻ lớn</option>
+                            <option value="GT - Khách hàng Lẻ nhỏ">GT - Khách hàng Lẻ nhỏ</option>
                             <option value="Đại lý Cấp 1">Đại lý Cấp 1 (Ưu tiên cao)</option>
                             <option value="Đại lý Cấp 2">Đại lý Cấp 2</option>
                             <option value="Bán lẻ">Khách Mua Lẻ</option>
@@ -154,7 +157,7 @@
                             <option value="Thợ">Nhà Thầu / Thợ Điện Nước</option>
                             @if(isset($priceTiers))
                                 @foreach($priceTiers as $pt)
-                                    @if(!in_array($pt->name, ['Đại lý Cấp 1', 'Đại lý Cấp 2', 'Bán lẻ', 'Dự án', 'Thợ']))
+                                    @if(!in_array($pt->name, ['GT - Khách hàng Sỉ', 'GT - Khách hàng Lẻ lớn', 'GT - Khách hàng Lẻ nhỏ', 'Đại lý Cấp 1', 'Đại lý Cấp 2', 'Bán lẻ', 'Dự án', 'Thợ']))
                                         <option value="{{ $pt->name }}">{{ $pt->name }}</option>
                                     @endif
                                 @endforeach
@@ -550,7 +553,7 @@ function dealerFormApp() {
             phone: '{{ $dealer ? $dealer->phone : "" }}',
             tax_code: '{{ $dealer ? $dealer->tax_code : "" }}',
             referrer: '{{ $dealer ? addslashes($dealer->referrer) : "" }}',
-            tier: '{{ $dealer ? ($dealer->tier ?: "Đại lý Cấp 1") : "Đại lý Cấp 1" }}',
+            tier: '{{ $dealer ? ($dealer->tier ?: "GT - Khách hàng Lẻ nhỏ") : "GT - Khách hàng Lẻ nhỏ" }}',
             address: '{{ $dealer ? addslashes($dealer->address) : "" }}',
             new_city: '{{ $dealer ? addslashes($dealer->new_city) : "" }}',
             new_ward: '{{ $dealer ? addslashes($dealer->new_ward) : "" }}',

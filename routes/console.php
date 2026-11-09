@@ -629,15 +629,8 @@ Artisan::command('db:import-customers {file=khachhang1.xlsx : Đường dẫn fi
         $district = $cells['AD'] ?: ($cells['AC'] ?? '');
         $city = 'Nghệ An';
 
-        $classification = $cells['AN'] ?? ($cells['AL'] ?? '');
-        $tier = 'Đại lý Cấp 2';
-        if (str_contains($classification, 'Sỉ')) {
-            $tier = 'Đại lý Cấp 1';
-        } elseif (str_contains($classification, 'Lẻ nhỏ')) {
-            $tier = 'Bán lẻ';
-        } elseif (str_contains($classification, 'Lẻ lớn')) {
-            $tier = 'Đại lý Cấp 2';
-        }
+        $classification = trim($cells['AN'] ?? ($cells['AL'] ?? ''));
+        $tier = $classification ?: 'GT - Khách hàng Lẻ nhỏ';
 
         $lat = (isset($cells['AF']) && is_numeric($cells['AF'])) ? (float)$cells['AF'] : null;
         $lng = (isset($cells['AG']) && is_numeric($cells['AG'])) ? (float)$cells['AG'] : null;
