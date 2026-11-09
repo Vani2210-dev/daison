@@ -101,7 +101,7 @@
             "product product product"
             "unit qty price"
             "policy policy policy"
-            "discount discount vat"
+            "discount discount discount"
             "picking picking picking"
             "amount amount amount";
         gap: 0.45rem 0.5rem !important;
@@ -301,28 +301,9 @@
         border-color: #cbd5e1 !important;
     }
 
-    .order-items-table td.col-vat {
-        grid-area: vat !important;
-    }
-    .order-items-table td.col-vat::before {
-        content: "THUẾ VAT";
-        display: block;
-        font-size: 9.5px;
-        font-weight: 700;
-        color: #0284c7;
-        letter-spacing: 0.025em;
-        margin-bottom: 2px;
-        text-align: right;
-    }
-    .order-items-table td.col-vat .flex {
-        height: 34px !important;
-        align-items: center !important;
-    }
-    .order-items-table td.col-vat input {
-        height: 34px !important;
-        font-size: 12px !important;
-        border-radius: 0.375rem !important;
-        border-color: #cbd5e1 !important;
+    .order-items-table td.col-vat,
+    .order-items-table th.col-vat {
+        display: none !important;
     }
 
     /* Dòng 6 (Nếu có): SL Đã Bốc */
@@ -447,8 +428,8 @@
             $amt = (float) $it->amount;
             $isGift = ($price == 0 && (str_contains($it->applied_tier_policy ?? '', 'TẶNG KÈM') || str_contains($it->applied_tier_policy ?? '', 'Khuyến mại')));
             $itTier = ($it->applied_tier_policy && $it->applied_tier_policy !== 'Theo phiếu') ? $it->applied_tier_policy : $orderTier;
-            $vatPercent = ($it->product && $it->product->vat_rate !== null) ? (float) $it->product->vat_rate : 10.0;
-            $vatAmt = round(($qty * $price) * ($vatPercent / 100));
+            $vatPercent = 0;
+            $vatAmt = 0;
             $initialItems[] = [
                 'id' => (string) $it->id,
                 'itemId' => (string) ($it->product_id ?? ''),
@@ -464,11 +445,11 @@
                 'costPrice' => (float) ($it->cost_price ?? 0),
                 'discount_percent' => 0,
                 'discount_amount' => 0,
-                'vat_percent' => $vatPercent,
-                'vat_amount' => $vatAmt,
+                'vat_percent' => 0,
+                'vat_amount' => 0,
                 'appliedTierPolicy' => $itTier,
                 'price_type' => $itTier,
-                'amount' => $amt > 0 ? $amt : round($qty * $price * (1 + $vatPercent / 100)),
+                'amount' => $amt > 0 ? $amt : round($qty * $price),
                 'picked_qty' => (float) ($it->picked_qty ?? 0),
                 'shortage_reason' => $it->shortage_reason ?? '',
                 'item_status' => $it->item_status ?? '',
@@ -494,7 +475,7 @@
             'costPrice' => 0,
             'discount_percent' => 0,
             'discount_amount' => 0,
-            'vat_percent' => 10,
+            'vat_percent' => 0,
             'vat_amount' => 0,
             'appliedTierPolicy' => $orderTier,
             'price_type' => $orderTier,
@@ -1043,11 +1024,7 @@
                                     </div>
                                 </div>
                             </th>
-                            <!-- VAT cột -->
-                            <th class="py-2.5 px-2 text-center w-36 bg-sky-50/60 border-r border-slate-200">
-                                <div>VAT</div>
-                                <div class="text-[9px] text-slate-400 font-normal lowercase tracking-normal">(ăn theo sp chọn)</div>
-                            </th>
+
                             <!-- Cột SL Bốc: chỉ hiện khi đơn đang ở giai đoạn soạn hàng -->
                             <template x-if="isPickingStage()">
                                 <th class="py-2.5 px-2 text-center w-24 bg-orange-50/80 border-x border-slate-200">
@@ -1342,21 +1319,7 @@
                                     </template>
                                 </td>
 
-                                <!-- VAT (ăn theo sản phẩm chọn) -->
-                                <td class="col-vat py-2 px-2 bg-sky-50/30 border-r border-slate-200 align-top">
-                                    <template x-if="!item.isPromotionalGift">
-                                        <div class="flex items-center gap-1 justify-between">
-                                            <div class="flex items-center gap-0.5">
-                                                <input type="number" min="0" max="100" step="any" x-model.number="item.vat_percent" autocomplete="off" @input="updateLineTotal(index)" placeholder="10" class="w-10 px-1 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded text-center text-xs font-semibold focus:outline-none shadow-2xs transition-colors">
-                                                <span class="text-[10px] text-slate-400">%</span>
-                                            </div>
-                                            <span class="text-[11px] font-mono text-slate-700 font-semibold truncate text-right w-16" x-text="formatNumber(item.vat_amount) + ' đ'"></span>
-                                        </div>
-                                    </template>
-                                    <template x-if="item.isPromotionalGift">
-                                        <div class="py-1.5 text-center text-slate-400 text-xs italic font-medium">0 đ</div>
-                                    </template>
-                                </td>
+
 
                                 <!-- Cột SL Bốc: chỉ render khi đang ở giai đoạn soạn hàng -->
                                 <template x-if="isPickingStage()">
@@ -1504,34 +1467,18 @@
                     <label class="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1">GHI CHÚ</label>
                     <textarea x-model="formData.notes" rows="3" placeholder="Nhập ghi chú đơn hàng, địa điểm giao hoặc điều khoản chiết khấu..." class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:border-sky-500 focus:outline-none"></textarea>
                 </div>
-                <div class="px-3.5 py-2.5 bg-sky-50/70 border border-sky-200/60 rounded-xl text-xs text-sky-700 flex items-center gap-2">
-                    <i class="fa-solid fa-circle-info text-sky-500"></i>
-                    <span>Tiền VAT được tính trực tiếp trên đơn giá của từng sản phẩm.</span>
-                </div>
-
-
             </div>
 
             <!-- Right Column: Financial Calculations Summary -->
             <div class="lg:col-span-5 bg-slate-50/80 p-4 rounded-xl border border-slate-200/70 space-y-2.5 text-xs font-semibold">
                 <div class="space-y-2.5">
                     <div class="flex items-center justify-between text-slate-600">
-                        <span>Tiền hàng (chưa VAT)</span>
+                        <span>Tổng tiền hàng</span>
                         <span class="font-bold text-slate-800" x-text="formatNumber(subtotalBeforeVat) + ' đ'"></span>
                     </div>
 
-                    <div class="flex items-center justify-between text-slate-600">
-                        <span>Tiền VAT</span>
-                        <span class="font-bold text-slate-800" x-text="formatNumber(totalVat) + ' đ'"></span>
-                    </div>
-
-                    <div class="flex items-center justify-between text-slate-600">
-                        <span>Tổng tiền (đã gồm VAT)</span>
-                        <span class="font-bold text-slate-900" x-text="formatNumber(totalWithVat) + ' đ'"></span>
-                    </div>
-
                     <div class="flex items-center justify-between text-slate-600 pt-1">
-                        <span>Chiết khấu tổng (sau VAT)</span>
+                        <span>Chiết khấu đơn hàng</span>
                         <div class="flex items-center gap-1.5">
                             <div class="flex items-center gap-0.5">
                                 <input type="number" min="0" max="100" step="any" x-model.number="orderDiscountPercent" @input="onOrderDiscountPercentChange()" placeholder="%" class="w-12 px-1.5 py-1 bg-white border border-slate-200 rounded text-center text-xs focus:outline-none">
@@ -2030,12 +1977,8 @@ function orderFormApp() {
                     it.price_type = topTier;
                     it.appliedTierPolicy = topTier;
                 }
-                if (it.product_id && !it.isPromotionalGift) {
-                    const prod = this.getProduct(it.product_id);
-                    if (prod && prod.vat_rate !== undefined && prod.vat_rate !== null && prod.vat_rate !== '') {
-                        it.vat_percent = Number(prod.vat_rate);
-                    }
-                }
+                it.vat_percent = 0;
+                it.vat_amount = 0;
             });
 
             this.recalculatePromotionalGifts();
@@ -2117,9 +2060,9 @@ function orderFormApp() {
                     const prod = this.getProduct(cIt.product_id) || {};
                     const qty = Number(cIt.quantity) || 1;
                     const price = Number(cIt.price !== undefined ? cIt.price : (prod.price || 0));
-                    const vatRate = (prod.vat_rate !== undefined && prod.vat_rate !== null && prod.vat_rate !== '') ? Number(prod.vat_rate) : 10;
+                    const vatRate = 0;
                     const lineBase = qty * price;
-                    const vatAmt = Math.round(lineBase * (vatRate / 100));
+                    const vatAmt = 0;
 
                     newItems.push({
                         id: '',
@@ -2136,11 +2079,11 @@ function orderFormApp() {
                         costPrice: Number(prod.cost_price || 0),
                         discount_percent: 0,
                         discount_amount: 0,
-                        vat_percent: vatRate,
-                        vat_amount: vatAmt,
+                        vat_percent: 0,
+                        vat_amount: 0,
                         appliedTierPolicy: topTier,
                         price_type: topTier,
-                        amount: lineBase + vatAmt,
+                        amount: lineBase,
                         checked: true,
                         isPromotionalGift: false,
                     });
@@ -2236,7 +2179,7 @@ function orderFormApp() {
                         costPrice: 0,
                         discount_percent: 0,
                         discount_amount: 0,
-                        vat_percent: 10,
+                        vat_percent: 0,
                         vat_amount: 0,
                         appliedTierPolicy: 'Theo phiếu',
                         price_type: 'Theo phiếu',
@@ -2862,12 +2805,9 @@ function orderFormApp() {
             item.originalPrice = Number(p.cost_price || 0);
             item.costPrice = Number(p.cost_price || 0);
 
-            // Cài đặt VAT theo sản phẩm
-            if (p.vat_rate !== undefined && p.vat_rate !== null && p.vat_rate !== '') {
-                item.vat_percent = Number(p.vat_rate);
-            } else {
-                item.vat_percent = 10;
-            }
+            // Không tính VAT
+            item.vat_percent = 0;
+            item.vat_amount = 0;
             
             const effTier = (item.price_type && item.price_type !== 'Theo phiếu') ? item.price_type : (this.formData.dealer_tier || 'Nguyên Giá');
             item.price_type = effTier;
@@ -3102,7 +3042,7 @@ function orderFormApp() {
                 costPrice: 0,
                 discount_percent: 0,
                 discount_amount: 0,
-                vat_percent: 10,
+                vat_percent: 0,
                 vat_amount: 0,
                 appliedTierPolicy: currentTier,
                 price_type: currentTier,
@@ -3145,7 +3085,7 @@ function orderFormApp() {
                     costPrice: 0,
                     discount_percent: 0,
                     discount_amount: 0,
-                    vat_percent: 10,
+                    vat_percent: 0,
                     vat_amount: 0,
                     appliedTierPolicy: currentTier,
                     price_type: currentTier,
@@ -3171,9 +3111,8 @@ function orderFormApp() {
                     const prod = this.getProduct(it.product_id);
                     if (prod) {
                         it.unitPrice = this.getProductPrice(prod, it.unit, currentTier);
-                        if (prod.vat_rate !== undefined && prod.vat_rate !== null && prod.vat_rate !== '') {
-                            it.vat_percent = Number(prod.vat_rate);
-                        }
+                        it.vat_percent = 0;
+                        it.vat_amount = 0;
                     }
                 }
                 // Nếu loại giá mới không phải Nguyên Giá, dọn dẹp chiết khấu tự động của dòng
@@ -3264,11 +3203,9 @@ function orderFormApp() {
                 }
 
                 const lineAfterDiscount = Math.max(0, lineBase - lineDiscount);
-                const vatPercent = Number(it.vat_percent) || 0;
-                const lineVat = (lineAfterDiscount * vatPercent) / 100;
-                it.vat_amount = Math.round(lineVat);
-
-                it.amount = Math.round(lineAfterDiscount + lineVat);
+                it.vat_percent = 0;
+                it.vat_amount = 0;
+                it.amount = Math.round(lineAfterDiscount);
             }
             this.recalculatePromotionalGifts();
             this.calculateTotals();
@@ -3708,9 +3645,9 @@ function orderFormApp() {
                                     const lineDiscount = (lineBase * discPct) / 100;
                                     it.discount_amount = Math.round(lineDiscount);
                                     const lineAfterDiscount = Math.max(0, lineBase - lineDiscount);
-                                    const vatPercent = Number(it.vat_percent) || 0;
-                                    it.vat_amount = Math.round((lineAfterDiscount * vatPercent) / 100);
-                                    it.amount = Math.round(lineAfterDiscount + it.vat_amount);
+                                    it.vat_percent = 0;
+                                    it.vat_amount = 0;
+                                    it.amount = Math.round(lineAfterDiscount);
                                 }
                                 notices.push(`Giảm ${discPct}% sp ${it.sku || it.name} (${policy.code})`);
                                 if (!appliedPolicyIds.includes(policy.id)) appliedPolicyIds.push(policy.id);
@@ -3763,10 +3700,10 @@ function orderFormApp() {
                                     if (lineBase > 0) {
                                         it.discount_percent = Math.round((discAmt / lineBase) * 100 * 10) / 10;
                                     }
-                                    const vatPct = Number(it.vat_percent) || 0;
                                     const afterDisc = Math.max(0, lineBase - discAmt);
-                                    it.vat_amount = Math.round((afterDisc * vatPct) / 100);
-                                    it.amount = Math.round(afterDisc + it.vat_amount);
+                                    it.vat_percent = 0;
+                                    it.vat_amount = 0;
+                                    it.amount = Math.round(afterDisc);
                                 }
                                 notices.push(`Giảm ${this.formatNumber(discAmt)} đ cho sp ${it.sku || it.name}`);
                                 if (!appliedPolicyIds.includes(policy.id)) appliedPolicyIds.push(policy.id);
@@ -3926,28 +3863,28 @@ function orderFormApp() {
 
         calculateTotals() {
             let rawSubtotal = 0;
-            let vatSum = 0;
 
             this.items.forEach(it => {
                 if (!it.checked) return;
                 const qty = Number(it.quantity) || 0;
                 const price = Number(it.unitPrice) || 0;
                 const discAmount = Number(it.discount_amount) || 0;
-                const vatAmount = Number(it.vat_amount) || 0;
+
+                it.vat_percent = 0;
+                it.vat_amount = 0;
 
                 rawSubtotal += Math.max(0, (qty * price) - discAmount);
-                vatSum += vatAmount;
             });
 
             this.subtotalBeforeVat = Math.round(rawSubtotal);
-            this.totalVat = Math.round(vatSum);
-            this.totalWithVat = Math.round(this.subtotalBeforeVat + this.totalVat);
+            this.totalVat = 0;
+            this.totalWithVat = this.subtotalBeforeVat;
 
             const overallDiscount = Number(this.formData.discount_amount) || 0;
             this.finalTotal = Math.max(0, this.totalWithVat - overallDiscount);
 
             this.subtotal = this.subtotalBeforeVat;
-            this.formData.tax_amount = this.totalVat;
+            this.formData.tax_amount = 0;
             this.totalAmount = this.finalTotal;
 
             const curT = this.tickets[this.activeTicketIndex];
@@ -4421,7 +4358,6 @@ function orderFormApp() {
                     const shortage = this.getShortageQty(it);
                     if (shortage > 0) {
                         const price = Number(it.unitPrice || 0);
-                        const vat = Number(it.vat_percent || 10);
                         backOrderItems.push({
                             itemId: it.product_id,
                             product_id: it.product_id,
@@ -4435,9 +4371,9 @@ function orderFormApp() {
                             costPrice: it.costPrice || 0,
                             discount_percent: 0,
                             discount_amount: 0,
-                            vat_percent: vat,
-                            vat_amount: Math.round((shortage * price) * (vat / 100)),
-                            amount: Math.round(shortage * price * (1 + vat / 100)),
+                            vat_percent: 0,
+                            vat_amount: 0,
+                            amount: Math.round(shortage * price),
                             appliedTierPolicy: it.price_type || it.appliedTierPolicy || 'Theo phiếu',
                         });
                     }
@@ -4478,8 +4414,8 @@ function orderFormApp() {
                         costPrice: it.costPrice,
                         discount_percent: it.discount_percent || 0,
                         discount_amount: it.discount_amount || 0,
-                        vat_percent: it.vat_percent || 10,
-                        vat_amount: it.vat_amount || 0,
+                        vat_percent: 0,
+                        vat_amount: 0,
                         amount: it.amount,
                         appliedTierPolicy: it.price_type || it.appliedTierPolicy,
                         shortage_reason: '',
