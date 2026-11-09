@@ -12,7 +12,10 @@ function waterFilterModule() {
         installedMachines: [],
         installedMachinesStats: { total: 0, active: 0, expiring_soon: 0, expired: 0 },
         maintenanceList: [],
-        maintenanceStats: { total: 0, overdue: 0, due_7_days: 0, due_30_days: 0 },
+        maintenanceStats: { total: 0, overdue: 0, due_7_days: 0, due_30_days: 0, unclaimed: 0, my_jobs: 0 },
+        maintenanceAreaSuggestions: [],
+        canAssignMaint: false,
+        currentUserId: null,
         repairs: [],
         parts: @json($parts ?? []),
         machineModels: @json($machineModels ?? []),
@@ -29,6 +32,7 @@ function waterFilterModule() {
         maintSearch: '',
         maintStatusFilter: 'all',
         maintTechFilter: '',
+        maintAreaFilter: '',
         rescheduleTarget: null,
         rescheduleForm: {
             id: null,
@@ -1327,6 +1331,19 @@ function waterFilterModule() {
 
         quickCreateRepairFromInstalled(item) {
             const isWarrantyActive = (item.warranty_status === 'active' || item.warranty_status === 'expiring_soon');
+            
+            // Tự động mang theo danh sách phụ tùng / lõi lọc cần bảo dưỡng
+            const prefilledItems = (item.maintenance_parts && item.maintenance_parts.length > 0)
+                ? item.maintenance_parts.map(p => ({
+                    part_id: p.part_id || null,
+                    part_name: p.part_name,
+                    quantity: p.quantity || 1,
+                    unit_price: p.price || 0,
+                    is_free: isWarrantyActive ? true : false,
+                    note: p.note || 'Bảo dưỡng thay thế'
+                }))
+                : [];
+
             this.repairForm = {
                 id: null,
                 customer_name: item.customer_name,
@@ -1337,10 +1354,10 @@ function waterFilterModule() {
                 machine_model: item.machine_model,
                 machine_serial: item.machine_serial || '',
                 technician_id: item.technician_id || '',
-                symptom: isWarrantyActive ? `Bảo hành định kỳ máy lọc [${item.machine_model}] (Mã BH: ${item.warranty_card_code || item.code})` : `Kiểm tra sửa chữa máy lọc [${item.machine_model}]`,
-                labor_fee: isWarrantyActive ? 0 : 100000,
+                symptom: isWarrantyActive ? `Bảo hành & bảo dưỡng định kỳ máy lọc [${item.machine_model}]` : `Bảo dưỡng & thay lõi định kỳ máy lọc [${item.machine_model}]`,
+                labor_fee: isWarrantyActive ? 0 : 50000,
                 discount: 0,
-                items: []
+                items: prefilledItems
             };
             this.openModal('repairModal');
         },
@@ -1368,7 +1385,7 @@ function waterFilterModule() {
          * --------------------------------------------------------- */
         async fetchMaintenance() {
             try {
-                let url = `/api/water-filter/maintenance?search=${encodeURIComponent(this.maintSearch)}&filter_status=${encodeURIComponent(this.maintStatusFilter)}&technician_id=${encodeURIComponent(this.maintTechFilter)}`;
+                let url = `/api/water-filter/maintenance?search=${encodeURIComponent(this.maintSearch)}&filter_status=${encodeURIComponent(this.maintStatusFilter)}&technician_id=${encodeURIComponent(this.maintTechFilter)}&area=${encodeURIComponent(this.maintAreaFilter)}`;
                 const res = await fetch(url);
                 const data = await res.json();
                 if (data.success) {
@@ -1376,10 +1393,100 @@ function waterFilterModule() {
                     if (data.stats) {
                         this.maintenanceStats = data.stats;
                     }
+                    if (data.area_suggestions) {
+                        this.maintenanceAreaSuggestions = data.area_suggestions;
+                    }
+                    if (data.can_assign !== undefined) {
+                        this.canAssignMaint = data.can_assign;
+                    }
+                    if (data.current_user_id !== undefined) {
+                        this.currentUserId = data.current_user_id;
+                    }
                 }
             } catch (e) {
                 console.error(e);
             }
+        },
+
+        async claimMaintenanceJob(item) {
+            if (!confirm(`Bạn có chắc chắn muốn nhận phụ trách đơn bảo dưỡng máy cho khách hàng [${item.customer_name}] không?`)) {
+                return;
+            }
+            try {
+                const res = await fetch(`/api/water-filter/maintenance/${item.id}/claim`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(data.message || 'Bạn đã nhận việc thành công!');
+                    this.fetchMaintenance();
+                } else {
+                    alert(data.message || 'Không thể nhận việc!');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Lỗi kết nối máy chủ!');
+            }
+        },
+
+        async unclaimMaintenanceJob(item) {
+            if (!confirm(`Xác nhận hủy nhận đơn bảo dưỡng của khách hàng [${item.customer_name}]?\nĐơn sẽ được chuyển về trạng thái 'Chưa phân công' để KTV khác có thể nhận.`)) {
+                return;
+            }
+            try {
+                const res = await fetch(`/api/water-filter/maintenance/${item.id}/unclaim`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(data.message || 'Đã hủy nhận đơn thành công!');
+                    this.fetchMaintenance();
+                } else {
+                    alert(data.message || 'Không thể hủy nhận đơn!');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Lỗi kết nối máy chủ!');
+            }
+        },
+
+        async assignMaintenanceTech(item, techId) {
+            try {
+                const res = await fetch(`/api/water-filter/maintenance/${item.id}/assign`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({ technician_id: techId || null })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.fetchMaintenance();
+                } else {
+                    alert(data.message || 'Không thể phân công KTV!');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Lỗi kết nối máy chủ!');
+            }
+        },
+
+        filterMaintenanceByArea(areaName) {
+            if (this.maintAreaFilter === areaName) {
+                this.maintAreaFilter = '';
+            } else {
+                this.maintAreaFilter = areaName;
+            }
+            this.fetchMaintenance();
         },
 
         openRescheduleModal(item) {
@@ -1495,13 +1602,17 @@ function waterFilterModule() {
             const name = this.reminderTarget.customer_name || 'Quý khách';
             const model = this.reminderTarget.machine_model || 'máy lọc nước';
             const date = this.reminderTarget.next_maintenance_date || 'định kỳ';
+            const partsList = (this.reminderTarget.maintenance_parts && this.reminderTarget.maintenance_parts.length > 0)
+                ? this.reminderTarget.maintenance_parts.map(p => p.part_name).join(', ')
+                : '';
+            const partsText = partsList ? `\n* Các lõi/vật tư cần thay: ${partsList}` : '';
 
             if (this.reminderTemplateType === 'friendly') {
-                this.reminderMessage = `Dạ em chào anh/chị ${name}! Em là nhân viên chăm sóc khách hàng máy lọc nước Daison.\n\nTheo định kỳ theo dõi, thiết bị [${model}] của gia đình mình đã đến thời gian bảo dưỡng và thay lõi lọc nước định kỳ (Hẹn: ${date}) để đảm bảo nguồn nước luôn tinh khiết, sạch khuẩn và bảo vệ tuổi thọ màng RO.\n\nAnh/chị cho bên em xin lịch thuận tiện trong tuần này để kỹ thuật viên qua kiểm tra và thay lõi miễn phí công lắp đặt tận nhà giúp gia đình mình nhé ạ! Em cảm ơn anh/chị nhiều ạ!`;
+                this.reminderMessage = `Dạ em chào anh/chị ${name}! Em là nhân viên chăm sóc khách hàng máy lọc nước Daison.\n\nTheo định kỳ theo dõi, thiết bị [${model}] của gia đình mình đã đến thời gian bảo dưỡng và thay lõi lọc nước định kỳ (Hẹn: ${date}) để đảm bảo nguồn nước luôn tinh khiết, sạch khuẩn và bảo vệ tuổi thọ màng RO.${partsText}\n\nAnh/chị cho bên em xin lịch thuận tiện trong tuần này để kỹ thuật viên qua kiểm tra và thay lõi tận nhà giúp gia đình mình nhé ạ! Em cảm ơn anh/chị nhiều ạ!`;
             } else if (this.reminderTemplateType === 'formal') {
-                this.reminderMessage = `Kính gửi Quý khách ${name},\n\nBộ phận Dịch vụ & Bảo hành Daison xin trân trọng thông báo: Thiết bị máy lọc nước [${model}] của Quý khách đã đến hạn bảo dưỡng và thay thế lõi lọc định kỳ vào ngày ${date}.\n\nViệc bảo dưỡng đúng định kỳ giúp đảm bảo chất lượng nước uống đạt chuẩn và vận hành bền bỉ. Kính mời Quý khách liên hệ hoặc phản hồi tin nhắn này để trung tâm bố trí Kỹ thuật viên phục vụ tận nơi.\n\nHotline hỗ trợ: 1900 xxxx. Trân trọng cảm ơn Quý khách!`;
+                this.reminderMessage = `Kính gửi Quý khách ${name},\n\nBộ phận Dịch vụ & Bảo hành Daison xin trân trọng thông báo: Thiết bị máy lọc nước [${model}] của Quý khách đã đến hạn bảo dưỡng và thay thế lõi lọc định kỳ vào ngày ${date}.${partsText}\n\nViệc bảo dưỡng đúng định kỳ giúp đảm bảo chất lượng nước uống đạt chuẩn và vận hành bền bỉ. Kính mời Quý khách liên hệ hoặc phản hồi tin nhắn này để trung tâm bố trí Kỹ thuật viên phục vụ tận nơi.\n\nHotline hỗ trợ: 1900 xxxx. Trân trọng cảm ơn Quý khách!`;
             } else if (this.reminderTemplateType === 'urgent') {
-                this.reminderMessage = `⚠️ THÔNG BÁO QUÁ HẠN THAY LÕI LỌC NƯỚC\n\nKính gửi Quý khách ${name}, hệ thống ghi nhận máy lọc nước [${model}] của Quý khách đã QUÁ HẠN thay lõi lọc định kỳ (${date}).\n\nLõi lọc quá hạn tích tụ nhiều cặn bẩn, kim loại nặng và vi khuẩn, dễ làm tắc màng RO và ảnh hưởng chất lượng nước ăn uống của gia đình.\n\nQuý khách vui lòng đặt lịch kiểm tra ngay hôm nay để KTV xử lý kịp thời. Xin cảm ơn Quý khách!`;
+                this.reminderMessage = `⚠️ THÔNG BÁO QUÁ HẠN THAY LÕI LỌC NƯỚC\n\nKính gửi Quý khách ${name}, hệ thống ghi nhận máy lọc nước [${model}] của Quý khách đã QUÁ HẠN thay lõi lọc định kỳ (${date}).${partsText}\n\nLõi lọc quá hạn tích tụ nhiều cặn bẩn, kim loại nặng và vi khuẩn, dễ làm tắc màng RO và ảnh hưởng chất lượng nước ăn uống của gia đình.\n\nQuý khách vui lòng đặt lịch kiểm tra ngay hôm nay để KTV xử lý kịp thời. Xin cảm ơn Quý khách!`;
             }
         },
 

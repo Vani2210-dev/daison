@@ -278,7 +278,14 @@ class PickingSyncController extends Controller
                         }
 
                         if (is_array($extraData)) {
-                            if (isset($extraData['isChecked'])) $orderItem->is_checked = (bool)$extraData['isChecked'];
+                            if (isset($extraData['isChecked'])) {
+                                $orderItem->is_checked = (bool)$extraData['isChecked'];
+                                if ($orderItem->is_checked && ($orderItem->picked_qty <= 0 || !$orderItem->is_picked)) {
+                                    $orderItem->picked_qty = isset($extraData['checkedQty']) ? (float)$extraData['checkedQty'] : $reqQtyTotal;
+                                    $orderItem->is_picked = true;
+                                    $orderItem->item_status = 'Đủ hàng';
+                                }
+                            }
                             if (isset($extraData['checkedQty'])) $orderItem->checked_qty = (float)$extraData['checkedQty'];
                             if (isset($extraData['checkedBy'])) $orderItem->checked_by = $extraData['checkedBy'];
                             if (isset($extraData['checkedAt'])) $orderItem->checked_at = $extraData['checkedAt'];
@@ -395,6 +402,11 @@ class PickingSyncController extends Controller
                         $itReq = (float) ($it->quantity + ($it->gift_quantity ?? 0));
                         $it->is_checked = true;
                         $it->checked_qty = $it->picked_qty > 0 ? $it->picked_qty : $itReq;
+                        if ($it->picked_qty <= 0 || !$it->is_picked) {
+                            $it->picked_qty = $it->checked_qty;
+                            $it->is_picked = true;
+                            $it->item_status = 'Đủ hàng';
+                        }
                         $it->checked_by = $performerName;
                         $it->checked_at = now()->format('d/m/Y H:i');
                         $it->save();
@@ -410,6 +422,11 @@ class PickingSyncController extends Controller
                         $itReq = (float) ($it->quantity + ($it->gift_quantity ?? 0));
                         $it->is_checked = true;
                         $it->checked_qty = $it->picked_qty > 0 ? $it->picked_qty : $itReq;
+                        if ($it->picked_qty <= 0 || !$it->is_picked) {
+                            $it->picked_qty = $it->checked_qty;
+                            $it->is_picked = true;
+                            $it->item_status = 'Đủ hàng';
+                        }
                         $it->checked_by = $performerName;
                         $it->checked_at = now()->format('d/m/Y H:i');
                         $it->save();
@@ -1274,5 +1291,144 @@ class PickingSyncController extends Controller
 
         return response()->json($result, $result['success'] ? 200 : 422);
     }
-}
 
+    /**
+     * API: Nhân viên xe tự phân bổ hàng thiếu cho các đơn trên xe / lô bốc
+     * Tự động cắt giảm số lượng đơn gốc theo phân bổ và sinh Đơn Giao Sau (Backorder)
+     */
+    public function allocateVehicleShortage(\Illuminate\Http\Request $request)
+    {
+        $raw = json_decode($request->getContent(), true) ?? [];
+        $allocations = $request->input('allocations') ?? ($raw['allocations'] ?? []);
+        $note = $request->input('note') ?? ($raw['note'] ?? 'Nhân viên xe tự phân bổ hàng thiếu khi bốc');
+        $autoCreateBackorder = $request->input('autoCreateBackorder', true) ?? ($raw['autoCreateBackorder'] ?? true);
+        $markPickedIfReady = $request->input('markPickedIfReady', true) ?? ($raw['markPickedIfReady'] ?? true);
+
+        if (empty($allocations)) {
+            return response()->json(['success' => false, 'message' => 'Không có dữ liệu phân bổ'], 422);
+        }
+
+        // Nhóm allocations theo order_id
+        $groupedByOrder = [];
+        foreach ($allocations as $alloc) {
+            $orderId = $alloc['order_id'] ?? null;
+            if ($orderId) {
+                $groupedByOrder[$orderId][] = $alloc;
+            }
+        }
+
+        $createdBackorders = [];
+        $updatedOrderCodes = [];
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            foreach ($groupedByOrder as $orderId => $orderAllocations) {
+                $order = \App\Models\Order::with('items')->find($orderId);
+                if (!$order) continue;
+
+                $shortageItemsForSplit = [];
+
+                foreach ($orderAllocations as $alloc) {
+                    $itemId = $alloc['item_id'] ?? null;
+                    $sku = $alloc['sku'] ?? null;
+                    $allocatedQty = (float)($alloc['allocated_qty'] ?? 0);
+                    $reqQty = (float)($alloc['req_qty'] ?? 0);
+
+                    // Tìm item trong order
+                    $item = $order->items->first(function ($it) use ($itemId, $sku) {
+                        if ($itemId && $it->id == $itemId) return true;
+                        if ($sku && $it->sku == $sku) return true;
+                        return false;
+                    });
+
+                    if (!$item) continue;
+
+                    $item->picked_qty = $allocatedQty;
+
+                    if ($allocatedQty >= $reqQty && $reqQty > 0) {
+                        $item->is_picked = true;
+                        $item->item_status = 'Đủ hàng';
+                        $item->shortage_reason = null;
+                        $item->save();
+                    } else {
+                        // Bị thiếu so với yêu cầu
+                        if ($autoCreateBackorder) {
+                            $shortageItemsForSplit[] = [
+                                'id'         => $item->id,
+                                'product_id' => $item->product_id,
+                                'sku'        => $item->sku,
+                                'picked_qty' => $allocatedQty,
+                                'reason'     => $note,
+                            ];
+                        } else {
+                            $item->is_picked = ($allocatedQty > 0);
+                            $item->item_status = ($allocatedQty > 0 ? 'Thiếu hàng' : 'Chờ bốc');
+                            $item->shortage_reason = $note;
+                            $item->save();
+                        }
+                    }
+                }
+
+                // Nếu có hàng thiếu và bật tự động tách đơn nợ
+                if (!empty($shortageItemsForSplit) && $autoCreateBackorder) {
+                    $splitRes = \App\Services\BackorderService::splitOrderOnShortage($order, $shortageItemsForSplit, $note);
+                    if ($splitRes['success'] && isset($splitRes['backorder'])) {
+                        $createdBackorders[] = [
+                            'parent_code'    => $order->order_code,
+                            'backorder_code' => $splitRes['backorder']->order_code,
+                            'backorder_id'   => $splitRes['backorder']->id,
+                            'total_amount'   => $splitRes['backorder']->total_amount,
+                        ];
+                    }
+                    // Reload order sau khi tách
+                    $order = $order->fresh(['items']);
+                }
+
+                // Kiểm tra trạng thái hoàn tất bốc của đơn
+                if ($order && $order->items) {
+                    $allPicked = $order->items->count() > 0 && $order->items->every(fn($it) => (bool)$it->is_picked || (float)$it->picked_qty >= (float)$it->quantity);
+                    if ($allPicked && $markPickedIfReady) {
+                        $order->status = 'Đã bốc xong';
+                        $order->shortage_reported = false;
+                    } elseif ($order->items->some(fn($it) => (float)$it->picked_qty > 0 || (bool)$it->is_picked)) {
+                        if ($order->status !== 'Kho báo thiếu hàng') {
+                            $order->status = 'Đang bốc hàng';
+                        }
+                    }
+                    $order->save();
+                    $updatedOrderCodes[] = $order->order_code;
+                }
+
+                // Ghi log PickingSyncEvent
+                try {
+                    \App\Models\PickingSyncEvent::create([
+                        'order_id'       => $order->id,
+                        'action'         => 'vehicle_shortage_allocated',
+                        'status'         => $order->status,
+                        'performer_name' => auth()->user()?->name ?? 'Nhân viên xe',
+                        'details'        => [
+                            'allocations' => $orderAllocations,
+                            'note'        => $note,
+                        ]
+                    ]);
+                } catch (\Throwable $e) {}
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            return response()->json([
+                'success'           => true,
+                'message'           => 'Đã phân bổ hàng trên xe thành công! ' . (count($createdBackorders) > 0 ? 'Đã tự động tạo ' . count($createdBackorders) . ' đơn giao sau.' : ''),
+                'createdBackorders' => $createdBackorders,
+                'updatedOrderCodes' => $updatedOrderCodes,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Error allocateVehicleShortage: ' . $e->getMessage(), ['exception' => $e]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi phân bổ hàng thiếu: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+}

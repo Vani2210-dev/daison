@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Phân Quyền & Vai Trò Hệ Thống (RBAC Matrix) - Đại Sơn ERP')
 
@@ -392,6 +392,7 @@ const PERMISSION_META = {
     'driver_debt.settle': { name: 'Quyết Toán Tiền Mặt', desc: 'Xác nhận thu tiền mặt lái xe bàn giao về quỹ', icon: 'fa-solid fa-hand-holding-dollar', color: 'emerald', weight: 2 },
     'driver_debt.edit': { name: 'Điều Chỉnh Tiền Thu', desc: 'Xử lý chênh lệch thanh toán hoặc đổi phương thức CK', icon: 'fa-solid fa-pen', color: 'amber', weight: 3 },
     'driver_debt.export': { name: 'In Bảng Kê Quyết Toán', desc: 'In phiếu bàn giao và quyết toán COD chuyến xe', icon: 'fa-regular fa-file-lines', color: 'teal', weight: 4 },
+    'staff_debt.view_all': { name: 'Xem Tất Cả Công Nợ NV', desc: 'Xem toàn bộ danh sách & chi tiết nợ của tất cả nhân sự (Nếu tắt, chỉ xem được nợ của bản thân)', icon: 'fa-solid fa-users-viewfinder', color: 'purple', weight: 5 },
 
     // 14. fleet
     'fleet.view': { name: 'Xem Đội Xe & Chi Phí', desc: 'Tra cứu danh sách xe tải, nhiên liệu và bảo dưỡng', icon: 'fa-regular fa-eye', color: 'sky', weight: 1 },
@@ -458,6 +459,11 @@ const PERMISSION_META = {
 
     // 25. task_assignment
     'task_assignment.view': { name: 'Xem Danh Sách Việc', desc: 'Tra cứu công việc cá nhân và tiến độ phòng ban', icon: 'fa-regular fa-eye', color: 'sky', weight: 1 },
+    'task_assignment.view_all': { name: 'Xem Tất Cả Công Việc', desc: 'Xem toàn bộ công việc và đơn hàng của tất cả nhân sự', icon: 'fa-solid fa-layer-group', color: 'indigo', weight: 1.5 },
+    'task_assignment.tab_installations': { name: 'Xem Tab Đơn Lắp Đặt', desc: 'Hiển thị tab Đơn Hàng Lắp Đặt Máy Lọc Nước', icon: 'fa-solid fa-faucet-drip', color: 'blue', weight: 1.3 },
+    'task_assignment.tab_maintenance': { name: 'Xem Tab Đơn Bảo Dưỡng', desc: 'Hiển thị tab Đơn Hẹn Bảo Dưỡng & Thay Lõi', icon: 'fa-solid fa-calendar-check', color: 'purple', weight: 1.4 },
+    'task_assignment.tab_tasks': { name: 'Xem Tab Nhiệm Vụ', desc: 'Hiển thị tab Nhiệm Vụ & Phân Công Nội Bộ', icon: 'fa-solid fa-tasks', color: 'indigo', weight: 1.5 },
+    'task_assignment.tab_warehouse_export': { name: 'Xem Tab Lấy Hàng Kho', desc: 'Hiển thị tab Lấy Linh Kiện Phụ Tùng Từ Kho Đi Làm', icon: 'fa-solid fa-boxes-packing', color: 'emerald', weight: 1.6 },
     'task_assignment.create': { name: 'Giao Việc Mới', desc: 'Phân công nhiệm vụ, gắn deadline và người thực hiện', icon: 'fa-solid fa-plus', color: 'emerald', weight: 2 },
     'task_assignment.edit': { name: 'Cập Nhật Tiến Độ', desc: 'Báo cáo phần trăm hoàn thành và đính kèm kết quả', icon: 'fa-solid fa-pen', color: 'amber', weight: 3 },
     'task_assignment.approve': { name: 'Nghiệm Thu Công Việc', desc: 'Người giao việc xác nhận hoàn thành đạt yêu cầu', icon: 'fa-solid fa-check-double', color: 'purple', weight: 4 },
@@ -487,6 +493,7 @@ const PERMISSION_META = {
     'water_filter.view': { name: 'Xem Phân Hệ Máy Lọc', desc: 'Quyền xem tổng quan phân hệ lắp đặt và sửa chữa máy lọc nước', icon: 'fa-regular fa-eye', color: 'sky', weight: 1 },
     'water_filter.install_view': { name: 'Xem Đơn Lắp Đặt', desc: 'Tra cứu danh sách & chi tiết các đơn đi lắp đặt máy lọc', icon: 'fa-regular fa-eye', color: 'sky', weight: 2 },
     'water_filter.install_create': { name: 'Lên Đơn Lắp Đặt', desc: 'Khởi tạo đơn giao hàng và lắp đặt máy lọc nước cho khách', icon: 'fa-solid fa-plus', color: 'emerald', weight: 3 },
+    'water_filter.install_assign': { name: 'Phân Công KTV Lắp Đặt', desc: 'Chỉ định, điều phối hoặc đổi kỹ thuật viên đi lắp máy lọc', icon: 'fa-solid fa-user-gear', color: 'indigo', weight: 3.5 },
     'water_filter.install_edit': { name: 'Sửa Đơn Lắp Đặt', desc: 'Chỉnh sửa kỹ thuật viên phụ trách, lịch hẹn và phụ kiện kèm', icon: 'fa-solid fa-pen', color: 'amber', weight: 4 },
     'water_filter.install_status': { name: 'Cập Nhật Tiến Độ & TDS', desc: 'Chuyển trạng thái đơn, ghi nhận chỉ số TDS, áp lực & nghiệm thu', icon: 'fa-solid fa-arrows-rotate', color: 'purple', weight: 5 },
     'water_filter.install_delete': { name: 'Xóa Đơn Lắp Đặt', desc: 'Xóa đơn lắp đặt nháp hoặc đơn bị hủy', icon: 'fa-regular fa-trash-can', color: 'rose', weight: 6 },
@@ -494,6 +501,7 @@ const PERMISSION_META = {
     // 32. water_filter_repair
     'water_filter.repair_view': { name: 'Xem Phiếu Sửa Chữa', desc: 'Tra cứu danh sách tiếp nhận sửa chữa máy lọc & bảo hành', icon: 'fa-regular fa-eye', color: 'sky', weight: 1 },
     'water_filter.repair_create': { name: 'Tiếp Nhận Sửa Chữa', desc: 'Lập phiếu tiếp nhận máy lọc tại xưởng hoặc sửa chữa tại nhà', icon: 'fa-solid fa-plus', color: 'emerald', weight: 2 },
+    'water_filter.repair_assign': { name: 'Phân Công Kỹ Thuật Viên', desc: 'Chỉ định, phân công hoặc điều phối KTV sửa chữa & bảo dưỡng máy lọc', icon: 'fa-solid fa-user-check', color: 'purple', weight: 2.5 },
     'water_filter.repair_edit': { name: 'Chẩn Đoán & Thay Vật Tư', desc: 'Ghi nhận hiện tượng hỏng, giải pháp và phụ tùng thay thế', icon: 'fa-solid fa-pen', color: 'amber', weight: 3 },
     'water_filter.repair_status': { name: 'Đổi Trạng Thái Sửa & BH', desc: 'Cập nhật tiến độ sửa, thanh toán công/vật tư và bàn giao máy', icon: 'fa-solid fa-arrows-rotate', color: 'purple', weight: 4 },
     'water_filter.repair_delete': { name: 'Xóa Phiếu Sửa Chữa', desc: 'Xóa phiếu sửa chữa nháp khỏi hệ thống', icon: 'fa-regular fa-trash-can', color: 'rose', weight: 5 },
@@ -878,6 +886,7 @@ function rolesApp() {
                     features: [
                         { key: 'funds', name: 'Quản lý sổ quỹ & Thu chi tiền mặt/NH', permissions: this.enrichAndSortPermissions('funds') },
                         { key: 'driver_debt', name: 'Bàn giao tiền mặt COD lái xe', permissions: this.enrichAndSortPermissions('driver_debt') },
+                        { key: 'staff_debt', name: 'Công nợ nhân viên & Bàn giao nợ', permissions: this.enrichAndSortPermissions('staff_debt') },
                         { key: 'fleet', name: 'Chi phí & Định mức đội xe', permissions: this.enrichAndSortPermissions('fleet') }
                     ]
                 },

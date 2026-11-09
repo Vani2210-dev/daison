@@ -79,7 +79,7 @@
         </div>
 
         <div class="flex items-center gap-2">
-            <a href="{{ url('/inventory/import?tab=stocks') }}" class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#1b4a8c] border border-blue-200 text-xs font-black shadow-2xs transition-all cursor-pointer" title="Xem chi tiết tồn kho hàng ôm thực tế của nhân viên">
+            <a href="{{ url('/inventory/holding') }}" class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#1b4a8c] border border-blue-200 text-xs font-black shadow-2xs transition-all cursor-pointer" title="Xem chi tiết tồn kho hàng ôm thực tế của nhân viên">
                 <i class="fa-solid fa-boxes-stacked text-xs"></i>
                 <span>Xem Kho Hàng Ôm Thực Tế</span>
             </a>

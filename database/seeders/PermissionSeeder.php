@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace Database\Seeders;
 
@@ -98,6 +98,7 @@ class PermissionSeeder extends Seeder
 
             ['slug' => 'driver_debt.view', 'name' => 'Xem bảng kê công nợ trách nhiệm lái xe', 'module' => 'driver_debt', 'category' => 'Tài chính', 'action' => 'view'],
             ['slug' => 'driver_debt.settle', 'name' => 'Thu hồi tiền mặt lái xe nộp về quỹ kế toán', 'module' => 'driver_debt', 'category' => 'Tài chính', 'action' => 'settle'],
+            ['slug' => 'staff_debt.view_all', 'name' => 'Xem tất cả công nợ nhân viên', 'module' => 'staff_debt', 'category' => 'Tài chính', 'action' => 'view_all'],
 
             // 5. Phân hệ Đại lý & Khách hàng
             ['slug' => 'dealers.view', 'name' => 'Xem danh bạ đại lý & thông tin liên hệ', 'module' => 'dealers', 'category' => 'Đại lý', 'action' => 'view'],
@@ -144,6 +145,11 @@ class PermissionSeeder extends Seeder
 
             // 7. Phân hệ Công việc & Quy trình
             ['slug' => 'task_assignment.view', 'name' => 'Xem danh sách công việc & tiến độ', 'module' => 'task_assignment', 'category' => 'Công việc', 'action' => 'view'],
+            ['slug' => 'task_assignment.view_all', 'name' => 'Xem tất cả công việc của toàn bộ nhân viên', 'module' => 'task_assignment', 'category' => 'Công việc', 'action' => 'view_all'],
+            ['slug' => 'task_assignment.tab_installations', 'name' => 'Xem Tab Đơn Lắp Đặt Máy Lọc', 'module' => 'task_assignment', 'category' => 'Công việc', 'action' => 'view_installations'],
+            ['slug' => 'task_assignment.tab_maintenance', 'name' => 'Xem Tab Đơn Bảo Dưỡng & Thay Lõi', 'module' => 'task_assignment', 'category' => 'Công việc', 'action' => 'view_maintenance'],
+            ['slug' => 'task_assignment.tab_tasks', 'name' => 'Xem Tab Nhiệm Vụ & Phân Công Nội Bộ', 'module' => 'task_assignment', 'category' => 'Công việc', 'action' => 'view_tasks'],
+            ['slug' => 'task_assignment.tab_warehouse_export', 'name' => 'Xem Tab Lấy Hàng Từ Kho Đi Làm', 'module' => 'task_assignment', 'category' => 'Công việc', 'action' => 'view_warehouse_export'],
             ['slug' => 'task_assignment.create', 'name' => 'Giao việc mới cho nhân viên/phòng ban', 'module' => 'task_assignment', 'category' => 'Công việc', 'action' => 'create'],
             ['slug' => 'task_assignment.report', 'name' => 'Cập nhật tiến độ & hoàn thành công việc', 'module' => 'task_assignment', 'category' => 'Công việc', 'action' => 'report'],
             ['slug' => 'task_assignment.evaluate', 'name' => 'Đánh giá chất lượng hoàn thành công việc', 'module' => 'task_assignment', 'category' => 'Công việc', 'action' => 'evaluate'],
@@ -171,12 +177,14 @@ class PermissionSeeder extends Seeder
             ['slug' => 'water_filter.view', 'name' => 'Xem phân hệ máy lọc nước', 'module' => 'water_filter_install', 'category' => 'Máy lọc nước', 'action' => 'view'],
             ['slug' => 'water_filter.install_view', 'name' => 'Xem danh sách & chi tiết đơn lắp đặt', 'module' => 'water_filter_install', 'category' => 'Máy lọc nước', 'action' => 'view'],
             ['slug' => 'water_filter.install_create', 'name' => 'Lên đơn đi lắp đặt máy lọc mới', 'module' => 'water_filter_install', 'category' => 'Máy lọc nước', 'action' => 'create'],
-            ['slug' => 'water_filter.install_edit', 'name' => 'Chỉnh sửa đơn lắp đặt & điều KTV', 'module' => 'water_filter_install', 'category' => 'Máy lọc nước', 'action' => 'edit'],
+            ['slug' => 'water_filter.install_assign', 'name' => 'Phân công KTV lắp đặt máy', 'module' => 'water_filter_install', 'category' => 'Máy lọc nước', 'action' => 'assign'],
+            ['slug' => 'water_filter.install_edit', 'name' => 'Chỉnh sửa đơn lắp đặt máy lọc', 'module' => 'water_filter_install', 'category' => 'Máy lọc nước', 'action' => 'edit'],
             ['slug' => 'water_filter.install_status', 'name' => 'Cập nhật trạng thái, TDS & nghiệm thu', 'module' => 'water_filter_install', 'category' => 'Máy lọc nước', 'action' => 'status'],
             ['slug' => 'water_filter.install_delete', 'name' => 'Xóa đơn lắp đặt máy lọc', 'module' => 'water_filter_install', 'category' => 'Máy lọc nước', 'action' => 'delete'],
 
             ['slug' => 'water_filter.repair_view', 'name' => 'Xem danh sách tiếp nhận sửa chữa', 'module' => 'water_filter_repair', 'category' => 'Máy lọc nước', 'action' => 'view'],
             ['slug' => 'water_filter.repair_create', 'name' => 'Tiếp nhận máy sửa chữa / bảo hành mới', 'module' => 'water_filter_repair', 'category' => 'Máy lọc nước', 'action' => 'create'],
+            ['slug' => 'water_filter.repair_assign', 'name' => 'Phân công KTV sửa chữa & bảo dưỡng', 'module' => 'water_filter_repair', 'category' => 'Máy lọc nước', 'action' => 'assign'],
             ['slug' => 'water_filter.repair_edit', 'name' => 'Cập nhật chẩn đoán & linh kiện thay', 'module' => 'water_filter_repair', 'category' => 'Máy lọc nước', 'action' => 'edit'],
             ['slug' => 'water_filter.repair_status', 'name' => 'Cập nhật tiến độ & bàn giao máy sửa', 'module' => 'water_filter_repair', 'category' => 'Máy lọc nước', 'action' => 'status'],
             ['slug' => 'water_filter.repair_delete', 'name' => 'Xóa phiếu tiếp nhận sửa chữa', 'module' => 'water_filter_repair', 'category' => 'Máy lọc nước', 'action' => 'delete'],

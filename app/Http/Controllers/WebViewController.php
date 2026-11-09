@@ -117,7 +117,7 @@ class WebViewController extends Controller
         $brands = Brand::orderBy('name')->get();
         $subcategories = Subcategory::where('is_active', true)->orderBy('name')->get();
         $warehouses = Warehouse::where('is_active', true)
-            ->orderByRaw("CASE WHEN name LIKE '%Mê Linh%' THEN 0 WHEN is_vehicle_warehouse = 1 THEN 2 WHEN name LIKE '%Ôm%' THEN 3 ELSE 1 END")
+            ->orderByRaw("CASE WHEN name LIKE '%Mê Linh%' THEN 0 WHEN name LIKE '%Ôm%' THEN 2 ELSE 1 END")
             ->orderBy('name')
             ->get();
         $priceTiers = PriceTier::where('status', 'Hoạt động')->orderBy('order_num')->orderBy('id')->get();
@@ -141,7 +141,7 @@ class WebViewController extends Controller
         $brands = Brand::orderBy('name')->get();
         $subcategories = Subcategory::where('is_active', true)->orderBy('name')->get();
         $warehouses = Warehouse::where('is_active', true)
-            ->orderByRaw("CASE WHEN name LIKE '%Mê Linh%' THEN 0 WHEN is_vehicle_warehouse = 1 THEN 2 WHEN name LIKE '%Ôm%' THEN 3 ELSE 1 END")
+            ->orderByRaw("CASE WHEN name LIKE '%Mê Linh%' THEN 0 WHEN name LIKE '%Ôm%' THEN 2 ELSE 1 END")
             ->orderBy('name')
             ->get();
         $priceTiers = PriceTier::where('status', 'Hoạt động')->orderBy('order_num')->orderBy('id')->get();
@@ -160,25 +160,7 @@ class WebViewController extends Controller
      */
     public function productBatches($id)
     {
-        $product = Product::with(['category', 'brand'])->findOrFail($id);
-
-        $batches = ProductBatch::with([
-            'warehouse:id,name,code',
-            'transactionItem.transaction:id,code,created_at,supplier_name'
-        ])
-        ->where('product_id', $id)
-        ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC, id DESC')
-        ->get();
-
-        $stats = [
-            'total_batches' => $batches->count(),
-            'active_batches' => $batches->where('remaining_quantity', '>', 0)->count(),
-            'near_expired' => $batches->where('remaining_quantity', '>', 0)->where('expiry_status_code', 'near_expired')->count(),
-            'expired' => $batches->where('remaining_quantity', '>', 0)->where('expiry_status_code', 'expired')->count(),
-            'total_remaining' => (float)$batches->sum('remaining_quantity'),
-        ];
-
-        return view('products.batches', compact('product', 'batches', 'stats'));
+        return redirect('/cat_products');
     }
 
     /**
@@ -445,7 +427,20 @@ class WebViewController extends Controller
         }
 
         if ($orderType = $request->input('order_type')) {
-            if (in_array($orderType, ['backorder', 'debt'])) {
+            if ($orderType === 'normal') {
+                $query->where(function ($q) {
+                    $q->where('order_type', 'normal')
+                      ->orWhereNull('order_type')
+                      ->orWhere('order_type', '');
+                });
+            } elseif (in_array($orderType, ['consignment', 'holding_sale'])) {
+                $query->where(function ($q) {
+                    $q->whereIn('order_type', ['consignment', 'holding_sale'])
+                      ->orWhere('warehouse', 'like', '%Kho Hàng Ôm%');
+                });
+            } elseif ($orderType === 'project') {
+                $query->where('order_type', 'project');
+            } elseif (in_array($orderType, ['backorder', 'debt'])) {
                 $query->where(function ($q) {
                     $q->whereIn('order_type', ['backorder', 'debt'])
                       ->orWhereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng']);
@@ -507,63 +502,86 @@ class WebViewController extends Controller
     private function getAvailableWarehousesForUser()
     {
         $user = auth()->user();
-        $isDriver = false;
-        $driverVehicle = null;
 
+        // 1. Kho vật lý chính thức của công ty
+        $companyWarehouses = Warehouse::companyWarehouses()
+            ->orderBy('id')
+            ->get(['id', 'name', 'code'])
+            ->map(function($w) {
+                return (object)[
+                    'id'                   => $w->id,
+                    'name'                 => $w->name,
+                    'code'                 => $w->code,
+                    'is_holding_warehouse' => false,
+                ];
+            });
+
+        // 2. Kho hàng ôm / kho gửi của nhân viên (hoàn toàn bỏ kho xe)
+        $employeeHoldingWarehouses = collect();
         if ($user) {
-            $isDriver = ($user->staff_type === 'driver' || $user->department === 'Logistics' || (method_exists($user, 'hasRole') && ($user->hasRole('Fleet') || $user->hasRole('Driver'))));
-            if ($isDriver) {
-                $driverVehicle = Vehicle::where('driver_id', $user->id)->first();
-                if (!$driverVehicle) {
-                    $recentDispatch = \App\Models\VanSaleDispatch::where('driver_id', $user->id)->latest('id')->first();
-                    if ($recentDispatch && $recentDispatch->vehicle_plate) {
-                        $driverVehicle = Vehicle::where('plate_number', $recentDispatch->vehicle_plate)->first();
-                    }
-                }
+            $myHoldingWh = Warehouse::where('code', 'KHO-OM-' . $user->id)
+                ->orWhere('name', 'like', '%Kho Hàng Ôm - ' . $user->name . '%')
+                ->first();
+            if ($myHoldingWh) {
+                $employeeHoldingWarehouses->push((object)[
+                    'id'                   => $myHoldingWh->id,
+                    'name'                 => $myHoldingWh->name,
+                    'code'                 => $myHoldingWh->code,
+                    'is_holding_warehouse' => true,
+                    'manager_name'         => $user->name,
+                ]);
             }
         }
 
-        if ($isDriver) {
-            // Lái xe: CHỈ có duy nhất Kho lưu động trên xe của chính mình
-            $plate = $driverVehicle?->plate_number ?? '29C-888.99';
-            $vehName = 'Kho Xe ' . $plate . ' (' . $user->name . ')';
-            $warehouses = collect([
-                (object)[
-                    'id'                   => 'xe_' . ($driverVehicle?->id ?? $user->id),
-                    'name'                 => $vehName,
-                    'code'                 => $plate,
-                    'is_vehicle_warehouse' => true,
-                    'plate_number'         => $plate,
-                    'driver_name'          => $user->name,
-                ]
-            ]);
-        } else {
-            // Chỉ lấy các kho vật lý chính thức của công ty (loại trừ kho hàng ôm nhân sự và kho xe)
-            $warehouses = Warehouse::companyWarehouses()
-                ->orderBy('id')
-                ->get(['id', 'name', 'code'])
-                ->map(function($w) {
-                    return (object)[
-                        'id'                   => $w->id,
-                        'name'                 => $w->name,
-                        'code'                 => $w->code,
-                        'is_vehicle_warehouse' => false,
-                        'is_holding_warehouse' => false,
-                        'plate_number'         => '',
-                        'driver_name'          => '',
-                    ];
-                });
-        }
+        // Chỉ gồm kho công ty + kho hàng ôm nhân viên (chỉ có kho ôm nhân viên và kho công ty)
+        $warehouses = $companyWarehouses->concat($employeeHoldingWarehouses);
 
-        return [$warehouses, $isDriver, $driverVehicle];
+        $mainCompanyWarehouse = $companyWarehouses->first()?->name ?? 'Kho Tổng Mê Linh (MQ)';
+        $employeeWarehouse = $employeeHoldingWarehouses->first()?->name 
+            ?? ($user ? 'Kho Hàng Ôm - ' . $user->name : $mainCompanyWarehouse);
+
+        return [$warehouses, false, null, $mainCompanyWarehouse, $employeeWarehouse];
+    }
+
+    /**
+     * Giao diện bán hàng / POS / Chọn nhanh sản phẩm & giỏ hàng tạm
+     */
+    public function orderPos()
+    {
+        $products = self::getPosProductsCatalog();
+        $categories = Category::orderBy('name')->get(['id', 'name']);
+        $brands = Brand::orderBy('name')->get(['id', 'name']);
+        $dealers = Dealer::select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit')
+            ->orderBy('name')
+            ->get();
+        [$warehouses, $isDriverUser, $driverVehicle, $mainCompanyWarehouse, $employeeWarehouse] = $this->getAvailableWarehousesForUser();
+        $priceTiers = PriceTier::where('status', 'Hoạt động')
+            ->orderByRaw("CASE WHEN name LIKE '%Nguyên Giá%' THEN 0 ELSE 1 END")
+            ->orderBy('order_num')
+            ->orderBy('id')
+            ->get();
+
+        return view('orders.pos', compact(
+            'products',
+            'categories',
+            'brands',
+            'dealers',
+            'warehouses',
+            'isDriverUser',
+            'driverVehicle',
+            'priceTiers'
+        ));
     }
 
     public function orderCreate()
     {
-        $dealers = Dealer::select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit')
+        $dealers = Dealer::select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit', 'tax_code')
+            ->withCount(['orders as orders_count' => function($q) {
+                $q->whereNotIn('status', ['Hủy', 'Đã hủy']);
+            }])
             ->orderBy('name')
             ->get();
-        [$warehouses, $isDriverUser, $driverVehicle] = $this->getAvailableWarehousesForUser();
+        [$warehouses, $isDriverUser, $driverVehicle, $mainCompanyWarehouse, $employeeWarehouse] = $this->getAvailableWarehousesForUser();
         $products = self::getPosProductsCatalog();
         $drivers = User::select('id', 'name', 'phone')->get();
         $priceTiers = PriceTier::where('status', 'Hoạt động')
@@ -587,8 +605,10 @@ class WebViewController extends Controller
             'order' => null,
             'dealers' => $dealers,
             'warehouses' => $warehouses,
-            'isDriverUser' => $isDriverUser,
+            'isDriverUser' => false,
             'driverVehicle' => $driverVehicle,
+            'mainCompanyWarehouse' => $mainCompanyWarehouse,
+            'employeeWarehouse' => $employeeWarehouse,
             'products' => $products,
             'drivers' => $drivers,
             'priceTiers' => $priceTiers,
@@ -602,10 +622,13 @@ class WebViewController extends Controller
     public function orderEdit($id)
     {
         $order = Order::with(['items.product', 'dealer'])->findOrFail($id);
-        $dealers = Dealer::select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit')
+        $dealers = Dealer::select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit', 'tax_code')
+            ->withCount(['orders as orders_count' => function($q) {
+                $q->whereNotIn('status', ['Hủy', 'Đã hủy']);
+            }])
             ->orderBy('name')
             ->get();
-        [$warehouses, $isDriverUser, $driverVehicle] = $this->getAvailableWarehousesForUser();
+        [$warehouses, $isDriverUser, $driverVehicle, $mainCompanyWarehouse, $employeeWarehouse] = $this->getAvailableWarehousesForUser();
         $products = self::getPosProductsCatalog($order->id);
         $drivers = User::select('id', 'name', 'phone')->get();
         $priceTiers = PriceTier::where('status', 'Hoạt động')
@@ -629,8 +652,10 @@ class WebViewController extends Controller
             'order' => $order,
             'dealers' => $dealers,
             'warehouses' => $warehouses,
-            'isDriverUser' => $isDriverUser,
+            'isDriverUser' => false,
             'driverVehicle' => $driverVehicle,
+            'mainCompanyWarehouse' => $mainCompanyWarehouse,
+            'employeeWarehouse' => $employeeWarehouse,
             'products' => $products,
             'drivers' => $drivers,
             'priceTiers' => $priceTiers,
@@ -853,7 +878,7 @@ class WebViewController extends Controller
         $routes = DeliveryRoute::all();
         $readyOrders = Order::whereIn('status', [
             'Chốt đơn', 'Đã duyệt', 'Soạn hàng', 'Đang bốc hàng', 'Đã bốc xong',
-            'Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng', 'Sẵn sàng xuất xe', 'Đang vận chuyển', 'Giao thành công'
+            'Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng', 'Sẵn sàng xuất xe', 'Đang vận chuyển', 'Giao thành công', 'Không thành công', 'Đã hoàn kho', 'Chờ bốc'
         ])
             ->with(['dealer', 'items'])
             ->latest('id')
@@ -1022,7 +1047,7 @@ class WebViewController extends Controller
             'citizen_id'           => $request->input('citizen_id'),
             'department'           => $request->input('department', 'Sales'),
             'status'               => $request->input('status', 'Đang làm việc'),
-            'staff_type'           => $request->input('staff_type', 'company_sales'),
+            'staff_type'           => $request->input('staff_type', 'company'),
             'dealer_id'            => $request->input('dealer_id') ?: null,
             'credit_limit'         => (float) str_replace(['.', ',', ' '], '', $request->input('credit_limit', 0)),
             'base_salary'          => (float) str_replace(['.', ',', ' '], '', $request->input('base_salary', 0)),
@@ -1135,14 +1160,65 @@ class WebViewController extends Controller
             str_contains(mb_strtolower($user->department ?? ''), 'ky thuat')
         );
 
-        $view = $request->input('view');
-        if (!$view) {
-            $view = $isTechnician ? 'my_tasks' : 'all';
+        $isAdminOrManager = $user && (
+            $user->is_super_admin ||
+            $user->id === 1 ||
+            $user->hasRole('Admin') || $user->hasRole('admin') ||
+            $user->hasRole('Executive') || $user->hasRole('executive') ||
+            $user->hasRole('Manager') || $user->hasRole('manager') ||
+            in_array($user->department, ['Executive', 'Ban Giám Đốc', 'Quản Lý', 'Ban Lãnh Đạo'])
+        );
+
+        $canViewAll = $isAdminOrManager || ($user && $user->hasPermission('task_assignment.view_all'));
+
+        // Phân quyền chi tiết cho từng Tab trong phân hệ Công việc
+        $canViewInstallations = $isAdminOrManager || ($user && (
+            $user->hasPermission('task_assignment.tab_installations') ||
+            $user->hasPermission('water_filter.install_view')
+        ));
+
+        $canViewMaintenance = $isAdminOrManager || ($user && (
+            $user->hasPermission('task_assignment.tab_maintenance') ||
+            $user->hasPermission('water_filter.install_view') ||
+            $user->hasPermission('water_filter.repair_view')
+        ));
+
+        $canViewTasks = $isAdminOrManager || ($user && (
+            $user->hasPermission('task_assignment.tab_tasks') ||
+            $user->hasPermission('task_assignment.view')
+        ));
+
+        $canViewWarehouseExport = $isAdminOrManager || ($user && (
+            $user->hasPermission('task_assignment.tab_warehouse_export') ||
+            $user->hasPermission('water_filter.parts_view') ||
+            $user->hasPermission('inv_export.create') ||
+            $isTechnician
+        ));
+
+        // Danh sách các tab người dùng được phép truy cập
+        $allowedTabs = [];
+        if ($canViewInstallations) $allowedTabs[] = 'installations';
+        if ($canViewMaintenance) $allowedTabs[] = 'maintenance';
+        if ($canViewTasks) $allowedTabs[] = 'tasks';
+        if ($canViewWarehouseExport) $allowedTabs[] = 'warehouse_export';
+
+        if (empty($allowedTabs)) {
+            abort(403, 'Bạn không có quyền truy cập vào các tab công việc này.');
         }
 
-        $activeTab = $request->input('tab', 'installations');
-        if (!in_array($activeTab, ['installations', 'tasks', 'maintenance', 'warehouse_export'])) {
-            $activeTab = 'installations';
+        $view = $request->input('view');
+        if (!$canViewAll) {
+            // Không có quyền xem tất cả -> Bắt buộc chỉ được xem công việc của tôi
+            $view = 'my_tasks';
+        } else {
+            if (!$view) {
+                $view = $isTechnician ? 'my_tasks' : 'all';
+            }
+        }
+
+        $activeTab = $request->input('tab');
+        if (!$activeTab || !in_array($activeTab, $allowedTabs)) {
+            $activeTab = $allowedTabs[0];
         }
 
         // 1. Phân loại nhiệm vụ chung (TaskAssignment) có phân trang
@@ -1278,6 +1354,12 @@ class WebViewController extends Controller
         return view('tasks.index', compact(
             'tasks',
             'view',
+            'canViewAll',
+            'canViewInstallations',
+            'canViewMaintenance',
+            'canViewTasks',
+            'canViewWarehouseExport',
+            'allowedTabs',
             'activeTab',
             'isTechnician',
             'filterInstallations',
@@ -1918,14 +2000,26 @@ class WebViewController extends Controller
      */
     public function staffDebt(Request $request)
     {
+        $currentUser = auth()->user();
+        $canViewAll = $currentUser && (
+            $currentUser->hasRole('Manager') ||
+            $currentUser->hasRole('Admin') ||
+            $currentUser->hasPermission('staff_debt.view_all')
+        );
+
         // 1. Dữ liệu Danh sách Nhân viên & Người vận chuyển
-        $query = \App\Models\User::with('dealer')
-            ->where(function ($q) {
+        $query = \App\Models\User::with('dealer');
+        if ($canViewAll) {
+            $query->where(function ($q) {
                 $q->whereIn('staff_type', ['driver', 'company_sales', 'dealer_sales'])
                   ->orWhere('department', 'LIKE', '%Kinh doanh%')
                   ->orWhere('department', 'LIKE', '%Vận tải%')
                   ->orWhere('current_debt', '>', 0);
             });
+        } else {
+            // Ai cũng có thể xem của bản thân: người không có quyền xem tất cả chỉ thấy hồ sơ của mình
+            $query->where('id', $currentUser ? $currentUser->id : 0);
+        }
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -1942,15 +2036,51 @@ class WebViewController extends Controller
         }
 
         $staffList = $query->orderByDesc('current_debt')->get();
-        $totalStaffDebt = \App\Models\User::sum('current_debt');
-        $debtStaffCount = \App\Models\User::where('current_debt', '>', 0)->count();
+        if ($canViewAll) {
+            $totalStaffDebt = \App\Models\User::sum('current_debt');
+            $debtStaffCount = \App\Models\User::where('current_debt', '>', 0)->count();
+        } else {
+            $totalStaffDebt = (float)($currentUser?->current_debt ?? 0);
+            $debtStaffCount = ($currentUser && (float)$currentUser->current_debt > 0) ? 1 : 0;
+        }
 
-        // 2. Dữ liệu Biên bản Bàn giao công nợ
-        $handovers = \App\Models\DebtHandover::with(['fromUser', 'toUser', 'targetDealer', 'order'])
-            ->latest('id')
-            ->take(60)
-            ->get();
-        $pendingHandoversCount = \App\Models\DebtHandover::where('status', 'pending')->count();
+        // 2. Dữ liệu Biên bản Bàn giao công nợ (Kèm Kế toán & Chứng từ)
+        $handoversQuery = \App\Models\DebtHandover::with(['fromUser', 'toUser', 'targetDealer', 'order', 'accountant']);
+        if (!$canViewAll && $currentUser) {
+            $handoversQuery->where(function ($q) use ($currentUser) {
+                $q->where('from_user_id', $currentUser->id)
+                  ->orWhere('to_user_id', $currentUser->id)
+                  ->orWhere('accountant_id', $currentUser->id);
+            });
+        }
+        $handovers = $handoversQuery->latest('id')->take(60)->get();
+
+        $pendingQuery = \App\Models\DebtHandover::whereIn('status', ['pending', 'pending_accountant', 'pending_sale']);
+        if (!$canViewAll && $currentUser) {
+            $pendingQuery->where(function ($q) use ($currentUser) {
+                $q->where('from_user_id', $currentUser->id)
+                  ->orWhere('to_user_id', $currentUser->id)
+                  ->orWhere('accountant_id', $currentUser->id);
+            });
+        }
+        $pendingHandoversCount = $pendingQuery->count();
+
+        // Kiểm tra xem người dùng có bấm từ thông báo vào xem đích danh biên bản nào không
+        $targetHandoverId = $request->input('handover_id') ?: $request->input('id');
+        $targetHandoverCode = $request->input('handover_code') ?: $request->input('code');
+        $targetHandover = null;
+        if ($targetHandoverId || $targetHandoverCode) {
+            $targetHandover = \App\Models\DebtHandover::with(['fromUser', 'toUser', 'targetDealer', 'order', 'accountant'])
+                ->where(function ($q) use ($targetHandoverId, $targetHandoverCode) {
+                    if ($targetHandoverId) $q->where('id', $targetHandoverId);
+                    if ($targetHandoverCode) $q->orWhere('code', $targetHandoverCode);
+                })
+                ->first();
+
+            if ($targetHandover && !$handovers->contains('id', $targetHandover->id)) {
+                $handovers->prepend($targetHandover);
+            }
+        }
 
         // Danh sách hỗ trợ Dropdown trong các Modal
         $allStaff = \App\Models\User::select('id', 'name', 'code', 'phone', 'staff_type', 'dealer_id')->orderBy('name')->get();
@@ -1982,7 +2112,7 @@ class WebViewController extends Controller
 
         return view('staff.debt', compact(
             'staffList', 'totalStaffDebt', 'debtStaffCount', 'handovers', 'pendingHandoversCount', 
-            'allStaff', 'allDealers', 'allOrders'
+            'allStaff', 'allDealers', 'allOrders', 'targetHandover', 'canViewAll'
         ));
     }
 
@@ -1991,7 +2121,19 @@ class WebViewController extends Controller
      */
     public function staffDebtDetail($id, Request $request)
     {
+        $currentUser = auth()->user();
+        $canViewAll = $currentUser && (
+            $currentUser->hasRole('Manager') ||
+            $currentUser->hasRole('Admin') ||
+            $currentUser->hasPermission('staff_debt.view_all')
+        );
+
         $staff = \App\Models\User::with('dealer')->where('id', $id)->orWhere('code', $id)->firstOrFail();
+
+        // Phân quyền: Ai cũng có thể xem của bản thân, chỉ ai có quyền xem tất cả mới được xem công nợ nhân viên khác
+        if (!$canViewAll && $currentUser && (string)$staff->id !== (string)$currentUser->id) {
+            return redirect('/staff-debt/' . $currentUser->id)->with('error', 'Bạn không có quyền xem công nợ của nhân sự khác. Hệ thống đã chuyển về sổ công nợ của bạn.');
+        }
 
         $holdingWarehouse = \App\Models\Warehouse::where('type', 'Kho hàng ôm')
             ->where(function($q) use ($staff) {
@@ -2114,7 +2256,7 @@ class WebViewController extends Controller
             'totalConsignmentRemaining', 'totalHoldingItemsCount', 'holdingWarehouse', 'holdingStocks',
             'consignmentOrders', 'holdingSaleOrders', 'deliveryOrders', 'totalHoldingSalesCount',
             'totalHoldingSalesAmount', 'totalHoldingSalesCash', 'totalHoldingSalesDebt',
-            'orders', 'handoversSent', 'handoversReceived', 'transactions'
+            'orders', 'handoversSent', 'handoversReceived', 'transactions', 'canViewAll'
         ));
     }
 
@@ -2208,7 +2350,9 @@ class WebViewController extends Controller
     public function loginView()
     {
         if (Auth::check()) {
-            return redirect('/attendance');
+            $user = Auth::user();
+            $redirectUrl = method_exists($user, 'getLoginRedirectUrl') ? $user->getLoginRedirectUrl() : '/attendance';
+            return redirect($redirectUrl);
         }
 
         return view('auth.login');
@@ -2245,7 +2389,9 @@ class WebViewController extends Controller
 
         Auth::login($user, $request->has('remember'));
 
-        return redirect('/attendance')->with('success', 'Đăng nhập thành công! Chào mừng ' . $user->name);
+        $redirectUrl = method_exists($user, 'getLoginRedirectUrl') ? $user->getLoginRedirectUrl() : ($user->staff_type === 'brand' ? '/orders/pos' : '/attendance');
+
+        return redirect($redirectUrl)->with('success', 'Đăng nhập thành công! Chào mừng ' . $user->name);
     }
 
     /**

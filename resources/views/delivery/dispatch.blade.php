@@ -249,9 +249,10 @@
                                     class="text-xs font-bold text-slate-700 hover:text-purple-700 flex items-center gap-1.5 cursor-pointer py-1">
                                 <i class="fa-solid fa-box text-purple-600 text-xs"></i>
                                 <span x-text="getAssignedOrdersCount(v.plate_number) + ' đơn hàng'"></span>
-                                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                                    <i class="fa-solid fa-check text-[9px]"></i>
-                                    <span>Đã kiểm đủ 100%</span>
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1"
+                                      :class="getVehicleQcStatus(v.plate_number).badgeClass">
+                                    <i class="fa-solid" :class="getVehicleQcStatus(v.plate_number).isReady ? 'fa-check text-[9px]' : 'fa-clock text-[9px]'"></i>
+                                    <span x-text="getVehicleQcStatus(v.plate_number).text"></span>
                                 </span>
                                 <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200"
                                    :class="expandedVehiclePlates.includes(v.plate_number) ? 'rotate-180' : ''"></i>
@@ -266,10 +267,20 @@
                                         <div class="flex items-center gap-2">
                                             <span class="font-mono font-black text-sky-700 text-xs" x-text="ord.order_code"></span>
                                             <span class="font-bold text-slate-800 truncate max-w-[180px]" x-text="ord.customer_name"></span>
+                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border"
+                                                  :class="['Đã kiểm hàng', 'Đã kiểm hàng (Sẵn sàng xuất xe)', 'Đã kiểm xong', 'Đang vận chuyển'].includes(ord.status) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'"
+                                                  x-text="ord.status"></span>
                                         </div>
                                         <div class="text-[10px] text-slate-500 font-mono mt-0.5" x-text="formatCurrency(ord.total_amount)"></div>
                                     </div>
 
+                                    <template x-if="['Không thành công', 'Giao thất bại', 'Đang vận chuyển'].includes(ord.status)">
+                                        <button type="button" @click.stop="returnOrderToWarehouseFromDispatch(ord)"
+                                                class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg font-bold text-[10px] transition-colors cursor-pointer"
+                                                title="Hoàn hàng về kho (cộng lại tồn kho & reset bốc kiểm để bốc lại lần sau)">
+                                            <i class="fa-solid fa-boxes-packing mr-0.5"></i> Hoàn kho
+                                        </button>
+                                    </template>
                                     <button type="button" @click.stop="unassignOrderFromVehicle(ord)"
                                             class="px-2 py-1 bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 hover:border-rose-300 rounded-lg font-bold text-[10px] transition-colors cursor-pointer"
                                             title="Rút đơn hàng khỏi xe này về hàng chờ">
@@ -483,6 +494,22 @@
                                 <!-- Action Buttons -->
                                 <div class="flex items-center gap-2 shrink-0">
                                     <!-- Primary: Xếp vào xe đang chọn -->
+                                    <template x-if="ord.status === 'Không thành công'">
+                                        <button type="button" @click="returnOrderToWarehouseFromDispatch(ord)"
+                                                class="px-2.5 py-1.5 rounded-xl text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 transition-colors flex items-center gap-1 cursor-pointer"
+                                                title="Hoàn hàng về kho (cộng lại tồn kho & reset bốc kiểm để bốc lại lần sau)">
+                                            <i class="fa-solid fa-boxes-packing text-amber-600"></i>
+                                            <span>Hoàn kho</span>
+                                        </button>
+                                    </template>
+                                    <template x-if="ord.status === 'Đã hoàn kho'">
+                                        <button type="button" @click="redeliverOrderFromDispatch(ord)"
+                                                class="px-2.5 py-1.5 rounded-xl text-xs font-bold text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-300 transition-colors flex items-center gap-1 cursor-pointer"
+                                                title="Kích hoạt bốc & kiểm hàng lại để giao lần sau">
+                                            <i class="fa-solid fa-rotate-right text-blue-600"></i>
+                                            <span>Bốc lại</span>
+                                        </button>
+                                    </template>
                                     <button type="button" @click="assignSingleOrderToVehicle(ord, selectedVehiclePlate)"
                                             class="px-3.5 py-1.5 rounded-xl font-black text-xs text-white bg-purple-600 hover:bg-purple-700 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95">
                                         <i class="fa-solid fa-plus text-xs"></i>
@@ -1166,6 +1193,14 @@ function dispatchApp() {
         },
 
         initApp() {
+            if (typeof BroadcastChannel !== 'undefined') {
+                const bc = new BroadcastChannel('erp_order_sync');
+                bc.onmessage = (ev) => {
+                    if (ev.data && (ev.data.type === 'QC_ALL_CHECKED' || ev.data.type === 'ORDER_STATUS_CHANGED' || ev.data.orderId)) {
+                        window.location.reload();
+                    }
+                };
+            }
             if (this.vehicles.length > 0 && !this.vehicles.some(v => v.plate_number === this.selectedVehiclePlate)) {
                 this.selectedVehiclePlate = this.vehicles[0].plate_number;
             }
@@ -1356,6 +1391,22 @@ function dispatchApp() {
             return this.getAssignedOrdersList(plate).reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
         },
 
+        getVehicleQcStatus(plate) {
+            const list = this.getAssignedOrdersList(plate).filter(o => !['Giao thành công', 'Đã giao', 'Đã hoàn thành', 'Đã quyết toán'].includes(o.status));
+            if (list.length === 0) {
+                return { count: 0, total: 0, isReady: false, badgeClass: 'bg-slate-100 text-slate-500 border-slate-200', text: 'Chưa có đơn' };
+            }
+            const checkedCount = list.filter(o => ['Đã kiểm hàng', 'Đã kiểm hàng (Sẵn sàng xuất xe)', 'Đã kiểm xong', 'Đang vận chuyển'].includes(o.status)).length;
+            const isReady = checkedCount === list.length;
+            return {
+                count: checkedCount,
+                total: list.length,
+                isReady: isReady,
+                badgeClass: isReady ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-300',
+                text: isReady ? 'Đã kiểm đủ 100%' : `Đã kiểm ${checkedCount}/${list.length} đơn`
+            };
+        },
+
         getCompletedOrdersCount(plate) {
             return this.getAssignedOrdersList(plate).filter(o => ['Giao thành công', 'Đã giao', 'Đã hoàn thành', 'Đã quyết toán'].includes(o.status)).length;
         },
@@ -1466,6 +1517,57 @@ function dispatchApp() {
         },
 
         // Unassign Order back to waiting queue
+        async returnOrderToWarehouseFromDispatch(order) {
+            if (!confirm(`Xác nhận hoàn đơn #${order.order_code} về kho?\n\n• Hàng được nhập lại tồn kho công ty\n• Gỡ đơn khỏi xe\n• Bắt buộc bốc & kiểm hàng lại khi giao lần sau`)) return;
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const res = await fetch('/delivery/return-order-to-warehouse', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token || '' },
+                    body: JSON.stringify({
+                        orderId: order.id,
+                        orderCode: order.order_code,
+                        reason: 'Hoàn kho từ màn hình điều phối chuyến xe'
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    order.status = 'Đã hoàn kho';
+                    order.assigned_vehicle_plate = null;
+                    order.assigned_driver_id = null;
+                    this.showToast('Đã hoàn đơn ' + order.order_code + ' về kho thành công! Trạng thái bốc & kiểm đã được reset để bốc lại lần sau.');
+                } else {
+                    this.showToast('Lỗi: ' + (data.message || 'Không thể hoàn kho'), 'error');
+                }
+            } catch(e) {
+                this.showToast('Lỗi kết nối: ' + e.message, 'error');
+            }
+        },
+
+        async redeliverOrderFromDispatch(order) {
+            if (!confirm(`Kích hoạt giao lại đơn #${order.order_code}?\n\nĐơn sẽ chuyển sang trạng thái "Chờ bốc" để kho bốc và kiểm hàng lại từ đầu.`)) return;
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const res = await fetch('/delivery/redeliver-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token || '' },
+                    body: JSON.stringify({
+                        orderId: order.id,
+                        orderCode: order.order_code
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    order.status = 'Chờ bốc';
+                    this.showToast('Đã chuyển đơn ' + order.order_code + ' sang "Chờ bốc" để kho bốc & kiểm hàng lại!');
+                } else {
+                    this.showToast('Lỗi: ' + (data.message || 'Không thể giao lại'), 'error');
+                }
+            } catch(e) {
+                this.showToast('Lỗi kết nối: ' + e.message, 'error');
+            }
+        },
+
         async unassignOrderFromVehicle(order) {
             const oldPlate = order.assigned_vehicle_plate;
             const oldDriverId = order.assigned_driver_id;

@@ -203,8 +203,46 @@ class Product extends Model
     }
 
     /**
-     * Quy đổi số lượng từ đơn vị gốc (vd: ống/cây) sang đơn vị chuyển đổi (vd: mét)
-     * Ví dụ: 10 cây * hệ số 4 = 40 mét
+     * Kiểm tra xem đơn vị quy đổi (conversion_unit) có phải là đơn vị lớn hơn đơn vị cơ bản (unit) hay không.
+     * Ví dụ:
+     * - conversion_unit = 'Kiện', 'Thùng', 'Bao', 'Lô', 'Pallet', 'Carton' trong khi unit là 'Chai', 'Lọ', 'Tuýp', 'Gói'...
+     * => Đơn vị quy đổi LỚN HƠN đơn vị cơ bản (1 Kiện = 200 Chai).
+     * Ngược lại (kiểu ống nhựa):
+     * - unit = 'Cây', conversion_unit = 'Mét' => Đơn vị cơ bản LỚN HƠN đơn vị quy đổi (1 Cây = 4 Mét).
+     */
+    public function isConversionUnitLarger(): bool
+    {
+        if (!$this->hasConversionUnit()) {
+            return false;
+        }
+
+        $convUnit = mb_strtolower(trim($this->conversion_unit));
+        $baseUnit = mb_strtolower(trim($this->unit));
+
+        // Các đơn vị đóng gói/thùng/kiện/bao/lô... luôn lớn hơn đơn vị con
+        $bulkUnits = ['kiện', 'thùng', 'bao', 'lô', 'pallet', 'carton', 'két', 'thưng', 'lốc', 'dây'];
+        if (in_array($convUnit, $bulkUnits)) {
+            return true;
+        }
+
+        // Hộp lớn chứa chai/lọ/tuýp/gói/vỉ/cái/ống/viên/miếng
+        if ($convUnit === 'hộp' && in_array($baseUnit, ['chai', 'lọ', 'tuýp', 'gói', 'vỉ', 'cái', 'viên', 'miếng', 'ống'])) {
+            return true;
+        }
+
+        // Nếu đơn vị cơ bản là mét/cm/m2/g/gam mà đơn vị quy đổi là cuộn/cây/tấm
+        if (in_array($baseUnit, ['mét', 'm', 'cm', 'gam', 'g']) && in_array($convUnit, ['cuộn', 'cây', 'tấm', 'hộp'])) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Quy đổi số lượng từ đơn vị gốc (baseQuantity) sang đơn vị quy đổi (conversion_unit).
+     * Ví dụ:
+     * - Nếu conversion_unit lớn hơn (1 Kiện = 200 Chai): 200 Chai -> 1 Kiện (baseQuantity / rate).
+     * - Nếu conversion_unit nhỏ hơn (1 Cây = 4 Mét): 10 Cây -> 40 Mét (baseQuantity * rate).
      */
     public function toConversionQuantity(float $baseQuantity): float
     {
@@ -212,12 +250,21 @@ class Product extends Model
             return $baseQuantity;
         }
 
-        return $baseQuantity * (float) $this->conversion_rate;
+        $rate = (float) $this->conversion_rate;
+        if ($rate <= 0) return $baseQuantity;
+
+        if ($this->isConversionUnitLarger()) {
+            return $baseQuantity / $rate;
+        }
+
+        return $baseQuantity * $rate;
     }
 
     /**
-     * Quy đổi số lượng từ đơn vị chuyển đổi (vd: mét) ngược về đơn vị gốc (vd: ống/cây)
-     * Ví dụ: 40 mét / hệ số 4 = 10 cây
+     * Quy đổi số lượng từ đơn vị quy đổi (conversionQuantity) về đơn vị gốc (unit).
+     * Ví dụ:
+     * - Nếu conversion_unit lớn hơn (1 Kiện = 200 Chai): 1 Kiện -> 200 Chai (conversionQuantity * rate).
+     * - Nếu conversion_unit nhỏ hơn (1 Cây = 4 Mét): 40 Mét -> 10 Cây (conversionQuantity / rate).
      */
     public function toBaseQuantity(float $conversionQuantity): float
     {
@@ -225,6 +272,13 @@ class Product extends Model
             return $conversionQuantity;
         }
 
-        return $conversionQuantity / (float) $this->conversion_rate;
+        $rate = (float) $this->conversion_rate;
+        if ($rate <= 0) return $conversionQuantity;
+
+        if ($this->isConversionUnitLarger()) {
+            return $conversionQuantity * $rate;
+        }
+
+        return $conversionQuantity / $rate;
     }
 }

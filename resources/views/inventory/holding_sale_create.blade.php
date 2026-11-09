@@ -6,21 +6,26 @@
 <style>
 /* CSS tối ưu riêng cho màn hình Mobile (max-width: 768px) */
 @media (max-width: 768px) {
+    main {
+        padding-left: 4px !important;
+        padding-right: 4px !important;
+        padding-top: 6px !important;
+    }
     /* 1. Header Banner trên mobile */
     .mobile-header-banner {
-        padding: 0.75rem 0.875rem !important;
+        padding: 0.625rem 0.75rem !important;
         gap: 0.5rem !important;
-        border-radius: 1rem !important;
+        border-radius: 0.875rem !important;
     }
     .mobile-header-title {
         font-size: 0.95rem !important;
-        line-height: 1.35 !important;
+        line-height: 1.3 !important;
         font-weight: 800 !important;
     }
     .mobile-header-sub {
         font-size: 0.725rem !important;
-        line-height: 1.4 !important;
-        margin-top: 0.2rem !important;
+        line-height: 1.3 !important;
+        margin-top: 0.15rem !important;
     }
     .mobile-header-actions {
         width: 100% !important;
@@ -196,20 +201,24 @@
 
     <!-- 1. Header Banner -->
     <div class="mobile-header-banner bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div class="flex items-start sm:items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
-            <a href="{{ $returnUrl ?: url('/inventory/import?tab=stocks') }}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#1b4a8c] hover:bg-blue-800 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-900/20 cursor-pointer transition-transform hover:scale-105 mt-0.5 sm:mt-0" title="Quay lại">
+        <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
+            <a href="{{ $returnUrl ?: url('/inventory/holding') }}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 flex items-center justify-center shrink-0 cursor-pointer transition-all active:scale-95 shadow-2xs" title="Quay lại">
                 <i class="fa-solid fa-arrow-left text-xs sm:text-sm"></i>
             </a>
 
             <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2 flex-wrap">
-                    <h1 class="mobile-header-title text-base sm:text-2xl font-black text-slate-900 tracking-tight">Tạo Đơn Bán Hàng Trực Tiếp Từ Kho Hàng Ôm</h1>
+                    <h1 class="mobile-header-title text-sm sm:text-2xl font-black text-slate-900 tracking-tight">
+                        <span class="sm:hidden">Bán Hàng Từ Kho Ôm</span>
+                        <span class="hidden sm:inline">Tạo Đơn Bán Hàng Trực Tiếp Từ Kho Hàng Ôm</span>
+                    </h1>
                     <span class="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-blue-100 text-[#1b4a8c] text-[11px] font-extrabold border border-blue-200">Bán hàng ngay & Trừ kho ôm</span>
                 </div>
-                <div class="mobile-header-sub flex items-center gap-1.5 sm:gap-2 mt-1 text-xs text-slate-500 font-medium flex-wrap">
-                    <span>Kho xuất: <strong class="text-blue-900 font-bold" x-text="saleForm.warehouse_name || '---'"></strong></span>
-                    <span>&bull;</span>
-                    <span>Nhân viên bán: <strong class="text-slate-800 font-bold" x-text="saleForm.employee_name || '---'"></strong></span>
+                <div class="mobile-header-sub flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1 text-xs text-slate-500 font-medium flex-wrap">
+                    <span>Kho: <strong class="text-blue-900 font-bold" x-text="saleForm.warehouse_name || '---'"></strong></span>
+                    <template x-if="saleForm.employee_name && !(saleForm.warehouse_name || '').includes(saleForm.employee_name)">
+                        <span class="hidden sm:inline">&bull; NV: <strong class="text-slate-800 font-bold" x-text="saleForm.employee_name"></strong></span>
+                    </template>
                     <span class="hidden sm:inline">&bull;</span>
                     <span class="hidden sm:inline text-emerald-700 font-semibold"><i class="fa-solid fa-bolt mr-0.5"></i>Tự động trừ tồn kho ôm & đồng bộ công nợ</span>
                 </div>
@@ -230,7 +239,7 @@
             </div>
             @endif
 
-            <a href="{{ $returnUrl ?: url('/inventory/import?tab=stocks') }}" class="hidden sm:flex px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs items-center gap-2 shadow-2xs cursor-pointer whitespace-nowrap">
+            <a href="{{ $returnUrl ?: url('/inventory/holding') }}" class="hidden sm:flex px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs items-center gap-2 shadow-2xs cursor-pointer whitespace-nowrap">
                 <i class="fa-solid fa-arrow-left text-slate-500"></i>
                 <span>Hủy & Quay lại</span>
             </a>
@@ -245,7 +254,7 @@
         <h3 class="text-base font-bold text-slate-800">Chưa có kho hàng ôm nào có tồn kho sẵn sàng để bán</h3>
         <p class="text-xs text-slate-500 max-w-md mx-auto">Vui lòng điều chuyển / xuất hàng ôm cho nhân viên từ kho công ty trước khi tạo đơn bán hàng trực tiếp.</p>
         <div class="pt-2">
-            <a href="{{ $returnUrl ?: url('/inventory/import?tab=stocks') }}" class="px-4 py-2 bg-[#1b4a8c] hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors inline-flex items-center gap-2">
+            <a href="{{ $returnUrl ?: url('/inventory/holding') }}" class="px-4 py-2 bg-[#1b4a8c] hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors inline-flex items-center gap-2">
                 <i class="fa-solid fa-arrow-left"></i>
                 <span>Quay lại</span>
             </a>
@@ -520,7 +529,7 @@
                         <span x-text="isSubmitting ? 'Đang Xử Lý & Trừ Kho Ôm...' : 'Xác Nhận & Hoàn Tất Bán Hàng'"></span>
                     </button>
 
-                    <a href="{{ url('/inventory/import?tab=stocks') }}" 
+                    <a href="{{ url('/inventory/holding') }}" 
                        class="w-full py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
                         <i class="fa-solid fa-arrow-left text-xs"></i>
                         <span>Quay lại trang kho hàng ôm</span>
@@ -774,7 +783,7 @@ function holdingSaleApp() {
 
                 if (res.ok && (data.success || data.order_id || data.id || data.order?.id)) {
                     alert(data.message || 'Tạo đơn bán hàng từ kho hàng ôm thành công! Tồn kho đã được trừ trực tiếp.');
-                    window.location.href = this.returnUrl || '/inventory/import?tab=stocks';
+                    window.location.href = this.returnUrl || '/inventory/holding';
                 } else {
                     alert('Lỗi tạo đơn bán hàng: ' + (data.message || data.error || ('Mã lỗi ' + res.status)));
                 }

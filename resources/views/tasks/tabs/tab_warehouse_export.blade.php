@@ -2,7 +2,7 @@
 <div class="space-y-6">
 
     <!-- Header Banner & Thống Kê Nhanh -->
-    <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 p-5 sm:p-6 rounded-3xl text-white shadow-xl border border-slate-700/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div class="warehouse-export-banner bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 p-5 sm:p-6 rounded-3xl text-white shadow-xl border border-slate-700/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div class="flex items-center gap-4">
             <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center text-2xl shadow-lg shadow-emerald-500/30 shrink-0">
                 <i class="fa-solid fa-boxes-packing"></i>
@@ -62,7 +62,7 @@
                 <span class="text-rose-500">*</span>
             </label>
 
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <div class="warehouse-purpose-grid grid grid-cols-2 lg:grid-cols-4 gap-2.5">
                 <!-- 1. Đi Lắp Đặt -->
                 <button type="button" 
                         @click="techExportForm.purpose = 'install'" 

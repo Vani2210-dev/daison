@@ -550,10 +550,17 @@ input[type=number] {
 
         <!-- Action Bottom Bar -->
         <div class="pt-4 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-600 select-none">
-                <input type="checkbox" x-model="formData.auto_approve" class="w-4 h-4 text-sky-600 rounded border-slate-300">
-                <span>Duyệt đơn ngay sau khi tạo</span>
-            </label>
+            @if(Auth::check() && Auth::user()->hasPermission('supplier_orders.approve'))
+                <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-600 select-none">
+                    <input type="checkbox" x-model="formData.auto_approve" class="w-4 h-4 text-sky-600 rounded border-slate-300">
+                    <span>Duyệt đơn ngay sau khi tạo</span>
+                </label>
+            @else
+                <div class="text-[11px] text-slate-500 flex items-center gap-1.5">
+                    <i class="fa-solid fa-bell text-amber-500"></i>
+                    <span>Sau khi tạo, hệ thống sẽ gửi thông báo tự động tới người có quyền duyệt đơn.</span>
+                </div>
+            @endif
 
             <div class="flex items-center gap-2.5">
                 <a href="{{ url('/supplier-orders') }}" class="px-5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs cursor-pointer shadow-2xs">
@@ -1077,7 +1084,20 @@ function supplierOrderCreateApp() {
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message || 'Tạo đơn đặt hàng NCC thành công!');
+                    try {
+                        sessionStorage.setItem('pending_toast', JSON.stringify({
+                            title: 'Đơn đặt NCC mới chờ duyệt: ' + (data.order?.code || ''),
+                            message: `Đơn đặt hàng ${data.order?.code || ''} (NCC: ${data.order?.supplier_name || ''}) đã được gửi đến người có quyền duyệt.`,
+                            type: 'supplier_order_approval',
+                            action_url: '{{ url("/supplier-orders") }}',
+                            data: {
+                                supplier_name: data.order?.supplier_name,
+                                order_code: data.order?.code,
+                                payable_amount: data.order?.payable_amount
+                            }
+                        }));
+                    } catch(e) {}
+
                     window.location.href = '{{ url("/supplier-orders") }}';
                 } else {
                     alert(data.message || 'Lỗi tạo đơn đặt hàng');

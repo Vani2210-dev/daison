@@ -222,7 +222,7 @@
                 <div class="text-xs">
                     <div class="font-bold text-emerald-900">Quy ước quy cách kỹ thuật & tỷ lệ quy đổi:</div>
                     <div class="text-emerald-800 font-mono mt-0.5" x-show="conversion_unit && conversion_rate > 1">
-                        1 <span class="font-bold" x-text="unit || 'ĐVT chuẩn'"></span> = <span class="font-extrabold text-emerald-900" x-text="conversion_rate"></span> <span class="font-bold" x-text="conversion_unit"></span>
+                        <span class="font-extrabold text-emerald-900" x-text="formatConversionRateRule()"></span>
                     </div>
                     <div class="text-slate-500 text-[11px]" x-show="!conversion_unit || conversion_rate <= 1">
                         Chưa thiết lập đơn vị quy đổi (Mặc định tính theo 1 <span x-text="unit || 'sản phẩm'"></span>)
@@ -285,7 +285,7 @@
                                 >
                                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-800 pointer-events-none">đ</span>
                             </div>
-                            <p class="text-[11px] text-amber-700/80 mt-1" x-text="'Tự động quy đổi: Giá vốn / ' + Number(conversion_rate) + ' ' + (conversion_unit || '')"></p>
+                            <p class="text-[11px] text-amber-700/80 mt-1" x-text="isConvUnitLarger() ? ('Tự động quy đổi: Giá vốn × ' + Number(conversion_rate) + ' [' + (conversion_unit || '') + ']') : ('Tự động quy đổi: Giá vốn / ' + Number(conversion_rate) + ' [' + (conversion_unit || '') + ']')"></p>
                         </div>
                     </div>
                 </div>
@@ -532,7 +532,12 @@ function productForm() {
 
     let initConversionPrice = Number(rawProduct?.conversion_price || 0);
     if (!initConversionPrice && initPrice > 0 && Number(rawProduct?.conversion_rate) > 1) {
-        initConversionPrice = Math.round(initPrice / Number(rawProduct.conversion_rate));
+        const u1 = (rawProduct?.unit || '').trim().toLowerCase();
+        const u2 = (rawProduct?.conversion_unit || '').trim().toLowerCase();
+        const bulkUnits = ['kiện', 'thùng', 'bao', 'lô', 'pallet', 'carton', 'két', 'thưng', 'lốc', 'dây'];
+        const isLarger = bulkUnits.includes(u2) || (u2 === 'hộp' && ['chai', 'lọ', 'tuýp', 'gói', 'vỉ', 'cái', 'viên', 'miếng', 'ống'].includes(u1));
+        const rate = Number(rawProduct.conversion_rate);
+        initConversionPrice = isLarger ? Math.round(initPrice * rate) : Math.round(initPrice / rate);
     }
 
     // Parse initial warehouse and rack location
@@ -651,25 +656,58 @@ function productForm() {
             }
         },
 
+        isConvUnitLarger() {
+            const u1 = (this.unit || '').trim().toLowerCase();
+            const u2 = (this.conversion_unit || '').trim().toLowerCase();
+            if (!u2 || u1 === u2) return false;
+
+            const bulkUnits = ['kiện', 'thùng', 'bao', 'lô', 'pallet', 'carton', 'két', 'thưng', 'lốc', 'dây'];
+            if (bulkUnits.includes(u2)) return true;
+
+            if (u2 === 'hộp' && ['chai', 'lọ', 'tuýp', 'gói', 'vỉ', 'cái', 'viên', 'miếng', 'ống'].includes(u1)) {
+                return true;
+            }
+
+            if (['mét', 'm', 'cm', 'gam', 'g'].includes(u1) && ['cuộn', 'cây', 'tấm', 'hộp'].includes(u2)) {
+                return true;
+            }
+
+            return false;
+        },
+
+        formatConversionRateRule() {
+            const rate = Number(this.conversion_rate || 1);
+            const u1 = this.unit || 'ĐVT chuẩn';
+            const u2 = this.conversion_unit || 'ĐVT quy đổi';
+            if (this.isConvUnitLarger()) {
+                return `1 ${u2} = ${rate} ${u1}`;
+            }
+            return `1 ${u1} = ${rate} ${u2}`;
+        },
+
         calcConversionPrice(amount) {
             const num = Number(amount || 0);
             const rate = Number(this.conversion_rate || 1);
             if (!this.conversion_unit || rate <= 1 || num <= 0) return '---';
-            const unitPrice = Math.round(num / rate);
+            const unitPrice = this.isConvUnitLarger() ? Math.round(num * rate) : Math.round(num / rate);
             return new Intl.NumberFormat('vi-VN').format(unitPrice) + ' đ';
         },
 
         onPriceChange() {
             const rate = Number(this.conversion_rate || 1);
             if (this.conversion_unit && rate > 1 && Number(this.price) > 0) {
-                this.conversion_price = Math.round(Number(this.price) / rate);
+                this.conversion_price = this.isConvUnitLarger()
+                    ? Math.round(Number(this.price) * rate)
+                    : Math.round(Number(this.price) / rate);
             }
         },
 
         autoCalcConversionPrice() {
             const rate = Number(this.conversion_rate || 1);
             if (rate > 1 && Number(this.price) > 0) {
-                this.conversion_price = Math.round(Number(this.price) / rate);
+                this.conversion_price = this.isConvUnitLarger()
+                    ? Math.round(Number(this.price) * rate)
+                    : Math.round(Number(this.price) / rate);
             }
         },
 
@@ -704,7 +742,7 @@ function productForm() {
 
             const rate = Number(this.conversion_rate || 1);
             const autoSpec = (this.conversion_unit && rate > 1) 
-                ? (`1 ${this.unit} = ${rate} ${this.conversion_unit}`) 
+                ? (this.isConvUnitLarger() ? (`1 ${this.conversion_unit} = ${rate} ${this.unit}`) : (`1 ${this.unit} = ${rate} ${this.conversion_unit}`)) 
                 : (this.unit || '');
 
             const payload = {

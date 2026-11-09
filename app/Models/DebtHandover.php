@@ -16,6 +16,10 @@ class DebtHandover extends Model
         'order_ids',
         'from_user_id',
         'from_user_name',
+        'accountant_id',
+        'accountant_name',
+        'accountant_notes',
+        'accountant_verified_at',
         'to_user_id',
         'to_user_name',
         'to_staff_type',
@@ -25,6 +29,7 @@ class DebtHandover extends Model
         'handover_type',
         'status',
         'notes',
+        'documents',
         'confirmed_by',
         'confirmed_by_name',
         'confirmed_at',
@@ -34,10 +39,12 @@ class DebtHandover extends Model
     ];
 
     protected $casts = [
-        'order_ids'    => 'array',
-        'amount'       => 'decimal:2',
-        'confirmed_at' => 'datetime',
-        'rejected_at'  => 'datetime',
+        'order_ids'              => 'array',
+        'documents'              => 'array',
+        'amount'                 => 'decimal:2',
+        'accountant_verified_at' => 'datetime',
+        'confirmed_at'           => 'datetime',
+        'rejected_at'            => 'datetime',
     ];
 
     public function order()
@@ -48,6 +55,11 @@ class DebtHandover extends Model
     public function fromUser()
     {
         return $this->belongsTo(User::class, 'from_user_id');
+    }
+
+    public function accountant()
+    {
+        return $this->belongsTo(User::class, 'accountant_id');
     }
 
     public function toUser()

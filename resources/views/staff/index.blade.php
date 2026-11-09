@@ -443,6 +443,7 @@ const PERM_DICT = {
     'delivery_dispatch.settle': { name: 'Quyết Toán Chuyến Xe', desc: 'Xác nhận hoàn tất chuyến xe và bàn giao chứng từ' },
     'driver_debt.view': { name: 'Xem Tiền Thu COD', desc: 'Theo dõi tiền hàng lái xe thu hộ từ các đại lý' },
     'driver_debt.settle': { name: 'Quyết Toán Tiền Mặt', desc: 'Xác nhận thu tiền mặt lái xe bàn giao về quỹ' },
+    'staff_debt.view_all': { name: 'Xem Tất Cả Công Nợ NV', desc: 'Xem danh sách và sổ nợ của mọi nhân viên' },
     'fleet.view': { name: 'Xem Đội Xe & Chi Phí', desc: 'Tra cứu danh sách xe tải, nhiên liệu và bảo dưỡng' },
     'funds.view': { name: 'Xem Sổ Quỹ', desc: 'Tra cứu biến động số dư tiền mặt & tài khoản ngân hàng' },
     'funds.create_receipt': { name: 'Lập Phiếu Thu', desc: 'Thu tiền khách hàng, thu cọc, thu hồi nợ đại lý' },

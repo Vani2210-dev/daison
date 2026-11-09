@@ -341,10 +341,10 @@
                                     </button>
 
                                     <!-- Duyệt đơn nếu Chờ duyệt -->
-                                    <template x-if="order.status === 'Chờ duyệt'">
-                                        <button type="button" @click="approveOrder(order.id)"
-                                                class="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center cursor-pointer transition-colors"
-                                                title="Duyệt đơn đặt hàng">
+                                    <template x-if="canApprove && order.status === 'Chờ duyệt'">
+                                        <button type="button" @click="openApproveModal(order)"
+                                                class="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center cursor-pointer transition-all hover:scale-105 shadow-2xs"
+                                                title="Phê duyệt đơn đặt hàng & xác nhận thanh toán">
                                             <i class="fa-solid fa-check text-xs"></i>
                                         </button>
                                     </template>
@@ -485,10 +485,25 @@
                     </template>
                 </div>
 
-                <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 text-right">
-                    <button type="button" @click="closeDetailModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold cursor-pointer">
-                        Đóng
-                    </button>
+                <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 flex items-center justify-between">
+                    <div>
+                        <template x-if="detailOrder?.status === 'Chờ duyệt'">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
+                                <i class="fa-solid fa-clock"></i> Đang chờ duyệt
+                            </span>
+                        </template>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <template x-if="canApprove && detailOrder?.status === 'Chờ duyệt'">
+                            <button type="button" @click="openApproveModal(detailOrder)" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black cursor-pointer flex items-center gap-1.5 shadow-sm transition-transform hover:scale-[1.02]">
+                                <i class="fa-solid fa-check"></i>
+                                <span>Phê Duyệt Đơn Này</span>
+                            </button>
+                        </template>
+                        <button type="button" @click="closeDetailModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold cursor-pointer">
+                            Đóng
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -605,6 +620,138 @@
         </div>
     </div>
 
+    <!-- ================================================================= -->
+    <!-- MODAL 6: PHÊ DUYỆT ĐƠN ĐẶT HÀNG NCC & XÁC NHẬN THANH TOÁN         -->
+    <!-- ================================================================= -->
+    <div x-show="showApproveModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs" @click="closeApproveModal()"></div>
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div class="relative rounded-2xl bg-white shadow-2xl w-full max-w-lg border border-slate-200 p-5 sm:p-6 space-y-4">
+                <!-- Header -->
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-base font-black">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-black text-slate-900 text-sm">Phê Duyệt Đơn Đặt Hàng NCC</h3>
+                            <p class="text-[11px] text-slate-500">Xác nhận đơn và ghi nhận hình thức thanh toán</p>
+                        </div>
+                    </div>
+                    <button type="button" @click="closeApproveModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center cursor-pointer">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+
+                <!-- Thông tin đơn hàng -->
+                <div class="space-y-3 text-xs" x-if="approveOrderData">
+                    <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-1.5">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500">Mã đơn hàng:</span>
+                            <span class="font-mono font-black text-slate-900" x-text="approveOrderData?.code"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500">Nhà cung cấp:</span>
+                            <span class="font-bold text-slate-800" x-text="approveOrderData?.supplier_name"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500">Tổng tiền hàng:</span>
+                            <span class="font-semibold text-slate-700" x-text="formatMoney(approveOrderData?.total_amount)"></span>
+                        </div>
+                        <template x-if="approveOrderData?.debt_deducted_amount > 0">
+                            <div class="flex justify-between items-center text-amber-700">
+                                <span>Cấn trừ nợ NCC:</span>
+                                <span class="font-bold" x-text="'-' + formatMoney(approveOrderData?.debt_deducted_amount)"></span>
+                            </div>
+                        </template>
+                        <div class="flex justify-between items-center pt-1.5 border-t border-slate-200">
+                            <span class="font-bold text-slate-900">Cần thanh toán:</span>
+                            <span class="font-black text-base text-sky-700" x-text="formatMoney(approveOrderData?.payable_amount)"></span>
+                        </div>
+                    </div>
+
+                    <!-- 1. Hình thức thanh toán -->
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">
+                            Hình thức thanh toán <span class="text-rose-500">*</span>
+                        </label>
+                        <select x-model="approveForm.payment_method" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-semibold text-xs bg-white text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none">
+                            <option value="Chuyển khoản">Chuyển khoản ngân hàng</option>
+                            <option value="Tiền mặt">Tiền mặt</option>
+                            <option value="Thẻ tín dụng / Thẻ ghi nợ">Thẻ tín dụng / Thẻ ghi nợ</option>
+                            <option value="Công nợ">Ghi nhận công nợ (Chưa chi)</option>
+                            <option value="Khác">Khác</option>
+                        </select>
+                    </div>
+
+                    <!-- 2. Số tiền thanh toán -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="font-bold text-slate-700">
+                                Số tiền thanh toán <span class="text-rose-500">*</span>
+                            </label>
+                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                                  :class="{
+                                      'bg-emerald-100 text-emerald-800': calculatedApprovePaymentStatus.includes('Đã thanh toán'),
+                                      'bg-amber-100 text-amber-800': calculatedApprovePaymentStatus.includes('1 phần'),
+                                      'bg-slate-100 text-slate-700': calculatedApprovePaymentStatus.includes('Chưa thanh toán')
+                                  }"
+                                  x-text="calculatedApprovePaymentStatus">
+                            </span>
+                        </div>
+                        <input type="number" min="0" x-model.number="approveForm.paid_amount" placeholder="0"
+                               class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-black text-sm text-slate-900 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none">
+                        
+                        <!-- Quick Action Pills -->
+                        <div class="flex items-center gap-1.5 mt-2 flex-wrap">
+                            <button type="button" @click="setApprovePaidPercent(1)"
+                                    class="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[11px] cursor-pointer transition-colors">
+                                Thanh toán đủ 100%
+                            </button>
+                            <button type="button" @click="setApprovePaidPercent(0.5)"
+                                    class="px-2.5 py-1 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-[11px] cursor-pointer transition-colors">
+                                Đặt cọc 50%
+                            </button>
+                            <button type="button" @click="setApprovePaidPercent(0)"
+                                    class="px-2.5 py-1 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-[11px] cursor-pointer transition-colors">
+                                Chưa thanh toán (0 đ)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Còn lại nếu thanh toán 1 phần -->
+                    <template x-if="approveOrderData && (approveOrderData.payable_amount - (approveForm.paid_amount || 0)) > 0 && (approveForm.paid_amount || 0) > 0">
+                        <div class="text-[11px] text-amber-700 font-semibold bg-amber-50 p-2 rounded-xl border border-amber-200 flex items-center justify-between">
+                            <span>Số tiền còn nợ lại NCC:</span>
+                            <span class="font-black text-amber-900" x-text="formatMoney(approveOrderData.payable_amount - approveForm.paid_amount)"></span>
+                        </div>
+                    </template>
+
+                    <!-- 3. Ghi chú giao dịch -->
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Ghi chú giao dịch / phê duyệt:</label>
+                        <input type="text" x-model="approveForm.payment_note" placeholder="Số ủy nhiệm chi, số hóa đơn, tài khoản chuyển..."
+                               class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none">
+                    </div>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                    <button type="button" @click="closeApproveModal()" :disabled="approveSaving"
+                            class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs cursor-pointer shadow-2xs">
+                        Hủy bỏ
+                    </button>
+                    <button type="button" @click="submitApproveOrder()" :disabled="approveSaving"
+                            class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer disabled:opacity-50 transition-transform hover:scale-[1.02]">
+                        <i class="fa-solid fa-spinner animate-spin" x-show="approveSaving"></i>
+                        <i class="fa-solid fa-check" x-show="!approveSaving"></i>
+                        <span>Xác Nhận & Duyệt Đơn</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <!-- SCRIPT LOGIC CHO SUPPLIER ORDERS APP -->
@@ -642,6 +789,17 @@ function supplierOrdersApp() {
         showDetailModal: false,
         showDebtModal: false,
         showPaymentModal: false,
+        showApproveModal: false,
+
+        canApprove: {{ (Auth::check() && Auth::user()->hasPermission('supplier_orders.approve')) ? 'true' : 'false' }},
+
+        approveOrderData: null,
+        approveForm: {
+            payment_method: 'Chuyển khoản',
+            paid_amount: 0,
+            payment_note: ''
+        },
+        approveSaving: false,
 
         selectedSupplierDebtBalance: 0,
         owingItemsList: [],
@@ -1114,24 +1272,78 @@ function supplierOrdersApp() {
             });
         },
 
-        approveOrder(orderId) {
-            if (!confirm('Bạn có chắc chắn muốn duyệt đơn đặt hàng này?')) return;
-            fetch(`{{ url('/api/supplier-orders') }}/${orderId}/approve`, {
+        openApproveModal(order) {
+            this.approveOrderData = order;
+            this.approveForm = {
+                payment_method: order.payment_method || 'Chuyển khoản',
+                paid_amount: Number(order.payable_amount || 0),
+                payment_note: ''
+            };
+            this.showApproveModal = true;
+        },
+
+        closeApproveModal() {
+            this.showApproveModal = false;
+            this.approveOrderData = null;
+            this.approveSaving = false;
+        },
+
+        setApprovePaidPercent(percent) {
+            if (!this.approveOrderData) return;
+            const payable = Number(this.approveOrderData.payable_amount || 0);
+            this.approveForm.paid_amount = Math.round(payable * percent);
+        },
+
+        get calculatedApprovePaymentStatus() {
+            if (!this.approveOrderData) return 'Chưa thanh toán';
+            const payable = Number(this.approveOrderData.payable_amount || 0);
+            const paid = Number(this.approveForm.paid_amount || 0);
+            if (paid >= payable && payable > 0) return 'Đã thanh toán (100%)';
+            if (paid > 0) return 'Thanh toán 1 phần';
+            return 'Chưa thanh toán (0 đ)';
+        },
+
+        submitApproveOrder() {
+            if (!this.approveOrderData) return;
+            if (this.approveForm.paid_amount < 0) {
+                alert('Số tiền thanh toán không được nhỏ hơn 0');
+                return;
+            }
+
+            this.approveSaving = true;
+            fetch(`{{ url('/api/supplier-orders') }}/${this.approveOrderData.id}/approve`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                }
+                },
+                body: JSON.stringify(this.approveForm)
             })
             .then(res => res.json())
             .then(data => {
+                this.approveSaving = false;
                 if (data.success) {
-                    alert(data.message);
+                    this.closeApproveModal();
+                    if (this.showDetailModal) {
+                        this.closeDetailModal();
+                    }
                     this.fetchOrders();
+                    if (window.showFloatingNotification) {
+                        window.showFloatingNotification({
+                            title: 'Phê duyệt đơn NCC thành công',
+                            message: data.message || 'Đã duyệt đơn đặt hàng NCC thành công!',
+                            type: 'completed',
+                            action_url: '{{ url("/supplier-orders") }}'
+                        });
+                    }
                 } else {
-                    alert(data.message);
+                    alert(data.message || 'Lỗi khi phê duyệt đơn đặt hàng.');
                 }
+            })
+            .catch(err => {
+                this.approveSaving = false;
+                alert('Lỗi kết nối máy chủ khi phê duyệt đơn đặt hàng.');
             });
         },
 

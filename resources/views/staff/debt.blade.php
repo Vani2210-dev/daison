@@ -3,7 +3,7 @@
 @section('title', 'Quản Lý Công Nợ Nhân Viên & Bàn Giao Nợ - Đại Sơn ERP')
 
 @section('content')
-<div class="space-y-4" x-data="staffDebtApp()">
+<div class="space-y-4" x-data="staffDebtApp()" x-init="init()">
 
     <!-- ==================== HEADER ==================== -->
     <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-4">
@@ -38,13 +38,30 @@
     </div>
 
     <!-- ==================== KPI CARDS ==================== -->
+    @if(empty($canViewAll))
+        <div class="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-900 flex items-center justify-between gap-3 shadow-2xs">
+            <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold shrink-0">
+                    <i class="fa-solid fa-user-lock text-xs"></i>
+                </span>
+                <div>
+                    <span class="font-bold">Chế độ xem cá nhân:</span>
+                    <span>Bạn đang xem thông tin công nợ và các biên bản bàn giao của chính mình. (Chỉ tài khoản có quyền <strong>Xem tất cả công nợ nhân viên</strong> mới xem được dữ liệu của toàn bộ nhân sự).</span>
+                </div>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-white text-indigo-800 border border-indigo-200 shrink-0">
+                👤 Cá nhân: {{ auth()->user()->name }}
+            </span>
+        </div>
+    @endif
+
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div class="bg-white p-3.5 rounded-xl shadow-xs border border-slate-200 flex items-center gap-3">
             <div class="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
                 <i class="fa-solid fa-money-bill-wave text-lg"></i>
             </div>
             <div>
-                <p class="text-[11px] font-medium text-slate-500">Tổng Công Nợ Nhân Sự</p>
+                <p class="text-[11px] font-medium text-slate-500">{{ !empty($canViewAll) ? 'Tổng Công Nợ Nhân Sự' : 'Công Nợ Của Bạn' }}</p>
                 <p class="text-base font-bold text-rose-700 font-mono mt-0.5">{{ number_format($totalStaffDebt ?? 0, 0, ',', '.') }} đ</p>
             </div>
         </div>
@@ -53,8 +70,8 @@
                 <i class="fa-solid fa-users text-lg"></i>
             </div>
             <div>
-                <p class="text-[11px] font-medium text-slate-500">Nhân Viên Đang Giữ Nợ</p>
-                <p class="text-base font-bold text-slate-900 mt-0.5">{{ $debtStaffCount ?? 0 }} người</p>
+                <p class="text-[11px] font-medium text-slate-500">{{ !empty($canViewAll) ? 'Nhân Viên Đang Giữ Nợ' : 'Trạng Thái Công Nợ' }}</p>
+                <p class="text-base font-bold text-slate-900 mt-0.5">{{ !empty($canViewAll) ? (($debtStaffCount ?? 0) . ' người') : (($totalStaffDebt ?? 0) > 0 ? 'Đang có nợ' : 'Không có nợ') }}</p>
             </div>
         </div>
         <div class="bg-white p-3.5 rounded-xl shadow-xs border border-slate-200 flex items-center gap-3">
@@ -62,7 +79,7 @@
                 <i class="fa-solid fa-clock-rotate-left text-lg"></i>
             </div>
             <div>
-                <p class="text-[11px] font-medium text-slate-500">Biên Bản Chờ Xác Nhận</p>
+                <p class="text-[11px] font-medium text-slate-500">{{ !empty($canViewAll) ? 'Biên Bản Chờ Xác Nhận' : 'Biên Bản Của Bạn Chờ Duyệt' }}</p>
                 <p class="text-base font-bold text-amber-700 mt-0.5">{{ $pendingHandoversCount ?? 0 }} biên bản</p>
             </div>
         </div>
@@ -74,7 +91,7 @@
                 class="px-4 py-2 rounded-lg flex items-center gap-2 transition-all cursor-pointer shrink-0"
                 :class="currentMainTab === 'staff' ? 'bg-[#1b4a8c] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'">
             <i class="fa-solid fa-user-tie"></i>
-            <span>1. Công Nợ Nhân Viên & Tài Xế</span>
+            <span>1. {{ !empty($canViewAll) ? 'Công Nợ Nhân Viên & Tài Xế' : 'Sổ Công Nợ Của Tôi' }}</span>
             <span class="px-1.5 py-0.2 rounded-full text-[10px]" :class="currentMainTab === 'staff' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'">{{ count($staffList ?? []) }}</span>
         </button>
 
@@ -95,6 +112,7 @@
     <div x-show="currentMainTab === 'staff'" class="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
         <div class="p-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70">
             <div class="flex items-center gap-2 flex-wrap">
+                @if(!empty($canViewAll))
                 <input type="text" x-model="search" placeholder="Tìm theo tên, SĐT, mã NV..." 
                        class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 w-60 bg-white focus:ring-1 focus:ring-sky-500 font-medium">
                 <select x-model="deptFilter" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white">
@@ -109,6 +127,12 @@
                     <option value="company_sales">Sale Công Ty</option>
                     <option value="dealer_sales">Sale Đại Lý Phụ Thuộc</option>
                 </select>
+                @else
+                <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5 py-1">
+                    <i class="fa-solid fa-user-check text-emerald-600"></i>
+                    <span>Tài khoản cá nhân: <strong>{{ auth()->user()->name }}</strong> ({{ auth()->user()->department ?: 'Nhân viên' }})</span>
+                </span>
+                @endif
             </div>
             <div class="text-xs text-slate-500">
                 Hiển thị <span class="font-bold text-slate-800">{{ count($staffList ?? []) }}</span> nhân sự
@@ -210,8 +234,9 @@
                 <span class="text-xs font-bold text-slate-600">Trạng thái biên bản:</span>
                 <select x-model="handoverStatusFilter" class="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 bg-white">
                     <option value="all">Tất cả biên bản</option>
-                    <option value="pending">⏳ Chờ xác nhận nhận nợ</option>
-                    <option value="confirmed">✅ Đã xác nhận chuyển nợ</option>
+                    <option value="pending_accountant">⏳ Bước 1: Chờ Kế toán duyệt chứng từ</option>
+                    <option value="pending_sale">⏳ Bước 2: Chờ Sale nhận nợ</option>
+                    <option value="confirmed">✅ Bước 3: Đã hoàn tất nhận nợ</option>
                     <option value="rejected">❌ Đã từ chối</option>
                 </select>
             </div>
@@ -227,21 +252,34 @@
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
                         <th class="py-2.5 px-3 w-10 text-center">STT</th>
                         <th class="py-2.5 px-3">Mã Biên Bản</th>
-                        <th class="py-2.5 px-3">Đơn Hàng Bàn Giao</th>
-                        <th class="py-2.5 px-3">Bên Bàn Giao (Lái xe)</th>
-                        <th class="py-2.5 px-3">Bên Nhận Nợ (Sale / Đại lý)</th>
+                        <th class="py-2.5 px-3">Đơn Hàng</th>
+                        <th class="py-2.5 px-3">Tài Xế Bàn Giao</th>
+                        <th class="py-2.5 px-3">Kế Toán Kiểm Tra</th>
+                        <th class="py-2.5 px-3">Sale Nhận Nợ</th>
+                        <th class="py-2.5 px-3 text-center">Chứng Từ</th>
                         <th class="py-2.5 px-3 text-right">Số Tiền Nợ</th>
-                        <th class="py-2.5 px-3">Ghi Chú</th>
                         <th class="py-2.5 px-3 text-center">Trạng Thái</th>
-                        <th class="py-2.5 px-3 text-center min-w-[140px]">Hành Động</th>
+                        <th class="py-2.5 px-3 text-center min-w-[150px]">Hành Động</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
                     @forelse($handovers ?? [] as $hIdx => $h)
-                        <tr class="hover:bg-slate-50 transition-colors"
-                            x-show="handoverStatusFilter === 'all' || handoverStatusFilter === '{{ $h->status }}'">
+                        @php
+                            $isPendingAccountant = in_array($h->status, ['pending_accountant', 'pending']) && empty($h->accountant_verified_at);
+                            $isPendingSale = $h->status === 'pending_sale' || ($h->status === 'pending' && !empty($h->accountant_verified_at));
+                            $docs = is_array($h->documents) ? $h->documents : (is_string($h->documents) ? json_decode($h->documents, true) : []);
+                            if (!is_array($docs)) $docs = [];
+                        @endphp
+                        <tr id="handover-row-{{ $h->id }}" data-code="{{ $h->code }}" class="hover:bg-slate-50 transition-colors"
+                            x-show="handoverStatusFilter === 'all' || 
+                                   (handoverStatusFilter === 'pending_accountant' && {{ $isPendingAccountant ? 'true' : 'false' }}) ||
+                                   (handoverStatusFilter === 'pending_sale' && {{ $isPendingSale ? 'true' : 'false' }}) ||
+                                   (handoverStatusFilter === '{{ $h->status }}')">
                             <td class="py-2.5 px-3 text-center text-slate-400">{{ $hIdx + 1 }}</td>
-                            <td class="py-2.5 px-3 font-mono font-bold text-sky-800">{{ $h->code }}</td>
+                            <td class="py-2.5 px-3">
+                                <span class="font-mono font-bold text-sky-800">{{ $h->code }}</span>
+                                <div class="text-[10px] text-slate-400">{{ $h->created_at ? $h->created_at->format('H:i d/m/Y') : '' }}</div>
+                            </td>
                             <td class="py-2.5 px-3 font-mono text-slate-900">
                                 @php
                                     $codes = array_filter(array_map('trim', explode(',', $h->order_code ?? '')));
@@ -249,9 +287,11 @@
                                 @if(count($codes) > 1)
                                     <div class="flex flex-wrap gap-1 max-w-xs">
                                         @foreach($codes as $c)
-                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold bg-sky-50 text-sky-800 border border-sky-200">
+                                            <a href="{{ url('/orders?search=' . urlencode($c)) }}" target="_blank"
+                                               class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold bg-sky-50 text-sky-800 border border-sky-200 hover:bg-sky-100 hover:border-sky-400 transition-colors"
+                                               title="Bấm để xem chi tiết đơn {{ $c }}">
                                                 <i class="fa-solid fa-file-invoice text-[9px] mr-1 text-sky-600"></i>{{ $c }}
-                                            </span>
+                                            </a>
                                         @endforeach
                                     </div>
                                     <span class="text-[10px] text-slate-500 font-sans font-semibold">({{ count($codes) }} đơn hàng)</span>
@@ -267,31 +307,68 @@
                             </td>
                             <td class="py-2.5 px-3">
                                 <div class="font-bold text-slate-900">{{ $h->from_user_name ?: 'Lái xe' }}</div>
-                                <span class="text-[10px] text-slate-500">Giảm nợ khi duyệt</span>
+                                <span class="text-[10px] text-slate-500">Giảm nợ khi hoàn tất</span>
                             </td>
                             <td class="py-2.5 px-3">
-                                <div class="font-bold text-indigo-900">{{ $h->to_user_name }}</div>
+                                <div class="font-bold text-amber-900">{{ $h->accountant_name ?: ($h->accountant?->name ?: 'Kế toán') }}</div>
+                                @if($h->accountant_verified_at)
+                                    <span class="text-[9.5px] text-emerald-700 font-semibold flex items-center gap-1 mt-0.5">
+                                        <i class="fa-solid fa-check-double text-[9px]"></i>
+                                        <span>Đã duyệt ({{ $h->accountant_verified_at->format('H:i d/m') }})</span>
+                                    </span>
+                                    @if($h->accountant_notes)
+                                        <div class="text-[9.5px] text-slate-500 italic truncate max-w-[120px]" title="{{ $h->accountant_notes }}">{{ $h->accountant_notes }}</div>
+                                    @endif
+                                @else
+                                    <span class="text-[9.5px] text-amber-600 font-medium flex items-center gap-1 mt-0.5">
+                                        <i class="fa-solid fa-clock text-[9px]"></i>
+                                        <span>Chờ kiểm tra</span>
+                                    </span>
+                                @endif
+                            </td>
+                            <td class="py-2.5 px-3">
+                                <div class="font-bold text-indigo-900">{{ $h->to_user_name ?: 'Chờ chỉ định' }}</div>
                                 @if($h->target_dealer_name)
-                                    <div class="text-[10.5px] text-purple-700 font-semibold flex items-center gap-1">
-                                        <i class="fa-solid fa-arrow-turn-down-right"></i>
-                                        <span>Ghi nợ vào ĐL: {{ $h->target_dealer_name }}</span>
+                                    <div class="text-[10px] text-purple-700 font-semibold flex items-center gap-1 mt-0.5">
+                                        <i class="fa-solid fa-building text-[9px]"></i>
+                                        <span>ĐL: {{ $h->target_dealer_name }}</span>
+                                    </div>
+                                @endif
+                            </td>
+                            <td class="py-2.5 px-3 text-center">
+                                @if(!empty($docs))
+                                    <div class="flex items-center justify-center gap-1">
+                                        @foreach(array_slice($docs, 0, 2) as $dIdx => $dUrl)
+                                            <img src="{{ $dUrl }}" @click="viewDocPreview('{{ $dUrl }}')"
+                                                 class="w-7 h-7 rounded-lg object-cover border border-slate-300 hover:border-sky-500 cursor-pointer shadow-2xs transition-transform hover:scale-110"
+                                                 title="Click để phóng to chứng từ">
+                                        @endforeach
+                                        @if(count($docs) > 2)
+                                            <span class="w-7 h-7 rounded-lg bg-sky-100 text-sky-800 font-bold text-[10px] flex items-center justify-center cursor-pointer"
+                                                  @click="viewDocPreview('{{ $docs[0] }}')" title="Xem toàn bộ chứng từ">
+                                                +{{ count($docs) - 2 }}
+                                            </span>
+                                        @endif
                                     </div>
                                 @else
-                                    <span class="text-[10px] text-slate-500">Ghi nợ Sale công ty</span>
+                                    <span class="text-slate-400 text-[10px] italic">Không có ảnh</span>
                                 @endif
                             </td>
                             <td class="py-2.5 px-3 text-right font-mono font-bold text-rose-700">
                                 {{ number_format($h->amount, 0, ',', '.') }} đ
                             </td>
-                            <td class="py-2.5 px-3 text-slate-600 max-w-xs truncate">{{ $h->notes ?: '---' }}</td>
                             <td class="py-2.5 px-3 text-center">
-                                @if($h->status === 'pending')
+                                @if($isPendingAccountant)
                                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 flex items-center justify-center gap-1">
-                                        <i class="fa-solid fa-clock"></i> Chờ xác nhận
+                                        <i class="fa-solid fa-user-clock"></i> Chờ Kế toán duyệt
+                                    </span>
+                                @elseif($isPendingSale)
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 flex items-center justify-center gap-1">
+                                        <i class="fa-solid fa-clock"></i> Chờ Sale nhận nợ
                                     </span>
                                 @elseif($h->status === 'confirmed')
                                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 flex items-center justify-center gap-1">
-                                        <i class="fa-solid fa-check"></i> Đã nhận nợ
+                                        <i class="fa-solid fa-check"></i> Đã hoàn tất nhận nợ
                                     </span>
                                     <div class="text-[9px] text-slate-400 mt-0.5">{{ $h->confirmed_by_name }} ({{ $h->confirmed_at ? $h->confirmed_at->format('H:i d/m') : '' }})</div>
                                 @else
@@ -302,13 +379,40 @@
                                 @endif
                             </td>
                             <td class="py-2.5 px-3 text-center">
-                                @if($h->status === 'pending')
-                                    <div class="flex items-center justify-center gap-1.5">
-                                        <button type="button" @click="confirmHandover({{ $h->id }})" class="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10.5px] transition-colors shadow-2xs cursor-pointer flex items-center gap-1" title="Bấm để xác nhận nhận nợ">
-                                            <i class="fa-solid fa-check"></i>
-                                            <span>Nhận Nợ</span>
+                                @if($isPendingAccountant)
+                                    <div class="flex items-center justify-center gap-1">
+                                        <button type="button" 
+                                                @click="openAccountantForwardModal({
+                                                    id: {{ $h->id }},
+                                                    code: '{{ $h->code }}',
+                                                    amount: {{ (float)$h->amount }},
+                                                    from_name: '{{ addslashes($h->from_user_name ?: '') }}',
+                                                    to_user_id: '{{ $h->to_user_id ?: '' }}',
+                                                    to_user_name: '{{ addslashes($h->to_user_name ?: '') }}',
+                                                    documents: {{ json_encode($docs) }}
+                                                })"
+                                                class="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10.5px] transition-colors shadow-2xs cursor-pointer flex items-center gap-1"
+                                                title="Kế toán duyệt chứng từ hợp lệ & chuyển giao nợ cho Sale">
+                                            <i class="fa-solid fa-user-check"></i>
+                                            <span>Duyệt & Chuyển Sale</span>
                                         </button>
-                                        <button type="button" @click="rejectHandover({{ $h->id }})" class="px-2 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-[10.5px] transition-colors cursor-pointer" title="Từ chối">
+                                        <button type="button" @click="rejectHandover({{ $h->id }})"
+                                                class="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-[10.5px] transition-colors cursor-pointer"
+                                                title="Từ chối chứng từ">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    </div>
+                                @elseif($isPendingSale)
+                                    <div class="flex items-center justify-center gap-1">
+                                        <button type="button" @click="confirmHandover({{ $h->id }})"
+                                                class="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10.5px] transition-colors shadow-2xs cursor-pointer flex items-center gap-1"
+                                                title="Sale xác nhận nhận nợ">
+                                            <i class="fa-solid fa-check"></i>
+                                            <span>Sale Nhận Nợ</span>
+                                        </button>
+                                        <button type="button" @click="rejectHandover({{ $h->id }})"
+                                                class="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-[10.5px] transition-colors cursor-pointer"
+                                                title="Từ chối nhận nợ">
                                             <i class="fa-solid fa-xmark"></i>
                                         </button>
                                     </div>
@@ -319,7 +423,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="py-8 text-center text-slate-400">Chưa có biên bản bàn giao công nợ nào</td>
+                            <td colspan="10" class="py-8 text-center text-slate-400">Chưa có biên bản bàn giao công nợ nào</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -575,9 +679,51 @@
 </div>
 
 <script>
+@php
+    $targetHJson = isset($targetHandover) && $targetHandover ? [
+        'id' => $targetHandover->id,
+        'code' => $targetHandover->code,
+        'amount' => (float)$targetHandover->amount,
+        'from_name' => $targetHandover->from_user_name ?: '',
+        'to_user_id' => $targetHandover->to_user_id ?: '',
+        'to_user_name' => $targetHandover->to_user_name ?: '',
+        'status' => $targetHandover->status,
+        'documents' => is_array($targetHandover->documents) ? $targetHandover->documents : (is_string($targetHandover->documents) ? json_decode($targetHandover->documents, true) : [])
+    ] : null;
+@endphp
 function staffDebtApp() {
     return {
         currentMainTab: 'staff', // 'staff', 'handovers', 'vansales'
+        targetHandoverData: @json($targetHJson ?? null),
+
+        init() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetId = urlParams.get('handover_id') || urlParams.get('id');
+            const targetCode = urlParams.get('handover_code') || urlParams.get('code');
+
+            if (targetId || targetCode || this.targetHandoverData) {
+                this.currentMainTab = 'handovers';
+                this.handoverStatusFilter = 'all';
+
+                setTimeout(() => {
+                    let el = targetId ? document.getElementById(`handover-row-${targetId}`) : null;
+                    if (!el && targetCode) {
+                        el = document.querySelector(`tr[data-code="${targetCode}"]`);
+                    }
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.classList.add('bg-amber-100', 'ring-4', 'ring-amber-400');
+                        setTimeout(() => {
+                            el.classList.remove('ring-4', 'ring-amber-400');
+                        }, 4000);
+                    }
+
+                    if (this.targetHandoverData && ['pending_accountant', 'pending'].includes(this.targetHandoverData.status)) {
+                        this.openAccountantForwardModal(this.targetHandoverData);
+                    }
+                }, 300);
+            }
+        },
         search: '',
         deptFilter: 'all',
         staffTypeFilter: 'all',
@@ -750,6 +896,69 @@ function staffDebtApp() {
             }
         },
 
+        showDocPreviewModal: false,
+        previewDocUrl: null,
+        showAccountantForwardModal: false,
+        isSubmittingForward: false,
+        forwardData: {
+            id: null,
+            code: '',
+            amount: 0,
+            from_name: '',
+            to_user_id: '',
+            accountant_notes: 'Đã kiểm tra chứng từ hợp lệ, phiếu giao có đầy đủ chữ ký khách hàng.',
+            documents: []
+        },
+
+        viewDocPreview(url) {
+            this.previewDocUrl = url;
+            this.showDocPreviewModal = true;
+        },
+
+        openAccountantForwardModal(h) {
+            this.forwardData.id = h.id;
+            this.forwardData.code = h.code;
+            this.forwardData.amount = h.amount;
+            this.forwardData.from_name = h.from_name;
+            this.forwardData.to_user_id = h.to_user_id || '';
+            this.forwardData.accountant_notes = 'Đã kiểm tra chứng từ hợp lệ, phiếu giao có đầy đủ chữ ký khách hàng.';
+            this.forwardData.documents = h.documents || [];
+            this.showAccountantForwardModal = true;
+        },
+
+        async submitAccountantForward() {
+            if (!this.forwardData.to_user_id) {
+                alert('Vui lòng chọn Nhân viên Kinh doanh (Sale) nhận nợ!');
+                return;
+            }
+
+            this.isSubmittingForward = true;
+            try {
+                const res = await fetch(`/debt-handovers/${this.forwardData.id}/forward`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        to_user_id: this.forwardData.to_user_id,
+                        accountant_notes: this.forwardData.accountant_notes
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Lỗi khi duyệt chứng từ');
+                }
+            } catch(e) {
+                alert('Lỗi kết nối máy chủ!');
+            } finally {
+                this.isSubmittingForward = false;
+            }
+        },
+
         async confirmHandover(id) {
             if (!confirm('Bạn có chắc chắn muốn XÁC NHẬN NHẬN NỢ cho biên bản này? Công nợ sẽ được chuyển chính thức.')) return;
             try {
@@ -799,4 +1008,117 @@ function staffDebtApp() {
     };
 }
 </script>
+    <!-- ==================== MODAL: KẾ TOÁN DUYỆT CHỨNG TỪ & CHUYỂN SALE ==================== -->
+    <div x-show="showAccountantForwardModal" x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+             @click.away="showAccountantForwardModal = false">
+            <div class="p-4 border-b border-slate-200 bg-amber-50/80 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center font-bold text-sm">
+                        <i class="fa-solid fa-user-check"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900">Kế Toán Duyệt Chứng Từ & Chuyển Nợ</h3>
+                        <p class="text-[11px] text-slate-500 font-medium">Bước 2: Đối soát chứng từ có chữ ký khách trước khi giao nợ cho Sale</p>
+                    </div>
+                </div>
+                <button type="button" @click="showAccountantForwardModal = false" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1 cursor-pointer">&times;</button>
+            </div>
+            
+            <div class="p-4 space-y-3.5 text-xs">
+                <!-- Thông tin biên bản -->
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-500 font-medium">Mã biên bản:</span>
+                        <span class="font-mono font-bold text-sky-800" x-text="forwardData.code"></span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-500 font-medium">Tài xế bàn giao:</span>
+                        <span class="font-bold text-slate-900" x-text="forwardData.from_name"></span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-500 font-medium">Tổng tiền nợ:</span>
+                        <span class="font-mono font-black text-rose-700 text-sm" x-text="formatNumber(forwardData.amount) + ' đ'"></span>
+                    </div>
+                </div>
+
+                <!-- Danh sách chứng từ ảnh đính kèm -->
+                <div>
+                    <label class="block font-bold text-slate-800 mb-1.5 flex items-center justify-between">
+                        <span class="flex items-center gap-1.5 text-sky-900">
+                            <i class="fa-solid fa-images text-sky-600"></i>
+                            <span>Chứng từ ảnh đính kèm (Phiếu giao / Chữ ký khách):</span>
+                        </span>
+                        <span class="text-[10.5px] font-bold text-sky-700" x-text="(forwardData.documents?.length || 0) + ' ảnh'"></span>
+                    </label>
+                    <template x-if="forwardData.documents && forwardData.documents.length > 0">
+                        <div class="grid grid-cols-3 gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200">
+                            <template x-for="(doc, idx) in forwardData.documents" :key="idx">
+                                <div class="relative group rounded-lg overflow-hidden border border-slate-300 aspect-square shadow-2xs">
+                                    <img :src="doc" class="w-full h-full object-cover cursor-pointer hover:opacity-90"
+                                         @click="viewDocPreview(doc)" title="Bấm để xem ảnh to">
+                                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/60 text-white text-[9px] py-0.5 text-center font-bold">
+                                        Ảnh <span x-text="idx + 1"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                    <template x-if="!forwardData.documents || forwardData.documents.length === 0">
+                        <div class="p-3 rounded-xl border border-dashed border-slate-300 text-center text-slate-400 text-xs">
+                            Không có ảnh chứng từ đính kèm
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Chọn Sale nhận nợ -->
+                <div>
+                    <label class="block font-bold text-slate-800 mb-1">
+                        <i class="fa-solid fa-user-tie text-purple-600 mr-1"></i>Chọn Nhân Viên Kinh Doanh (Sale) Nhận Nợ (*):
+                    </label>
+                    <select x-model="forwardData.to_user_id"
+                            class="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-xs text-slate-900 focus:outline-none focus:border-amber-600 bg-white">
+                        <option value="">-- Bắt buộc chọn Sale nhận nợ --</option>
+                        <template x-for="st in allStaff.filter(s => s.staff_type === 'company_sales' || s.staff_type === 'dealer_sales' || (s.department && s.department.includes('Kinh doanh')))" :key="st.id">
+                            <option :value="st.id" x-text="st.name + ' (' + (st.phone ? st.phone + ' - ' : '') + getStaffTypeLabel(st) + ')'"></option>
+                        </template>
+                    </select>
+                </div>
+
+                <!-- Ghi chú của Kế toán -->
+                <div>
+                    <label class="block font-bold text-slate-800 mb-1">Ghi chú đối soát của Kế toán:</label>
+                    <textarea rows="2" x-model="forwardData.accountant_notes"
+                              placeholder="VD: Đã kiểm tra chứng từ hợp lệ, phiếu giao có đầy đủ chữ ký nhận nợ..."
+                              class="w-full p-2.5 rounded-xl border border-slate-300 text-xs text-slate-800 bg-white"></textarea>
+                </div>
+            </div>
+
+            <div class="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
+                <button type="button" @click="showAccountantForwardModal = false"
+                        class="px-3.5 py-1.5 text-slate-600 font-bold hover:bg-slate-200 rounded-lg cursor-pointer">
+                    Hủy bỏ
+                </button>
+                <button type="button" @click="submitAccountantForward()" :disabled="isSubmittingForward"
+                        class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg cursor-pointer shadow-xs disabled:opacity-50 flex items-center gap-1.5">
+                    <i class="fa-solid fa-paper-plane text-amber-200"></i>
+                    <span x-text="isSubmittingForward ? 'Đang duyệt...' : 'Duyệt Chứng Từ & Chuyển Cho Sale'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal xem trước ảnh chứng từ phóng to -->
+    <div x-show="showDocPreviewModal" x-cloak
+         class="fixed inset-0 z-[12000] bg-black/90 backdrop-blur-md flex items-center justify-center p-3"
+         @click="showDocPreviewModal = false">
+        <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center" @click.stop>
+            <button type="button" @click="showDocPreviewModal = false"
+                    class="absolute -top-10 right-0 text-white/80 hover:text-white text-3xl font-bold cursor-pointer">
+                &times;
+            </button>
+            <img :src="previewDocUrl" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl border border-white/20">
+        </div>
+    </div>
 @endsection

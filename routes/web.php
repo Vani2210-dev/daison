@@ -49,17 +49,19 @@ Route::prefix('api')->group(function () {
 
     // 2. Orders & Sales
     Route::get('/orders', [OrderController::class, 'getOrders'])->middleware('permission:orders.view');
-    Route::post('/orders/save', [OrderController::class, 'saveOrder'])->middleware('permission:orders.create,orders.edit');
+    Route::post('/orders/save', [OrderController::class, 'saveOrder'])->middleware('permission:orders.create,orders.edit,delivery_dispatch.view,fleet.view');
+    Route::post('/api/orders/save', [OrderController::class, 'saveOrder'])->middleware('permission:orders.create,orders.edit,delivery_dispatch.view,fleet.view');
     Route::post('/inventory/check-availability', [OrderController::class, 'checkStockAvailability']);
-    Route::post('/orders/update-status', [OrderController::class, 'updateOrderStatus'])->middleware('permission:orders.status,orders.approve,orders.edit,inv_picking.pick,inv_picking.qc,delivery_dispatch.dispatch');
+    Route::post('/orders/update-status', [OrderController::class, 'updateOrderStatus'])->middleware('permission:orders.status,orders.approve,orders.edit,inv_picking.pick,inv_picking.qc,delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
+    Route::post('/api/orders/update-status', [OrderController::class, 'updateOrderStatus'])->middleware('permission:orders.status,orders.approve,orders.edit,inv_picking.pick,inv_picking.qc,delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
     Route::get('/orders/pending-debts-and-borrows', [OrderController::class, 'getPendingDebtsAndBorrows'])->middleware('permission:orders.view,orders.create,orders.edit');
     Route::post('/orders/mark-merged', [OrderController::class, 'markOrdersMerged'])->middleware('permission:orders.edit,orders.create');
     Route::get('/orders/{id}/print-data', [OrderController::class, 'getOrderPrintData'])->middleware('permission:orders.view');
-    // Credit overrun approval workflow (lập đơn vượt hạn mức)
+    // Credit overrun approval workflow (láº­p Ä‘Æ¡n vÆ°á»£t háº¡n má»©c)
     Route::get('/dealers/{id}/credit-info', [OrderController::class, 'getDealerCreditInfo'])->middleware('permission:orders.view,dealers.view');
     Route::post('/orders/{id}/approve-credit-overrun', [OrderController::class, 'approveCreditOverrunAtCreation'])->middleware('permission:orders.approve,orders.edit,debt.approve');
 
-    // 2.1 Đơn Hàng Ôm (Consignment Orders APIs)
+    // 2.1 ÄÆ¡n HĂ ng Ă”m (Consignment Orders APIs)
     Route::get('/consignment-orders/master-data', [ConsignmentOrderController::class, 'masterData']);
     Route::get('/consignment-orders', [ConsignmentOrderController::class, 'index']);
     Route::post('/consignment-orders', [ConsignmentOrderController::class, 'store']);
@@ -72,7 +74,7 @@ Route::prefix('api')->group(function () {
     Route::post('/consignment-orders/{id}/return', [ConsignmentOrderController::class, 'returnItems']);
     Route::post('/consignment-orders/{id}/settle', [ConsignmentOrderController::class, 'settle']);
 
-    // 2.2 Đặt Hàng Nhà Cung Cấp (Supplier Orders APIs)
+    // 2.2 Äáº·t HĂ ng NhĂ  Cung Cáº¥p (Supplier Orders APIs)
     Route::get('/supplier-orders', [SupplierOrderController::class, 'index']);
     Route::post('/supplier-orders', [SupplierOrderController::class, 'store']);
     Route::get('/supplier-orders/{id}', [SupplierOrderController::class, 'show']);
@@ -84,7 +86,7 @@ Route::prefix('api')->group(function () {
     Route::get('/suppliers/{id}/debt-history', [SupplierOrderController::class, 'supplierDebtHistory']);
     Route::post('/suppliers/save', [SupplierOrderController::class, 'saveSupplier']);
  
-    // 2.3 Ứng Khuyến Mại (Promotion Advances APIs)
+    // 2.3 á»¨ng Khuyáº¿n Máº¡i (Promotion Advances APIs)
     Route::get('/promotion-advances', [PromotionAdvanceController::class, 'index']);
     Route::post('/promotion-advances', [PromotionAdvanceController::class, 'store']);
     Route::post('/promotion-advances/{id}/settle', [PromotionAdvanceController::class, 'settle']);
@@ -106,11 +108,17 @@ Route::prefix('api')->group(function () {
     Route::post('/inventory/transactions', [InventoryController::class, 'saveInventoryTransaction'])->middleware('permission:inv_import.create,inv_export.create,inv_transfer.create');
     Route::get('/inventory/picking/stream', [PickingSyncController::class, 'stream']);
     Route::get('/inventory/picking/events', [PickingSyncController::class, 'getEvents']);
+    Route::get('/api/inventory/picking/events', [PickingSyncController::class, 'getEvents']);
     Route::get('/inventory/picking/latest-state', [PickingSyncController::class, 'getLatestState']);
+    Route::get('/api/inventory/picking/latest-state', [PickingSyncController::class, 'getLatestState']);
     Route::post('/inventory/picking/update-item', [PickingSyncController::class, 'updateItem']);
+    Route::post('/api/inventory/picking/update-item', [PickingSyncController::class, 'updateItem']);
     Route::post('/inventory/picking/report-shortage', [PickingSyncController::class, 'reportShortage']);
+    Route::post('/api/inventory/picking/report-shortage', [PickingSyncController::class, 'reportShortage']);
     Route::post('/inventory/picking/split-backorder', [PickingSyncController::class, 'splitBackorder']);
     Route::post('/api/inventory/picking/split-backorder', [PickingSyncController::class, 'splitBackorder']);
+    Route::post('/inventory/picking/allocate-vehicle-shortage', [PickingSyncController::class, 'allocateVehicleShortage']);
+    Route::post('/api/inventory/picking/allocate-vehicle-shortage', [PickingSyncController::class, 'allocateVehicleShortage']);
 
     // 4. Delivery & Logistics Dispatch
     Route::get('/delivery-dispatches', [DeliveryController::class, 'getDeliveryDispatches'])->middleware('permission:delivery_dispatch.view');
@@ -118,7 +126,8 @@ Route::prefix('api')->group(function () {
     Route::post('/delivery-dispatches/update-stop', [DeliveryController::class, 'updateDeliveryStop'])->middleware('permission:delivery_dispatch.dispatch');
     Route::post('/delivery-dispatches/settle-cash', [DeliveryController::class, 'settleDriverCash']);
     Route::get('/delivery-dispatches/driver-cash-handovers', [DeliveryController::class, 'getDriverCashHandovers']);
-    Route::post('/vehicles/update-status', [DeliveryController::class, 'updateVehicleStatus']);
+    Route::post('/vehicles/update-status', [DeliveryController::class, 'updateVehicleStatus'])->middleware('permission:delivery_dispatch.dispatch,fleet.manage,delivery_dispatch.view,fleet.view');
+    Route::post('/api/vehicles/update-status', [DeliveryController::class, 'updateVehicleStatus'])->middleware('permission:delivery_dispatch.dispatch,fleet.manage,delivery_dispatch.view,fleet.view');
     Route::post('/vehicles/save', [DeliveryController::class, 'saveVehicle'])->middleware('permission:fleet.manage,danhmuc.manage');
     Route::get('/delivery-routes', [DeliveryController::class, 'getDeliveryRoutes'])->middleware('permission:delivery_dispatch.view,danhmuc.view');
     Route::post('/delivery-routes', [DeliveryController::class, 'saveDeliveryRoute'])->middleware('permission:danhmuc.manage');
@@ -131,12 +140,21 @@ Route::prefix('api')->group(function () {
     Route::get('/delivery-returns', [DeliveryController::class, 'getDeliveryReturns']);
     Route::post('/delivery-returns/save', [DeliveryController::class, 'saveDeliveryReturn']);
     Route::post('/delivery-returns/intake-warehouse', [DeliveryController::class, 'intakeReturnWarehouse']);
+Route::post('/delivery-returns/accept-holding', [DeliveryController::class, 'acceptHoldingReturn']);
+Route::post('/api/delivery-returns/accept-holding', [DeliveryController::class, 'acceptHoldingReturn']);
     Route::post('/delivery/return-order-to-warehouse', [DeliveryController::class, 'returnOrderToWarehouse']);
     Route::post('/delivery/transfer-order-vehicle', [DeliveryController::class, 'transferOrderVehicle']);
     Route::post('/delivery/release-completed-orders', [DeliveryController::class, 'releaseCompletedOrders']);
-    Route::post('/delivery/depart', [DeliveryController::class, 'departTrip'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.assign');
-    Route::post('/delivery/complete-order', [DeliveryController::class, 'completeDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view');
-    Route::post('/delivery/fail-order', [DeliveryController::class, 'failDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view');
+    Route::post('/delivery/depart', [DeliveryController::class, 'departTrip'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.assign,delivery_dispatch.view,fleet.view');
+    Route::post('/api/delivery/depart', [DeliveryController::class, 'departTrip'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.assign,delivery_dispatch.view,fleet.view');
+    Route::post('/delivery/complete-order', [DeliveryController::class, 'completeDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
+    Route::post('/api/delivery/complete-order', [DeliveryController::class, 'completeDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
+    Route::post('/delivery/fail-order', [DeliveryController::class, 'failDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
+    Route::post('/api/delivery/fail-order', [DeliveryController::class, 'failDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
+    Route::post('/delivery/return-order-to-warehouse', [DeliveryController::class, 'returnOrderToWarehouse']);
+    Route::post('/delivery/warehouse-approve-order-return', [DeliveryController::class, 'approveOrderReturnByWarehouse']);
+    Route::post('/api/delivery/warehouse-approve-order-return', [DeliveryController::class, 'approveOrderReturnByWarehouse']);
+    Route::post('/delivery/redeliver-order', [DeliveryController::class, 'redeliverOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,orders.edit');
 
     // 5. Customers & Dealers
     Route::get('/dealers', [DealerController::class, 'getDealers'])->middleware('permission:dealers.view');
@@ -144,16 +162,18 @@ Route::prefix('api')->group(function () {
     Route::post('/dealers/update-debt', [DealerController::class, 'updateDebt']);
     Route::delete('/dealers/{id}', [DealerController::class, 'deleteDealer'])->middleware('permission:dealers.edit');
 
-    // 5.0 Bàn Giao Công Nợ & Hàng Lẻ Lưu Động
+    // 5.0 BĂ n Giao CĂ´ng Ná»£ & HĂ ng Láº» LÆ°u Äá»™ng
     Route::get('/debt-handovers', [DebtHandoverController::class, 'getDebtHandovers']);
     Route::post('/debt-handovers', [DebtHandoverController::class, 'createDebtHandover']);
-    Route::post('/debt-handovers/{id}/confirm', [DebtHandoverController::class, 'confirmDebtHandover']);
+    Route::post('/debt-handovers/{id}/forward', [DebtHandoverController::class, 'accountantForward']);
+    Route::post('/debt-handovers/{id}/forward', [DebtHandoverController::class, 'accountantForward']);
+Route::post('/debt-handovers/{id}/confirm', [DebtHandoverController::class, 'confirmDebtHandover']);
     Route::post('/debt-handovers/{id}/reject', [DebtHandoverController::class, 'rejectDebtHandover']);
     Route::get('/staff-debts', [DebtHandoverController::class, 'getStaffDebtList']);
     Route::get('/van-sale-dispatches', [DebtHandoverController::class, 'getVanSaleDispatches']);
     Route::post('/van-sale-dispatches', [DebtHandoverController::class, 'createVanSaleDispatch']);
 
-    // 5.1 Banking & VietQR Webhooks (Tự động trừ công nợ khách hàng khi nhận tiền)
+    // 5.1 Banking & VietQR Webhooks (Tá»± Ä‘á»™ng trá»« cĂ´ng ná»£ khĂ¡ch hĂ ng khi nháº­n tiá»n)
     Route::post('/banking/webhook', [BankingWebhookController::class, 'handleIncomingPayment']);
     Route::post('/banking/receive-payment', [BankingWebhookController::class, 'handleIncomingPayment']);
     Route::post('/banking/confirm-order-payment', [BankingWebhookController::class, 'checkOrConfirmOrderPayment']);
@@ -205,7 +225,7 @@ Route::prefix('api')->group(function () {
     Route::get('/policies', [PolicyController::class, 'getPolicies'])->middleware('permission:sales_policy.view');
     Route::post('/policies/save', [PolicyController::class, 'savePolicy'])->middleware('permission:sales_policy.create,sales_policy.edit');
 
-    // 17. Sales Policies (Chính sách bán hàng)
+    // 17. Sales Policies (ChĂ­nh sĂ¡ch bĂ¡n hĂ ng)
     Route::get('/sales-policies', [\App\Http\Controllers\SalesPolicyController::class, 'index'])->middleware('permission:sales_policy.view');
     Route::post('/sales-policies', [\App\Http\Controllers\SalesPolicyController::class, 'store'])->middleware('permission:sales_policy.create');
     Route::put('/sales-policies/{id}', [\App\Http\Controllers\SalesPolicyController::class, 'update'])->middleware('permission:sales_policy.edit');
@@ -225,7 +245,10 @@ Route::post('/delivery-dispatches/settle-cash', [DeliveryController::class, 'set
 Route::get('/delivery-dispatches/driver-cash-handovers', [DeliveryController::class, 'getDriverCashHandovers']);
 Route::get('/delivery-returns', [DeliveryController::class, 'getDeliveryReturns']);
 Route::post('/delivery-returns/intake-warehouse', [DeliveryController::class, 'intakeReturnWarehouse']);
+Route::post('/delivery-returns/accept-holding', [DeliveryController::class, 'acceptHoldingReturn']);
+Route::post('/api/delivery-returns/accept-holding', [DeliveryController::class, 'acceptHoldingReturn']);
 Route::post('/roles/save-permissions', [RoleController::class, 'saveRolePermissions']);
+Route::post('/debt-handovers/{id}/forward', [DebtHandoverController::class, 'accountantForward']);
 Route::post('/debt-handovers/{id}/confirm', [DebtHandoverController::class, 'confirmDebtHandover']);
 Route::post('/debt-handovers/{id}/reject', [DebtHandoverController::class, 'rejectDebtHandover']);
 Route::post('/debt-handovers', [DebtHandoverController::class, 'createDebtHandover']);
@@ -259,16 +282,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/products/create', [WebViewController::class, 'productCreate'])->middleware('permission:inventory.create');
     Route::get('/cat_products/{id}/edit', [WebViewController::class, 'productEdit'])->name('products.edit')->middleware('permission:inventory.edit');
     Route::get('/products/{id}/edit', [WebViewController::class, 'productEdit'])->middleware('permission:inventory.edit');
-    Route::get('/cat_products/{id}/batches', [WebViewController::class, 'productBatches'])->name('products.batches')->middleware('permission:inventory.view');
-    Route::get('/products/{id}/batches', [WebViewController::class, 'productBatches'])->middleware('permission:inventory.view');
+    Route::get('/cat_products/{id}/batches', function() { return redirect('/cat_products'); })->name('products.batches');
+    Route::get('/products/{id}/batches', function() { return redirect('/cat_products'); });
     Route::post('/cat_products/save', [WebViewController::class, 'productSave'])->name('products.save')->middleware('permission:inventory.create,inventory.edit');
     Route::post('/products/save', [WebViewController::class, 'productSave'])->middleware('permission:inventory.create,inventory.edit');
     Route::delete('/cat_products/{id}', [WebViewController::class, 'productDelete'])->name('products.delete')->middleware('permission:inventory.delete');
     Route::post('/api/products/import-excel', [WebViewController::class, 'importProductsExcel'])->middleware('permission:inventory.create,inventory.edit');
     Route::get('/api/products/template-excel', [WebViewController::class, 'downloadProductsTemplate'])->middleware('permission:inventory.view');
 
-    // Orders & Quoting & COD Verification
+    // Orders & Quoting & COD Verification & POS Sales
     Route::get('/orders', [WebViewController::class, 'orders'])->name('orders.index')->middleware('permission:orders.view');
+    Route::get('/orders/pos', [WebViewController::class, 'orderPos'])->name('orders.pos')->middleware('permission:orders.create,orders.view,quotation.create');
+    Route::get('/ban-hang', [WebViewController::class, 'orderPos'])->middleware('permission:orders.create,orders.view,quotation.create');
     Route::get('/orders/create', [WebViewController::class, 'orderCreate'])->name('orders.create')->middleware('permission:orders.create,quotation.create');
     Route::get('/orders/cod-verification', [DeliveryController::class, 'codVerificationPage'])->name('orders.cod_verification')->middleware('permission:orders.view,delivery_dispatch.view,financial.view');
     Route::get('/sales/cod-verification', [DeliveryController::class, 'codVerificationPage']);
@@ -278,7 +303,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/inventory/check-availability', [OrderController::class, 'checkStockAvailability']);
     Route::post('/orders/update-status', [OrderController::class, 'updateOrderStatus']);
 
-    // Consignment Orders (Trang tạo đơn riêng & Direct endpoints)
+    // Consignment Orders (Trang táº¡o Ä‘Æ¡n riĂªng & Direct endpoints)
     Route::get('/orders/consignments/create', [ConsignmentOrderController::class, 'create'])->name('orders.consignments.create')->middleware('permission:orders.create,orders.view,consignments.create,consignments.view');
     Route::get('/consignment-orders/create', [ConsignmentOrderController::class, 'create']);
     Route::get('/consignment-orders/master-data', [ConsignmentOrderController::class, 'masterData']);
@@ -293,7 +318,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/consignment-orders/{id}/return', [ConsignmentOrderController::class, 'returnItems']);
     Route::post('/consignment-orders/{id}/settle', [ConsignmentOrderController::class, 'settle']);
 
-    // Supplier Orders (Đặt Hàng Nhà Cung Cấp)
+    // Supplier Orders (Äáº·t HĂ ng NhĂ  Cung Cáº¥p)
     Route::get('/supplier-orders', [SupplierOrderController::class, 'index'])->name('supplier_orders.index');
     Route::get('/orders/suppliers', [SupplierOrderController::class, 'index']);
     Route::get('/supplier-orders/create', [SupplierOrderController::class, 'create'])->name('supplier_orders.create');
@@ -301,7 +326,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/supplier-orders/{id}/receipt', [SupplierOrderController::class, 'receiptPage'])->name('supplier_orders.receipt_page');
     Route::post('/api/supplier-orders', [SupplierOrderController::class, 'store']);
     Route::get('/api/supplier-orders/{id}', [SupplierOrderController::class, 'show']);
-    Route::post('/api/supplier-orders/{id}/approve', [SupplierOrderController::class, 'approve']);
+    Route::post('/api/supplier-orders/{id}/approve', [SupplierOrderController::class, 'approve'])->middleware('permission:supplier_orders.approve');
     Route::post('/api/supplier-orders/{id}/update-payment', [SupplierOrderController::class, 'updatePayment']);
     Route::post('/api/supplier-orders/{id}/cancel', [SupplierOrderController::class, 'cancel']);
     Route::post('/api/supplier-orders/{id}/receipt', [SupplierOrderController::class, 'createReceipt']);
@@ -309,7 +334,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/suppliers/{id}/debt-history', [SupplierOrderController::class, 'supplierDebtHistory']);
     Route::post('/api/suppliers/save', [SupplierOrderController::class, 'saveSupplier']);
 
-    // Promotion Advances (Ứng Khuyến Mại Của Kho)
+    // Promotion Advances (á»¨ng Khuyáº¿n Máº¡i Cá»§a Kho)
     Route::get('/promotion-advances', [PromotionAdvanceController::class, 'index'])->name('promotion_advances.index');
     Route::post('/promotion-advances', [PromotionAdvanceController::class, 'store']);
     Route::post('/promotion-advances/{id}/settle', [PromotionAdvanceController::class, 'settle']);
@@ -333,48 +358,64 @@ Route::middleware('auth')->group(function () {
     Route::get('/delivery-orders/{id}/confirm', [DeliveryController::class, 'confirmDeliveryPage'])->middleware('permission:delivery_dispatch.view,fleet.view');
     Route::post('/delivery/transfer-order-vehicle', [DeliveryController::class, 'transferOrderVehicle'])->middleware('permission:delivery_dispatch.assign,delivery_dispatch.dispatch');
     Route::post('/delivery/release-completed-orders', [DeliveryController::class, 'releaseCompletedOrders'])->middleware('permission:delivery_dispatch.assign,delivery_dispatch.dispatch');
-    Route::post('/vehicles/update-status', [DeliveryController::class, 'updateVehicleStatus'])->middleware('permission:delivery_dispatch.dispatch,fleet.manage');
-    Route::post('/delivery/depart', [DeliveryController::class, 'departTrip'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.assign');
-    Route::post('/delivery/complete-order', [DeliveryController::class, 'completeDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view');
-    Route::post('/delivery/fail-order', [DeliveryController::class, 'failDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view');
+    Route::post('/vehicles/update-status', [DeliveryController::class, 'updateVehicleStatus'])->middleware('permission:delivery_dispatch.dispatch,fleet.manage,delivery_dispatch.view,fleet.view');
+    Route::post('/api/vehicles/update-status', [DeliveryController::class, 'updateVehicleStatus'])->middleware('permission:delivery_dispatch.dispatch,fleet.manage,delivery_dispatch.view,fleet.view');
+    Route::post('/delivery/depart', [DeliveryController::class, 'departTrip'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.assign,delivery_dispatch.view,fleet.view');
+    Route::post('/api/delivery/depart', [DeliveryController::class, 'departTrip'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.assign,delivery_dispatch.view,fleet.view');
+    Route::post('/delivery/complete-order', [DeliveryController::class, 'completeDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
+    Route::post('/api/delivery/complete-order', [DeliveryController::class, 'completeDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
+    Route::post('/delivery/fail-order', [DeliveryController::class, 'failDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
+    Route::post('/api/delivery/fail-order', [DeliveryController::class, 'failDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
+    Route::post('/delivery/return-order-to-warehouse', [DeliveryController::class, 'returnOrderToWarehouse']);
+    Route::post('/delivery/warehouse-approve-order-return', [DeliveryController::class, 'approveOrderReturnByWarehouse']);
+    Route::post('/api/delivery/warehouse-approve-order-return', [DeliveryController::class, 'approveOrderReturnByWarehouse']);
+    Route::post('/delivery/redeliver-order', [DeliveryController::class, 'redeliverOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,orders.edit');
     Route::post('/delivery/orders/{id}/request-credit-override', [DeliveryController::class, 'requestCreditOverride']);
     Route::post('/delivery/orders/{id}/approve-credit-override', [DeliveryController::class, 'approveCreditOverride']);
     Route::get('/delivery/orders/{id}/credit-override-status', [DeliveryController::class, 'getCreditOverrideStatus']);
     Route::get('/delivery/orders/pending-credit-overrides', [DeliveryController::class, 'getPendingCreditOverrides']);
     Route::get('/api/delivery/orders/pending-credit-overrides', [DeliveryController::class, 'getPendingCreditOverrides']);
-    Route::post('/orders/update-status', [OrderController::class, 'updateOrderStatus'])->middleware('permission:orders.status,orders.approve,orders.edit,inv_picking.pick,inv_picking.qc,delivery_dispatch.dispatch');
+    Route::post('/orders/update-status', [OrderController::class, 'updateOrderStatus'])->middleware('permission:orders.status,orders.approve,orders.edit,inv_picking.pick,inv_picking.qc,delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
+    Route::post('/api/orders/update-status', [OrderController::class, 'updateOrderStatus'])->middleware('permission:orders.status,orders.approve,orders.edit,inv_picking.pick,inv_picking.qc,delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
 
-    // Inventory Picking & Checking (Soạn đơn & Kiểm hàng xuất kho)
+    // Inventory Picking & Checking (Soáº¡n Ä‘Æ¡n & Kiá»ƒm hĂ ng xuáº¥t kho)
     Route::get('/inventory/picking', [PickingSyncController::class, 'pickingView'])->name('inventory.picking')->middleware('permission:inv_picking.view,inv_qc.view');
     Route::get('/picking', [PickingSyncController::class, 'pickingView'])->middleware('permission:inv_picking.view,inv_qc.view');
     Route::get('/orders/picking', [PickingSyncController::class, 'pickingView'])->middleware('permission:inv_picking.view,inv_qc.view');
 
-    // 1. Quản lý Phiếu Nhập kho (Goods Receipt - PNK)
+    // 1. Quáº£n lĂ½ Phiáº¿u Nháº­p kho (Goods Receipt - PNK)
     Route::get('/inventory/receipts', [WarehouseTransactionController::class, 'receipts'])->name('inventory.receipts')->middleware('permission:inventory.view,inv_import.view');
     Route::get('/warehouse/receipts', [WarehouseTransactionController::class, 'receipts']);
     Route::get('/inventory/receipts/create', [WarehouseTransactionController::class, 'createReceipt'])->name('inventory.receipts.create')->middleware('permission:inv_import.view,inventory.create');
     Route::post('/inventory/receipts', [WarehouseTransactionController::class, 'storeReceipt'])->name('inventory.receipts.store')->middleware('permission:inv_import.view,inventory.create');
 
-    // 2. Quản lý Phiếu Xuất kho (Goods Issue - PXK)
+    // 2. Quáº£n lĂ½ Phiáº¿u Xuáº¥t kho (Goods Issue - PXK)
     Route::get('/inventory/issues', [WarehouseTransactionController::class, 'issues'])->name('inventory.issues')->middleware('permission:inventory.view,inv_export.view');
     Route::get('/warehouse/issues', [WarehouseTransactionController::class, 'issues']);
     Route::get('/inventory/issues/create', [WarehouseTransactionController::class, 'createIssue'])->name('inventory.issues.create')->middleware('permission:inv_export.view,inventory.create');
     Route::post('/inventory/issues', [WarehouseTransactionController::class, 'storeIssue'])->name('inventory.issues.store')->middleware('permission:inv_export.view,inventory.create');
 
-    // 3. Chi tiết & In ấn & Hủy phiếu kho
+    // 3. Chi tiáº¿t & In áº¥n & Há»§y phiáº¿u kho
     Route::get('/inventory/transactions/{id}', [WarehouseTransactionController::class, 'show'])->name('inventory.transactions.show')->middleware('permission:inventory.view');
     Route::get('/inventory/transactions/{id}/print', [WarehouseTransactionController::class, 'print'])->name('inventory.transactions.print')->middleware('permission:inventory.view');
     Route::post('/inventory/transactions/{id}/cancel', [WarehouseTransactionController::class, 'cancel'])->name('inventory.transactions.cancel')->middleware('permission:inventory.delete,inventory.edit');
     Route::get('/api/inventory/search-products', [WarehouseTransactionController::class, 'searchProducts']);
-    Route::get('/inventory/batches', [WarehouseTransactionController::class, 'batchesView'])->name('inventory.batches')->middleware('permission:inventory.view');
-    Route::get('/warehouse/batches', [WarehouseTransactionController::class, 'batchesView']);
+    Route::get('/inventory/batches', function() { return redirect('/cat_products'); })->name('inventory.batches');
+    Route::get('/warehouse/batches', function() { return redirect('/cat_products'); });
     Route::get('/api/products/{id}/batches', [WarehouseTransactionController::class, 'getProductBatches'])->middleware('permission:inventory.view');
     Route::get('/api/inventory/batches', [WarehouseTransactionController::class, 'getWarehouseBatches'])->middleware('permission:inventory.view');
 
-    // 4. Warehouse Returns Intake & Holding Stock Sale (Hoàn kho & Bán hàng từ kho ôm)
-    Route::get('/inventory/import', [DeliveryController::class, 'returnsIntakePage'])->name('inventory.import')->middleware('permission:inventory.view,inv_import.view,returns.view');
+    // 4. Warehouse Returns Intake & Employee Holding Stock (Tách riêng Nhập Hoàn và Kho Hàng Ôm)
+    Route::get('/inventory/returns', [DeliveryController::class, 'returnsIntakePage'])->name('inventory.returns')->middleware('permission:inventory.view,returns.view,inv_import.view');
+    Route::get('/inventory/holding', [DeliveryController::class, 'holdingStocksPage'])->name('inventory.holding')->middleware('permission:inventory.view,inv_import.view');
+    Route::get('/inventory/import', function(\Illuminate\Http\Request $request) {
+        if ($request->query('tab') === 'returns') {
+            return redirect()->to('/inventory/returns?' . http_build_query($request->except('tab')));
+        }
+        return redirect()->to('/inventory/holding?' . http_build_query($request->all()));
+    })->name('inventory.import');
     Route::get('/inventory/holding-sale/create', [DeliveryController::class, 'holdingSaleCreate'])->name('inventory.holding_sale.create')->middleware('permission:orders.create,orders.view,inventory.view');
-    Route::get('/warehouse/import', [DeliveryController::class, 'returnsIntakePage']);
+    Route::get('/warehouse/import', function() { return redirect('/inventory/returns'); });
     Route::get('/returns/intake', [DeliveryController::class, 'returnsIntakePage']);
     Route::get('/warehouse/returns-intake', [DeliveryController::class, 'returnsIntakePage']);
 
@@ -391,7 +432,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/users/{id}/edit', [WebViewController::class, 'staffEdit'])->middleware('permission:staff_list.edit');
     Route::post('/staff/save', [WebViewController::class, 'staffSave'])->name('staff.save')->middleware('permission:staff_list.create,staff_list.edit');
 
-    // Staff Groups (Nhóm nhân sự: user_ids, phân loại id, user_id trưởng nhóm)
+    // Staff Groups (NhĂ³m nhĂ¢n sá»±: user_ids, phĂ¢n loáº¡i id, user_id trÆ°á»Ÿng nhĂ³m)
     Route::get('/staff-groups', [StaffGroupController::class, 'index'])->name('staff_groups.index');
     Route::post('/staff-groups', [StaffGroupController::class, 'store'])->name('staff_groups.store');
     Route::put('/staff-groups/{id}', [StaffGroupController::class, 'update'])->name('staff_groups.update');
@@ -414,7 +455,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/audit-logs', [WebViewController::class, 'auditLogs'])->name('audit.index')->middleware('permission:audit.view');
     Route::get('/audit', [WebViewController::class, 'auditLogs'])->middleware('permission:audit.view');
 
-    // System Settings (Cấu hình hệ thống: Thông tin công ty & Tài khoản ngân hàng)
+    // System Settings (Cáº¥u hĂ¬nh há»‡ thá»‘ng: ThĂ´ng tin cĂ´ng ty & TĂ i khoáº£n ngĂ¢n hĂ ng)
     Route::get('/system-settings', [SystemSettingController::class, 'index'])->name('system_settings.index');
     Route::get('/settings', [SystemSettingController::class, 'index']);
     Route::post('/system-settings/company', [SystemSettingController::class, 'updateCompany'])->name('system_settings.update_company');
@@ -471,9 +512,9 @@ Route::middleware('auth')->group(function () {
     // Customer Debt & Credit Limits
     Route::get('/debt', [WebViewController::class, 'debt'])->name('debt.index')->middleware('permission:debt.view');
     Route::get('/debt/{id}', [WebViewController::class, 'dealerDebtDetail'])->name('debt.detail')->middleware('permission:debt.view');
-    Route::get('/staff-debt', [WebViewController::class, 'staffDebt'])->name('staff.debt')->middleware('permission:debt.view,staff_list.view');
-    Route::get('/staff-debt/{id}', [WebViewController::class, 'staffDebtDetail'])->name('staff.debt.detail')->middleware('permission:debt.view,staff_list.view');
-    Route::get('/staff/{id}/debt', [WebViewController::class, 'staffDebtDetail'])->middleware('permission:debt.view,staff_list.view');
+    Route::get('/staff-debt', [WebViewController::class, 'staffDebt'])->name('staff.debt');
+    Route::get('/staff-debt/{id}', [WebViewController::class, 'staffDebtDetail'])->name('staff.debt.detail');
+    Route::get('/staff/{id}/debt', [WebViewController::class, 'staffDebtDetail']);
 
     // Reports Center
     Route::get('/reports', [WebViewController::class, 'reports'])->name('reports.index')->middleware('permission:dashboard.view,orders.view,inventory.view,funds.view,debt.view');
@@ -483,7 +524,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [WebViewController::class, 'profile'])->name('profile');
     Route::get('/staff/personal', [WebViewController::class, 'profile']);
 
-    // Water Filter System (Phân hệ Lắp đặt & Sửa chữa Máy lọc nước - Bảng độc lập)
+    // Water Filter System (PhĂ¢n há»‡ Láº¯p Ä‘áº·t & Sá»­a chá»¯a MĂ¡y lá»c nÆ°á»›c - Báº£ng Ä‘á»™c láº­p)
     Route::middleware('permission:water_filter.view,water_filter.install_view,water_filter.repair_view,water_filter.parts_view')->group(function () {
         Route::get('/water-filter', [WaterFilterController::class, 'index'])->name('water_filter.index');
         Route::get('/may-loc-nuoc', [WaterFilterController::class, 'index']);
@@ -513,6 +554,14 @@ Route::middleware('auth')->group(function () {
         });
         Route::get('/lich-bao-duong-may-loc', function(Request $request, WaterFilterController $controller) {
             $request->merge(['tab' => 'maintenance']);
+            return $controller->index($request);
+        });
+        Route::get('/model-may-loc', function(Request $request, WaterFilterController $controller) {
+            $request->merge(['tab' => 'models']);
+            return $controller->index($request);
+        });
+        Route::get('/nhat-ky-phu-tung-may-loc', function(Request $request, WaterFilterController $controller) {
+            $request->merge(['tab' => 'transactions']);
             return $controller->index($request);
         });
         Route::get('/bao-hanh-may-loc/print-qr', [WaterFilterController::class, 'printQrStickers'])->name('water_filter.qr_print');
@@ -561,6 +610,8 @@ Route::middleware('auth')->group(function () {
             Route::post('/maintenance/{id}/reschedule', [WaterFilterController::class, 'rescheduleMaintenance']);
             Route::post('/maintenance/{id}/complete', [WaterFilterController::class, 'completeMaintenance']);
             Route::post('/maintenance/{id}/claim', [WaterFilterController::class, 'claimMaintenance']);
+            Route::post('/maintenance/{id}/assign', [WaterFilterController::class, 'assignMaintenance']);
+            Route::post('/maintenance/{id}/unclaim', [WaterFilterController::class, 'unclaimMaintenance']);
         });
     });
 });

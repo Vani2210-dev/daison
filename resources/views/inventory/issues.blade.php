@@ -5,10 +5,7 @@
 @section('content')
 <div class="space-y-4 font-sans text-slate-800 antialiased" x-data="warehouseIssueApp()">
 
-    <!-- 1. Sub-Section Navigation Tabs (Kho hàng Đại Sơn) -->
-    @include('inventory.nav_tabs')
-
-    <!-- 2. Header Banner & Action Buttons -->
+<!-- 2. Header Banner & Action Buttons -->
     <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div class="flex items-center gap-3">
             <div class="w-11 h-11 rounded-2xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-900/20">

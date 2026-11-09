@@ -1226,11 +1226,7 @@
                         </div>
                     </template>
                 </div>
-                        </div>
-                    </template>
-                </div>
-
-                    </div>
+            </div>
 
                     <!-- =============================================== -->
                     <!-- TAB 2 CONTENT: 2. KIỂM HÀNG (QC SOẠN ĐƠN)     -->
@@ -1727,7 +1723,7 @@
                                                 <div class="flex items-center justify-center gap-1.5">
                                                     <input type="number" step="any" min="0" :max="ag.totalRequired"
                                                            :value="ag.totalPicked"
-                                                           @change="updateBatchItemPickedQty(ag, $event.target.value)"
+                                                           @change="if (Number($event.target.value) < ag.totalRequired && ag.contributingOrders.length > 1) { ag.totalPicked = Number($event.target.value); openVehicleShortageModal(ag); } else { updateBatchItemPickedQty(ag, $event.target.value); }"
                                                            class="w-14 p-1 text-center font-mono font-bold text-xs rounded-lg border border-slate-300 text-slate-900 bg-white focus:outline-none focus:border-sky-500 shadow-2xs">
                                                     
                                                     <button type="button" @click="pickFullBatchItem(ag)"
@@ -1741,9 +1737,20 @@
 
                                             <!-- TRẠNG THÁI & LÝ DO -->
                                             <td class="py-3.5 px-3 text-center">
-                                                <span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border"
-                                                      :class="ag.badgeClass"
-                                                      x-text="ag.status"></span>
+                                                <div class="flex flex-col items-center gap-1">
+                                                    <span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border"
+                                                          :class="ag.badgeClass"
+                                                          x-text="ag.status"></span>
+                                                    <template x-if="ag.totalPicked < ag.totalRequired && ag.totalRequired > 0">
+                                                        <button type="button" 
+                                                                @click="openVehicleShortageModal(ag)"
+                                                                class="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold text-[10px] shadow-xs flex items-center gap-1 cursor-pointer transition-all"
+                                                                title="Bốc thiếu: Tự phân bổ số lượng cho từng đơn trên xe và tự động cắt đơn nợ">
+                                                            <i class="fa-solid fa-arrows-split-up-and-left text-[9px]"></i>
+                                                            <span>Phân bổ xe</span>
+                                                        </button>
+                                                    </template>
+                                                </div>
                                             </td>
                                         </tr>
                                     </template>
@@ -1947,6 +1954,287 @@
 
 </div>
 
+    <!-- ======================================================== -->
+    <!-- MODAL: PHÂN BỔ HÀNG THIẾU CHO CÁC ĐƠN TRÊN XE / LÔ       -->
+    <!-- ======================================================== -->
+    <div x-show="shortageModal.show" 
+         x-cloak
+         class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+         @keydown.escape.window="if(!shortageModal.saving) shortageModal.show = false">
+        
+        <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150"
+             @click.outside="if(!shortageModal.saving) shortageModal.show = false">
+            
+            <!-- 1. Modal Header -->
+            <div class="px-5 py-4 bg-gradient-to-r from-amber-600 via-rose-600 to-indigo-700 text-white flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 shadow-inner">
+                        <i class="fa-solid fa-arrows-split-up-and-left text-lg text-white"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-base font-black tracking-tight">Phân Bổ Hàng Thiếu Cho Chuyến Xe</h3>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white border border-white/30">Tự động chốt đơn</span>
+                        </div>
+                        <p class="text-xs text-rose-100 mt-0.5">Nhân viên xe trực tiếp phân bổ số lượng thực bốc cho từng đơn. Hệ thống tự động cắt đơn gốc và sinh Đơn Giao Sau (Backorder) ngay lập tức.</p>
+                    </div>
+                </div>
+                <button type="button" 
+                        @click="shortageModal.show = false"
+                        :disabled="shortageModal.saving"
+                        class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/25 text-white flex items-center justify-center transition-colors cursor-pointer text-base">
+                    &times;
+                </button>
+            </div>
+
+            <!-- 2. Modal Body (Scrollable) -->
+            <div class="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
+                
+                <!-- Product Information Card & Overall Numbers -->
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+                        <div>
+                            <span class="font-mono font-bold text-[11px] text-slate-500 uppercase" x-text="shortageModal.sku"></span>
+                            <h4 class="font-black text-slate-900 text-sm" x-text="shortageModal.name"></h4>
+                            <div class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
+                                <span>Kho xuất: <strong class="text-slate-700" x-text="shortageModal.warehouse"></strong></span>
+                                <span>•</span>
+                                <span>ĐVT: <strong class="text-slate-700 uppercase" x-text="shortageModal.unit"></strong></span>
+                            </div>
+                        </div>
+                        <div class="shrink-0 flex items-center gap-2">
+                            <span class="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 font-bold text-xs border border-amber-300"
+                                  x-text="'Gồm ' + (shortageModal.allocations ? shortageModal.allocations.length : 0) + ' đơn trên xe'"></span>
+                        </div>
+                    </div>
+
+                    <!-- 3 Stats Inputs -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                            <span class="text-[11px] font-bold text-slate-500 block">Tổng cần bốc cả xe</span>
+                            <div class="mt-1 flex items-baseline gap-1">
+                                <span class="text-xl font-mono font-black text-slate-900" x-text="shortageModal.totalRequired"></span>
+                                <span class="text-xs font-bold text-slate-500 uppercase" x-text="shortageModal.unit"></span>
+                            </div>
+                        </div>
+
+                        <div class="bg-sky-50/80 p-3 rounded-xl border border-sky-200 shadow-2xs">
+                            <span class="text-[11px] font-bold text-sky-800 block">Số thực tế bốc được (Có trên xe):</span>
+                            <div class="mt-1 flex items-center gap-2">
+                                <input type="number" step="any" min="0" :max="shortageModal.totalRequired"
+                                       x-model.number="shortageModal.totalAvailable"
+                                       @input="onTotalAvailableChanged($event.target.value)"
+                                       class="w-24 px-2.5 py-1 text-lg font-mono font-black text-sky-950 bg-white rounded-lg border border-sky-300 focus:outline-none focus:border-sky-500 shadow-xs">
+                                <span class="text-xs font-bold text-sky-700 uppercase" x-text="shortageModal.unit"></span>
+                            </div>
+                        </div>
+
+                        <div class="bg-rose-50/80 p-3 rounded-xl border border-rose-200 shadow-2xs">
+                            <span class="text-[11px] font-bold text-rose-800 block">Tổng số lượng thiếu hụt:</span>
+                            <div class="mt-1 flex items-baseline gap-1">
+                                <span class="text-xl font-mono font-black text-rose-700"
+                                      x-text="Math.max(0, (shortageModal.totalRequired || 0) - (shortageModal.totalAvailable || 0))"></span>
+                                <span class="text-xs font-bold text-rose-600 uppercase" x-text="shortageModal.unit"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Presets -->
+                <div class="flex flex-wrap items-center justify-between gap-2 p-3 bg-indigo-50/70 border border-indigo-200/80 rounded-xl">
+                    <div class="flex items-center gap-1.5 font-bold text-indigo-950">
+                        <i class="fa-solid fa-wand-magic-sparkles text-indigo-600"></i>
+                        <span>Cách phân bổ nhanh:</span>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button type="button" 
+                                @click="allocateByRouteOrder()"
+                                class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-2xs transition-all flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-route text-[10px]"></i>
+                            <span>Ưu tiên đầu tuyến</span>
+                        </button>
+                        <button type="button" 
+                                @click="allocateProportionally()"
+                                class="px-3 py-1.5 rounded-lg bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-300 font-bold text-xs shadow-2xs transition-all flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-percent text-[10px]"></i>
+                            <span>Chia tỷ lệ đều (%)</span>
+                        </button>
+                        <button type="button" 
+                                @click="resetAllocations()"
+                                class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 font-bold text-xs shadow-2xs transition-all flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-rotate-left text-[10px]"></i>
+                            <span>Đặt về 0</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Allocations Table -->
+                <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-2xs">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-700 font-black text-[11px] uppercase tracking-wider border-b border-slate-200">
+                                <th class="py-3 px-3 w-10 text-center">STT</th>
+                                <th class="py-3 px-4">ĐƠN HÀNG & KHÁCH HÀNG</th>
+                                <th class="py-3 px-3 text-center w-24">CẦN BỐC</th>
+                                <th class="py-3 px-4 text-center w-40 bg-sky-50/80">PHÂN BỔ THỰC BỐC</th>
+                                <th class="py-3 px-3 text-center w-24 text-rose-700">THIẾU</th>
+                                <th class="py-3 px-3 text-center w-44">HỆ THỐNG XỬ LÝ</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <template x-for="(row, idx) in shortageModal.allocations" :key="row.orderId">
+                                <tr class="hover:bg-slate-50/80 transition-colors">
+                                    <td class="py-3 px-3 text-center font-bold text-slate-400" x-text="idx + 1"></td>
+                                    <td class="py-3 px-4 space-y-0.5">
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-mono font-bold text-sky-700 text-xs" x-text="row.orderCode"></span>
+                                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-semibold" x-text="row.deliveryRoute"></span>
+                                        </div>
+                                        <div class="font-bold text-slate-900" x-text="row.customerName"></div>
+                                        <div class="text-[10px] text-slate-500 truncate max-w-xs" x-text="row.customerAddress"></div>
+                                    </td>
+                                    <td class="py-3 px-3 text-center font-mono font-black text-slate-800 text-sm" x-text="row.totalReq"></td>
+                                    
+                                    <!-- Cột phân bổ có nút + - và input -->
+                                    <td class="py-3 px-4 text-center bg-sky-50/40">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button" 
+                                                    @click="row.allocatedQty = Math.max(0, (Number(row.allocatedQty) || 0) - 1)"
+                                                    class="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 font-black text-slate-700 flex items-center justify-center shadow-2xs cursor-pointer">
+                                                -
+                                            </button>
+                                            <input type="number" step="any" min="0" :max="row.totalReq"
+                                                   x-model.number="row.allocatedQty"
+                                                   class="w-16 px-1.5 py-1 text-center font-mono font-bold text-xs rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:border-sky-500 shadow-2xs">
+                                            <button type="button" 
+                                                    @click="row.allocatedQty = Math.min(row.totalReq, (Number(row.allocatedQty) || 0) + 1)"
+                                                    class="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 font-black text-slate-700 flex items-center justify-center shadow-2xs cursor-pointer">
+                                                +
+                                            </button>
+                                            <button type="button" 
+                                                    @click="row.allocatedQty = row.totalReq"
+                                                    class="px-1.5 py-1 text-[10px] font-bold rounded bg-slate-100 hover:bg-sky-100 text-slate-700 border border-slate-200 cursor-pointer"
+                                                    title="Lấy đủ nhu cầu đơn này">
+                                                Đủ
+                                            </button>
+                                        </div>
+                                    </td>
+
+                                    <!-- Cột thiếu -->
+                                    <td class="py-3 px-3 text-center font-mono font-black text-sm"
+                                        :class="row.totalReq - (Number(row.allocatedQty) || 0) > 0 ? 'text-rose-600' : 'text-slate-300'"
+                                        x-text="Math.max(0, row.totalReq - (Number(row.allocatedQty) || 0))">
+                                    </td>
+
+                                    <!-- Cột trạng thái xử lý tự động -->
+                                    <td class="py-3 px-3 text-center">
+                                        <template x-if="Number(row.allocatedQty) >= row.totalReq">
+                                            <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                                ✓ Giao đủ đợt 1
+                                            </span>
+                                        </template>
+                                        <template x-if="Number(row.allocatedQty) > 0 && Number(row.allocatedQty) < row.totalReq">
+                                            <span class="inline-flex flex-col items-center">
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300"
+                                                      x-text="'Cắt còn ' + row.allocatedQty + ', nợ ' + (row.totalReq - row.allocatedQty)"></span>
+                                                <span class="text-[9px] text-amber-700 font-semibold mt-0.5">Tạo ĐH-NO tự động</span>
+                                            </span>
+                                        </template>
+                                        <template x-if="Number(row.allocatedQty) <= 0">
+                                            <span class="inline-flex flex-col items-center">
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                                                    Nợ 100% (Giao sau)
+                                                </span>
+                                                <span class="text-[9px] text-rose-700 font-semibold mt-0.5">Chuyển sang ĐH-NO</span>
+                                            </span>
+                                        </template>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Allocation Balance Status -->
+                <div class="p-3 rounded-xl border flex items-center justify-between text-xs"
+                     :class="shortageAllocatedSum > (shortageModal.totalAvailable || 0) 
+                         ? 'bg-rose-50 border-rose-300 text-rose-900' 
+                         : (shortageAllocatedSum === (shortageModal.totalAvailable || 0)
+                             ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                             : 'bg-amber-50 border-amber-300 text-amber-900')">
+                    <div class="flex items-center gap-2 font-bold">
+                        <i :class="shortageAllocatedSum > (shortageModal.totalAvailable || 0) 
+                                ? 'fa-solid fa-triangle-exclamation text-rose-600' 
+                                : (shortageAllocatedSum === (shortageModal.totalAvailable || 0)
+                                    ? 'fa-solid fa-circle-check text-emerald-600'
+                                    : 'fa-solid fa-circle-info text-amber-600')"></i>
+                        <span>
+                            Tổng đã phân bổ: <strong class="font-mono text-sm" x-text="shortageAllocatedSum"></strong> / 
+                            <span class="font-mono" x-text="shortageModal.totalAvailable || 0"></span> <span class="uppercase" x-text="shortageModal.unit"></span>
+                        </span>
+                    </div>
+
+                    <div class="text-[11px] font-bold">
+                        <template x-if="shortageAllocatedSum > (shortageModal.totalAvailable || 0)">
+                            <span class="text-rose-700">⚠️ Vượt quá <span x-text="shortageAllocatedSum - (shortageModal.totalAvailable || 0)"></span> sản phẩm!</span>
+                        </template>
+                        <template x-if="shortageAllocatedSum === (shortageModal.totalAvailable || 0)">
+                            <span class="text-emerald-700">✓ Khớp hoàn toàn số lượng có thực tế!</span>
+                        </template>
+                        <template x-if="shortageAllocatedSum < (shortageModal.totalAvailable || 0)">
+                            <span class="text-amber-700">Còn dư <span x-text="(shortageModal.totalAvailable || 0) - shortageAllocatedSum"></span> chưa phân bổ</span>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Automation Options & Notes -->
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" x-model="shortageModal.autoCreateBackorder" class="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500">
+                            <span class="font-bold text-slate-800">Tự động cắt đơn gốc & tạo Đơn Giao Sau (Backorder) cho phần thiếu ngay</span>
+                        </label>
+                        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" x-model="shortageModal.markPickedIfReady" class="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500">
+                            <span class="font-bold text-slate-800">Đánh dấu "Đã bốc xong" nếu các món khác đã đủ</span>
+                        </label>
+                    </div>
+
+                    <div class="pt-1.5 flex items-center gap-2">
+                        <span class="text-slate-500 shrink-0 font-medium">Ghi chú:</span>
+                        <input type="text" x-model="shortageModal.note" placeholder="Lý do phân bổ thiếu hàng..."
+                               class="flex-1 px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 3. Modal Footer -->
+            <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
+                <button type="button" 
+                        @click="shortageModal.show = false"
+                        :disabled="shortageModal.saving"
+                        class="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-bold border border-slate-300 transition-all cursor-pointer">
+                    Đóng
+                </button>
+
+                <button type="button" 
+                        @click="confirmVehicleShortageAllocation()"
+                        :disabled="shortageModal.saving"
+                        class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-700 hover:to-indigo-700 active:scale-95 text-white font-black shadow-md shadow-indigo-600/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50">
+                    <template x-if="shortageModal.saving">
+                        <i class="fa-solid fa-spinner fa-spin text-sm"></i>
+                    </template>
+                    <template x-if="!shortageModal.saving">
+                        <i class="fa-solid fa-floppy-disk text-sm"></i>
+                    </template>
+                    <span x-text="shortageModal.saving ? 'Đang chốt đơn & tạo đơn nợ...' : '💾 Xác Nhận Phân Bổ & Chốt Đơn'"></span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
 <script>
 function pickingApp() {
     return {
@@ -1967,6 +2255,21 @@ function pickingApp() {
         // Batch Fulfillment State
         selectedBatchOrderIds: [],
         batchAssignStaff: '',
+        shortageModal: {
+            show: false,
+            agItem: null,
+            sku: '',
+            name: '',
+            unit: '',
+            warehouse: '',
+            totalRequired: 0,
+            totalAvailable: 0,
+            autoCreateBackorder: true,
+            markPickedIfReady: true,
+            note: 'Nhân viên xe tự phân bổ hàng thiếu khi bốc',
+            allocations: [],
+            saving: false
+        },
         selectedAggregatedSkus: [],
 
         // Data injected from Blade
@@ -2571,10 +2874,20 @@ function pickingApp() {
             this.selectedAggregatedSkus = checked ? this.aggregatedItems.map(a => a.sku) : [];
         },
 
+        get shortageAllocatedSum() {
+            return (this.shortageModal.allocations || []).reduce((sum, a) => sum + (Number(a.allocatedQty) || 0), 0);
+        },
+
+        get batchOrders() {
+            if (!this.selectedBatchOrderIds || this.selectedBatchOrderIds.length === 0) {
+                return [];
+            }
+            const idSet = new Set(this.selectedBatchOrderIds.map(Number));
+            return this.orders.filter(o => idSet.has(Number(o.id)));
+        },
+
         get aggregatedItems() {
-            const ordersToAggregate = this.selectedBatchOrderIds.length > 0
-                ? this.filteredOrders.filter(o => this.selectedBatchOrderIds.includes(o.id))
-                : [];
+            const ordersToAggregate = this.batchOrders;
             
             const map = {};
             ordersToAggregate.forEach(o => {
@@ -2714,6 +3027,149 @@ function pickingApp() {
             this.showToast('Đã cập nhật số lượng bốc cho ' + ag.sku + ': ' + targetQty + ' / ' + ag.totalRequired + ' ' + (ag.unit || ''));
         },
 
+        openVehicleShortageModal(ag) {
+            if (!ag || !ag.contributingOrders) return;
+
+            const allocations = ag.contributingOrders.map((c, index) => {
+                const o = c.orderRef || {};
+                const it = c.itemRef || {};
+                return {
+                    orderId: c.orderId,
+                    orderCode: c.orderCode,
+                    customerName: c.customerName || o.customer_name || 'Khách hàng',
+                    customerAddress: o.customer_address || '',
+                    deliveryRoute: o.assigned_delivery_route || o.assigned_vehicle_plate || ('Đơn #' + (index + 1)),
+                    totalReq: Number(c.totalReq) || 0,
+                    allocatedQty: Number(it.picked_qty) || 0,
+                    itemRef: it,
+                    orderRef: o
+                };
+            });
+
+            const totalAvail = Number(ag.totalPicked) || 0;
+            const currentAllocSum = allocations.reduce((s, a) => s + (Number(a.allocatedQty) || 0), 0);
+
+            this.shortageModal = {
+                show: true,
+                agItem: ag,
+                sku: ag.sku,
+                name: ag.name,
+                unit: ag.unit || 'cây',
+                warehouse: ag.warehouse,
+                totalRequired: ag.totalRequired,
+                totalAvailable: totalAvail > 0 ? totalAvail : 0,
+                autoCreateBackorder: true,
+                markPickedIfReady: true,
+                note: 'Nhân viên xe tự phân bổ hàng thiếu khi bốc',
+                allocations: allocations,
+                saving: false
+            };
+
+            // Nếu chưa phân bổ gì nhưng có totalAvailable > 0, tự động phân bổ theo thứ tự giao
+            if (currentAllocSum === 0 && totalAvail > 0) {
+                this.allocateByRouteOrder();
+            }
+        },
+
+        allocateByRouteOrder() {
+            let remain = Math.max(0, Number(this.shortageModal.totalAvailable) || 0);
+            this.shortageModal.allocations.forEach(row => {
+                const take = Math.min(remain, row.totalReq);
+                row.allocatedQty = take;
+                remain -= take;
+            });
+        },
+
+        allocateProportionally() {
+            const totalAvail = Math.max(0, Number(this.shortageModal.totalAvailable) || 0);
+            const totalReq = this.shortageModal.totalRequired || 1;
+            let remain = totalAvail;
+            const len = this.shortageModal.allocations.length;
+            this.shortageModal.allocations.forEach((row, idx) => {
+                if (idx === len - 1) {
+                    row.allocatedQty = Math.min(row.totalReq, remain);
+                } else {
+                    const share = Math.min(row.totalReq, Math.floor((row.totalReq / totalReq) * totalAvail));
+                    row.allocatedQty = share;
+                    remain -= share;
+                }
+            });
+        },
+
+        resetAllocations() {
+            this.shortageModal.allocations.forEach(row => {
+                row.allocatedQty = 0;
+            });
+        },
+
+        onTotalAvailableChanged(val) {
+            this.shortageModal.totalAvailable = Math.max(0, Number(val) || 0);
+            this.allocateByRouteOrder();
+        },
+
+        async confirmVehicleShortageAllocation() {
+            if (this.shortageModal.saving) return;
+
+            const sum = (this.shortageModal.allocations || []).reduce((s, a) => s + (Number(a.allocatedQty) || 0), 0);
+            const avail = Number(this.shortageModal.totalAvailable) || 0;
+            if (sum > avail) {
+                if (!confirm(`CẢNH BÁO: Tổng số lượng đã phân bổ (${sum}) lớn hơn số thực tế có (${avail})!\nBạn có chắc chắn muốn tiếp tục lưu không?`)) {
+                    return;
+                }
+            }
+
+            this.shortageModal.saving = true;
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const payload = {
+                    sku: this.shortageModal.sku,
+                    totalAvailable: avail,
+                    autoCreateBackorder: this.shortageModal.autoCreateBackorder,
+                    markPickedIfReady: this.shortageModal.markPickedIfReady,
+                    note: this.shortageModal.note,
+                    allocations: this.shortageModal.allocations.map(a => ({
+                        order_id: a.orderId,
+                        order_code: a.orderCode,
+                        item_id: a.itemRef.id,
+                        sku: a.itemRef.sku,
+                        req_qty: a.totalReq,
+                        allocated_qty: Number(a.allocatedQty) || 0,
+                        shortage_qty: Math.max(0, a.totalReq - (Number(a.allocatedQty) || 0))
+                    }))
+                };
+
+                const res = await fetch('/inventory/picking/allocate-vehicle-shortage', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token || ''
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    let backorderMsg = '';
+                    if (data.createdBackorders && data.createdBackorders.length > 0) {
+                        backorderMsg = `\n\n📋 Đã tự động tạo ${data.createdBackorders.length} Đơn Giao Sau:\n` +
+                            data.createdBackorders.map(b => `• ${b.backorder_code} (tách từ ${b.parent_code})`).join('\n');
+                    }
+
+                    alert(`✅ ${data.message}${backorderMsg}\n\nCác đơn đã hoàn tất bốc và sẵn sàng xuất xe mà không cần người lên đơn chỉnh sửa!`);
+                    this.shortageModal.show = false;
+                    window.location.reload();
+                } else {
+                    alert('❌ Lỗi: ' + (data.message || 'Không thể lưu phân bổ'));
+                }
+            } catch (e) {
+                console.error('Error confirming vehicle allocation:', e);
+                alert('Lỗi kết nối: ' + e.message);
+            } finally {
+                this.shortageModal.saving = false;
+            }
+        },
+
         async assignBatchItemStaff(ag, staffName) {
             if (!ag || !staffName) return;
             for (const c of ag.contributingOrders) {
@@ -2805,8 +3261,8 @@ function pickingApp() {
         },
 
         async completeAllBatchOrders() {
-            const ordersToComplete = this.selectedBatchOrderIds.length > 0
-                ? this.orders.filter(o => this.selectedBatchOrderIds.includes(o.id))
+            const ordersToComplete = this.batchOrders.length > 0
+                ? this.batchOrders
                 : this.filteredOrders;
 
             if (ordersToComplete.length === 0) {
@@ -2828,9 +3284,13 @@ function pickingApp() {
                         it.item_status = 'Đủ hàng';
                         it.shortage_reason = null;
                     });
-                    ord.status = 'Đã bốc xong';
+                    // 1. Lưu trạng thái bốc đủ cho items vào CSDL trước
+                    if (ord.items && ord.items.length > 0) {
+                        await this.saveItemPickingState(ord.items[0], { quickPickAll: true }, ord);
+                    }
 
-                    // Gửi API cập nhật trạng thái đơn
+                    // 2. Cập nhật trạng thái đơn hàng sang "Đã bốc xong"
+                    ord.status = 'Đã bốc xong';
                     await fetch('/api/orders/update-status', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token || '' },
@@ -2839,11 +3299,6 @@ function pickingApp() {
                             status: 'Đã bốc xong'
                         })
                     });
-
-                    // Đồng thời lưu trạng thái picking item
-                    if (ord.items && ord.items.length > 0) {
-                        this.saveItemPickingState(ord.items[0], { quickPickAll: true }, ord);
-                    }
                 }
 
                 this.showToast('🎉 Hoàn tất bốc cả lô ' + ordersToComplete.length + ' đơn! Tất cả đã chuyển sang trạng thái "Đã bốc xong".', 'success');
@@ -3023,12 +3478,20 @@ function pickingApp() {
                         const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
                         it.is_checked = true;
                         it.checked_qty = Number(it.picked_qty) > 0 ? it.picked_qty : reqTotal;
+                        it.picked_qty = it.checked_qty;
+                        it.is_picked = true;
+                        it.item_status = 'Đủ hàng';
                         it.checked_by = this.qcInspector;
                         it.checked_at = new Date().toLocaleString('vi-VN');
                     });
-                    ord.status = 'Đã kiểm hàng';
 
-                    // Gửi API cập nhật trạng thái đơn
+                    // 1. Đồng thời gửi sự kiện qcAllChecked để lưu kiểm hàng vào CSDL trước
+                    if (ord.items && ord.items.length > 0) {
+                        await this.saveItemPickingState(ord.items[0], { isQc: true, qcAllChecked: true }, ord);
+                    }
+
+                    // 2. Gửi API cập nhật trạng thái đơn sang "Đã kiểm hàng"
+                    ord.status = 'Đã kiểm hàng';
                     await fetch('/api/orders/update-status', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token || '' },
@@ -3037,14 +3500,13 @@ function pickingApp() {
                             status: 'Đã kiểm hàng'
                         })
                     });
-
-                    // Đồng thời gửi sự kiện qcAllChecked
-                    if (ord.items && ord.items.length > 0) {
-                        await this.saveItemPickingState(ord.items[0], { isQc: true, qcAllChecked: true }, ord);
-                    }
                 }
 
                 this.showToast('🎉 Hoàn tất kiểm hàng (QC) cả lô ' + ordersToComplete.length + ' đơn! Tất cả đã chuyển sang trạng thái "Đã kiểm hàng" sẵn sàng xuất xe.', 'success');
+                if (typeof BroadcastChannel !== 'undefined') {
+                    const bc = new BroadcastChannel('erp_order_sync');
+                    bc.postMessage({ type: 'QC_ALL_CHECKED', completedCount: ordersToComplete.length });
+                }
             } catch(e) {
                 console.error('Error completing batch QC orders:', e);
                 this.showToast('Lỗi khi hoàn tất kiểm cả lô', 'error');

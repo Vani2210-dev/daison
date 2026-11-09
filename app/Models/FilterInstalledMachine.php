@@ -18,6 +18,7 @@ class FilterInstalledMachine extends Model
         'qr_code',
         'qr_token',
         'installation_id',
+        'dealer_id',
         'status',
         'customer_name',
         'customer_phone',
@@ -146,6 +147,11 @@ class FilterInstalledMachine extends Model
     /**
      * Tạo mã Token định danh ngẫu nhiên duy nhất cho QR
      */
+    public function dealer()
+    {
+        return $this->belongsTo(Dealer::class, 'dealer_id');
+    }
+
     public static function generateUniqueQrToken(): string
     {
         do {

@@ -213,9 +213,7 @@
                                        placeholder="Gõ tìm Tỉnh/TP mới (34 tỉnh thành)..."
                                        class="w-full pl-3.5 pr-12 py-2.5 bg-white border border-slate-200 focus:border-purple-500 rounded-xl font-semibold text-slate-800 outline-none shadow-2xs transition-all text-xs">
                                 <div class="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400">
-                                    <button type="button" x-show="formData.new_city" @click="clearNewCity()" class="hover:text-rose-500 p-0.5 cursor-pointer" title="Xóa">
-                                        <i class="fa-solid fa-xmark text-xs"></i>
-                                    </button>
+                                    
                                     <button type="button" @click="openNewCity = !openNewCity; filterNewProvinces()" class="hover:text-slate-600 p-0.5 cursor-pointer">
                                         <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="openNewCity ? 'rotate-180' : ''"></i>
                                     </button>
@@ -251,9 +249,7 @@
                                     <span x-show="loadingNewWards" class="animate-spin text-purple-500 mr-0.5">
                                         <i class="fa-solid fa-circle-notch text-xs"></i>
                                     </span>
-                                    <button type="button" x-show="formData.new_ward" @click="clearNewWard()" class="hover:text-rose-500 p-0.5 cursor-pointer" title="Xóa">
-                                        <i class="fa-solid fa-xmark text-xs"></i>
-                                    </button>
+                                    
                                     <button type="button" @click="openNewWard = !openNewWard; if(openNewWard) onFocusNewWard()" class="hover:text-slate-600 p-0.5 cursor-pointer">
                                         <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="openNewWard ? 'rotate-180' : ''"></i>
                                     </button>
@@ -306,9 +302,7 @@
                                        placeholder="Gõ tìm hoặc chọn Tỉnh/TP..."
                                        class="w-full pl-3.5 pr-12 py-2.5 bg-white border border-slate-200 focus:border-sky-500 rounded-xl font-semibold text-slate-800 outline-none shadow-2xs transition-all text-xs">
                                 <div class="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400">
-                                    <button type="button" x-show="formData.old_city" @click="clearOldCity()" class="hover:text-rose-500 p-0.5 cursor-pointer" title="Xóa">
-                                        <i class="fa-solid fa-xmark text-xs"></i>
-                                    </button>
+                                    
                                     <button type="button" @click="openOldCity = !openOldCity; filterOldProvinces()" class="hover:text-slate-600 p-0.5 cursor-pointer">
                                         <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="openOldCity ? 'rotate-180' : ''"></i>
                                     </button>
@@ -343,9 +337,7 @@
                                        class="w-full pl-3.5 pr-12 py-2.5 bg-white border border-slate-200 focus:border-sky-500 rounded-xl font-semibold text-slate-800 outline-none shadow-2xs transition-all text-xs disabled:bg-slate-100 disabled:text-slate-400">
                                 <div class="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400">
                                     <i x-show="loadingDistricts" class="fa-solid fa-spinner fa-spin text-xs text-sky-600"></i>
-                                    <button type="button" x-show="formData.old_district && !loadingDistricts" @click="clearOldDistrict()" class="hover:text-rose-500 p-0.5 cursor-pointer" title="Xóa">
-                                        <i class="fa-solid fa-xmark text-xs"></i>
-                                    </button>
+                                    
                                     <button type="button" @click="if(formData.old_city) { openOldDistrict = !openOldDistrict; filterOldDistricts(); }" class="hover:text-slate-600 p-0.5 cursor-pointer">
                                         <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="openOldDistrict ? 'rotate-180' : ''"></i>
                                     </button>
@@ -380,9 +372,7 @@
                                        class="w-full pl-3.5 pr-12 py-2.5 bg-white border border-slate-200 focus:border-sky-500 rounded-xl font-semibold text-slate-800 outline-none shadow-2xs transition-all text-xs disabled:bg-slate-100 disabled:text-slate-400">
                                 <div class="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400">
                                     <i x-show="loadingWards" class="fa-solid fa-spinner fa-spin text-xs text-sky-600"></i>
-                                    <button type="button" x-show="formData.old_ward && !loadingWards" @click="formData.old_ward = ''" class="hover:text-rose-500 p-0.5 cursor-pointer" title="Xóa">
-                                        <i class="fa-solid fa-xmark text-xs"></i>
-                                    </button>
+                                    
                                     <button type="button" @click="if(formData.old_district) { openOldWard = !openOldWard; filterOldWards(); }" class="hover:text-slate-600 p-0.5 cursor-pointer">
                                         <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="openOldWard ? 'rotate-180' : ''"></i>
                                     </button>

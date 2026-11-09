@@ -279,7 +279,7 @@
                                             <i class="fa-solid fa-boxes-stacked text-teal-600"></i>
                                             <span>Bổ Sung Phụ Kiện</span>
                                         </label>
-                                        <div class="flex items-center gap-2">
+                                        <div class="flex items-center gap-2 flex-wrap">
                                             <template x-if="selectedAccessories.length > 0">
                                                 <button type="button" @click="selectedAccessories = []; syncAccessoriesJson();" class="text-rose-500 hover:underline cursor-pointer text-[10px]">
                                                     Xóa tất cả
@@ -288,6 +288,11 @@
                                             <span class="text-[11px] text-teal-700 font-bold bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200">
                                                 Đã chọn: <span x-text="selectedAccessories.length"></span> phụ kiện bổ sung
                                             </span>
+                                            <template x-if="calcAccessoriesFee() > 0">
+                                                <span class="text-[11px] text-amber-800 font-extrabold bg-amber-100/80 px-2 py-0.5 rounded-lg border border-amber-300">
+                                                    Thu thêm: +<span x-text="new Intl.NumberFormat('vi-VN').format(calcAccessoriesFee())"></span> đ
+                                                </span>
+                                            </template>
                                         </div>
                                     </div>
 
@@ -305,21 +310,12 @@
                                                        placeholder="Tìm phụ kiện theo tên, mã (vd: Vòi, Bơm, Bình áp...)..." 
                                                        class="w-full pl-9 pr-9 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white font-medium text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 min-h-[42px] shadow-2xs">
                                                 
-                                                <!-- Clear or Dropdown toggle button -->
-                                                <template x-if="partSearchQuery">
-                                                    <button type="button" 
-                                                            @click="partSearchQuery = ''; partDropdownOpen = true" 
-                                                            class="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center cursor-pointer">
-                                                        <i class="fa-solid fa-xmark text-xs"></i>
-                                                    </button>
-                                                </template>
-                                                <template x-if="!partSearchQuery">
-                                                    <button type="button" 
-                                                            @click="partDropdownOpen = !partDropdownOpen" 
-                                                            class="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400 hover:text-teal-600 flex items-center justify-center cursor-pointer">
-                                                        <i class="fa-solid fa-chevron-down text-[11px] transition-transform duration-200" :class="{ 'rotate-180': partDropdownOpen }"></i>
-                                                    </button>
-                                                </template>
+                                                <!-- Dropdown toggle button -->
+                                                <button type="button" 
+                                                        @click="partDropdownOpen = !partDropdownOpen" 
+                                                        class="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400 hover:text-teal-600 flex items-center justify-center cursor-pointer">
+                                                    <i class="fa-solid fa-chevron-down text-[11px] transition-transform duration-200" :class="{ 'rotate-180': partDropdownOpen }"></i>
+                                                </button>
                                             </div>
 
                                             <!-- Autocomplete Suggestions List Dropdown -->
@@ -362,8 +358,9 @@
                                                                       x-text="'Tồn kho: ' + (p.stock_qty || 0) + ' ' + (p.unit || 'Cái')"></span>
                                                             </div>
                                                         </div>
-                                                        <div class="shrink-0">
-                                                            <span class="w-7 h-7 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold shadow-2xs hover:scale-105 transition">
+                                                        <div class="shrink-0 flex items-center gap-2">
+                                                            <span class="text-xs font-black text-teal-800" x-text="(Number(p.out_price) > 0 ? new Intl.NumberFormat('vi-VN').format(p.out_price) + ' đ' : '0 đ')"></span>
+                                                            <span class="w-7 h-7 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold shadow-2xs hover:scale-105 transition" title="Thêm phụ kiện này">
                                                                 <i class="fa-solid fa-plus"></i>
                                                             </span>
                                                         </div>
@@ -400,7 +397,7 @@
                                                        placeholder="vd: Vòi gạt Inox 304..." 
                                                        class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-teal-500 min-h-[36px]">
                                             </div>
-                                            <div class="grid grid-cols-2 sm:col-span-3 gap-2">
+                                            <div class="grid grid-cols-2 sm:col-span-2 gap-1.5">
                                                 <div>
                                                     <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Số Lượng</label>
                                                     <input type="number" 
@@ -418,21 +415,41 @@
                                                 </div>
                                             </div>
                                             <div class="sm:col-span-3">
+                                                <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Loại Tính Phí</label>
+                                                <div class="flex items-center gap-1.5">
+                                                    <button type="button" 
+                                                            @click="customPartIsFree = !customPartIsFree" 
+                                                            class="px-2 py-1.5 rounded-lg text-[10px] font-black border transition cursor-pointer min-h-[36px] flex items-center gap-1 shrink-0" 
+                                                            :class="customPartIsFree ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-900 border-amber-300'">
+                                                        <i class="fa-solid" :class="customPartIsFree ? 'fa-gift' : 'fa-hand-holding-dollar'"></i>
+                                                        <span x-text="customPartIsFree ? 'Miễn phí (0đ)' : 'Tính phí'"></span>
+                                                    </button>
+                                                    <div x-show="!customPartIsFree" class="flex-1 min-w-0">
+                                                        <input type="number" 
+                                                               x-model.number="customPartPrice" 
+                                                               min="0" 
+                                                               step="1000" 
+                                                               placeholder="Đơn giá (đ)" 
+                                                               class="w-full px-2 py-1.5 text-xs rounded-lg border border-amber-300 bg-white font-bold text-right text-amber-900 focus:ring-2 focus:ring-amber-500 min-h-[36px]">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="sm:col-span-2">
                                                 <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Ngày Lắp Đặt</label>
                                                 <input type="date" 
                                                        x-model="customPartDate" 
                                                        class="w-full px-2 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-mono focus:ring-2 focus:ring-teal-500 min-h-[36px]">
                                             </div>
-                                            <div class="sm:col-span-2">
-                                                <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Hạn Bảo Dưỡng</label>
+                                            <div class="sm:col-span-1">
+                                                <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Bảo Dưỡng</label>
                                                 <div class="relative">
                                                     <input type="number" 
                                                            x-model.number="customPartMaintenanceMonths" 
                                                            min="0" 
                                                            max="120" 
                                                            placeholder="0" 
-                                                           class="w-full pl-2 pr-6 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-bold text-center focus:ring-2 focus:ring-teal-500 min-h-[36px]">
-                                                    <span class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-semibold text-slate-400 pointer-events-none">T</span>
+                                                           class="w-full pl-1.5 pr-4 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-bold text-center focus:ring-2 focus:ring-teal-500 min-h-[36px]">
+                                                    <span class="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] font-semibold text-slate-400 pointer-events-none">T</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -475,18 +492,18 @@
                                                                     <span class="inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200/60" x-text="'ĐVT: ' + acc.unit"></span>
                                                                 </template>
                                                                 
-                                                                <!-- Nút gạt: Theo máy (0đ) vs Thu thêm tiền -->
+                                                                <!-- Nút gạt: Miễn phí (0đ) vs Tính phí thu thêm -->
                                                                 <button type="button" 
                                                                         @click="toggleAccessoryFree(idx)" 
-                                                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black cursor-pointer transition shadow-2xs active:scale-95 border"
-                                                                        :class="acc.is_free ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'">
+                                                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer transition shadow-2xs active:scale-95 border"
+                                                                        :class="acc.is_free ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100' : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'">
                                                                     <i class="fa-solid" :class="acc.is_free ? 'fa-gift text-emerald-600' : 'fa-hand-holding-dollar text-amber-600'"></i>
-                                                                    <span x-text="acc.is_free ? 'Theo máy (0đ)' : 'Thu thêm tiền'"></span>
+                                                                    <span x-text="acc.is_free ? 'Miễn phí (0đ)' : 'Tính phí thu thêm'"></span>
                                                                 </button>
 
-                                                                <!-- Ô nhập đơn giá thu thêm nếu chọn Thu thêm tiền -->
+                                                                <!-- Ô nhập đơn giá thu thêm nếu chọn Tính phí -->
                                                                 <template x-if="!acc.is_free">
-                                                                    <div class="inline-flex items-center gap-1 bg-amber-50/60 px-2 py-0.5 rounded border border-amber-200 text-[10px]">
+                                                                    <div class="inline-flex items-center gap-2 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-300 text-xs flex-wrap">
                                                                         <span class="text-amber-800 font-bold">Đơn giá:</span>
                                                                         <input type="number" 
                                                                                x-model.number="acc.unit_price" 
@@ -494,8 +511,12 @@
                                                                                min="0" 
                                                                                step="1000" 
                                                                                placeholder="0" 
-                                                                               class="w-20 px-1 py-0.5 text-right font-black rounded border border-amber-300 bg-white text-amber-900 focus:outline-none">
+                                                                               class="w-24 px-2 py-0.5 text-right font-black rounded border border-amber-300 bg-white text-amber-900 focus:outline-none focus:ring-1 focus:ring-amber-500">
                                                                         <span class="text-amber-800 font-bold">đ</span>
+                                                                        <span class="text-slate-300">|</span>
+                                                                        <span class="text-amber-900 font-extrabold text-[11px]">
+                                                                            Thành tiền: <span x-text="new Intl.NumberFormat('vi-VN').format((parseInt(acc.quantity) || 1) * (parseFloat(acc.unit_price) || 0))"></span> đ
+                                                                        </span>
                                                                     </div>
                                                                 </template>
                                                             </div>
@@ -576,27 +597,47 @@
                                 <label class="text-xs font-bold text-slate-700 block mb-1">Ghi Chú Nghiệm Thu Của Kỹ Thuật Viên</label>
                                 <textarea x-model="form.activation_notes" 
                                           rows="2" 
-                                          placeholder="vd: Đã hướng dẫn khách xả rửa 3 bình đầu, máy chạy ổn định, không rò rỉ nước..." 
-                                          class="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 min-h-[60px]"></textarea>
+                                          placeholder="Nhập ghi chú nghiệm thu (nếu có)..." 
+                                          class="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 min-h-[58px]"></textarea>
                             </div>
                         </div>
 
                         <!-- Footer Actions -->
-                        <div class="pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3">
-                            <button type="button" @click="closeModal()" class="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-100 transition-colors cursor-pointer text-center">
-                                Hủy Bỏ
-                            </button>
-                            <button type="submit" 
-                                    :disabled="submitting || !form.qr_code || !form.installation_id" 
-                                    class="w-full sm:w-auto px-6 py-3 sm:py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer">
-                                <template x-if="submitting">
-                                    <i class="fa-solid fa-spinner fa-spin"></i>
+                        <div class="pt-3.5 sm:pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
+                            <div class="flex items-center gap-2">
+                                <template x-if="calcAccessoriesFee() > 0">
+                                    <div class="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold flex items-center justify-between sm:justify-start gap-2 shadow-2xs">
+                                        <i class="fa-solid fa-circle-exclamation text-amber-600 text-sm shrink-0"></i>
+                                        <span>Phụ kiện thu thêm: <strong class="text-amber-800 font-black text-sm" x-text="new Intl.NumberFormat('vi-VN').format(calcAccessoriesFee()) + ' đ'"></strong></span>
+                                    </div>
                                 </template>
-                                <template x-if="!submitting">
-                                    <i class="fa-solid fa-check-circle"></i>
+                                <template x-if="calcAccessoriesFee() === 0 && selectedAccessories.length > 0">
+                                    <div class="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-1.5">
+                                        <i class="fa-solid fa-check text-emerald-600 shrink-0"></i>
+                                        <span>Tất cả phụ kiện đều miễn phí (0đ)</span>
+                                    </div>
                                 </template>
-                                <span>Kích Hoạt Tem QR & Hoàn Tất Đơn Lắp Đặt</span>
-                            </button>
+                            </div>
+
+                            <div class="flex items-stretch sm:items-center gap-2 w-full sm:w-auto justify-end">
+                                <button type="button" 
+                                        @click="closeModal()" 
+                                        class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-100 transition-colors cursor-pointer text-center shrink-0 min-h-[44px] flex items-center justify-center">
+                                    Hủy Bỏ
+                                </button>
+                                <button type="submit" 
+                                        :disabled="submitting || !form.qr_code || !form.installation_id" 
+                                        class="flex-1 sm:flex-none px-4 sm:px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer min-h-[44px] whitespace-nowrap">
+                                    <template x-if="submitting">
+                                        <i class="fa-solid fa-spinner fa-spin"></i>
+                                    </template>
+                                    <template x-if="!submitting">
+                                        <i class="fa-solid fa-circle-check text-sm"></i>
+                                    </template>
+                                    <span class="sm:hidden">Kích Hoạt & Hoàn Tất</span>
+                                    <span class="hidden sm:inline">Kích Hoạt Tem QR & Hoàn Tất Đơn Lắp Đặt</span>
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </template>

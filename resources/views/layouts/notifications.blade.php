@@ -2,15 +2,17 @@
 @auth
 <!-- KHU VỰC THÔNG BÁO NỔI (FLOATING TOASTS STACK) -->
 <div id="floating-notifications-container" 
-     class="fixed bottom-5 right-5 z-[99999] flex flex-col-reverse gap-3 max-w-sm sm:max-w-md w-full pointer-events-none select-none px-3 sm:px-0"
+     class="fixed bottom-20 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 z-[99999] flex flex-col-reverse gap-3 max-w-none sm:max-w-md sm:w-full pointer-events-none select-none"
      x-data>
     <template x-for="item in $store.notifications.toasts" :key="item.id">
         <div class="pointer-events-auto bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border-2 transition-all duration-300 overflow-hidden transform"
              :class="{
+                 'border-purple-500 ring-4 ring-purple-500/20 shadow-purple-500/10': ['supplier_order_approval', 'debt_handover_pending_sale'].includes(item.type),
+                 'border-emerald-500 ring-4 ring-emerald-500/20 shadow-emerald-500/10': ['completed', 'supplier_order_approved', 'debt_handover_confirmed'].includes(item.type),
+                 'border-rose-500 ring-4 ring-rose-500/20 shadow-rose-500/10': item.type === 'debt_handover_rejected',
                  'border-sky-500 ring-4 ring-sky-500/20 shadow-sky-500/10': item.type === 'installation_assigned',
-                 'border-amber-500 ring-4 ring-amber-500/20 shadow-amber-500/10': item.type === 'repair_assigned',
-                 'border-emerald-500 ring-4 ring-emerald-500/20 shadow-emerald-500/10': item.type === 'completed',
-                 'border-indigo-500 ring-4 ring-indigo-500/20 shadow-indigo-500/10': !['installation_assigned', 'repair_assigned', 'completed'].includes(item.type)
+                 'border-amber-500 ring-4 ring-amber-500/20 shadow-amber-500/10': ['repair_assigned', 'warehouse_intake', 'debt_handover_pending_accountant'].includes(item.type),
+                 'border-indigo-500 ring-4 ring-indigo-500/20 shadow-indigo-500/10': !['installation_assigned', 'repair_assigned', 'warehouse_intake', 'completed', 'supplier_order_approval', 'supplier_order_approved', 'debt_handover_pending_accountant', 'debt_handover_pending_sale', 'debt_handover_confirmed', 'debt_handover_rejected'].includes(item.type)
              }"
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="opacity-0 translate-y-8 scale-90"
@@ -22,16 +24,18 @@
             <!-- Toast Header -->
             <div class="px-4 py-3 flex items-center justify-between border-b"
                  :class="{
+                     'bg-gradient-to-r from-purple-600 to-indigo-700 text-white border-purple-600': ['supplier_order_approval', 'debt_handover_pending_sale'].includes(item.type),
+                     'bg-gradient-to-r from-emerald-600 to-teal-700 text-white border-emerald-600': ['completed', 'supplier_order_approved', 'debt_handover_confirmed'].includes(item.type),
+                     'bg-gradient-to-r from-rose-600 to-red-700 text-white border-rose-600': item.type === 'debt_handover_rejected',
                      'bg-gradient-to-r from-sky-600 to-blue-700 text-white border-sky-600': item.type === 'installation_assigned',
-                     'bg-gradient-to-r from-amber-600 to-orange-700 text-white border-amber-600': item.type === 'repair_assigned',
-                     'bg-gradient-to-r from-emerald-600 to-teal-700 text-white border-emerald-600': item.type === 'completed',
-                     'bg-gradient-to-r from-indigo-600 to-purple-700 text-white border-indigo-600': !['installation_assigned', 'repair_assigned', 'completed'].includes(item.type)
+                     'bg-gradient-to-r from-amber-600 to-orange-700 text-white border-amber-600': ['repair_assigned', 'warehouse_intake', 'debt_handover_pending_accountant'].includes(item.type),
+                     'bg-gradient-to-r from-indigo-600 to-purple-700 text-white border-indigo-600': !['installation_assigned', 'repair_assigned', 'warehouse_intake', 'completed', 'supplier_order_approval', 'supplier_order_approved', 'debt_handover_pending_accountant', 'debt_handover_pending_sale', 'debt_handover_confirmed', 'debt_handover_rejected'].includes(item.type)
                  }">
                 <div class="flex items-center gap-2">
                     <span class="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center text-xs shadow-xs animate-bounce">
                         <i :class="$store.notifications.getIconClass(item.type)"></i>
                     </span>
-                    <span class="font-extrabold text-xs tracking-tight line-clamp-1" x-text="item.title"></span>
+                    <span class="font-extrabold text-xs tracking-tight truncate flex-1" x-text="item.title"></span>
                 </div>
                 <button type="button" @click="$store.notifications.removeToast(item.id)" class="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/20 transition cursor-pointer" title="Đóng">
                     <i class="fa-solid fa-xmark text-xs"></i>
@@ -42,9 +46,58 @@
             <div class="p-4 space-y-2.5 text-xs text-slate-700 bg-white">
                 <p class="font-bold text-slate-800 leading-snug" x-text="item.message"></p>
 
-                <!-- Thông tin thẻ nhanh KTV nếu có data -->
+                <!-- Thông tin thẻ nhanh KTV hoặc Đơn NCC nếu có data -->
                 <template x-if="item.data">
                     <div class="bg-slate-50/90 rounded-xl p-2.5 border border-slate-200/80 space-y-1.5 text-[11px]">
+                        <!-- Biên bản bàn giao công nợ -->
+                        <template x-if="item.data && item.data.handover_code">
+                            <div class="space-y-1">
+                                <div class="flex items-center justify-between gap-1 text-slate-800">
+                                    <span class="flex items-center gap-1.5 font-bold">
+                                        <i class="fa-solid fa-file-invoice-dollar text-purple-600"></i>
+                                        <span x-text="item.data.handover_code"></span>
+                                    </span>
+                                    <template x-if="item.data.amount !== undefined">
+                                        <span class="font-mono font-black text-rose-700 text-xs" x-text="new Intl.NumberFormat('vi-VN').format(item.data.amount) + ' đ'"></span>
+                                    </template>
+                                </div>
+                                <template x-if="item.data.from_user_name">
+                                    <div class="flex items-center justify-between text-slate-600">
+                                        <span>Tài xế giao:</span>
+                                        <span class="font-bold text-slate-800" x-text="item.data.from_user_name"></span>
+                                    </div>
+                                </template>
+                                <template x-if="item.data.documents_count !== undefined">
+                                    <div class="flex items-center justify-between text-slate-600">
+                                        <span>Chứng từ:</span>
+                                        <span class="font-bold text-sky-700" x-text="item.data.documents_count + ' ảnh đính kèm'"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- Đơn đặt hàng NCC -->
+                        <template x-if="item.data.supplier_name">
+                            <div class="space-y-1">
+                                <div class="flex items-center justify-between gap-1 text-slate-800">
+                                    <span class="flex items-center gap-1.5 font-bold">
+                                        <i class="fa-solid fa-truck-field text-purple-600"></i>
+                                        <span x-text="item.data.supplier_name"></span>
+                                    </span>
+                                    <template x-if="item.data.order_code">
+                                        <span class="font-mono font-black text-slate-900 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200" x-text="item.data.order_code"></span>
+                                    </template>
+                                </div>
+                                <template x-if="item.data.payable_amount !== undefined">
+                                    <div class="flex items-center justify-between text-slate-600">
+                                        <span>Cần thanh toán:</span>
+                                        <span class="text-emerald-700 font-black text-xs" x-text="new Intl.NumberFormat('vi-VN').format(item.data.payable_amount) + ' đ'"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- Máy lọc nước -->
                         <template x-if="item.data.customer_name">
                             <div class="flex items-center justify-between gap-1 text-slate-800">
                                 <span class="flex items-center gap-1.5 font-bold">
@@ -78,24 +131,26 @@
 
                 <!-- Actions -->
                 <div class="pt-1 flex items-center justify-between gap-2">
-                    <span class="text-[10px] text-slate-400 font-medium" x-text="item.time_ago || 'Vừa xong'"></span>
-                    <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-slate-400 font-medium whitespace-nowrap shrink-0" x-text="item.time_ago || 'Vừa xong'"></span>
+                    <div class="flex items-center gap-1.5 shrink-0">
                         <button type="button" 
                                 @click="$store.notifications.removeToast(item.id)" 
-                                class="px-2.5 py-1 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg font-bold text-xs transition cursor-pointer">
+                                class="px-2.5 py-1 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg font-bold text-xs transition cursor-pointer whitespace-nowrap shrink-0">
                             Để sau
                         </button>
                         <template x-if="item.action_url">
                             <a :href="item.action_url" 
                                @click="$store.notifications.markAndNavigate(item)"
-                               class="px-3.5 py-1.5 rounded-xl font-black text-xs text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                               class="px-3.5 py-1.5 rounded-xl font-black text-xs text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
                                :class="{
+                                   'bg-purple-600 hover:bg-purple-700 shadow-purple-600/30': item.type === 'supplier_order_approval',
                                    'bg-sky-600 hover:bg-sky-700 shadow-sky-600/30': item.type === 'installation_assigned',
+                                   'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-amber-500/30 text-slate-950 font-black': item.type === 'warehouse_intake',
                                    'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30': item.type === 'repair_assigned',
-                                   'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30': item.type === 'completed',
-                                   'bg-slate-800 hover:bg-slate-900': !['installation_assigned', 'repair_assigned', 'completed'].includes(item.type)
+                                   'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30': ['completed', 'supplier_order_approved', 'order_return_approved'].includes(item.type),
+                                   'bg-slate-800 hover:bg-slate-900': !['installation_assigned', 'repair_assigned', 'warehouse_intake', 'completed', 'supplier_order_approval', 'supplier_order_approved', 'order_return_approved'].includes(item.type)
                                }">
-                                <span>Xem & Nhận đơn</span>
+                                <span x-text="item.type === 'supplier_order_approval' ? 'Xem & Duyệt Đơn' : (item.type === 'supplier_order_approved' ? 'Xem Đơn' : (item.type === 'warehouse_intake' ? 'Duyệt Nhập Kho' : 'Xem & Nhận đơn'))"></span>
                                 <i class="fa-solid fa-arrow-right text-[10px]"></i>
                             </a>
                         </template>
@@ -107,10 +162,11 @@
             <div class="w-full bg-slate-100 h-1 overflow-hidden">
                 <div class="h-full transition-all duration-100 ease-linear"
                      :class="{
+                         'bg-purple-500': item.type === 'supplier_order_approval',
                          'bg-sky-500': item.type === 'installation_assigned',
-                         'bg-amber-500': item.type === 'repair_assigned',
-                         'bg-emerald-500': item.type === 'completed',
-                         'bg-indigo-500': !['installation_assigned', 'repair_assigned', 'completed'].includes(item.type)
+                         'bg-amber-500': ['repair_assigned', 'warehouse_intake'].includes(item.type),
+                         'bg-emerald-500': ['completed', 'supplier_order_approved', 'order_return_approved'].includes(item.type),
+                         'bg-indigo-500': !['installation_assigned', 'repair_assigned', 'warehouse_intake', 'completed', 'supplier_order_approval', 'supplier_order_approved', 'order_return_approved'].includes(item.type)
                      }"
                      :style="'width: ' + (item.progressPercent || 100) + '%'"></div>
             </div>
@@ -133,6 +189,22 @@ document.addEventListener('alpine:init', () => {
         init() {
             this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
             
+            // Kiểm tra thông báo nổi lưu từ trang trước (sessionStorage)
+            try {
+                const pending = sessionStorage.getItem('pending_toast');
+                if (pending) {
+                    sessionStorage.removeItem('pending_toast');
+                    const item = JSON.parse(pending);
+                    setTimeout(() => {
+                        this.addToast({
+                            id: 'local-' + Date.now(),
+                            ...item,
+                            time_ago: 'Vừa xong'
+                        });
+                    }, 400);
+                }
+            } catch (e) {}
+
             // Lần thăm dò đầu tiên sau 1.2s khi load trang
             setTimeout(() => {
                 this.poll();
@@ -294,19 +366,35 @@ document.addEventListener('alpine:init', () => {
 
         getIconClass(type) {
             switch (type) {
+                case 'supplier_order_approval': return 'fa-solid fa-cart-shopping';
+                case 'supplier_order_approved': return 'fa-solid fa-check-double';
                 case 'installation_assigned': return 'fa-solid fa-screwdriver-wrench';
                 case 'repair_assigned': return 'fa-solid fa-wrench';
                 case 'completed': return 'fa-solid fa-circle-check';
                 case 'status_update': return 'fa-solid fa-arrows-rotate';
+                case 'warehouse_intake': return 'fa-solid fa-boxes-packing';
+                case 'order_return_approved': return 'fa-solid fa-warehouse';
+                case 'debt_handover_pending_accountant': return 'fa-solid fa-file-invoice-dollar';
+                case 'debt_handover_pending_sale': return 'fa-solid fa-hand-holding-dollar';
+                case 'debt_handover_confirmed': return 'fa-solid fa-circle-check';
+                case 'debt_handover_rejected': return 'fa-solid fa-circle-xmark';
                 default: return 'fa-solid fa-bell';
             }
         },
 
         getTypeBadge(type) {
             switch (type) {
+                case 'supplier_order_approval': return { text: 'Duyệt đặt NCC', class: 'bg-purple-100 text-purple-800' };
+                case 'supplier_order_approved': return { text: 'Đã duyệt NCC', class: 'bg-emerald-100 text-emerald-800' };
                 case 'installation_assigned': return { text: 'Lắp đặt', class: 'bg-sky-100 text-sky-800' };
                 case 'repair_assigned': return { text: 'Sửa chữa', class: 'bg-amber-100 text-amber-800' };
                 case 'completed': return { text: 'Hoàn thành', class: 'bg-emerald-100 text-emerald-800' };
+                case 'warehouse_intake': return { text: 'Nhập hàng hoàn', class: 'bg-amber-100 text-amber-800' };
+                case 'order_return_approved': return { text: 'Đã hoàn kho', class: 'bg-emerald-100 text-emerald-800' };
+                case 'debt_handover_pending_accountant': return { text: 'Duyệt nợ', class: 'bg-amber-100 text-amber-800' };
+                case 'debt_handover_pending_sale': return { text: 'Nhận nợ', class: 'bg-purple-100 text-purple-800' };
+                case 'debt_handover_confirmed': return { text: 'Đã nhận nợ', class: 'bg-emerald-100 text-emerald-800' };
+                case 'debt_handover_rejected': return { text: 'Từ chối nợ', class: 'bg-rose-100 text-rose-800' };
                 default: return { text: 'Hệ thống', class: 'bg-indigo-100 text-indigo-800' };
             }
         },

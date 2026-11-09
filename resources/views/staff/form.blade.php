@@ -132,31 +132,26 @@
                     </select>
                 </div>
 
-                <!-- Phân Loại Vai Trò Công Nợ -->
+                <!-- Phân Loại Nhân Viên -->
                 <div>
                     <label class="block font-bold text-slate-700 mb-1.5">
-                        Phân Loại Vai Trò & Công Nợ <span class="text-rose-500">*</span>
+                        Phân Loại Nhân Viên <span class="text-rose-500">*</span>
                     </label>
                     <select x-model="formData.staff_type"
                             class="w-full px-3.5 py-2.5 bg-purple-50/70 focus:bg-white border border-purple-200 rounded-xl font-bold text-purple-900 outline-none focus:border-purple-500 transition-all cursor-pointer">
-                        <option value="company_sales">🏢 Sale Công Ty (Kinh doanh nội bộ)</option>
-                        <option value="dealer_sales">🏪 Sale Đại Lý Phụ Thuộc (Từ Đại lý cài vào)</option>
-                        <option value="driver">🚚 Người Vận Chuyển / Lái Xe (Chịu nợ hàng xe)</option>
-                        <option value="warehouse">📦 Nhân Viên Kho (Soạn hàng & QC)</option>
-                        <option value="technician">🔧 Kỹ Thuật Viên Lắp Đặt / Sửa Chữa</option>
-                        <option value="accountant">💰 Kế Toán Công Nợ & Quỹ</option>
-                        <option value="manager">👑 Ban Lãnh Đạo / Quản Lý</option>
+                        <option value="company">🏢 Nhân viên công ty</option>
+                        <option value="brand">🏪 Nhân viên hãng</option>
                     </select>
                 </div>
 
-                <!-- Đại Lý Phụ Thuộc (Hiển thị nếu là Sale đại lý phụ thuộc) -->
-                <div x-show="formData.staff_type === 'dealer_sales'" x-cloak>
+                <!-- Hãng / Đại Lý Trực Thuộc (Hiển thị nếu là Nhân viên hãng) -->
+                <div x-show="formData.staff_type === 'brand' || formData.staff_type === 'dealer_sales'" x-cloak>
                     <label class="block font-bold text-purple-900 mb-1.5">
-                        Đại Lý Trực Thuộc (* Khi lên đơn tự động ghi nợ vào ĐL này)
+                        Hãng / Đại Lý Trực Thuộc
                     </label>
                     <select x-model="formData.dealer_id"
                             class="w-full px-3.5 py-2.5 bg-purple-100/60 focus:bg-white border border-purple-300 rounded-xl font-bold text-purple-950 outline-none focus:border-purple-600 transition-all cursor-pointer">
-                        <option value="">-- Chọn đại lý trực thuộc --</option>
+                        <option value="">-- Chọn hãng / đại lý trực thuộc --</option>
                         <template x-for="dl in dealersList" :key="dl.id">
                             <option :value="dl.id" x-text="dl.name + ' (' + (dl.code || 'DL-' + dl.id) + ')'"></option>
                         </template>
@@ -432,6 +427,7 @@ const PERM_DICT = {
     
     'driver_debt.view': { name: 'Xem Tiền Thu COD', desc: 'Theo dõi tiền hàng lái xe thu hộ từ các đại lý', icon: 'fa-regular fa-eye' },
     'driver_debt.settle': { name: 'Quyết Toán Tiền Mặt', desc: 'Xác nhận thu tiền mặt lái xe bàn giao về quỹ', icon: 'fa-solid fa-hand-holding-dollar' },
+    'staff_debt.view_all': { name: 'Xem Tất Cả Công Nợ NV', desc: 'Xem danh sách và sổ nợ của mọi nhân viên', icon: 'fa-solid fa-users-viewfinder' },
     
     'fleet.view': { name: 'Xem Đội Xe & Chi Phí', desc: 'Tra cứu danh sách xe tải, nhiên liệu và bảo dưỡng', icon: 'fa-regular fa-eye' },
     
@@ -488,7 +484,7 @@ function staffFormApp() {
             email: '{{ addslashes($user->email ?? '') }}',
             password: '',
             department: '{{ addslashes($user->department ?? 'Sales') }}',
-            staff_type: '{{ addslashes($user->staff_type ?? 'company_sales') }}',
+            staff_type: '{{ in_array($user->staff_type ?? '', ['brand', 'brand_staff', 'dealer_sales', 'hang']) ? 'brand' : 'company' }}',
             dealer_id: {{ $user->dealer_id ?: 'null' }},
             credit_limit: {{ (float)($user->credit_limit ?? 50000000) }},
             role: '{{ $user->roles->first()?->slug ?? 'Sales_Rep' }}',

@@ -12,6 +12,8 @@ use App\Models\WarehouseStock;
 use App\Models\ProductBatch;
 use App\Models\InventoryTransaction;
 use App\Models\InventoryTransactionItem;
+use App\Models\User;
+use App\Models\SystemNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -127,7 +129,7 @@ class SupplierOrderController extends Controller
         }
 
         // Return view - can be embedded in /orders?tab=suppliers or standalone /supplier-orders
-        return view('orders.supplier_orders_index', compact('orders', 'counts', 'stats', 'suppliers', 'warehouses', 'products'));
+        return view('supplier_orders.index', compact('orders', 'counts', 'stats', 'suppliers', 'warehouses', 'products'));
     }
 
     /**
@@ -156,7 +158,7 @@ class SupplierOrderController extends Controller
 
         $selectedSupplierId = $request->input('supplier_id');
 
-        return view('orders.supplier_order_create', compact('suppliers', 'warehouses', 'products', 'selectedSupplierId'));
+        return view('supplier_orders.create', compact('suppliers', 'warehouses', 'products', 'selectedSupplierId'));
     }
 
     /**
@@ -170,7 +172,7 @@ class SupplierOrderController extends Controller
             ->orderByRaw("CASE WHEN type = 'Kho tổng' THEN 1 WHEN type = 'Kho chi nhánh' THEN 2 ELSE 3 END, name ASC")
             ->get(['id', 'code', 'name', 'address']);
 
-        return view('orders.supplier_order_receipt', compact('order', 'warehouses'));
+        return view('supplier_orders.receipt', compact('order', 'warehouses'));
     }
 
     /**
@@ -281,6 +283,10 @@ class SupplierOrderController extends Controller
             // Kho nhập
             $warehouse = $request->warehouse_id ? Warehouse::find($request->warehouse_id) : null;
 
+            // Kiểm tra quyền duyệt đơn nếu có yêu cầu tự duyệt
+            $canApprove = $currentUser && $currentUser->hasPermission('supplier_orders.approve');
+            $isAutoApprove = $request->boolean('auto_approve') && $canApprove;
+
             // 6. Tạo SupplierOrder
             $order = SupplierOrder::create([
                 'code'                   => $code,
@@ -290,11 +296,11 @@ class SupplierOrderController extends Controller
                 'warehouse_name'         => $warehouse?->name,
                 'creator_id'             => $currentUser?->id,
                 'creator_name'           => $currentUser?->name,
-                'approver_id'            => $request->boolean('auto_approve') ? $currentUser?->id : null,
-                'approver_name'          => $request->boolean('auto_approve') ? $currentUser?->name : null,
+                'approver_id'            => $isAutoApprove ? $currentUser?->id : null,
+                'approver_name'          => $isAutoApprove ? $currentUser?->name : null,
                 'order_date'             => $request->order_date,
                 'expected_delivery_date' => $request->expected_delivery_date,
-                'status'                 => $request->boolean('auto_approve') ? 'Đã duyệt' : 'Chờ duyệt',
+                'status'                 => $isAutoApprove ? 'Đã duyệt' : 'Chờ duyệt',
                 'payment_status'         => $paymentStatus,
                 'total_items_amount'     => $totalItemsAmount,
                 'discount_amount'        => $discountAmount,
@@ -346,6 +352,40 @@ class SupplierOrderController extends Controller
 
             DB::commit();
 
+            // Gửi thông báo cho những người có quyền duyệt đơn đặt hàng NCC
+            if ($order->status === 'Chờ duyệt') {
+                try {
+                    $approvers = User::all()->filter(function ($u) {
+                        return $u->status !== 'Đã nghỉ việc' && $u->hasPermission('supplier_orders.approve');
+                    });
+
+                    $title = "Đơn đặt NCC mới chờ duyệt: {$order->code}";
+                    $formattedTotal = number_format($order->payable_amount, 0, ',', '.') . ' đ';
+                    $creatorName = $currentUser?->name ?: 'Nhân viên';
+                    $message = "{$creatorName} vừa tạo đơn đặt NCC {$order->code} (NCC: {$order->supplier_name}, Cần TT: {$formattedTotal}) đang chờ duyệt.";
+                    $actionUrl = url('/supplier-orders');
+
+                    foreach ($approvers as $approver) {
+                        SystemNotification::send(
+                            userId: $approver->id,
+                            title: $title,
+                            message: $message,
+                            actionUrl: $actionUrl,
+                            type: 'supplier_order_approval',
+                            reference: $order,
+                            extraData: [
+                                'order_id'       => $order->id,
+                                'order_code'     => $order->code,
+                                'supplier_name'  => $order->supplier_name,
+                                'payable_amount' => $order->payable_amount,
+                            ]
+                        );
+                    }
+                } catch (\Throwable $notiEx) {
+                    Log::warning("SupplierOrder Notification Error: " . $notiEx->getMessage());
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => "Tạo đơn đặt hàng NCC {$code} thành công!",
@@ -386,8 +426,16 @@ class SupplierOrderController extends Controller
     /**
      * Duyệt đơn đặt hàng
      */
-    public function approve($id)
+    public function approve(Request $request, $id)
     {
+        $user = Auth::user();
+        if (!$user || !$user->hasPermission('supplier_orders.approve')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền phê duyệt đơn đặt hàng nhà cung cấp.',
+            ], 403);
+        }
+
         $order = SupplierOrder::findOrFail($id);
         if ($order->status !== 'Chờ duyệt') {
             return response()->json([
@@ -396,10 +444,62 @@ class SupplierOrderController extends Controller
             ], 422);
         }
 
+        $request->validate([
+            'payment_method' => 'required|string',
+            'paid_amount'    => 'required|numeric|min:0',
+            'payment_note'   => 'nullable|string',
+        ], [
+            'payment_method.required' => 'Vui lòng chọn hình thức thanh toán.',
+            'paid_amount.required'    => 'Vui lòng nhập số tiền thanh toán.',
+            'paid_amount.numeric'     => 'Số tiền thanh toán phải là định dạng số.',
+            'paid_amount.min'         => 'Số tiền thanh toán không được nhỏ hơn 0.',
+        ]);
+
         $order->status = 'Đã duyệt';
-        $order->approver_id = Auth::id();
-        $order->approver_name = Auth::user()?->name;
+        $order->approver_id = $user->id;
+        $order->approver_name = $user->name;
+        $order->payment_method = $request->payment_method;
+
+        $payable = (float)$order->payable_amount;
+        $paid = (float)$request->paid_amount;
+        $order->paid_amount = $paid;
+
+        if ($paid >= $payable && $payable > 0) {
+            $order->payment_status = 'Đã thanh toán';
+        } elseif ($paid > 0) {
+            $order->payment_status = 'Thanh toán 1 phần';
+        } else {
+            $order->payment_status = 'Chưa thanh toán';
+        }
+
+        if ($request->filled('payment_note')) {
+            $order->payment_note = $request->payment_note;
+        }
+
         $order->save();
+
+        // Gửi thông báo cho người lập đơn (nếu khác người duyệt)
+        if ($order->creator_id && $order->creator_id !== $user->id) {
+            try {
+                $paidText = number_format($paid, 0, ',', '.') . ' đ';
+                SystemNotification::send(
+                    userId: $order->creator_id,
+                    title: "Đơn đặt NCC {$order->code} đã được duyệt",
+                    message: "Đơn đặt hàng {$order->code} (NCC: {$order->supplier_name}) đã được {$user->name} phê duyệt. Trạng thái TT: {$order->payment_status} (Đã thanh toán: {$paidText} qua {$order->payment_method}).",
+                    actionUrl: url('/supplier-orders'),
+                    type: 'supplier_order_approved',
+                    reference: $order,
+                    extraData: [
+                        'order_id'       => $order->id,
+                        'order_code'     => $order->code,
+                        'payment_status' => $order->payment_status,
+                        'paid_amount'    => $paid,
+                    ]
+                );
+            } catch (\Throwable $notiEx) {
+                Log::warning("SupplierOrder Approval Notify Error: " . $notiEx->getMessage());
+            }
+        }
 
         return response()->json([
             'success' => true,

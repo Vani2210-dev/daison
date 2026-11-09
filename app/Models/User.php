@@ -67,6 +67,24 @@ class User extends Authenticatable
         return $this->belongsTo(Dealer::class, 'dealer_id');
     }
 
+    /**
+     * Kiểm tra nhân viên có phải nhân viên hãng hay không
+     */
+    public function isBrandStaff(): bool
+    {
+        return in_array($this->staff_type, ['brand', 'brand_staff', 'dealer_sales', 'hang']);
+    }
+
+    /**
+     * Đường dẫn trang đích khi đăng nhập thành công
+     * - Nhân viên hãng: chuyển vào trang POS bán hàng (/orders/pos)
+     * - Nhân viên công ty: chuyển vào trang chấm công (/attendance)
+     */
+    public function getLoginRedirectUrl(): string
+    {
+        return $this->isBrandStaff() ? '/orders/pos' : '/attendance';
+    }
+
     public function debtHandoversSent()
     {
         return $this->hasMany(DebtHandover::class, 'from_user_id');

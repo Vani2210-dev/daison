@@ -2,41 +2,72 @@
 
 @section('title', ($installation ? 'Cập Nhật Đơn Lắp Đặt: ' . $installation->code : 'Tạo Mới Đơn Đi Lắp Đặt Máy Lọc') . ' | Đại Sơn ERP')
 
+@push('styles')
+<style>
+@media (max-width: 767.98px) {
+    main {
+        padding-left: 0.375rem !important;
+        padding-right: 0.375rem !important;
+        padding-top: 0.25rem !important;
+    }
+    input[type="text"],
+    input[type="number"],
+    input[type="tel"],
+    select,
+    textarea {
+        font-size: 15px !important;
+    }
+}
+</style>
+@endpush
+
 @section('content')
-<div class="w-full space-y-4 pb-12" x-data="installationFormModule()">
+@php
+    $returnUrl = request('return_url');
+    if (!$returnUrl) {
+        $referer = request()->headers->get('referer');
+        if ($referer && !str_contains($referer, '/water-filter/installations/') && !str_contains($referer, '/edit')) {
+            $returnUrl = $referer;
+        }
+    }
+    if (!$returnUrl) {
+        $returnUrl = url('/water-filter?tab=installations');
+    }
+@endphp
+<div class="w-full space-y-3 sm:space-y-4 pb-4 sm:pb-10" x-data="installationFormModule()">
 
     <!-- TOP BREADCRUMB & HEADER -->
-    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div class="flex items-center gap-3.5">
-            <a href="{{ url('/water-filter?tab=installations') }}" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-sky-50 text-slate-600 hover:text-sky-700 flex items-center justify-center transition shadow-2xs cursor-pointer" title="Quay lại danh sách">
+    <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+        <div class="flex items-center gap-2.5 sm:gap-3.5">
+            <a href="{{ $returnUrl }}" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 hover:bg-sky-50 text-slate-600 hover:text-sky-700 flex items-center justify-center transition shadow-2xs cursor-pointer shrink-0" title="Quay lại">
                 <i class="fa-solid fa-arrow-left text-sm"></i>
             </a>
-            <div>
-                <div class="flex items-center gap-2">
-                    <h1 class="text-xl font-extrabold text-slate-800 tracking-tight" x-text="isEdit ? 'CẬP NHẬT ĐƠN ĐI LẮP ĐẶT' : 'LÊN ĐƠN ĐI LẮP ĐẶT MÁY LỌC NƯỚC'"></h1>
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    <h1 class="text-base sm:text-xl font-black text-slate-800 tracking-tight leading-snug" x-text="isEdit ? 'CẬP NHẬT ĐƠN ĐI LẮP ĐẶT' : 'LÊN ĐƠN ĐI LẮP ĐẶT MÁY LỌC NƯỚC'"></h1>
                     @if($installation)
-                        <span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-sky-100 text-sky-800 border border-sky-200">
+                        <span class="px-2 py-0.5 rounded-lg text-[11px] sm:text-xs font-black bg-sky-100 text-sky-800 border border-sky-200 font-mono whitespace-nowrap shrink-0">
                             {{ $installation->code }}
                         </span>
                     @else
-                        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        <span class="px-2 py-0.5 rounded-lg text-[11px] sm:text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 whitespace-nowrap shrink-0">
                             Đơn mới
                         </span>
                     @endif
                 </div>
-                <p class="text-xs text-slate-500 mt-0.5">
+                <p class="text-xs text-slate-500 mt-0.5 hidden sm:block">
                     Ghi nhận thông tin khách hàng, chọn model máy lọc, điều phối kỹ thuật viên và phụ tùng mang theo
                 </p>
             </div>
         </div>
 
         <div class="flex items-center gap-2 w-full md:w-auto">
-            <a href="{{ url('/water-filter?tab=installations') }}" class="flex-1 md:flex-none px-4 py-2.5 border border-slate-300 rounded-xl text-slate-600 font-bold hover:bg-slate-50 transition text-xs cursor-pointer text-center">
+            <a href="{{ $returnUrl }}" class="flex-1 md:flex-none px-4 py-2.5 border border-slate-300 rounded-xl text-slate-600 font-bold hover:bg-slate-50 transition text-xs cursor-pointer text-center min-h-[42px] flex items-center justify-center">
                 <i class="fa-solid fa-xmark mr-1"></i> Hủy bỏ
             </a>
-            <button @click="submitForm()" type="button" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold shadow-md shadow-sky-600/20 transition text-xs cursor-pointer text-center">
-                <i class="fa-solid fa-floppy-disk text-sm"></i>
-                <span x-text="isEdit ? 'Lưu thay đổi' : 'Hoàn tất & Tạo đơn lắp đặt'"></span>
+            <button @click="submitForm()" :disabled="submitting" type="button" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold shadow-md shadow-sky-600/20 transition text-xs cursor-pointer text-center min-h-[42px] disabled:opacity-60 disabled:cursor-not-allowed">
+                <i class="fa-solid" :class="submitting ? 'fa-spinner fa-spin' : 'fa-floppy-disk text-sm'"></i>
+                <span x-text="submitting ? 'Đang lưu...' : (isEdit ? 'Lưu thay đổi' : 'Hoàn tất & Tạo đơn')"></span>
             </button>
         </div>
     </div>
@@ -151,21 +182,87 @@
         <!-- COLUMN 1: THÔNG TIN KHÁCH HÀNG & ĐỊA ĐIỂM (5 COLS) -->
         <div class="lg:col-span-5 space-y-4">
             <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-                <div class="flex items-center gap-2 border-b border-slate-100 pb-3 font-extrabold text-slate-800 text-sm">
-                    <i class="fa-solid fa-user-tag text-sky-600"></i>
-                    <span>Thông tin Khách hàng & Địa điểm</span>
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2 font-extrabold text-slate-800 text-sm">
+                        <i class="fa-solid fa-user-tag text-sky-600"></i>
+                        <span>Thông tin Khách hàng & Địa điểm</span>
+                    </div>
+                    <span class="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">
+                        <i class="fa-solid fa-rotate text-[9px] mr-1"></i><span class="hidden sm:inline">Tự động lưu vào </span>Khách hàng
+                    </span>
                 </div>
 
-                <div>
-                    <label class="block font-bold text-slate-700 mb-1">Họ tên khách hàng / Đại lý <span class="text-rose-500">*</span></label>
-                    <input type="text" x-model="form.customer_name" required placeholder="Anh Nguyễn Văn A..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500 focus:outline-none font-semibold text-slate-800 text-xs">
+                <!-- Ô Họ tên & Gợi ý tìm kiếm khách hàng có sẵn -->
+                <div class="relative" @click.away="customerDropdownOpen = false">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block font-bold text-slate-700">Họ tên khách hàng / Đại lý <span class="text-rose-500">*</span></label>
+                        <span class="text-[11px] text-sky-600 font-semibold" x-show="form.dealer_id">
+                            <i class="fa-solid fa-circle-check text-emerald-500"></i> Đã liên kết Khách hàng
+                        </span>
+                    </div>
+                    <div class="relative">
+                        <i class="fa-solid fa-user absolute left-3.5 top-3 text-slate-400"></i>
+                        <input 
+                            type="text" 
+                            x-model="form.customer_name" 
+                            @focus="customerDropdownOpen = true; highlightedCustomerIndex = 0"
+                            @input="customerDropdownOpen = true; highlightedCustomerIndex = 0; onInputCustomerSearch()"
+                            @keydown.down.prevent="navigateCustomerDown()"
+                            @keydown.up.prevent="navigateCustomerUp()"
+                            @keydown.enter.prevent="selectHighlightedCustomer()"
+                            @keydown.escape.prevent="customerDropdownOpen = false"
+                            required 
+                            placeholder="Gõ tên hoặc SĐT để tìm khách hàng cũ / hoặc nhập mới..." 
+                            class="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500 focus:outline-none font-semibold text-slate-800 text-xs"
+                        >
+                    </div>
+
+                    <!-- Dropdown danh sách gợi ý khách hàng -->
+                    <div 
+                        x-show="customerDropdownOpen && filteredCustomers.length > 0" 
+                        x-cloak 
+                        class="absolute left-0 right-0 w-full top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 overflow-hidden text-xs max-h-60 overflow-y-auto divide-y divide-slate-100"
+                    >
+                        <div class="px-3 py-1.5 bg-slate-100 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                            <span>Khách hàng có sẵn trong hệ thống (Phím ↑ ↓ Enter)</span>
+                            <span>Bấm để tự điền</span>
+                        </div>
+                        <template x-for="(c, cIdx) in filteredCustomers" :key="c.id">
+                            <div 
+                                :id="'cust-opt-' + cIdx"
+                                @click="selectCustomer(c)" 
+                                @mouseenter="highlightedCustomerIndex = cIdx"
+                                class="p-2.5 cursor-pointer flex items-center justify-between gap-2 transition"
+                                :class="highlightedCustomerIndex === cIdx ? 'bg-sky-100 text-sky-950 font-bold ring-1 ring-sky-300' : 'hover:bg-sky-50'"
+                            >
+                                <div class="truncate flex-1 min-w-0">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-sky-100 text-sky-800" x-text="c.code"></span>
+                                        <span class="font-bold text-slate-800 truncate" x-text="c.name"></span>
+                                    </div>
+                                    <div class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-3">
+                                        <span x-show="c.phone"><i class="fa-solid fa-phone text-[10px] text-slate-400 mr-1"></i><span x-text="c.phone"></span></span>
+                                        <span x-show="c.address" class="truncate"><i class="fa-solid fa-location-dot text-[10px] text-slate-400 mr-1"></i><span x-text="c.address"></span></span>
+                                    </div>
+                                </div>
+                                <span class="text-[11px] font-bold text-sky-600 shrink-0">Chọn <i class="fa-solid fa-chevron-right text-[10px] ml-0.5"></i></span>
+                            </div>
+                        </template>
+                    </div>
                 </div>
 
                 <div>
                     <label class="block font-bold text-slate-700 mb-1">Số điện thoại liên hệ <span class="text-rose-500">*</span></label>
                     <div class="relative">
                         <i class="fa-solid fa-phone absolute left-3.5 top-3 text-slate-400"></i>
-                        <input type="text" x-model="form.customer_phone" required placeholder="0912 345 678..." class="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500 focus:outline-none font-bold text-slate-800 text-xs">
+                        <input 
+                            type="text" 
+                            x-model="form.customer_phone" 
+                            @input="onInputCustomerPhone()" 
+                            required 
+                            placeholder="0912 345 678..." 
+                            class="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500 focus:outline-none font-bold text-slate-800 text-xs"
+                        >
                     </div>
                 </div>
 
@@ -177,56 +274,57 @@
                     </div>
                 </div>
 
-
-
                 <div>
                     <label class="block font-bold text-slate-700 mb-1">Ghi chú yêu cầu của khách hàng</label>
-                    <textarea x-model="form.customer_notes" rows="3" placeholder="Ví dụ: Vị trí gầm tủ bếp chật, khách cần lắp thêm vòi phụ trên mặt đá, gọi trước 30 phút..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500 focus:outline-none text-xs text-slate-700"></textarea>
+                    <textarea x-model="form.customer_notes" rows="3" placeholder="Nhập ghi chú yêu cầu của khách hàng (nếu có)..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500 focus:outline-none text-xs text-slate-700"></textarea>
                 </div>
             </div>
         </div>
 
         <!-- COLUMN 2: MODEL MÁY, KỸ THUẬT VIÊN & TRẠNG THÁI ĐƠN (7 COLS) -->
         <div class="lg:col-span-7 space-y-4">
-            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <div class="flex items-center gap-2 font-extrabold text-slate-800 text-sm">
-                        <i class="fa-solid fa-faucet-drip text-cyan-600"></i>
-                        <span>Thiết bị & Điều phối Kỹ thuật</span>
+            <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3.5 sm:space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2.5 sm:pb-3 gap-2">
+                    <div class="flex items-center gap-2 font-extrabold text-slate-800 text-xs sm:text-sm min-w-0">
+                        <i class="fa-solid fa-faucet-drip text-cyan-600 shrink-0"></i>
+                        <span class="truncate">Thiết bị & Điều phối Kỹ thuật</span>
                     </div>
                     <!-- Nút thêm model máy mới -->
-                    <button type="button" @click="openModelModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-800 font-bold border border-cyan-200 transition cursor-pointer text-xs">
+                    <button type="button" @click="openModelModal()" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-800 font-bold border border-cyan-200 transition cursor-pointer text-xs shrink-0 whitespace-nowrap">
                         <i class="fa-solid fa-plus text-[10px]"></i>
-                        <span>+ Thêm Model Máy mới</span>
+                        <span class="hidden sm:inline">Thêm Model mới</span>
+                        <span class="sm:hidden">Model mới</span>
                     </button>
                 </div>
 
                 <!-- 1. TÌM MODEL MÁY LỌC BẰNG INPUT NHẬP TRỰC TIẾP -->
                 <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="font-bold text-slate-700">Model máy lọc nước cần lắp <span class="text-rose-500">*</span></label>
-                        <span class="text-[11px] text-slate-400 font-medium">Gõ trực tiếp vào ô để tìm kiếm</span>
+                    <div class="flex items-center justify-between mb-1 gap-2">
+                        <label class="font-bold text-slate-700 text-xs">Model máy lọc nước cần lắp <span class="text-rose-500">*</span></label>
+                        <span class="text-[11px] text-slate-400 font-medium hidden sm:inline">Gõ trực tiếp vào ô để tìm kiếm</span>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
                         <!-- Direct Searchable Input for Machine Model -->
-                        <div class="sm:col-span-8" @click.away="modelDropdownOpen = false">
+                        <div :class="form.machine_model_id ? 'col-span-12' : 'sm:col-span-8 col-span-12'" @click.away="modelDropdownOpen = false">
                             <div class="relative">
                                 <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400"></i>
                                 <input 
                                     type="text" 
                                     x-model="modelSearchInput" 
-                                    @focus="modelDropdownOpen = true" 
-                                    @input="modelDropdownOpen = true; onInputModelSearch()"
-                                    placeholder="Gõ tìm model: KG100HA, Karofi, Kangaroo..." 
-                                    class="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500 focus:outline-none font-bold text-slate-800 text-xs transition"
+                                    @focus="modelDropdownOpen = true; highlightedModelIndex = 0" 
+                                    @input="modelDropdownOpen = true; highlightedModelIndex = 0; onInputModelSearch()"
+                                    @keydown.down.prevent="navigateModelDown()"
+                                    @keydown.up.prevent="navigateModelUp()"
+                                    @keydown.enter.prevent="selectHighlightedModel()"
+                                    @keydown.escape.prevent="modelDropdownOpen = false"
+                                    placeholder="Gõ tìm model: KG100HA, Karofi, Kangaroo... (phím ↑ ↓ Enter)" 
+                                    class="w-full pl-9 pr-9 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500 focus:outline-none font-bold text-slate-800 text-xs transition"
                                 >
-                                <button 
-                                    type="button" 
-                                    x-show="form.machine_model_id || modelSearchInput" 
-                                    @click="clearModel()" 
-                                    class="absolute right-3 top-2.5 text-slate-400 hover:text-rose-500 p-0.5" 
-                                    title="Xóa lựa chọn"
-                                >
+                                <button type="button" 
+                                        x-show="modelSearchInput" 
+                                        @click="clearModel(); modelSearchInput = '';" 
+                                        class="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400 hover:text-slate-600 flex items-center justify-center cursor-pointer"
+                                        title="Xóa để chọn lại">
                                     <i class="fa-solid fa-xmark text-xs"></i>
                                 </button>
 
@@ -244,11 +342,13 @@
                                             </button>
                                         </div>
                                     </template>
-                                    <template x-for="m in filteredModels" :key="m.id">
+                                    <template x-for="(m, mIdx) in filteredModels" :key="m.id">
                                         <div 
+                                            :id="'model-opt-' + mIdx"
                                             @click="selectModel(m)" 
-                                            class="p-2.5 hover:bg-sky-50/70 cursor-pointer flex items-center justify-between gap-2 transition"
-                                            :class="form.machine_model_id == m.id ? 'bg-sky-50 text-sky-800 font-bold' : 'text-slate-700'"
+                                            @mouseenter="highlightedModelIndex = mIdx"
+                                            class="p-2.5 cursor-pointer flex items-center justify-between gap-2 transition"
+                                            :class="highlightedModelIndex === mIdx ? 'bg-sky-100 text-sky-950 font-bold ring-1 ring-sky-300' : (form.machine_model_id == m.id ? 'bg-sky-50 text-sky-800 font-bold' : 'hover:bg-slate-50 text-slate-700')"
                                         >
                                             <div class="truncate flex-1 min-w-0">
                                                 <div class="flex items-center gap-1.5">
@@ -273,8 +373,8 @@
                             </div>
                         </div>
 
-                        <!-- Ô nhập tên model máy tự do ngoài danh mục -->
-                        <div class="sm:col-span-4">
+                        <!-- Ô nhập tên model máy tự do ngoài danh mục (Ẩn khi đã chọn model chuẩn từ danh mục) -->
+                        <div class="sm:col-span-4 col-span-12" x-show="!form.machine_model_id">
                             <input type="text" x-model="form.machine_model" placeholder="Hoặc tên model tự nhập..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500 focus:outline-none font-semibold text-slate-800 text-xs">
                         </div>
                     </div>
@@ -316,17 +416,8 @@
                                 @focus="techDropdownOpen = true" 
                                 @input="techDropdownOpen = true; onInputTechSearch()"
                                 placeholder="Gõ tìm KTV (Tên, SĐT, phòng ban)..." 
-                                class="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500 focus:outline-none font-bold text-slate-800 text-xs transition"
+                                class="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500 focus:outline-none font-bold text-slate-800 text-xs transition"
                             >
-                            <button 
-                                type="button" 
-                                x-show="form.technician_id || techSearchInput" 
-                                @click="clearTechnician()" 
-                                class="absolute right-3 top-2.5 text-slate-400 hover:text-rose-500 p-0.5" 
-                                title="Xóa lựa chọn"
-                            >
-                                <i class="fa-solid fa-xmark text-xs"></i>
-                            </button>
 
                             <!-- Dropdown list directly underneath: RỘNG BẰNG 100% INPUT -->
                             <div 
@@ -360,13 +451,13 @@
                 </div>
 
                 <!-- 3. TRẠNG THÁI ĐƠN HÀNG CHI TIẾT -->
-                <div class="p-4 rounded-xl bg-slate-50/80 border border-slate-200 space-y-3">
-                    <div class="flex items-center justify-between">
-                        <label class="font-extrabold text-slate-800 flex items-center gap-1.5 text-xs">
+                <div class="p-3.5 sm:p-4 rounded-xl bg-slate-50/80 border border-slate-200 space-y-2.5 sm:space-y-3">
+                    <div class="flex items-center justify-between gap-2">
+                        <label class="font-extrabold text-slate-800 flex items-center gap-1.5 text-xs shrink-0">
                             <i class="fa-solid fa-timeline text-sky-600"></i>
-                            <span>Trạng thái đơn hàng lắp đặt:</span>
+                            <span>Trạng thái đơn:</span>
                         </label>
-                        <span class="px-2.5 py-1 rounded-full text-[11px] font-black uppercase" :class="getStatusBadgeClass(form.status)" x-text="getStatusLabel(form.status)"></span>
+                        <span class="px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-black uppercase whitespace-nowrap shrink-0" :class="getStatusBadgeClass(form.status)" x-text="getStatusLabel(form.status)"></span>
                     </div>
 
                     <select x-model="form.status" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-none font-extrabold text-slate-800 text-xs shadow-2xs">
@@ -375,7 +466,7 @@
                         @endforeach
                     </select>
 
-                    <p class="text-[11px] text-slate-500">
+                    <p class="text-[11px] text-slate-500 hidden sm:block">
                         * Bạn có thể chủ động cập nhật trạng thái đơn qua từng giai đoạn (*Mới tiếp nhận* ➔ *Đã hẹn lịch* ➔ *Đang chuẩn bị* ➔ *Đang lắp* ➔ *Hoàn thành*).
                     </p>
                 </div>
@@ -433,45 +524,146 @@
     </div>
 
     <!-- BOTTOM SECTION: PHỤ TÙNG, PHỤ KIỆN XUẤT THEO ĐƠN MÁY LỌC (TÌM BẰNG INPUT NHẬP TRỰC TIẾP) -->
-    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4 text-xs">
+    <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3.5 sm:space-y-4 text-xs">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div>
-                <div class="flex items-center gap-2 font-extrabold text-slate-800 text-sm">
-                    <i class="fa-solid fa-boxes-stacked text-teal-600"></i>
-                    <span>Phụ Tùng, Vật Tư & Linh Kiện Mang Theo Đơn Lắp Đặt</span>
+                <div class="flex items-center gap-2 font-extrabold text-slate-800 text-xs sm:text-sm">
+                    <i class="fa-solid fa-boxes-stacked text-teal-600 shrink-0"></i>
+                    <span class="hidden sm:inline">Phụ Tùng, Vật Tư & Linh Kiện Mang Theo Đơn Lắp Đặt</span>
+                    <span class="sm:hidden">Phụ Tùng & Vật Tư Đi Kèm</span>
                 </div>
-                <p class="text-[11px] text-slate-500 mt-0.5">
+                <p class="text-[11px] text-slate-500 mt-0.5 hidden sm:block">
                     Gõ trực tiếp vào ô input để tìm mã hoặc tên phụ tùng từ kho (tự động trừ kho khi hoàn thành đơn)
                 </p>
             </div>
-            <div class="flex items-center gap-2 self-start sm:self-auto">
+            <div class="flex items-center gap-2 w-full sm:w-auto">
                 <button 
                     type="button" 
                     x-show="getSelectedModelHasDefaultParts()" 
                     @click="applyModelDefaultParts(getSelectedModel(), true)" 
-                    class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-cyan-800 font-bold transition border border-cyan-200 cursor-pointer text-xs shadow-2xs" 
+                    class="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-cyan-800 font-bold transition border border-cyan-200 cursor-pointer text-xs shadow-2xs whitespace-nowrap min-h-[42px]" 
                     title="Nạp lại danh sách phụ tùng cấu hình sẵn của model này"
                 >
                     <i class="fa-solid fa-arrows-rotate text-xs text-cyan-600"></i>
-                    <span>Nạp phụ tùng theo Model</span>
+                    <span class="hidden sm:inline">Nạp phụ tùng theo Model</span>
+                    <span class="sm:hidden">Nạp theo Model</span>
                 </button>
-                <button 
-                    type="button" 
-                    @click="openUpgradeModal(null)" 
-                    class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold transition border border-amber-200 cursor-pointer text-xs shadow-2xs" 
-                    title="Đổi phụ kiện cũ lấy phụ kiện nâng cấp và tự động tính tiền chênh lệch bù"
-                >
-                    <i class="fa-solid fa-right-left text-xs text-amber-600"></i>
-                    <span>Đổi nâng cấp phụ tùng</span>
-                </button>
-                <button type="button" @click="addItemRow()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold transition shadow-xs cursor-pointer text-xs">
+                <button type="button" @click="addItemRow()" class="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold transition shadow-xs cursor-pointer text-xs whitespace-nowrap min-h-[42px]">
                     <i class="fa-solid fa-plus text-xs"></i>
-                    <span>Thêm vật tư phụ tùng</span>
+                    <span class="hidden sm:inline">Thêm vật tư phụ tùng</span>
+                    <span class="sm:hidden">Thêm vật tư</span>
                 </button>
             </div>
         </div>
 
-        <div class="overflow-visible border border-slate-200 rounded-xl min-h-[300px]">
+        <!-- MOBILE VIEW: DANH SÁCH PHỤ TÙNG DẠNG THẺ (KHÔNG BỊ TRÀN NGANG) -->
+        <div class="block sm:hidden space-y-3">
+            <template x-if="form.items.length === 0">
+                <div class="py-6 text-center text-slate-400 bg-slate-50/50 rounded-xl border border-slate-200 p-4">
+                    <i class="fa-solid fa-box-open text-2xl mb-1 text-slate-300 block"></i>
+                    <span>Chưa có phụ kiện nào đi kèm (Nhấn "Thêm vật tư" ở trên)</span>
+                </div>
+            </template>
+            <template x-for="(item, idx) in form.items" :key="idx">
+                <div class="p-3 bg-slate-50/90 rounded-xl border border-slate-200/90 space-y-2.5 shadow-2xs">
+                    <!-- Row 1: STT + Tồn kho + Xóa -->
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-lg bg-teal-100 text-teal-800 font-extrabold text-xs flex items-center justify-center shrink-0" x-text="idx + 1"></span>
+                            <span class="text-[11px] font-bold text-slate-500">
+                                Tồn kho: <strong class="text-teal-700" x-text="item.stock_available ?? '-'"></strong> <span x-text="item.unit || 'Cái'"></span>
+                            </span>
+                        </div>
+                        <button type="button" @click="removeItemRow(idx)" class="w-7 h-7 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg flex items-center justify-center cursor-pointer transition" title="Xóa phụ tùng">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+
+                    <!-- Row 2: Ô tìm kiếm tên phụ tùng -->
+                    <div class="relative" x-data="{ open: false, highlightedPartIndex: 0 }" @click.away="open = false">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                        <input 
+                            type="text" 
+                            x-model="item.part_name" 
+                            @focus="open = true; highlightedPartIndex = 0" 
+                            @input="open = true; highlightedPartIndex = 0; onTypePartName(idx, $event.target.value)"
+                            placeholder="Gõ tìm mã hoặc tên phụ tùng..." 
+                            class="w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                        >
+
+                        <!-- Dropdown list -->
+                        <div 
+                            x-show="open && filterPartsBy(item.part_name, idx).length > 0" 
+                            x-cloak 
+                            class="absolute left-0 right-0 w-full top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 overflow-hidden text-xs max-h-52 overflow-y-auto divide-y divide-slate-100"
+                        >
+                            <template x-for="(p, pIdx) in filterPartsBy(item.part_name, idx)" :key="p.id">
+                                <div 
+                                    @click="onSelectPart(idx, p.id); open = false" 
+                                    class="p-2.5 cursor-pointer flex items-center justify-between gap-2 hover:bg-teal-50/70"
+                                >
+                                    <div class="truncate flex-1 min-w-0">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 text-slate-600" x-text="p.code"></span>
+                                            <span class="font-bold text-slate-800 truncate" x-text="p.name"></span>
+                                        </div>
+                                        <div class="text-[10px] text-slate-400 mt-0.5">
+                                            <span x-text="'Tồn: ' + p.stock_qty + ' ' + p.unit"></span>
+                                        </div>
+                                    </div>
+                                    <span class="text-teal-800 font-bold text-xs shrink-0" x-text="window.formatCurrency(p.out_price)"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Row 3: Nút phân loại phí + Số lượng -->
+                    <div class="flex items-center justify-between gap-2 pt-0.5">
+                        <button 
+                            type="button" 
+                            @click="toggleItemFree(idx)" 
+                            class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-black cursor-pointer transition shadow-2xs active:scale-95"
+                            :class="item.is_free ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-900 border border-amber-300'"
+                        >
+                            <i class="fa-solid" :class="item.is_free ? 'fa-gift text-emerald-600' : 'fa-hand-holding-dollar text-amber-600'"></i>
+                            <span x-text="item.is_free ? 'Theo máy (0đ)' : 'Thu thêm tiền'"></span>
+                        </button>
+
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-xs font-bold text-slate-600">SL:</span>
+                            <input type="number" x-model.number="item.quantity" min="1" class="w-16 px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-black text-center focus:ring-2 focus:ring-teal-500">
+                            <span class="text-xs text-slate-500 font-medium" x-text="item.unit || 'Cái'"></span>
+                        </div>
+                    </div>
+
+                    <!-- Row 4: Đơn giá và Thành tiền (Chỉ hiện khi tính phí thu thêm) -->
+                    <div x-show="!item.is_free" class="p-2 bg-white rounded-lg border border-teal-200 text-xs flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-1">
+                            <span class="text-slate-500 font-bold">Đơn giá:</span>
+                            <input 
+                                type="number" 
+                                x-model.number="item.unit_price" 
+                                @input="onUnitPriceChange(idx)"
+                                min="0" 
+                                step="1000" 
+                                placeholder="0" 
+                                class="w-24 px-2 py-0.5 border border-slate-300 rounded font-black text-right text-xs text-teal-800"
+                            >
+                        </div>
+                        <div>
+                            <span class="text-slate-500 font-medium">Bù: </span>
+                            <strong class="text-teal-800 font-black" x-text="window.formatCurrency(item.quantity * item.unit_price)"></strong>
+                        </div>
+                    </div>
+
+                    <!-- Row 5: Ghi chú vị trí -->
+                    <input type="text" x-model="item.note" placeholder="Vị trí lắp, ghi chú..." class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-700">
+                </div>
+            </template>
+        </div>
+
+        <!-- DESKTOP VIEW: BẢNG PHỤ TÙNG 10 CỘT ĐẦY ĐỦ -->
+        <div class="hidden sm:block overflow-visible border border-slate-200 rounded-xl min-h-[220px]">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-slate-100/80 text-slate-700 uppercase text-[10px] font-extrabold tracking-wider border-b border-slate-200">
@@ -501,38 +693,61 @@
                             <td class="py-3 px-3 text-center text-slate-400 font-bold" x-text="idx + 1"></td>
                             
                             <!-- 4. Ô TÌM BẰNG INPUT NHẬP TRỰC TIẾP (RỘNG BẰNG 100% INPUT) -->
-                            <td class="py-2.5 px-3" x-data="{ open: false }" @click.away="open = false">
+                            <td class="py-2.5 px-3" x-data="{ open: false, highlightedPartIndex: 0 }" @click.away="open = false">
                                 <div class="relative">
                                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
                                     <input 
                                         type="text" 
                                         x-model="item.part_name" 
-                                        @focus="open = true" 
-                                        @input="open = true; onTypePartName(idx, $event.target.value)"
-                                        placeholder="Gõ tìm mã hoặc tên phụ tùng..." 
-                                        class="w-full pl-8 pr-7 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none placeholder-slate-400 transition"
+                                        @focus="open = true; highlightedPartIndex = 0" 
+                                        @input="open = true; highlightedPartIndex = 0; onTypePartName(idx, $event.target.value)"
+                                        @keydown.down.prevent="
+                                            open = true;
+                                            const pList = filterPartsBy(item.part_name, idx);
+                                            if (pList.length > 0) {
+                                                highlightedPartIndex = Math.min(highlightedPartIndex + 1, pList.length - 1);
+                                                $nextTick(() => {
+                                                    const el = document.getElementById('part-opt-' + idx + '-' + highlightedPartIndex);
+                                                    if (el) el.scrollIntoView({ block: 'nearest' });
+                                                });
+                                            }
+                                        "
+                                        @keydown.up.prevent="
+                                            if (open) {
+                                                highlightedPartIndex = Math.max(highlightedPartIndex - 1, 0);
+                                                $nextTick(() => {
+                                                    const el = document.getElementById('part-opt-' + idx + '-' + highlightedPartIndex);
+                                                    if (el) el.scrollIntoView({ block: 'nearest' });
+                                                });
+                                            }
+                                        "
+                                        @keydown.enter.prevent="
+                                            if (open) {
+                                                const pList = filterPartsBy(item.part_name, idx);
+                                                if (pList.length > 0 && pList[highlightedPartIndex]) {
+                                                    onSelectPart(idx, pList[highlightedPartIndex].id);
+                                                    open = false;
+                                                }
+                                            }
+                                        "
+                                        @keydown.escape.prevent="open = false"
+                                        placeholder="Gõ tìm mã hoặc tên phụ tùng... (phím ↑ ↓ Enter)" 
+                                        class="w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none placeholder-slate-400 transition"
                                     >
-                                    <button 
-                                        type="button" 
-                                        x-show="item.part_id || item.part_name" 
-                                        @click="clearPartRow(idx)" 
-                                        class="absolute right-2.5 top-2 text-slate-400 hover:text-rose-500 p-0.5" 
-                                        title="Xóa lựa chọn"
-                                    >
-                                        <i class="fa-solid fa-xmark text-xs"></i>
-                                    </button>
 
                                     <!-- Dropdown suggestions list: RỘNG BẰNG 100% INPUT (left-0 right-0 w-full) -->
                                     <div 
-                                        x-show="open && filterPartsBy(item.part_name).length > 0" 
+                                        x-show="open && filterPartsBy(item.part_name, idx).length > 0" 
                                         x-cloak 
                                         class="absolute left-0 right-0 w-full top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 overflow-hidden text-xs max-h-60 overflow-y-auto divide-y divide-slate-100"
                                     >
-                                        <template x-for="p in filterPartsBy(item.part_name)" :key="p.id">
+                                        <template x-for="(p, pIdx) in filterPartsBy(item.part_name, idx)" :key="p.id">
                                              <div 
+                                                :id="'part-opt-' + idx + '-' + pIdx"
                                                 @click="onSelectPart(idx, p.id); open = false" 
-                                                class="p-2.5 hover:bg-teal-50 cursor-pointer flex items-center justify-between gap-2 transition"
-                                                :class="item.part_id == p.id ? 'bg-teal-50 font-bold' : 'text-slate-700'"
+                                                @mouseenter="highlightedPartIndex = pIdx"
+                                                class="p-2.5 cursor-pointer flex items-center justify-between gap-2 transition"
+                                                :class="highlightedPartIndex === pIdx ? 'bg-teal-100 text-teal-950 font-bold ring-1 ring-teal-300' : (item.part_id == p.id ? 'bg-teal-50 font-bold' : 'hover:bg-teal-50/70 text-slate-700')"
                                             >
                                                 <div class="truncate flex-1 min-w-0">
                                                     <div class="flex items-center gap-1.5">
@@ -600,24 +815,14 @@
                                 <input type="text" x-model="item.note" placeholder="Vị trí lắp, ghi chú..." class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none text-slate-700">
                             </td>
                             <td class="py-3 px-3 text-center whitespace-nowrap">
-                                <div class="flex items-center justify-center gap-1">
-                                    <button 
-                                        type="button" 
-                                        @click="openUpgradeModal(idx)" 
-                                        class="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition cursor-pointer" 
-                                        title="Đổi phụ kiện này sang phụ kiện khác (Tự tính chênh lệch bù)"
-                                    >
-                                        <i class="fa-solid fa-right-left"></i>
-                                    </button>
-                                    <button 
-                                        type="button" 
-                                        @click="removeItemRow(idx)" 
-                                        class="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer" 
-                                        title="Xóa dòng"
-                                    >
-                                        <i class="fa-solid fa-trash-can"></i>
-                                    </button>
-                                </div>
+                                <button 
+                                    type="button" 
+                                    @click="removeItemRow(idx)" 
+                                    class="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer" 
+                                    title="Xóa dòng"
+                                >
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
                             </td>
                         </tr>
                     </template>
@@ -626,75 +831,64 @@
         </div>
 
         <!-- SUMMARY CALCULATION (ĐIỀU CHỈNH GIÁ LINH HOẠT) -->
-        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-sky-50/50 border border-slate-200/90 shadow-2xs">
+        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-sky-50/50 border border-slate-200/90 shadow-2xs">
             <div class="text-xs text-slate-600 space-y-1">
-                <div class="font-extrabold text-slate-800 flex items-center gap-1.5">
+                <div class="font-extrabold text-slate-800 flex items-center gap-1.5 text-xs sm:text-sm">
                     <i class="fa-solid fa-receipt text-sky-600"></i>
                     <span>TỔNG HỢP THANH TOÁN ĐƠN LẮP ĐẶT</span>
                 </div>
-                <p class="text-[11px] text-slate-500">
-                    Giá máy và phụ tùng có thể tự do điều chỉnh trực tiếp. Đánh dấu phụ kiện <strong>Thu thêm tiền</strong> hoặc nhập tiền chênh lệch để hệ thống tính vào tổng thu.
+                <p class="text-[11px] text-slate-500 hidden sm:block">
+                    Giá trọn gói theo máy lọc nước. Phụ tùng đi kèm mặc định không tăng giá (0đ), chỉ tính thêm khi đánh dấu <strong>Thu thêm tiền</strong>.
                 </p>
             </div>
             
-            <div class="flex flex-wrap items-center gap-4 sm:gap-5 self-end lg:self-auto">
-                <!-- Tiền máy (Cho phép sửa trực tiếp tại bảng tổng hợp) -->
-                <div class="text-right">
-                    <label class="text-slate-500 text-[11px] font-bold block">1. Tiền máy lọc (đ):</label>
+            <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5 sm:gap-4 w-full lg:w-auto">
+                <!-- Tiền máy -->
+                <div class="bg-white sm:bg-transparent p-2.5 sm:p-0 rounded-xl border sm:border-0 border-slate-200 text-left sm:text-right">
+                    <label class="text-slate-500 text-[10px] sm:text-[11px] font-bold block mb-0.5">1. Tiền máy (đ):</label>
                     <input type="number" 
                            x-model.number="form.machine_price" 
                            min="0" 
                            step="10000" 
                            placeholder="0" 
-                           class="w-32 px-2.5 py-1 text-right text-xs font-black text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-400 focus:outline-none">
+                           class="w-full sm:w-28 px-2 py-1 text-right text-xs font-black text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-400 focus:outline-none">
                 </div>
 
                 <!-- Phụ kiện thu thêm -->
-                <div class="text-right pl-3 border-l border-slate-200">
-                    <span class="text-slate-500 text-[11px] font-bold block">2. Phụ kiện thu thêm:</span>
-                    <span class="font-black text-teal-700 text-sm leading-7" x-text="window.formatCurrency(calcPartsFee())"></span>
-                </div>
-
-                <!-- Phụ thu / Bù nâng cấp (+) -->
-                <div class="text-right pl-3 border-l border-slate-200">
-                    <label class="text-slate-500 text-[11px] font-bold block">3. Phụ thu nâng cấp (+):</label>
-                    <input type="number" 
-                           x-model.number="form.surcharge_amount" 
-                           min="0" 
-                           step="10000" 
-                           placeholder="0" 
-                           class="w-32 px-2.5 py-1 text-right text-xs font-black text-amber-700 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none"
-                           title="Tiền bù phụ kiện đắt hơn hoặc phụ thu thêm">
+                <div class="bg-white sm:bg-transparent p-2.5 sm:p-0 rounded-xl border sm:border-0 border-slate-200 text-left sm:text-right sm:pl-3 sm:border-l sm:border-slate-200">
+                    <span class="text-slate-500 text-[10px] sm:text-[11px] font-bold block mb-0.5">2. Thu thêm:</span>
+                    <span class="font-black text-teal-700 text-xs sm:text-sm leading-6" x-text="window.formatCurrency(calcPartsFee())"></span>
                 </div>
 
                 <!-- Ô nhập Chiết khấu / Giảm giá (-) -->
-                <div class="text-right pl-3 border-l border-slate-200">
-                    <label class="text-slate-500 text-[11px] font-bold block">4. Chiết khấu giảm (-):</label>
+                <div class="bg-white sm:bg-transparent p-2.5 sm:p-0 rounded-xl border sm:border-0 border-slate-200 text-left sm:text-right sm:pl-3 sm:border-l sm:border-slate-200">
+                    <label class="text-slate-500 text-[10px] sm:text-[11px] font-bold block mb-0.5">3. Giảm giá (-):</label>
                     <input type="number" 
                            x-model.number="form.discount_amount" 
                            min="0" 
                            step="10000" 
                            placeholder="0" 
-                           class="w-32 px-2.5 py-1 text-right text-xs font-black text-rose-600 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-400 focus:outline-none">
+                           class="w-full sm:w-28 px-2 py-1 text-right text-xs font-black text-rose-600 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-400 focus:outline-none">
                 </div>
 
                 <!-- TỔNG CẦN THU -->
-                <div class="text-right pl-3 border-l-2 border-sky-400 bg-white px-3.5 py-1.5 rounded-xl border border-sky-200 shadow-2xs">
-                    <span class="text-sky-800 text-[10px] font-black uppercase tracking-wider block">TỔNG CẦN THU:</span>
-                    <span class="text-xl font-black text-sky-700" x-text="window.formatCurrency(calcTotalAmount())"></span>
+                <div class="col-span-2 sm:col-auto bg-white px-3.5 py-2 rounded-xl border-2 border-sky-400 shadow-2xs flex items-center justify-between sm:block text-right">
+                    <span class="text-sky-800 text-[10px] sm:text-[11px] font-black uppercase tracking-wider block">TỔNG CẦN THU:</span>
+                    <span class="text-base sm:text-xl font-black text-sky-700 ml-2 sm:ml-0" x-text="window.formatCurrency(calcTotalAmount())"></span>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- BOTTOM ACTION BAR -->
-    <div class="flex items-center justify-end gap-3 pt-2">
-        <a href="{{ url('/water-filter?tab=installations') }}" class="px-5 py-2.5 border border-slate-300 rounded-xl text-slate-700 font-bold hover:bg-slate-50 transition text-xs cursor-pointer">
-            Hủy bỏ
+    <div class="flex items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 pt-3 border-t border-slate-100 sm:border-0">
+        <a href="{{ $returnUrl }}" class="px-4 sm:px-5 py-2.5 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl transition text-xs cursor-pointer shrink-0 min-h-[42px] flex items-center justify-center shadow-2xs">
+            <i class="fa-solid fa-xmark mr-1.5 text-slate-400"></i> Hủy bỏ
         </a>
-        <button @click="submitForm()" :disabled="submitting" type="button" class="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-black shadow-md shadow-sky-600/20 transition text-xs cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+        <button @click="submitForm()" :disabled="submitting" type="button" class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-sky-600/20 transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed min-h-[42px] whitespace-nowrap">
             <i class="fa-solid" :class="submitting ? 'fa-spinner fa-spin' : 'fa-check text-sm'"></i>
-            <span x-text="submitting ? 'ĐANG LƯU ĐƠN...' : (isEdit ? 'LƯU CẬP NHẬT ĐƠN HÀNG' : 'TẠO MỚI ĐƠN LẮP ĐẶT')"></span>
+            <span class="sm:hidden" x-text="submitting ? 'Đang lưu...' : (isEdit ? 'Lưu thay đổi' : 'Tạo đơn lắp đặt')"></span>
+            <span class="hidden sm:inline" x-text="submitting ? 'Đang lưu đơn...' : (isEdit ? 'Lưu cập nhật đơn hàng' : 'Tạo mới đơn lắp đặt')"></span>
         </button>
     </div>
 
@@ -760,198 +954,6 @@
         </div>
     </div>
 
-    <!-- ============================================================== -->
-    <!-- MODAL ĐỔI / NÂNG CẤP PHỤ TÙNG & TÍNH CHÊNH LỆCH                -->
-    <!-- ============================================================== -->
-    <div x-show="showUpgradeModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-        <div @click.away="showUpgradeModal = false" class="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-slate-200">
-            <!-- Modal Header -->
-            <div class="px-6 py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white flex items-center justify-between shadow-xs">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-xs">
-                        <i class="fa-solid fa-right-left text-white text-sm"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-black text-sm tracking-wide">ĐỔI / NÂNG CẤP PHỤ TÙNG & TỰ TÍNH CHÊNH LỆCH</h3>
-                        <p class="text-[11px] text-amber-100 font-medium">Tự động trừ giá trị phụ kiện cũ để tính số tiền khách cần bù thêm</p>
-                    </div>
-                </div>
-                <button type="button" @click="showUpgradeModal = false" class="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer">
-                    <i class="fa-solid fa-xmark text-base"></i>
-                </button>
-            </div>
-
-            <!-- Modal Body -->
-            <div class="p-6 space-y-4 text-xs overflow-y-auto max-h-[80vh]">
-                <!-- 1. KHỐI PHỤ KIỆN CŨ (BỎ RA / KHẤU TRỪ) -->
-                <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span class="font-extrabold text-slate-700 flex items-center gap-1.5 uppercase text-[11px] tracking-wider">
-                            <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[10px]">1</span>
-                            Phụ kiện cũ (Bỏ ra / Không lấy)
-                        </span>
-                        <span class="text-[10px] text-slate-500 font-medium">Khấu trừ tiền phụ tùng này</span>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                        <!-- Ô chọn phụ kiện cũ -->
-                        <div class="sm:col-span-8 relative" @click.away="upgradeOldDropdown = false">
-                            <label class="block font-bold text-slate-600 mb-1">Tên phụ kiện cũ</label>
-                            <div class="relative">
-                                <input 
-                                    type="text" 
-                                    x-model="upgradeOldSearch" 
-                                    @focus="upgradeOldDropdown = true" 
-                                    @input="upgradeOldDropdown = true; onInputUpgradeOldSearch()"
-                                    placeholder="Gõ hoặc chọn phụ kiện cũ..." 
-                                    class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                                >
-                                <button type="button" x-show="upgradeOldSearch" @click="upgradeOldSearch = ''; upgradeForm.old_part_name = ''; upgradeForm.old_part_price = 0;" class="absolute right-2.5 top-2 text-slate-400 hover:text-rose-500">
-                                    <i class="fa-solid fa-xmark text-xs"></i>
-                                </button>
-                            </div>
-
-                            <!-- Dropdown gợi ý phụ kiện cũ -->
-                            <div x-show="upgradeOldDropdown" x-cloak class="absolute left-0 right-0 w-full top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto divide-y divide-slate-100 text-xs">
-                                <template x-for="p in suggestedOldParts" :key="p.id + p.name">
-                                    <div @click="selectUpgradeOldPart(p)" class="p-2.5 hover:bg-amber-50 cursor-pointer flex items-center justify-between gap-2 transition">
-                                        <div class="truncate flex-1 min-w-0">
-                                            <div class="flex items-center gap-1.5">
-                                                <span class="px-1.5 py-0.2 rounded text-[9px] font-black" :class="p.source === 'Theo cấu hình máy' ? 'bg-cyan-100 text-cyan-800' : (p.source === 'Đang có trong đơn' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600')" x-text="p.source"></span>
-                                                <span class="font-bold text-slate-800 truncate" x-text="p.name"></span>
-                                            </div>
-                                        </div>
-                                        <div class="text-right shrink-0">
-                                            <span class="text-slate-600 font-extrabold text-[11px]" x-text="window.formatCurrency(p.out_price)"></span>
-                                        </div>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-
-                        <!-- Giá trị khấu trừ của phụ kiện cũ -->
-                        <div class="sm:col-span-4">
-                            <label class="block font-bold text-slate-600 mb-1">Giá trị khấu trừ (đ)</label>
-                            <input 
-                                type="number" 
-                                x-model.number="upgradeForm.old_part_price" 
-                                min="0" 
-                                step="1000" 
-                                placeholder="0" 
-                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-black text-right text-slate-700 focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                            >
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Icon mũi tên chuyển đổi ở giữa -->
-                <div class="flex items-center justify-center -my-2 relative z-10">
-                    <div class="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-md border-2 border-white">
-                        <i class="fa-solid fa-arrow-down text-xs"></i>
-                    </div>
-                </div>
-
-                <!-- 2. KHỐI PHỤ KIỆN MỚI (THAY THẾ / NÂNG CẤP) -->
-                <div class="p-4 rounded-xl bg-sky-50/60 border border-sky-200 space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span class="font-extrabold text-sky-900 flex items-center gap-1.5 uppercase text-[11px] tracking-wider">
-                            <span class="w-5 h-5 rounded-full bg-sky-600 text-white flex items-center justify-center text-[10px]">2</span>
-                            Phụ kiện mới thay thế (Nâng cấp)
-                        </span>
-                        <span class="text-[10px] text-sky-700 font-medium">Lấy từ kho linh kiện</span>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                        <!-- Ô chọn phụ kiện mới từ kho -->
-                        <div class="sm:col-span-8 relative" @click.away="upgradeNewDropdown = false">
-                            <label class="block font-bold text-slate-700 mb-1">Chọn phụ kiện mới thay thế <span class="text-rose-500">*</span></label>
-                            <div class="relative">
-                                <input 
-                                    type="text" 
-                                    x-model="upgradeNewSearch" 
-                                    @focus="upgradeNewDropdown = true" 
-                                    @input="upgradeNewDropdown = true; onInputUpgradeNewSearch()"
-                                    placeholder="Gõ tìm phụ tùng nâng cấp trong kho..." 
-                                    class="w-full px-3 py-2 bg-white border border-sky-300 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                                >
-                                <button type="button" x-show="upgradeNewSearch" @click="upgradeNewSearch = ''; upgradeForm.new_part_name = ''; upgradeForm.new_part_price = 0;" class="absolute right-2.5 top-2 text-slate-400 hover:text-rose-500">
-                                    <i class="fa-solid fa-xmark text-xs"></i>
-                                </button>
-                            </div>
-
-                            <!-- Dropdown phụ kiện mới -->
-                            <div x-show="upgradeNewDropdown" x-cloak class="absolute left-0 right-0 w-full top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto divide-y divide-slate-100 text-xs">
-                                <template x-for="p in suggestedNewParts" :key="p.id">
-                                    <div @click="selectUpgradeNewPart(p)" class="p-2.5 hover:bg-sky-50 cursor-pointer flex items-center justify-between gap-2 transition">
-                                        <div class="truncate flex-1 min-w-0">
-                                            <div class="flex items-center gap-1.5">
-                                                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-600" x-text="p.code"></span>
-                                                <span class="font-bold text-slate-800 truncate" x-text="p.name"></span>
-                                            </div>
-                                            <div class="text-[10px] text-slate-400 mt-0.5">
-                                                Tồn kho: <strong class="text-teal-700" x-text="p.stock_qty + ' ' + (p.unit || 'Cái')"></strong>
-                                            </div>
-                                        </div>
-                                        <div class="text-right shrink-0">
-                                            <span class="text-sky-800 font-extrabold text-xs block" x-text="window.formatCurrency(p.out_price)"></span>
-                                        </div>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-
-                        <!-- Giá phụ kiện mới -->
-                        <div class="sm:col-span-4">
-                            <label class="block font-bold text-slate-700 mb-1">Giá phụ kiện mới (đ)</label>
-                            <input 
-                                type="number" 
-                                x-model.number="upgradeForm.new_part_price" 
-                                min="0" 
-                                step="1000" 
-                                placeholder="0" 
-                                class="w-full px-3 py-2 bg-white border border-sky-300 rounded-lg text-xs font-black text-right text-sky-900 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                            >
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3. KẾT QUẢ TÍNH CHÊNH LỆCH TỰ ĐỘNG -->
-                <div class="p-4 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-sky-50 border border-emerald-200/90 shadow-2xs">
-                    <div class="flex items-center justify-between mb-2 pb-2 border-b border-emerald-200/60 text-[11px] text-slate-600">
-                        <span>Giá phụ kiện mới: <strong class="text-slate-800" x-text="window.formatCurrency(upgradeForm.new_part_price || 0)"></strong></span>
-                        <span class="text-rose-600">Khấu trừ phụ kiện cũ: <strong x-text="'- ' + window.formatCurrency(upgradeForm.old_part_price || 0)"></strong></span>
-                    </div>
-
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <span class="text-[11px] uppercase tracking-wider font-extrabold text-emerald-900 block">TIỀN CHÊNH LỆCH CẦN BÙ (THU THÊM):</span>
-                            <span class="text-[10px] text-slate-500">Hệ thống sẽ tự động điền số tiền này vào đơn giá thu của phụ kiện nâng cấp</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-xl font-black" :class="calcUpgradeDifference() > 0 ? 'text-teal-700' : 'text-slate-500'" x-text="window.formatCurrency(calcUpgradeDifference())"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modal Footer -->
-            <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
-                <button type="button" @click="showUpgradeModal = false" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 font-bold hover:bg-white cursor-pointer transition text-xs">
-                    Hủy bỏ
-                </button>
-                <button 
-                    type="button" 
-                    @click="applyUpgrade()" 
-                    :disabled="!upgradeForm.new_part_name" 
-                    class="px-5 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-black rounded-xl shadow-xs transition cursor-pointer text-xs flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <i class="fa-solid fa-check"></i>
-                    <span>ÁP DỤNG ĐỔI & TÍNH TIỀN BÙ</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
 </div>
 
 <script>
@@ -961,43 +963,32 @@ function installationFormModule() {
     const modelsCatalog = @json($machineModels ?? []);
     const techCatalog = @json($technicians ?? []);
     const statusMap = @json($statuses ?? []);
+    const customersCatalog = @json($customers ?? []);
+    const returnUrl = @json($returnUrl);
 
     return {
+        returnUrl: returnUrl,
         isEdit: !!(initData && initData.id),
         parts: partsCatalog,
         machineModels: modelsCatalog,
         technicians: techCatalog,
         statuses: statusMap,
+        customers: customersCatalog,
         showModelModal: false,
         submitting: false,
 
         // Direct input search states
+        customerDropdownOpen: false,
+        highlightedCustomerIndex: 0,
         modelDropdownOpen: false,
+        highlightedModelIndex: 0,
         modelSearchInput: '',
         techDropdownOpen: false,
         techSearchInput: '',
 
-        // Swap / Upgrade parts states
-        showUpgradeModal: false,
-        upgradeTargetIdx: null,
-        upgradeOldSearch: '',
-        upgradeNewSearch: '',
-        upgradeOldDropdown: false,
-        upgradeNewDropdown: false,
-        upgradeForm: {
-            old_part_id: '',
-            old_part_name: '',
-            old_part_price: 0,
-            new_part_id: '',
-            new_part_name: '',
-            new_part_unit: 'Cái',
-            new_part_price: 0,
-            quantity: 1,
-            note: ''
-        },
-
         form: {
             id: initData ? initData.id : null,
+            dealer_id: initData ? (initData.dealer_id || '') : '',
             customer_name: initData ? initData.customer_name : '',
             customer_phone: initData ? initData.customer_phone : '',
             customer_address: initData ? initData.customer_address : '',
@@ -1099,6 +1090,92 @@ function installationFormModule() {
         },
 
         /* -------------------------------------------------------------
+         * 0. SEARCHABLE CUSTOMERS (DIRECT INPUT)
+         * ------------------------------------------------------------- */
+        get filteredCustomers() {
+            const qName = (this.form.customer_name || '').toLowerCase().trim();
+            const qPhone = (this.form.customer_phone || '').toLowerCase().trim();
+            if (!qName && !qPhone) {
+                return (this.customers || []).slice(0, 8);
+            }
+            return (this.customers || []).filter(c => {
+                const matchName = qName && c.name && c.name.toLowerCase().includes(qName);
+                const matchPhone = qPhone && c.phone && c.phone.toLowerCase().includes(qPhone);
+                const matchCode = qName && c.code && c.code.toLowerCase().includes(qName);
+                return matchName || matchPhone || matchCode;
+            }).slice(0, 15);
+        },
+
+        selectCustomer(c) {
+            if (!c) return;
+            this.form.dealer_id = c.id;
+            this.form.customer_name = c.name;
+            this.form.customer_phone = c.phone || '';
+            this.form.customer_address = c.address || '';
+            this.customerDropdownOpen = false;
+        },
+
+        onInputCustomerSearch() {
+            const q = (this.form.customer_name || '').toLowerCase().trim();
+            if (!q) {
+                this.form.dealer_id = '';
+                return;
+            }
+            const found = (this.customers || []).find(c => c.name && c.name.toLowerCase().trim() === q);
+            if (found) {
+                this.form.dealer_id = found.id;
+                if (!this.form.customer_phone && found.phone) this.form.customer_phone = found.phone;
+                if (!this.form.customer_address && found.address) this.form.customer_address = found.address;
+            } else {
+                this.form.dealer_id = '';
+            }
+        },
+
+        onInputCustomerPhone() {
+            const q = (this.form.customer_phone || '').trim();
+            if (q.length >= 9) {
+                const found = (this.customers || []).find(c => c.phone && c.phone.trim() === q);
+                if (found) {
+                    this.form.dealer_id = found.id;
+                    if (!this.form.customer_name) this.form.customer_name = found.name;
+                    if (!this.form.customer_address && found.address) this.form.customer_address = found.address;
+                }
+            }
+        },
+
+        navigateCustomerDown() {
+            this.customerDropdownOpen = true;
+            const list = this.filteredCustomers;
+            if (!list || list.length === 0) return;
+            this.highlightedCustomerIndex = Math.min(this.highlightedCustomerIndex + 1, list.length - 1);
+            this.scrollCustomerIntoView(this.highlightedCustomerIndex);
+        },
+
+        navigateCustomerUp() {
+            if (!this.customerDropdownOpen) return;
+            this.highlightedCustomerIndex = Math.max(this.highlightedCustomerIndex - 1, 0);
+            this.scrollCustomerIntoView(this.highlightedCustomerIndex);
+        },
+
+        selectHighlightedCustomer() {
+            if (this.customerDropdownOpen) {
+                const list = this.filteredCustomers;
+                if (list && list.length > 0 && list[this.highlightedCustomerIndex]) {
+                    this.selectCustomer(list[this.highlightedCustomerIndex]);
+                }
+            }
+        },
+
+        scrollCustomerIntoView(idx) {
+            this.$nextTick(() => {
+                const el = document.getElementById('cust-opt-' + idx);
+                if (el) {
+                    el.scrollIntoView({ block: 'nearest' });
+                }
+            });
+        },
+
+        /* -------------------------------------------------------------
          * 1. SEARCHABLE MACHINE MODELS (DIRECT INPUT)
          * ------------------------------------------------------------- */
         get filteredModels() {
@@ -1120,6 +1197,38 @@ function installationFormModule() {
             } else {
                 this.form.machine_model_id = '';
             }
+        },
+
+        navigateModelDown() {
+            this.modelDropdownOpen = true;
+            const list = this.filteredModels;
+            if (!list || list.length === 0) return;
+            this.highlightedModelIndex = Math.min(this.highlightedModelIndex + 1, list.length - 1);
+            this.scrollModelIntoView(this.highlightedModelIndex);
+        },
+
+        navigateModelUp() {
+            if (!this.modelDropdownOpen) return;
+            this.highlightedModelIndex = Math.max(this.highlightedModelIndex - 1, 0);
+            this.scrollModelIntoView(this.highlightedModelIndex);
+        },
+
+        selectHighlightedModel() {
+            if (this.modelDropdownOpen) {
+                const list = this.filteredModels;
+                if (list && list.length > 0 && list[this.highlightedModelIndex]) {
+                    this.selectModel(list[this.highlightedModelIndex]);
+                }
+            }
+        },
+
+        scrollModelIntoView(idx) {
+            this.$nextTick(() => {
+                const el = document.getElementById('model-opt-' + idx);
+                if (el) {
+                    el.scrollIntoView({ block: 'nearest' });
+                }
+            });
         },
 
         selectModel(model) {
@@ -1252,10 +1361,35 @@ function installationFormModule() {
         /* -------------------------------------------------------------
          * 4. SEARCHABLE PARTS IN ITEMS TABLE (DIRECT INPUT)
          * ------------------------------------------------------------- */
-        filterPartsBy(keyword) {
-            if (!keyword || !keyword.trim()) return this.parts;
+        filterPartsBy(keyword, currentIdx = null) {
+            // Danh sách ID và Tên phụ tùng đã có trong bảng ở các dòng khác (loại bỏ không hiển thị lại)
+            const selectedPartIds = new Set();
+            const selectedPartNames = new Set();
+
+            if (this.form.items && Array.isArray(this.form.items)) {
+                this.form.items.forEach((it, i) => {
+                    if (currentIdx !== null && i === currentIdx) {
+                        return; // Cho phép xem lại phụ tùng của chính dòng hiện tại
+                    }
+                    if (it.part_id) {
+                        selectedPartIds.add(Number(it.part_id));
+                    }
+                    if (it.part_name && it.part_name.trim()) {
+                        selectedPartNames.add(it.part_name.toLowerCase().trim());
+                    }
+                });
+            }
+
+            // Loại trừ các phụ tùng đã được chọn
+            const availableParts = (this.parts || []).filter(p => {
+                if (selectedPartIds.has(Number(p.id))) return false;
+                if (p.name && selectedPartNames.has(p.name.toLowerCase().trim())) return false;
+                return true;
+            });
+
+            if (!keyword || !keyword.trim()) return availableParts;
             const q = keyword.toLowerCase().trim();
-            return this.parts.filter(p => 
+            return availableParts.filter(p => 
                 (p.name && p.name.toLowerCase().includes(q)) ||
                 (p.code && p.code.toLowerCase().includes(q)) ||
                 (p.category && p.category.toLowerCase().includes(q))
@@ -1268,10 +1402,10 @@ function installationFormModule() {
             const found = this.parts.find(p => p.name.toLowerCase() === text.toLowerCase().trim());
             if (found) {
                 this.form.items[idx].part_id = found.id;
-                this.form.items[idx].unit = found.unit;
-                const price = Number(found.out_price || 0);
-                this.form.items[idx].unit_price = price;
-                this.form.items[idx].is_free = (price <= 0);
+                this.form.items[idx].unit = found.unit || 'Cái';
+                // Phụ tùng theo máy: mặc định không cộng thêm tiền, giữ nguyên giá máy
+                this.form.items[idx].is_free = true;
+                this.form.items[idx].unit_price = 0;
                 this.form.items[idx].stock_available = found.stock_qty;
             } else {
                 this.form.items[idx].part_id = '';
@@ -1283,11 +1417,10 @@ function installationFormModule() {
             if (found) {
                 this.form.items[idx].part_id = found.id;
                 this.form.items[idx].part_name = found.name;
-                this.form.items[idx].unit = found.unit;
-                // Khi chủ động chọn phụ tùng: Mặc định lấy giá bán/xuất kho và tính tiền thêm
-                const price = Number(found.out_price || 0);
-                this.form.items[idx].unit_price = price;
-                this.form.items[idx].is_free = (price <= 0);
+                this.form.items[idx].unit = found.unit || 'Cái';
+                // Phụ tùng theo máy: mặc định không cộng thêm tiền, giữ nguyên giá máy
+                this.form.items[idx].is_free = true;
+                this.form.items[idx].unit_price = 0;
                 this.form.items[idx].stock_available = found.stock_qty;
             } else {
                 this.form.items[idx].stock_available = '-';
@@ -1321,7 +1454,7 @@ function installationFormModule() {
             this.form.items[idx].part_id = '';
             this.form.items[idx].part_name = '';
             this.form.items[idx].unit_price = 0;
-            this.form.items[idx].is_free = false;
+            this.form.items[idx].is_free = true;
             this.form.items[idx].stock_available = '-';
         },
 
@@ -1331,7 +1464,7 @@ function installationFormModule() {
                 part_name: '',
                 unit: 'Cái',
                 quantity: 1,
-                is_free: false,
+                is_free: true,
                 unit_price: 0,
                 note: '',
                 stock_available: '-'
@@ -1340,235 +1473,6 @@ function installationFormModule() {
 
         removeItemRow(idx) {
             this.form.items.splice(idx, 1);
-        },
-
-        /* -------------------------------------------------------------
-         * 5. ĐỔI / NÂNG CẤP PHỤ TÙNG & TÍNH CHÊNH LỆCH TỰ ĐỘNG
-         * ------------------------------------------------------------- */
-        openUpgradeModal(idx = null) {
-            this.upgradeTargetIdx = idx;
-            this.upgradeOldDropdown = false;
-            this.upgradeNewDropdown = false;
-
-            if (idx !== null && this.form.items[idx]) {
-                const item = this.form.items[idx];
-                let oldPrice = 0;
-                if (item.part_id) {
-                    const found = this.parts.find(p => p.id == item.part_id);
-                    oldPrice = found ? Number(found.out_price || 0) : 0;
-                } else if (item.part_name) {
-                    const found = this.parts.find(p => p.name && p.name.toLowerCase() === item.part_name.toLowerCase().trim());
-                    oldPrice = found ? Number(found.out_price || 0) : 0;
-                }
-
-                this.upgradeOldSearch = item.part_name || '';
-                this.upgradeNewSearch = '';
-                this.upgradeForm = {
-                    old_part_id: item.part_id || '',
-                    old_part_name: item.part_name || '',
-                    old_part_price: oldPrice,
-                    new_part_id: '',
-                    new_part_name: '',
-                    new_part_unit: 'Cái',
-                    new_part_price: 0,
-                    quantity: Number(item.quantity) || 1,
-                    note: ''
-                };
-            } else {
-                this.upgradeOldSearch = '';
-                this.upgradeNewSearch = '';
-                this.upgradeForm = {
-                    old_part_id: '',
-                    old_part_name: '',
-                    old_part_price: 0,
-                    new_part_id: '',
-                    new_part_name: '',
-                    new_part_unit: 'Cái',
-                    new_part_price: 0,
-                    quantity: 1,
-                    note: ''
-                };
-            }
-
-            this.showUpgradeModal = true;
-        },
-
-        get suggestedOldParts() {
-            const list = [];
-            const addedNames = new Set();
-
-            // 1. Phụ tùng hiện có trong bảng form.items
-            if (this.form.items) {
-                this.form.items.forEach(it => {
-                    if (it.part_name && it.part_name.trim() && !addedNames.has(it.part_name.toLowerCase().trim())) {
-                        const found = this.parts.find(p => p.id == it.part_id || (p.name && p.name.toLowerCase() === it.part_name.toLowerCase().trim()));
-                        list.push({
-                            id: it.part_id || (found ? found.id : ''),
-                            name: it.part_name,
-                            code: found ? found.code : '',
-                            out_price: found ? Number(found.out_price || 0) : 0,
-                            source: 'Đang có trong đơn'
-                        });
-                        addedNames.add(it.part_name.toLowerCase().trim());
-                    }
-                });
-            }
-
-            // 2. Phụ tùng mặc định của model máy hiện tại (kể cả đã bị xóa khỏi bảng đơn hàng!)
-            const model = this.getSelectedModel();
-            if (model) {
-                let defaultParts = model.default_parts;
-                if (typeof defaultParts === 'string') {
-                    try { defaultParts = JSON.parse(defaultParts); } catch (e) { defaultParts = []; }
-                }
-                if (Array.isArray(defaultParts)) {
-                    defaultParts.forEach(dp => {
-                        const name = dp.part_name || '';
-                        if (name && !addedNames.has(name.toLowerCase().trim())) {
-                            const found = this.parts.find(p => (dp.part_id && p.id == dp.part_id) || (p.name && p.name.toLowerCase() === name.toLowerCase().trim()));
-                            list.push({
-                                id: dp.part_id || (found ? found.id : ''),
-                                name: name,
-                                code: found ? found.code : (dp.part_code || ''),
-                                out_price: found ? Number(found.out_price || 0) : 0,
-                                source: 'Theo cấu hình máy'
-                            });
-                            addedNames.add(name.toLowerCase().trim());
-                        }
-                    });
-                }
-            }
-
-            // 3. Toàn bộ phụ tùng trong kho
-            this.parts.forEach(p => {
-                if (p.name && !addedNames.has(p.name.toLowerCase().trim())) {
-                    list.push({
-                        id: p.id,
-                        name: p.name,
-                        code: p.code || '',
-                        out_price: Number(p.out_price || 0),
-                        source: 'Kho phụ tùng'
-                    });
-                    addedNames.add(p.name.toLowerCase().trim());
-                }
-            });
-
-            if (!this.upgradeOldSearch || !this.upgradeOldSearch.trim()) {
-                return list.slice(0, 30);
-            }
-            const q = this.upgradeOldSearch.toLowerCase().trim();
-            return list.filter(p => (p.name && p.name.toLowerCase().includes(q)) || (p.code && p.code.toLowerCase().includes(q)));
-        },
-
-        get suggestedNewParts() {
-            if (!this.upgradeNewSearch || !this.upgradeNewSearch.trim()) {
-                return this.parts.slice(0, 30);
-            }
-            const q = this.upgradeNewSearch.toLowerCase().trim();
-            return this.parts.filter(p => (p.name && p.name.toLowerCase().includes(q)) || (p.code && p.code.toLowerCase().includes(q)));
-        },
-
-        selectUpgradeOldPart(p) {
-            this.upgradeForm.old_part_id = p.id;
-            this.upgradeForm.old_part_name = p.name;
-            this.upgradeForm.old_part_price = Number(p.out_price || 0);
-            this.upgradeOldSearch = p.name;
-            this.upgradeOldDropdown = false;
-        },
-
-        onInputUpgradeOldSearch() {
-            this.upgradeForm.old_part_name = this.upgradeOldSearch;
-            const found = this.parts.find(p => p.name && p.name.toLowerCase() === this.upgradeOldSearch.toLowerCase().trim());
-            if (found) {
-                this.upgradeForm.old_part_id = found.id;
-                this.upgradeForm.old_part_price = Number(found.out_price || 0);
-            }
-        },
-
-        selectUpgradeNewPart(p) {
-            this.upgradeForm.new_part_id = p.id;
-            this.upgradeForm.new_part_name = p.name;
-            this.upgradeForm.new_part_unit = p.unit || 'Cái';
-            this.upgradeForm.new_part_price = Number(p.out_price || 0);
-            this.upgradeNewSearch = p.name;
-            this.upgradeNewDropdown = false;
-        },
-
-        onInputUpgradeNewSearch() {
-            this.upgradeForm.new_part_name = this.upgradeNewSearch;
-            const found = this.parts.find(p => p.name && p.name.toLowerCase() === this.upgradeNewSearch.toLowerCase().trim());
-            if (found) {
-                this.upgradeForm.new_part_id = found.id;
-                this.upgradeForm.new_part_unit = found.unit || 'Cái';
-                this.upgradeForm.new_part_price = Number(found.out_price || 0);
-            }
-        },
-
-        calcUpgradeDifference() {
-            const newPrice = Number(this.upgradeForm.new_part_price) || 0;
-            const oldPrice = Number(this.upgradeForm.old_part_price) || 0;
-            return Math.max(0, newPrice - oldPrice);
-        },
-
-        applyUpgrade() {
-            if (!this.upgradeForm.new_part_name || !this.upgradeForm.new_part_name.trim()) {
-                alert('Vui lòng chọn phụ tùng mới thay thế / nâng cấp!');
-                return;
-            }
-
-            const diff = this.calcUpgradeDifference();
-            const foundNew = this.parts.find(p => p.id == this.upgradeForm.new_part_id || (p.name && p.name.toLowerCase() === this.upgradeForm.new_part_name.toLowerCase().trim()));
-            const oldName = this.upgradeForm.old_part_name ? this.upgradeForm.old_part_name.trim() : 'linh kiện cũ';
-            const qty = Number(this.upgradeForm.quantity) > 0 ? Number(this.upgradeForm.quantity) : 1;
-            
-            const noteText = `Đổi từ [${oldName}] (Khấu trừ: ${window.formatCurrency(this.upgradeForm.old_part_price)}, Bù: ${window.formatCurrency(diff)}/cái)`;
-
-            if (this.upgradeTargetIdx !== null && this.form.items[this.upgradeTargetIdx]) {
-                // Thay thế đúng dòng được chọn
-                const item = this.form.items[this.upgradeTargetIdx];
-                item.part_id = foundNew ? foundNew.id : (this.upgradeForm.new_part_id || '');
-                item.part_name = this.upgradeForm.new_part_name.trim();
-                item.unit = foundNew ? (foundNew.unit || 'Cái') : (this.upgradeForm.new_part_unit || 'Cái');
-                item.quantity = qty;
-                item.is_free = (diff === 0);
-                item.unit_price = diff;
-                item.note = noteText;
-                item.stock_available = foundNew ? foundNew.stock_qty : '-';
-            } else {
-                // Tìm xem trong form.items có dòng nào trùng tên phụ kiện cũ không
-                let matchIdx = -1;
-                if (this.upgradeForm.old_part_name) {
-                    const qOld = this.upgradeForm.old_part_name.toLowerCase().trim();
-                    matchIdx = this.form.items.findIndex(it => it.part_name && it.part_name.toLowerCase().trim() === qOld);
-                }
-
-                if (matchIdx !== -1) {
-                    // Thay thế dòng cũ đang tồn tại trong bảng
-                    const item = this.form.items[matchIdx];
-                    item.part_id = foundNew ? foundNew.id : (this.upgradeForm.new_part_id || '');
-                    item.part_name = this.upgradeForm.new_part_name.trim();
-                    item.unit = foundNew ? (foundNew.unit || 'Cái') : (this.upgradeForm.new_part_unit || 'Cái');
-                    item.quantity = qty;
-                    item.is_free = (diff === 0);
-                    item.unit_price = diff;
-                    item.note = noteText;
-                    item.stock_available = foundNew ? foundNew.stock_qty : '-';
-                } else {
-                    // Thêm dòng mới vào bảng (khi phụ kiện cũ đã bị xóa khỏi bảng trước đó!)
-                    this.form.items.push({
-                        part_id: foundNew ? foundNew.id : (this.upgradeForm.new_part_id || ''),
-                        part_name: this.upgradeForm.new_part_name.trim(),
-                        unit: foundNew ? (foundNew.unit || 'Cái') : (this.upgradeForm.new_part_unit || 'Cái'),
-                        quantity: qty,
-                        is_free: (diff === 0),
-                        unit_price: diff,
-                        note: noteText,
-                        stock_available: foundNew ? foundNew.stock_qty : '-'
-                    });
-                }
-            }
-
-            this.showUpgradeModal = false;
         },
 
         calcPartsFee() {
@@ -1581,9 +1485,8 @@ function installationFormModule() {
         calcTotalAmount() {
             const machine = Number(this.form.machine_price) || 0;
             const parts = this.calcPartsFee();
-            const surcharge = Number(this.form.surcharge_amount) || 0;
             const discount = Number(this.form.discount_amount) || 0;
-            return Math.max(0, machine + parts + surcharge - discount);
+            return Math.max(0, machine + parts - discount);
         },
 
         /* -------------------------------------------------------------
@@ -1663,6 +1566,7 @@ function installationFormModule() {
 
             const payload = {
                 id: this.form.id || null,
+                dealer_id: this.form.dealer_id ? Number(this.form.dealer_id) : null,
                 customer_name: customerName,
                 customer_phone: customerPhone,
                 customer_address: customerAddress,
@@ -1694,7 +1598,8 @@ function installationFormModule() {
                         is_free: Boolean(it.is_free),
                         unit_price: it.is_free ? 0 : Number(it.unit_price || 0),
                         note: it.note || ''
-                    }))
+                    })),
+                return_url: this.returnUrl || null
             };
 
             try {
@@ -1726,7 +1631,7 @@ function installationFormModule() {
                 }
 
                 alert(data.message || 'Lưu đơn lắp đặt máy lọc nước thành công!');
-                window.location.href = '/water-filter?tab=installations';
+                window.location.href = this.returnUrl || data.redirect || '/water-filter?tab=installations';
             } catch (e) {
                 alert('Có lỗi kết nối máy chủ: ' + (e.message || 'Vui lòng kiểm tra đường truyền'));
                 this.submitting = false;

@@ -13,7 +13,7 @@
             </div>
         </div>
 
-        <div class="overflow-x-auto">
+        <div class="tasks-table-wrapper overflow-x-auto">
             <table class="w-full text-left text-xs border-collapse">
                 <thead>
                     <tr class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 uppercase text-[11px]">
