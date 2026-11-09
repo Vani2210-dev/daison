@@ -58,6 +58,10 @@
                 <i class="fa-solid fa-award"></i>
                 <span>Nhãn hiệu (<span x-text="brands.length"></span>)</span>
             </button>
+            <button @click="switchTab('suppliers')" :class="activeTab === 'suppliers' ? 'bg-[#1b4a8c] text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-3 py-2 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 cursor-pointer">
+                <i class="fa-solid fa-industry"></i>
+                <span>Nhà cung cấp (<span x-text="suppliers.length"></span>)</span>
+            </button>
             <button @click="switchTab('subcategories')" :class="activeTab === 'subcategories' ? 'bg-[#1b4a8c] text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-3 py-2 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 cursor-pointer">
                 <i class="fa-solid fa-sitemap"></i>
                 <span>Nhóm nhỏ (<span x-text="subcategories.length"></span>)</span>
@@ -461,6 +465,89 @@
                             <td colspan="8" class="py-8 text-center text-slate-400">
                                 <i class="fa-solid fa-award text-2xl mb-1 text-slate-300 block"></i>
                                 Không tìm thấy thương hiệu nào phù hợp
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: NHÀ CUNG CẤP -->
+    <div x-show="activeTab === 'suppliers'" class="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+        <div class="p-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="text-xs font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-industry text-slate-600"></i>
+                    <span>Danh Sách Nhà Cung Cấp & Hãng Sản Xuất Trực Thuộc</span>
+                </div>
+                <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-800">
+                    <span x-text="filteredSuppliers.length"></span> / <span x-text="suppliers.length"></span> NCC
+                </span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="relative">
+                    <input type="text" x-model="search" placeholder="Tìm theo mã, tên NCC, SĐT..." class="w-48 sm:w-64 pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500 bg-white">
+                    <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                </div>
+                <button type="button" @click="openCreate('suppliers')" class="px-3 py-1.5 rounded-lg bg-[#1b4a8c] hover:bg-[#153a6f] text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Thêm Nhà Cung Cấp</span>
+                </button>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                    <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
+                        <th class="py-2.5 px-3 w-12 text-center">STT</th>
+                        <th class="py-2.5 px-3">Mã NCC</th>
+                        <th class="py-2.5 px-3">Tên Nhà Cung Cấp</th>
+                        <th class="py-2.5 px-3">Liên Hệ / SĐT</th>
+                        <th class="py-2.5 px-3">Email / MST</th>
+                        <th class="py-2.5 px-3">Địa Chỉ</th>
+                        <th class="py-2.5 px-3 text-center">Trạng Thái</th>
+                        <th class="py-2.5 px-3 text-center w-28">Thao Tác</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
+                    <template x-for="(sup, index) in filteredSuppliers" :key="sup.id">
+                        <tr class="hover:bg-sky-50/50 transition-colors">
+                            <td class="py-2.5 px-3 text-center text-slate-400" x-text="index + 1"></td>
+                            <td class="py-2.5 px-3 font-bold text-slate-600 font-mono" x-text="sup.code || ('NCC-' + sup.id)"></td>
+                            <td class="py-2.5 px-3 font-bold text-slate-900 flex items-center gap-2">
+                                <span class="w-6 h-6 rounded bg-slate-100 text-slate-700 flex items-center justify-center font-black text-xs border border-slate-200" x-text="sup.name ? sup.name.charAt(0) : 'N'"></span>
+                                <span x-text="sup.name"></span>
+                            </td>
+                            <td class="py-2.5 px-3">
+                                <div class="font-bold text-slate-800" x-text="sup.contact_name || '—'"></div>
+                                <div class="text-[11px] text-slate-500 font-mono" x-text="sup.phone || ''"></div>
+                            </td>
+                            <td class="py-2.5 px-3">
+                                <div class="text-slate-700" x-text="sup.email || '—'"></div>
+                                <div class="text-[11px] text-slate-500 font-mono" x-show="sup.tax_code" x-text="'MST: ' + sup.tax_code"></div>
+                            </td>
+                            <td class="py-2.5 px-3 text-slate-600 max-w-xs truncate" :title="sup.address" x-text="sup.address || '—'"></td>
+                            <td class="py-2.5 px-3 text-center">
+                                <span :class="sup.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'" class="px-2 py-0.5 rounded-full text-[10px] font-bold" x-text="sup.is_active ? 'Hợp tác' : 'Tạm dừng'"></span>
+                            </td>
+                            <td class="py-2.5 px-3 text-center">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <button type="button" @click="openEdit('suppliers', sup)" class="w-7 h-7 rounded-md bg-sky-50 hover:bg-sky-100 text-sky-700 flex items-center justify-center transition-colors cursor-pointer" title="Chỉnh sửa">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    <button type="button" @click="deleteItem('suppliers', sup)" class="w-7 h-7 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 flex items-center justify-center transition-colors cursor-pointer" title="Xóa">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                    <template x-if="filteredSuppliers.length === 0">
+                        <tr>
+                            <td colspan="8" class="py-8 text-center text-slate-400">
+                                <i class="fa-solid fa-industry text-2xl mb-1 text-slate-300 block"></i>
+                                Không tìm thấy nhà cung cấp nào phù hợp
                             </td>
                         </tr>
                     </template>
@@ -1614,6 +1701,72 @@
                     </div>
                 </template>
 
+                <!-- 5.1. FORM NHÀ CUNG CẤP -->
+                <template x-if="modalType === 'suppliers'">
+                    <div class="space-y-3.5">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Mã Nhà Cung Cấp <span class="text-rose-500">*</span></label>
+                                <input type="text" x-model="formData.code" required placeholder="VD: NCC-HL, NCC-001" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 font-mono text-xs">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Tên Nhà Cung Cấp / Hãng <span class="text-rose-500">*</span></label>
+                                <input type="text" x-model="formData.name" required placeholder="VD: Công ty TNHH Dược phẩm Hoa Linh" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Số Điện Thoại</label>
+                                <input type="text" x-model="formData.phone" placeholder="VD: 0988 123 456" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs font-mono">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Email</label>
+                                <input type="email" x-model="formData.email" placeholder="contact@hoalinh.vn" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Mã Số Thuế</label>
+                                <input type="text" x-model="formData.tax_code" placeholder="0101234567" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs font-mono">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Người Liên Hệ / Đại Diện</label>
+                                <input type="text" x-model="formData.contact_name" placeholder="VD: Nguyễn Văn A (TP Kinh doanh)" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Trạng Thái Hoạt Động</label>
+                                <select x-model="formData.is_active" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs bg-white">
+                                    <option :value="true">Đang hợp tác</option>
+                                    <option :value="false">Tạm dừng hợp tác</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Địa Chỉ Trụ Sở / Nhà Xưởng</label>
+                            <input type="text" x-model="formData.address" placeholder="Địa chỉ trụ sở hoặc kho xưởng..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Ngân Hàng Giao Dịch</label>
+                                <input type="text" x-model="formData.bank_name" placeholder="VD: Vietcombank, BIDV, Techcombank" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Số Tài Khoản</label>
+                                <input type="text" x-model="formData.bank_account" placeholder="VD: 0011001234567" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 font-mono text-xs">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Ghi Chú / Chính Sách NCC</label>
+                            <textarea x-model="formData.notes" rows="2" placeholder="Ghi chú điều khoản giao hàng, chiết khấu, công nợ..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs"></textarea>
+                        </div>
+                    </div>
+                </template>
+
                 <!-- 6. FORM TUYẾN GIAO HÀNG (CHỌN THEO ĐỊA GIỚI HÀNH CHÍNH) -->
                 <template x-if="modalType === 'routes'">
                     <div class="space-y-4">
@@ -2144,6 +2297,7 @@ function categoryManager() {
         funds: @json($funds ?? []),
         categories: @json($categories ?? []),
         brands: @json($brands ?? []),
+        suppliers: @json($suppliers ?? []),
         subcategories: @json($subcategories ?? []),
         routes: @json($routes ?? []),
         vehicles: @json($vehicles ?? []),
@@ -2522,6 +2676,19 @@ function categoryManager() {
             );
         },
 
+        get filteredSuppliers() {
+            const q = this.search.trim().toLowerCase();
+            if (!q) return this.suppliers;
+            return this.suppliers.filter(s => 
+                (s.code && s.code.toLowerCase().includes(q)) ||
+                (s.name && s.name.toLowerCase().includes(q)) ||
+                (s.phone && s.phone.toLowerCase().includes(q)) ||
+                (s.contact_name && s.contact_name.toLowerCase().includes(q)) ||
+                (s.tax_code && s.tax_code.toLowerCase().includes(q)) ||
+                (s.address && s.address.toLowerCase().includes(q))
+            );
+        },
+
         get filteredSubcategories() {
             const q = this.search.trim().toLowerCase();
             return this.subcategories.filter(s => {
@@ -2686,6 +2853,7 @@ function categoryManager() {
                 fund_types: { title: 'Thêm Mới Loại Quỹ / Tài Khoản', icon: 'fa-solid fa-wallet', prefix: 'QTM' },
                 categories: { title: 'Thêm Mới Phân Loại Ngành Hàng', icon: 'fa-solid fa-layer-group', prefix: 'PL' },
                 brands: { title: 'Thêm Mới Nhãn Hiệu / Thương Hiệu', icon: 'fa-solid fa-award', prefix: 'TH' },
+                suppliers: { title: 'Thêm Mới Nhà Cung Cấp', icon: 'fa-solid fa-industry', prefix: 'NCC' },
                 subcategories: { title: 'Thêm Mới Nhóm Nhỏ / Con', icon: 'fa-solid fa-sitemap', prefix: 'NN' },
                 routes: { title: 'Thêm Mới Tuyến Giao Hàng', icon: 'fa-solid fa-route', prefix: 'TGH' },
                 vehicles: { title: 'Thêm Mới Xe Giao Hàng', icon: 'fa-solid fa-truck', prefix: '' },
@@ -2734,6 +2902,7 @@ function categoryManager() {
                 fund_types: 'Chỉnh Sửa Loại Quỹ: ' + item.name,
                 categories: 'Chỉnh Sửa Phân Loại: ' + item.name,
                 brands: 'Chỉnh Sửa Nhãn Hiệu: ' + item.name,
+                suppliers: 'Chỉnh Sửa Nhà Cung Cấp: ' + item.name,
                 subcategories: 'Chỉnh Sửa Nhóm Nhỏ: ' + item.name,
                 routes: 'Chỉnh Sửa Tuyến GH',
                 vehicles: 'Chỉnh Sửa Xe Giao Hàng: ' + item.plate_number,
@@ -2837,6 +3006,7 @@ function categoryManager() {
                 fund_types: 'tài khoản quỹ',
                 categories: 'phân loại hàng',
                 brands: 'nhãn hiệu',
+                suppliers: 'nhà cung cấp',
                 subcategories: 'nhóm nhỏ',
                 routes: 'tuyến giao hàng',
                 vehicles: 'xe giao hàng',

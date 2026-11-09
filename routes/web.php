@@ -473,7 +473,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/cat_fund_types', function(Request $request, WebViewController $controller) { return $controller->categories($request, 'fund_types'); })->middleware('permission:danhmuc.view,funds.view');
     Route::get('/cat_categories', function(Request $request, WebViewController $controller) { return $controller->categories($request, 'categories'); })->middleware('permission:danhmuc.view');
     Route::get('/cat_brands', function(Request $request, WebViewController $controller) { return $controller->categories($request, 'brands'); })->middleware('permission:danhmuc.view');
-    Route::get('/cat_suppliers', function(Request $request, WebViewController $controller) { return $controller->categories($request, 'brands'); })->middleware('permission:danhmuc.view');
+    Route::get('/cat_suppliers', function(Request $request, WebViewController $controller) { return $controller->categories($request, 'suppliers'); })->middleware('permission:danhmuc.view');
+    Route::get('/suppliers', function(Request $request, WebViewController $controller) { return $controller->categories($request, 'suppliers'); })->middleware('permission:danhmuc.view');
     Route::get('/cat_delivery_routes', function(Request $request, WebViewController $controller) { return $controller->categories($request, 'routes'); })->middleware('permission:danhmuc.view,delivery_dispatch.view');
     Route::get('/cat_vehicles', function(Request $request, WebViewController $controller) { return $controller->categories($request, 'vehicles'); })->middleware('permission:danhmuc.view,fleet.view');
     Route::get('/cat_price_tiers', [WebViewController::class, 'priceTiers'])->name('pricing.index')->middleware('permission:danhmuc.view');

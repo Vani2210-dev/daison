@@ -20,6 +20,7 @@ use App\Models\Role;
 use App\Models\Permission;
 use App\Models\SalesPolicy;
 use App\Models\Subcategory;
+use App\Models\Supplier;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\Warehouse;
@@ -1415,6 +1416,7 @@ class WebViewController extends Controller
         $routes = DeliveryRoute::all();
         $vehicles = Vehicle::with(['driver', 'deliveryRoute'])->get();
         $policies = SalesPolicy::all();
+        $suppliers = Supplier::orderBy('name')->get();
         $users = User::select('id', 'name', 'phone', 'department')->orderBy('name')->get();
         $activeTab = $request->input('tab', $tab);
 
@@ -1426,7 +1428,7 @@ class WebViewController extends Controller
 
         return view('categories.index', compact(
             'warehouses', 'branches', 'funds', 'categories',
-            'brands', 'subcategories', 'routes', 'vehicles', 'policies', 'users', 'activeTab',
+            'brands', 'suppliers', 'subcategories', 'routes', 'vehicles', 'policies', 'users', 'activeTab',
             'assignments', 'initialVehicleId', 'initialPlate', 'initialAction'
         ));
     }
@@ -1650,6 +1652,23 @@ class WebViewController extends Controller
                     $item->loadCount('products');
                     break;
 
+                case 'suppliers':
+                    $data = [
+                        'code' => $request->input('code') ?: ('NCC-' . strtoupper(substr(uniqid(), -4))),
+                        'name' => $request->input('name'),
+                        'phone' => $request->input('phone'),
+                        'email' => $request->input('email'),
+                        'tax_code' => $request->input('tax_code'),
+                        'contact_name' => $request->input('contact_name'),
+                        'address' => $request->input('address'),
+                        'bank_name' => $request->input('bank_name'),
+                        'bank_account' => $request->input('bank_account'),
+                        'notes' => $request->input('notes'),
+                        'is_active' => $request->boolean('is_active', true),
+                    ];
+                    $item = Supplier::updateOrCreate(['id' => $id], $data);
+                    break;
+
                 case 'subcategories':
                     $data = [
                         'category_id' => (int)$request->input('category_id'),
@@ -1756,6 +1775,9 @@ class WebViewController extends Controller
                     break;
                 case 'brands':
                     $record = Brand::findOrFail($id);
+                    break;
+                case 'suppliers':
+                    $record = Supplier::findOrFail($id);
                     break;
                 case 'subcategories':
                     $record = Subcategory::findOrFail($id);
