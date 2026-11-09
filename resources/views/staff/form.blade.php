@@ -81,9 +81,9 @@
                 <!-- Số Điện Thoại -->
                 <div>
                     <label class="block font-bold text-slate-700 mb-1.5">
-                        Số Điện Thoại Liên Hệ <span class="text-rose-500">*</span>
+                        Số Điện Thoại Liên Hệ
                     </label>
-                    <input type="text" x-model="formData.phone" required
+                    <input type="text" x-model="formData.phone"
                            placeholder="VD: 0988.888.999"
                            class="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-800 outline-none focus:border-sky-500 transition-all">
                 </div>
@@ -601,8 +601,8 @@ function staffFormApp() {
         },
 
         async submitForm() {
-            if (!this.formData.name || !this.formData.phone || !this.formData.email) {
-                alert('Vui lòng điền đầy đủ Họ tên, Số điện thoại và Email đăng nhập!');
+            if (!this.formData.name || !this.formData.email) {
+                alert('Vui lòng điền đầy đủ Họ tên và Email đăng nhập!');
                 return;
             }
 
