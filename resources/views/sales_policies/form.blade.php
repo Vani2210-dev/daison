@@ -274,48 +274,141 @@
                 </div>
             </div>
 
-            <!-- Case B: Quantity (Mua X tặng Y) -->
+            <!-- Case B: Quantity (Mua X tặng Y theo từng phân khúc bậc số lượng) -->
             <div x-show="formData.policy_type === 'quantity'" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                    <div>
-                        <label class="block font-bold text-slate-700 mb-1.5">
-                            Số Lượng Mua Tối Thiểu (X) <span class="text-rose-500">*</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            inputmode="numeric" 
-                            x-money="formData.buy_qty" 
-                            placeholder="VD: 10" 
-                            class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl font-bold text-sky-900 text-xs outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
-                        >
-                        <p class="text-[11px] text-slate-400 mt-1">Khách mua từ số lượng này trở lên</p>
+                <div class="bg-sky-50/70 border border-sky-200 rounded-xl p-3.5 text-xs text-sky-900 flex items-start gap-3">
+                    <div class="w-7 h-7 rounded-lg bg-sky-500 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                        <i class="fa-solid fa-gift text-sm"></i>
                     </div>
-
                     <div>
-                        <label class="block font-bold text-slate-700 mb-1.5">
-                            Số Lượng Tặng Kèm (Y) <span class="text-rose-500">*</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            inputmode="numeric" 
-                            x-money="formData.free_qty" 
-                            placeholder="VD: 1" 
-                            class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl font-bold text-emerald-600 text-xs outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                        >
-                        <p class="text-[11px] text-slate-400 mt-1">Số lượng hàng được tặng miễn phí</p>
+                        <div class="font-bold text-sky-950 text-xs">Chính sách quà tặng theo phân khúc số lượng mua (Bậc tặng quà)</div>
+                        <div class="text-[11px] text-sky-800 mt-0.5 leading-relaxed">
+                            Hệ thống hỗ trợ tạo nhiều phân khúc bậc tặng (Ví dụ: <strong>Mua 10 tặng 1, Mua 20 tặng 3, Mua 50 tặng 8</strong>...). Khi lên đơn hàng, hệ thống sẽ tự động đối chiếu số lượng khách mua để áp mức tặng quà cao nhất mà khách đạt được.
+                        </div>
                     </div>
+                </div>
 
-                    <div>
-                        <label class="block font-bold text-slate-700 mb-1.5">
-                            Sản Phẩm Tặng Kèm
-                        </label>
+                <!-- Sản phẩm tặng kèm mặc định -->
+                <div class="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200 text-xs">
+                    <label class="block font-bold text-slate-700 mb-1.5">
+                        Sản Phẩm Tặng Kèm Chung Của Chính Sách
+                    </label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
                         <select x-model="formData.free_product_id" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer">
                             <option value="">(Tặng chính sản phẩm khách mua)</option>
                             <template x-for="p in productsCatalog" :key="p.id">
                                 <option :value="p.id" x-text="'[' + p.sku + '] ' + p.name + ' (' + p.unit + ')'"></option>
                             </template>
                         </select>
-                        <p class="text-[11px] text-slate-400 mt-1">Để trống nếu tặng cùng loại sản phẩm khách mua</p>
+                        <p class="text-[11px] text-slate-400">Để trống nếu muốn tặng cùng loại với sản phẩm khách mua (hoặc có thể chọn quà tặng riêng cho từng bậc bên dưới).</p>
+                    </div>
+                </div>
+
+                <!-- Bảng các phân khúc / bậc tặng quà -->
+                <div class="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                    <div class="bg-slate-100/90 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between">
+                        <span class="font-bold text-xs text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-layer-group text-sky-600"></i> Các Phân Khúc / Bậc Tặng Quà
+                        </span>
+                        <button 
+                            type="button" 
+                            @click="addGiftTier()" 
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 text-white font-bold text-xs hover:bg-sky-700 shadow-2xs transition active:scale-95 cursor-pointer"
+                        >
+                            <i class="fa-solid fa-plus text-[10px]"></i> Thêm Bậc Tặng
+                        </button>
+                    </div>
+
+                    <div class="p-3 bg-white space-y-3">
+                        <template x-for="(tier, idx) in formData.gift_tiers" :key="idx">
+                            <div class="p-3.5 rounded-xl border border-slate-200 hover:border-sky-300 bg-slate-50/50 hover:bg-sky-50/20 transition flex flex-col md:flex-row items-stretch md:items-center gap-3 text-xs">
+                                <!-- Badge Bậc -->
+                                <div class="flex items-center justify-between md:justify-start gap-2 min-w-[80px]">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-sky-100 text-sky-800 border border-sky-200" x-text="'Bậc ' + (idx + 1)"></span>
+                                </div>
+
+                                <!-- Mua tối thiểu -->
+                                <div class="flex-1">
+                                    <label class="block font-bold text-slate-600 mb-1 text-[11px]">
+                                        Mua Tối Thiểu (X) <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input 
+                                        type="number" 
+                                        min="1" 
+                                        step="1" 
+                                        x-model.number="tier.buy_qty" 
+                                        placeholder="VD: 10" 
+                                        class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-bold text-sky-900 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+                                    >
+                                </div>
+
+                                <!-- Icon chuyển tiếp -->
+                                <div class="hidden md:flex items-center justify-center text-slate-400 pt-5">
+                                    <i class="fa-solid fa-arrow-right"></i>
+                                </div>
+
+                                <!-- Tặng kèm -->
+                                <div class="flex-1">
+                                    <label class="block font-bold text-slate-600 mb-1 text-[11px]">
+                                        Tặng Kèm (Y) <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input 
+                                        type="number" 
+                                        min="1" 
+                                        step="1" 
+                                        x-model.number="tier.free_qty" 
+                                        placeholder="VD: 1" 
+                                        class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-bold text-emerald-600 text-xs outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                                    >
+                                </div>
+
+                                <!-- Sản phẩm tặng riêng cho bậc này (tùy chọn) -->
+                                <div class="flex-[1.5]">
+                                    <label class="block font-bold text-slate-600 mb-1 text-[11px]">
+                                        Quà Tặng Riêng Cho Bậc Này (Tùy chọn)
+                                    </label>
+                                    <select x-model="tier.free_product_id" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium focus:border-sky-500 focus:outline-none cursor-pointer">
+                                        <option value="">(Theo quà tặng chung ở trên)</option>
+                                        <template x-for="p in productsCatalog" :key="p.id">
+                                            <option :value="p.id" x-text="'[' + p.sku + '] ' + p.name + ' (' + p.unit + ')'"></option>
+                                        </template>
+                                    </select>
+                                </div>
+
+                                <!-- Xóa bậc -->
+                                <div class="flex items-center justify-end md:justify-center pt-2 md:pt-5">
+                                    <button 
+                                        type="button" 
+                                        @click="removeGiftTier(idx)" 
+                                        class="w-8 h-8 rounded-lg flex items-center justify-center text-rose-500 hover:text-rose-700 hover:bg-rose-100 transition cursor-pointer"
+                                        :disabled="formData.gift_tiers.length <= 1"
+                                        :class="formData.gift_tiers.length <= 1 ? 'opacity-30 cursor-not-allowed' : ''"
+                                        title="Xóa bậc này"
+                                    >
+                                        <i class="fa-solid fa-trash-can text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Tóm tắt phân khúc trực quan -->
+                        <div class="mt-2 pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2 text-xs">
+                            <div class="text-slate-600 font-medium flex items-center flex-wrap gap-1.5">
+                                <span class="font-bold text-slate-800">Tóm tắt các mức:</span>
+                                <template x-for="(t, i) in formData.gift_tiers" :key="i">
+                                    <span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[11px]">
+                                        Mua <span x-text="t.buy_qty || 0"></span> tặng <span x-text="t.free_qty || 0"></span>
+                                    </span>
+                                </template>
+                            </div>
+                            <button 
+                                type="button" 
+                                @click="addGiftTier()" 
+                                class="text-sky-600 hover:text-sky-800 font-bold text-xs inline-flex items-center gap-1 cursor-pointer"
+                            >
+                                <i class="fa-solid fa-circle-plus"></i> Thêm mức tiếp theo
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -729,6 +822,7 @@ function salesPolicyForm() {
             buy_qty: {{ $policy && $policy->buy_qty !== null ? (float)$policy->buy_qty : 'null' }},
             free_qty: {{ $policy && $policy->free_qty !== null ? (float)$policy->free_qty : 'null' }},
             free_product_id: '{{ $policy && $policy->free_product_id ? $policy->free_product_id : "" }}',
+            gift_tiers: @json($policy && !empty($policy->gift_tiers) ? $policy->gift_tiers : []),
             discount_percent: {{ $policy && $policy->discount_percent !== null ? (float)$policy->discount_percent : 'null' }},
             discount_amount: {{ $policy && $policy->discount_amount !== null ? (float)$policy->discount_amount : 'null' }},
             min_order_value: {{ $policy && $policy->min_order_value !== null ? (float)$policy->min_order_value : 'null' }},
@@ -737,6 +831,42 @@ function salesPolicyForm() {
             start_date: '{{ $policy && $policy->start_date ? (is_string($policy->start_date) ? substr($policy->start_date, 0, 10) : $policy->start_date->format("Y-m-d")) : date("Y-m-d") }}',
             end_date: '{{ $policy && $policy->end_date ? (is_string($policy->end_date) ? substr($policy->end_date, 0, 10) : $policy->end_date->format("Y-m-d")) : "" }}',
             notes: '{{ $policy ? addslashes(str_replace(["\r", "\n"], ["", "\\n"], $policy->notes ?? "")) : "" }}',
+        },
+
+        init() {
+            if (!this.formData.gift_tiers || !Array.isArray(this.formData.gift_tiers) || this.formData.gift_tiers.length === 0) {
+                if (this.formData.buy_qty && this.formData.free_qty) {
+                    this.formData.gift_tiers = [{
+                        buy_qty: Number(this.formData.buy_qty),
+                        free_qty: Number(this.formData.free_qty),
+                        free_product_id: this.formData.free_product_id || ''
+                    }];
+                } else {
+                    this.formData.gift_tiers = [
+                        { buy_qty: 10, free_qty: 1, free_product_id: '' }
+                    ];
+                }
+            }
+        },
+
+        addGiftTier() {
+            const tiers = this.formData.gift_tiers;
+            const last = tiers.length > 0 ? tiers[tiers.length - 1] : null;
+            const nextBuy = last && Number(last.buy_qty) > 0 ? Number(last.buy_qty) + 10 : (tiers.length + 1) * 10;
+            const nextFree = last && Number(last.free_qty) > 0 ? Number(last.free_qty) + 1 : (tiers.length + 1);
+            tiers.push({
+                buy_qty: nextBuy,
+                free_qty: nextFree,
+                free_product_id: ''
+            });
+        },
+
+        removeGiftTier(idx) {
+            if (this.formData.gift_tiers.length <= 1) {
+                alert('Chính sách quà tặng cần có ít nhất một phân khúc bậc!');
+                return;
+            }
+            this.formData.gift_tiers.splice(idx, 1);
         },
 
         setPolicyType(type) {
@@ -852,10 +982,21 @@ function salesPolicyForm() {
                     return;
                 }
             } else if (this.formData.policy_type === 'quantity') {
-                if (!this.formData.buy_qty || Number(this.formData.buy_qty) <= 0 || !this.formData.free_qty || Number(this.formData.free_qty) <= 0) {
-                    alert('Vui lòng nhập đầy đủ số lượng mua (X) và số lượng tặng (Y)!');
+                if (!this.formData.gift_tiers || this.formData.gift_tiers.length === 0) {
+                    alert('Vui lòng thêm ít nhất một phân khúc bậc quà tặng (Mua X tặng Y)!');
                     return;
                 }
+                for (let i = 0; i < this.formData.gift_tiers.length; i++) {
+                    const t = this.formData.gift_tiers[i];
+                    if (!t.buy_qty || Number(t.buy_qty) <= 0 || !t.free_qty || Number(t.free_qty) <= 0) {
+                        alert(`Phân khúc bậc ${i + 1}: Vui lòng nhập số lượng mua (X > 0) và số lượng tặng (Y > 0)!`);
+                        return;
+                    }
+                }
+                // Sắp xếp phân khúc tăng dần theo số lượng mua
+                this.formData.gift_tiers.sort((a, b) => Number(a.buy_qty) - Number(b.buy_qty));
+                this.formData.buy_qty = this.formData.gift_tiers[0].buy_qty;
+                this.formData.free_qty = this.formData.gift_tiers[0].free_qty;
             } else if (this.formData.policy_type === 'amount') {
                 if (!this.formData.discount_amount || Number(this.formData.discount_amount) <= 0) {
                     alert('Vui lòng nhập số tiền giảm giá trực tiếp (VNĐ)!');

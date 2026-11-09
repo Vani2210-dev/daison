@@ -1538,6 +1538,45 @@ class WebViewController extends Controller
         $buyQty = $request->input('buy_qty');
         $freeQty = $request->input('free_qty');
         $freeProductId = $request->input('free_product_id');
+        $giftTiersInput = $request->input('gift_tiers');
+        if (is_string($giftTiersInput)) {
+            $giftTiersInput = json_decode($giftTiersInput, true);
+        }
+        if (!is_array($giftTiersInput)) {
+            $giftTiersInput = [];
+        }
+
+        $cleanedTiers = [];
+        foreach ($giftTiersInput as $tier) {
+            $bQty = isset($tier['buy_qty']) ? (float)$tier['buy_qty'] : 0;
+            $fQty = isset($tier['free_qty']) ? (float)$tier['free_qty'] : 0;
+            $fProdId = !empty($tier['free_product_id']) ? (int)$tier['free_product_id'] : null;
+            if ($bQty > 0 && $fQty > 0) {
+                $cleanedTiers[] = [
+                    'buy_qty' => $bQty,
+                    'free_qty' => $fQty,
+                    'free_product_id' => $fProdId,
+                ];
+            }
+        }
+        usort($cleanedTiers, fn($a, $b) => $a['buy_qty'] <=> $b['buy_qty']);
+
+        if (!empty($cleanedTiers)) {
+            $buyQty = $cleanedTiers[0]['buy_qty'];
+            $freeQty = $cleanedTiers[0]['free_qty'];
+            if (!$freeProductId && !empty($cleanedTiers[0]['free_product_id'])) {
+                $freeProductId = $cleanedTiers[0]['free_product_id'];
+            }
+        } elseif ($policyType === 'quantity' && (float)$buyQty > 0 && (float)$freeQty > 0) {
+            $cleanedTiers = [
+                [
+                    'buy_qty' => (float)$buyQty,
+                    'free_qty' => (float)$freeQty,
+                    'free_product_id' => $freeProductId ? (int)$freeProductId : null,
+                ]
+            ];
+        }
+
         $discountPercent = $request->input('discount_percent');
         $discountAmount = $request->input('discount_amount');
         $minOrderValue = $request->input('min_order_value');
@@ -1550,6 +1589,7 @@ class WebViewController extends Controller
             'buy_qty' => ($buyQty !== null && $buyQty !== '') ? (float)$buyQty : null,
             'free_qty' => ($freeQty !== null && $freeQty !== '') ? (float)$freeQty : null,
             'free_product_id' => $freeProductId ? (int)$freeProductId : null,
+            'gift_tiers' => !empty($cleanedTiers) ? $cleanedTiers : null,
             'discount_percent' => ($discountPercent !== null && $discountPercent !== '') ? (float)$discountPercent : null,
             'discount_amount' => ($discountAmount !== null && $discountAmount !== '') ? (float)$discountAmount : null,
             'min_order_value' => ($minOrderValue !== null && $minOrderValue !== '') ? (float)$minOrderValue : null,

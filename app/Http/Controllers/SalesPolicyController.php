@@ -91,6 +91,11 @@ class SalesPolicyController extends Controller
             $applyScope = ($policyType === 'quantity' || count($productIds) > 0) ? 'product' : 'order';
         }
 
+        $giftTiers = $request->input('gift_tiers') ?? $request->input('giftTiers');
+        if (is_string($giftTiers)) {
+            $giftTiers = json_decode($giftTiers, true);
+        }
+
         $policy = SalesPolicy::create([
             'code' => $code,
             'name' => $request->input('name'),
@@ -99,6 +104,7 @@ class SalesPolicyController extends Controller
             'buy_qty' => $buyQty !== null && $buyQty !== '' ? (float)$buyQty : null,
             'free_qty' => $freeQty !== null && $freeQty !== '' ? (float)$freeQty : null,
             'free_product_id' => $freeProductId ?: null,
+            'gift_tiers' => is_array($giftTiers) ? $giftTiers : null,
             'discount_percent' => $discountPercent !== null && $discountPercent !== '' ? (float)$discountPercent : null,
             'discount_amount' => $discountAmount !== null && $discountAmount !== '' ? (float)$discountAmount : null,
             'min_order_value' => $minOrderValue !== null && $minOrderValue !== '' ? (float)$minOrderValue : null,
@@ -157,6 +163,11 @@ class SalesPolicyController extends Controller
             $applyScope = $policy->apply_scope ?: (($policyType === 'quantity' || count($productIds) > 0) ? 'product' : 'order');
         }
 
+        $giftTiers = $request->has('gift_tiers') ? $request->input('gift_tiers') : ($request->has('giftTiers') ? $request->input('giftTiers') : $policy->gift_tiers);
+        if (is_string($giftTiers)) {
+            $giftTiers = json_decode($giftTiers, true);
+        }
+
         $policy->update([
             'name' => $request->input('name', $policy->name),
             'policy_type' => $policyType,
@@ -164,6 +175,7 @@ class SalesPolicyController extends Controller
             'buy_qty' => $buyQty !== null && $buyQty !== '' ? (float)$buyQty : null,
             'free_qty' => $freeQty !== null && $freeQty !== '' ? (float)$freeQty : null,
             'free_product_id' => $freeProductId ?: null,
+            'gift_tiers' => is_array($giftTiers) ? $giftTiers : null,
             'discount_percent' => $discountPercent !== null && $discountPercent !== '' ? (float)$discountPercent : null,
             'discount_amount' => $discountAmount !== null && $discountAmount !== '' ? (float)$discountAmount : null,
             'min_order_value' => $minOrderValue !== null && $minOrderValue !== '' ? (float)$minOrderValue : null,
@@ -230,6 +242,7 @@ class SalesPolicyController extends Controller
             'free_qty' => $freeQty,
             'free_product_id' => $freeProductId,
             'free_product_name' => $freeProductName,
+            'gift_tiers' => $p->gift_tiers ?: [],
             'discount_percent' => $discountPercent,
             'discount_amount' => $discountAmount,
             'min_order_value' => $minOrderValue,

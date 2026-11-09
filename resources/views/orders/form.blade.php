@@ -2931,16 +2931,55 @@ function orderFormApp() {
 
                 const buyQty = Number(policy.buy_qty) || 0;
                 const freeQty = Number(policy.free_qty) || 0;
+                let freeProductId = policy.free_product_id || null;
                 const itemQty = Number(item.quantity) || 0;
-                if (buyQty <= 0 || itemQty < buyQty) return;
 
-                const mult = Math.floor(itemQty / buyQty);
-                const totalFree = mult * freeQty;
+                // Kiểm tra xem chính sách có cấu hình các phân khúc bậc tặng quà (gift_tiers) hay không
+                let matchedTier = null;
+                let tiersList = policy.gift_tiers;
+                if (typeof tiersList === 'string') {
+                    try { tiersList = JSON.parse(tiersList); } catch(e) { tiersList = []; }
+                }
+
+                if (Array.isArray(tiersList) && tiersList.length > 0) {
+                    // Sắp xếp phân khúc giảm dần theo buy_qty để tìm bậc cao nhất đạt được
+                    const sortedTiers = [...tiersList]
+                        .map(t => ({
+                            buy_qty: Number(t.buy_qty) || 0,
+                            free_qty: Number(t.free_qty) || 0,
+                            free_product_id: t.free_product_id || null
+                        }))
+                        .filter(t => t.buy_qty > 0 && t.free_qty > 0)
+                        .sort((a, b) => b.buy_qty - a.buy_qty);
+
+                    matchedTier = sortedTiers.find(t => itemQty >= t.buy_qty);
+                }
+
+                let totalFree = 0;
+                let tierPolicyLabel = `[TẶNG KÈM] ${policy.name}`;
+
+                if (matchedTier) {
+                    // Tính số lượng quà tặng theo phân khúc bậc đạt được cao nhất
+                    const mult = Math.floor(itemQty / matchedTier.buy_qty);
+                    totalFree = mult * matchedTier.free_qty;
+                    if (matchedTier.free_product_id) {
+                        freeProductId = matchedTier.free_product_id;
+                    }
+                    tierPolicyLabel = `[TẶNG KÈM MUA ${matchedTier.buy_qty} TẶNG ${matchedTier.free_qty}] ${policy.name}`;
+                } else if (buyQty > 0 && itemQty >= buyQty && freeQty > 0) {
+                    // Fallback theo tỉ lệ buy_qty & free_qty thông thường
+                    const mult = Math.floor(itemQty / buyQty);
+                    totalFree = mult * freeQty;
+                }
+
                 if (totalFree <= 0) return;
 
-                let freeProd = policy.free_product || null;
-                if (!freeProd && policy.free_product_id) {
-                    freeProd = this.getProduct(policy.free_product_id);
+                let freeProd = null;
+                if (freeProductId) {
+                    freeProd = this.getProduct(freeProductId);
+                }
+                if (!freeProd && policy.free_product) {
+                    freeProd = policy.free_product;
                 }
                 if (!freeProd) {
                     freeProd = this.getProduct(item.product_id);
@@ -2958,7 +2997,7 @@ function orderFormApp() {
                         existing.quantity = totalFree;
                     }
                     existing.unit = freeUnit;
-                    existing.appliedTierPolicy = `[TẶNG KÈM] ${policy.name}`;
+                    existing.appliedTierPolicy = tierPolicyLabel;
                 } else {
                     this.items.push({
                         id: '',
@@ -2977,7 +3016,7 @@ function orderFormApp() {
                         discount_amount: 0,
                         vat_percent: 0,
                         vat_amount: 0,
-                        appliedTierPolicy: `[TẶNG KÈM] ${policy.name}`,
+                        appliedTierPolicy: tierPolicyLabel,
                         price_type: 'Khuyến mại',
                         amount: 0,
                         checked: true,

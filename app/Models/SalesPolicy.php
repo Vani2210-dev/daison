@@ -17,6 +17,7 @@ class SalesPolicy extends Model
         'buy_qty',
         'free_qty',
         'free_product_id',
+        'gift_tiers',
         'discount_percent',
         'discount_amount',
         'min_order_value',
@@ -32,6 +33,7 @@ class SalesPolicy extends Model
     protected $casts = [
         'target_customer_ids' => 'array',
         'target_product_ids' => 'array',
+        'gift_tiers' => 'array',
         'buy_qty' => 'decimal:2',
         'free_qty' => 'decimal:2',
         'discount_percent' => 'decimal:2',

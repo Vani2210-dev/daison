@@ -1401,7 +1401,14 @@
                                 </div>
                             </td>
                             <td class="py-2.5 px-3 text-right font-bold text-emerald-600">
-                                <span x-show="p.policy_type === 'quantity'" class="text-sky-700 font-bold" x-text="'Mua ' + (p.buy_qty || 0) + ' tặng ' + (p.free_qty || 0)"></span>
+                                <span x-show="p.policy_type === 'quantity'" class="text-sky-700 font-bold">
+                                    <template x-if="p.gift_tiers && p.gift_tiers.length > 0">
+                                        <span x-text="p.gift_tiers.map(t => 'Mua ' + t.buy_qty + ' tặng ' + t.free_qty).join(' • ')"></span>
+                                    </template>
+                                    <template x-if="!p.gift_tiers || p.gift_tiers.length === 0">
+                                        <span x-text="'Mua ' + (p.buy_qty || 0) + ' tặng ' + (p.free_qty || 0)"></span>
+                                    </template>
+                                </span>
                                 <span x-show="p.policy_type === 'amount'" class="text-amber-700 font-bold" x-text="formatCurrency(p.discount_amount || 0)"></span>
                                 <span x-show="!p.policy_type || p.policy_type === 'percentage'" x-text="(p.discount_percent || 0) + '%'"></span>
                             </td>
