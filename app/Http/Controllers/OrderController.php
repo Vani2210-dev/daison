@@ -556,6 +556,60 @@ class OrderController extends Controller
             }
         }
 
+        // Nếu đơn hàng có tên khách hàng nhưng chưa liên kết đại lý (hoặc thêm mới từ form), tự động tìm hoặc tạo đại lý
+        $cName = trim($data['customerName'] ?? ($data['customer_name'] ?? ($data['dealerName'] ?? '')));
+        $cPhone = trim($data['customerPhone'] ?? ($data['customer_phone'] ?? ''));
+        $cAddr = trim($data['address'] ?? ($data['customer_address'] ?? ''));
+        $cTaxCode = trim($data['taxCode'] ?? ($data['tax_code'] ?? ($data['customer_tax_code'] ?? '')));
+
+        if (!$dealerId && !empty($cName)) {
+            $matched = Dealer::where('name', $cName)
+                ->when(!empty($cPhone), function($q) use ($cPhone) {
+                    $q->orWhere('phone', $cPhone);
+                })
+                ->first();
+            if ($matched) {
+                $dealerId = $matched->id;
+            } else {
+                $newDealerCode = 'DL-' . str_pad((string)(Dealer::count() + 1), 4, '0', STR_PAD_LEFT);
+                $newDealer = Dealer::create([
+                    'code'              => $newDealerCode,
+                    'name'              => $cName,
+                    'owner_name'        => $cName,
+                    'phone'             => $cPhone,
+                    'address'           => $cAddr,
+                    'tax_code'          => $cTaxCode ?: null,
+                    'tier'              => $data['dealerTier'] ?? ($data['dealer_tier'] ?? 'Đại lý Cấp 2'),
+                    'credit_limit'      => 100000000,
+                    'initial_debt'      => 0,
+                    'current_debt'      => 0,
+                    'payment_term_days' => 30,
+                    'status'            => 'Hoạt động',
+                ]);
+                $dealerId = $newDealer->id;
+            }
+        }
+
+        // Kiểm tra quy định Mã số thuế (MST): Khách không có MST chỉ được lên tối đa 3 đơn, đơn thứ 4 bị chặn
+        if ($dealerId) {
+            $dealerCheck = Dealer::find($dealerId);
+            if ($dealerCheck && empty(trim($dealerCheck->tax_code ?? ''))) {
+                $existingCount = Order::where('dealer_id', $dealerCheck->id)
+                    ->whereNotIn('status', ['Hủy', 'Đã hủy'])
+                    ->when($order, function($q) use ($order) {
+                        $q->where('id', '!=', $order->id);
+                    })
+                    ->count();
+
+                if ($existingCount >= 3) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Không thể lên đơn: Khách hàng [{$dealerCheck->name}] chưa có Mã số thuế (MST) và đã đạt giới hạn 3 đơn hàng. Đơn thứ 4 không thể lên đơn! Vui lòng cập nhật MST cho khách hàng trước khi tiếp tục."
+                    ], 422);
+                }
+            }
+        }
+
         $assignedDriverId = null;
         if (!empty($data['assignedDriverId']) && is_numeric($data['assignedDriverId'])) {
             $assignedDriverId = (int)$data['assignedDriverId'];
@@ -569,34 +623,15 @@ class OrderController extends Controller
             ? (string)$data['assignedVehiclePlate'] 
             : (!empty($data['assigned_vehicle_plate']) ? (string)$data['assigned_vehicle_plate'] : ($order?->assigned_vehicle_plate ?? null));
 
-        // Ràng buộc kho cho Lái xe: Khi lái xe tạo đơn, bắt buộc chỉ được bán từ Kho Xe của họ
-        $isDriverCreator = $activeUser && ($activeUser->staff_type === 'driver' || $activeUser->department === 'Logistics' || (method_exists($activeUser, 'hasRole') && ($activeUser->hasRole('Fleet') || $activeUser->hasRole('Driver'))));
+        // Bỏ cơ chế bắt buộc lái xe chỉ xuất kho nhân viên: tôn trọng kho người dùng chọn trong form
         $warehouseName = $data['warehouse'] ?? ($data['warehouse_name'] ?? ($order?->warehouse ?? 'Kho Tổng Mê Linh (MQ)'));
-        $isHoldingStockSale = !empty($data['is_holding_stock']) || !empty($data['is_holding_stock_sale']) || str_contains($warehouseName, 'Kho Hàng Ôm') || (($data['orderType'] ?? ($data['order_type'] ?? '')) === 'holding_sale');
+        $orderTypeInput = $data['orderType'] ?? ($data['order_type'] ?? '');
+        $isHoldingStockSale = !empty($data['is_holding_stock']) 
+            || !empty($data['is_holding_stock_sale']) 
+            || str_contains($warehouseName, 'Kho Hàng Ôm') 
+            || in_array($orderTypeInput, ['holding_sale', 'consignment']);
 
-        if ($isDriverCreator) {
-            $assignedDriverId = $activeUser->id;
-            $driverVeh = \App\Models\Vehicle::where('driver_id', $activeUser->id)->first();
-            if (!$driverVeh) {
-                $recentDisp = \App\Models\VanSaleDispatch::where('driver_id', $activeUser->id)->latest('id')->first();
-                if ($recentDisp && $recentDisp->vehicle_plate) {
-                    $driverVeh = \App\Models\Vehicle::where('plate_number', $recentDisp->vehicle_plate)->first();
-                }
-            }
-            $vehiclePlate = $driverVeh?->plate_number ?? ($vehiclePlate ?: '29C-888.99');
-            $warehouseName = 'Kho Xe ' . $vehiclePlate . ' (' . $activeUser->name . ')';
-        } elseif (preg_match('/Kho Xe\s+([A-Z0-9\.\-]+)/ui', $warehouseName, $whMatches)) {
-            $parsedPlate = trim($whMatches[1]);
-            if (!$vehiclePlate) {
-                $vehiclePlate = $parsedPlate;
-            }
-            if (!$assignedDriverId) {
-                $vehObj = \App\Models\Vehicle::where('plate_number', $parsedPlate)->first();
-                if ($vehObj && $vehObj->driver_id) {
-                    $assignedDriverId = $vehObj->driver_id;
-                }
-            }
-        } elseif ($isHoldingStockSale && !$assignedDriverId && ($salesRepId ?: $creatorId)) {
+        if ($isHoldingStockSale && !$assignedDriverId && ($salesRepId ?: $creatorId)) {
             $assignedDriverId = $salesRepId ?: $creatorId;
         }
 
@@ -680,7 +715,7 @@ class OrderController extends Controller
                 }
                 if ($isHoldingStockSale) return 'Đã giao hàng';
                 if ($isBackOrder) return 'Giao sau';
-                return $order?->status ?? 'Báo giá';
+                return $order?->status ?? 'Chốt đơn';
             })(),
             'payment_status'          => $data['paymentStatus'] ?? ($data['payment_status'] ?? 'Chưa thanh toán'),
             'payment_method'          => $data['paymentMethod'] ?? ($data['payment_method'] ?? 'Ghi nợ đại lý'),
@@ -832,6 +867,23 @@ class OrderController extends Controller
                 $targetWh = $orderAttributes['warehouse'] ?: 'Kho Tổng Mê Linh (MQ)';
                 $check = \App\Services\InventoryAvailabilityService::checkItemsAvailability($targetWh, $itemsToCheck, $order?->id);
                 if (!$check['is_valid']) {
+                    $isBackorder = ($orderAttributes['order_type'] ?? '') === 'backorder' 
+                        || in_array($orderAttributes['status'] ?? '', ['Giao sau', 'Nợ hàng']);
+                    $isCancelled = in_array($orderAttributes['status'] ?? '', ['Hủy', 'Đã hủy', 'Đã huỷ']);
+
+                    // Quy định: Hết tồn kho khả dụng là không được lên đơn (ngoại trừ Báo giá hoặc Đơn giao sau/Nợ hàng)
+                    if (!$isBackorder && !$isCancelled) {
+                        $shortageDetails = collect($check['shortages'] ?? [])->map(function($s) {
+                            return ($s['sku'] ?? 'SP') . " (cần {$s['requested']}, khả dụng: {$s['available']})";
+                        })->implode('; ');
+
+                        return response()->json([
+                            'success'   => false,
+                            'message'   => "🚫 Không thể lên đơn hàng do kho [{$targetWh}] hết tồn khả dụng: {$shortageDetails}",
+                            'shortages' => $check['shortages'] ?? [],
+                        ], 422);
+                    }
+
                     $orderAttributes['has_shortage_warning'] = true;
                     $orderAttributes['backorder_status'] = 'pending_stock';
                     if (in_array($orderAttributes['status'], ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Chốt đơn', 'Chờ hàng', 'Chờ hàng về', 'Giao sau', 'Nợ hàng'])) {
@@ -1529,7 +1581,7 @@ class OrderController extends Controller
                     $convUnit = mb_strtolower(trim($product->conversion_unit ?? ''));
                     $baseUnit = mb_strtolower(trim($product->unit ?? ''));
                     if ($itemUnit === $convUnit && $convUnit !== $baseUnit) {
-                        $baseQty = $qty / (float)$product->conversion_rate;
+                        $baseQty = $product->toBaseQuantity((float)$qty);
                     }
                 }
 
@@ -1638,7 +1690,7 @@ class OrderController extends Controller
                     $convUnit = mb_strtolower(trim($product->conversion_unit ?? ''));
                     $baseUnit = mb_strtolower(trim($product->unit ?? ''));
                     if ($itemUnit === $convUnit && $convUnit !== $baseUnit) {
-                        $baseQty = $qty / (float)$product->conversion_rate;
+                        $baseQty = $product->toBaseQuantity((float)$qty);
                     }
                 }
 

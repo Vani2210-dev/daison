@@ -72,10 +72,13 @@ class AuthController extends Controller
             'branch' => $user->branch ?? 'Trụ sở Chính',
         ];
 
+        $redirectUrl = method_exists($user, 'getLoginRedirectUrl') ? $user->getLoginRedirectUrl() : ($user->staff_type === 'brand' ? '/orders/pos' : '/attendance');
+
         return response()->json([
             'success' => true,
             'message' => 'Đăng nhập thành công! Chào mừng ' . $user->name . ' quay trở lại.',
             'user' => $userData,
+            'redirect_url' => $redirectUrl,
         ]);
     }
 

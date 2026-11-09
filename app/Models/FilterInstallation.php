@@ -13,6 +13,7 @@ class FilterInstallation extends Model
 
     protected $fillable = [
         'code',
+        'dealer_id',
         'customer_name',
         'customer_phone',
         'customer_address',
@@ -89,6 +90,11 @@ class FilterInstallation extends Model
             return 0;
         }
         return (int) now()->startOfDay()->diffInDays($this->warranty_until->startOfDay(), false);
+    }
+
+    public function dealer()
+    {
+        return $this->belongsTo(Dealer::class, 'dealer_id');
     }
 
     public function technician()

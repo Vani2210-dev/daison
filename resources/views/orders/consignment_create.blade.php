@@ -283,7 +283,7 @@
                 </div>
             </div>
 
-            <div class="rounded-xl border border-slate-200">
+            <div class="rounded-xl border border-slate-200 overflow-x-auto">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="bg-slate-50 text-slate-600 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">

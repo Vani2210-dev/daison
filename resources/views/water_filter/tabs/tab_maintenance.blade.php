@@ -79,11 +79,82 @@
         </div>
     </div>
 
+    <!-- GỢI Ý ĐIỀU PHỐI THEO KHU VỰC / TUYẾN ĐƯỜNG (TRONG VÒNG 1 THÁNG TỚI & QUÁ HẠN) -->
+    <div x-show="maintenanceAreaSuggestions && maintenanceAreaSuggestions.length > 0" class="bg-gradient-to-r from-purple-50/80 via-indigo-50/40 to-white p-4 rounded-2xl border border-purple-200/90 shadow-xs">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center text-sm shadow-xs">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-xs font-black uppercase text-purple-900 tracking-wider">Gợi ý lên lịch theo cụm khu vực (Trong vòng 1 tháng)</h3>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-200/80 text-purple-800" x-text="maintenanceAreaSuggestions.length + ' khu vực'"></span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-0.5">
+                        Gom khách hàng cùng xã, phường hoặc tuyến đường để KTV đi cùng chuyến & chuẩn bị đủ vật tư mang theo
+                    </p>
+                </div>
+            </div>
+
+            <!-- Nút bỏ lọc khu vực -->
+            <template x-if="maintAreaFilter">
+                <button 
+                    type="button" 
+                    @click="filterMaintenanceByArea('')" 
+                    class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 transition cursor-pointer"
+                >
+                    <i class="fa-solid fa-xmark"></i>
+                    <span>Bỏ lọc khu vực: <strong x-text="maintAreaFilter"></strong></span>
+                </button>
+            </template>
+        </div>
+
+        <!-- Danh sách card các khu vực -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <template x-for="sug in maintenanceAreaSuggestions" :key="sug.area">
+                <div 
+                    @click="filterMaintenanceByArea(sug.area)" 
+                    class="p-3 rounded-xl border transition cursor-pointer select-none text-xs relative group shadow-2xs hover:shadow-sm" 
+                    :class="maintAreaFilter === sug.area ? 'bg-purple-600 text-white border-purple-700 shadow-md ring-2 ring-purple-400' : 'bg-white hover:border-purple-300 border-slate-200/80 text-slate-800'"
+                >
+                    <div class="flex items-start justify-between gap-1.5">
+                        <div class="font-bold flex items-center gap-1.5 truncate" :title="sug.area">
+                            <i class="fa-solid fa-location-dot text-xs shrink-0" :class="maintAreaFilter === sug.area ? 'text-amber-300' : 'text-purple-600'"></i>
+                            <span class="truncate" x-text="sug.area"></span>
+                        </div>
+                        <span class="text-xs font-black px-2 py-0.5 rounded-full shrink-0" :class="maintAreaFilter === sug.area ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-800'" x-text="sug.total + ' khách'"></span>
+                    </div>
+
+                    <!-- Breakdown badges -->
+                    <div class="flex items-center gap-1.5 mt-2 text-[10px]">
+                        <template x-if="sug.overdue > 0">
+                            <span class="px-1.5 py-0.5 rounded font-bold" :class="maintAreaFilter === sug.area ? 'bg-rose-500 text-white' : 'bg-rose-100 text-rose-700'" x-text="sug.overdue + ' quá hạn'"></span>
+                        </template>
+                        <template x-if="sug.due_30_days > 0">
+                            <span class="px-1.5 py-0.5 rounded font-medium" :class="maintAreaFilter === sug.area ? 'bg-white/20 text-purple-100' : 'bg-sky-50 text-sky-700 border border-sky-100'" x-text="sug.due_30_days + ' trong tháng'"></span>
+                        </template>
+                    </div>
+
+                    <!-- Khách hàng tiêu biểu -->
+                    <div class="text-[10px] mt-1.5 truncate opacity-80" :title="sug.customers.join(', ')">
+                        Khách: <span x-text="sug.customers.slice(0, 2).join(', ') + (sug.customers.length > 2 ? ' +' + (sug.customers.length - 2) : '')"></span>
+                    </div>
+
+                    <div class="text-[9px] mt-1.5 font-semibold flex items-center gap-1" :class="maintAreaFilter === sug.area ? 'text-purple-200' : 'text-purple-600 group-hover:underline'">
+                        <span>Bấm để gom đơn</span>
+                        <i class="fa-solid fa-arrow-right text-[8px]"></i>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
     <!-- Filter & Search Toolbar -->
     <div class="flex flex-wrap items-center justify-between gap-3 text-xs bg-slate-50/80 p-3 rounded-xl border border-slate-200/80">
         <div class="flex flex-wrap items-center gap-2 flex-1">
             <!-- Search input -->
-            <div class="relative min-w-[240px] flex-1 sm:flex-none">
+            <div class="relative min-w-[220px] flex-1 sm:flex-none">
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400"></i>
                 <input 
                     type="text" 
@@ -107,6 +178,18 @@
                 <option value="this_month">🗓️ Đến hạn trong tháng này</option>
             </select>
 
+            <!-- Filter Area -->
+            <select 
+                x-model="maintAreaFilter" 
+                @change="fetchMaintenance()" 
+                class="bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 max-w-[200px]"
+            >
+                <option value="">Tất cả khu vực (Đường / Xã)</option>
+                <template x-for="sug in maintenanceAreaSuggestions" :key="sug.area">
+                    <option :value="sug.area" x-text="sug.area + ' (' + sug.total + ')'"></option>
+                </template>
+            </select>
+
             <!-- Filter Technician -->
             <select 
                 x-model="maintTechFilter" 
@@ -114,6 +197,8 @@
                 class="bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
                 <option value="">Tất cả kỹ thuật viên</option>
+                <option value="unclaimed">✋ Đơn chưa ai nhận (Chưa phân công)</option>
+                <option value="my_jobs">👤 Đơn tôi phụ trách (Của tôi)</option>
                 <template x-for="tech in technicians" :key="tech.id">
                     <option :value="tech.id" x-text="tech.name + (tech.phone ? ' (' + tech.phone + ')' : '')"></option>
                 </template>
@@ -122,7 +207,7 @@
             <!-- Reset Filter -->
             <button 
                 type="button" 
-                @click="maintSearch = ''; maintStatusFilter = 'all'; maintTechFilter = ''; fetchMaintenance()" 
+                @click="maintSearch = ''; maintStatusFilter = 'all'; maintTechFilter = ''; maintAreaFilter = ''; fetchMaintenance()" 
                 class="px-3 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 font-semibold transition" 
                 title="Làm mới bộ lọc"
             >
@@ -141,6 +226,42 @@
                 <span>Mẫu Tin Nhắn Nhắc Khách</span>
             </button>
         </div>
+
+        <!-- Quick Filter Pills: Tất cả | Chưa ai nhận | Của tôi -->
+        <div class="flex items-center gap-1.5 pt-2 border-t border-slate-200/60 w-full overflow-x-auto text-xs font-bold select-none">
+            <button 
+                type="button" 
+                @click="maintTechFilter = ''; fetchMaintenance()" 
+                class="px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap flex items-center gap-1.5"
+                :class="!maintTechFilter ? 'bg-purple-600 text-white shadow-xs' : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'"
+            >
+                <i class="fa-solid fa-list-check text-[10px]"></i>
+                <span>Tất Cả Lịch Hẹn</span>
+                <span class="px-1.5 py-0.2 rounded-full text-[10px]" :class="!maintTechFilter ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'" x-text="maintenanceStats.total || 0"></span>
+            </button>
+
+            <button 
+                type="button" 
+                @click="maintTechFilter = 'unclaimed'; fetchMaintenance()" 
+                class="px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap flex items-center gap-1.5"
+                :class="maintTechFilter === 'unclaimed' ? 'bg-amber-600 text-white shadow-xs' : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'"
+            >
+                <i class="fa-solid fa-hand text-[10px]"></i>
+                <span>Đơn Chưa Ai Nhận</span>
+                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-black" :class="maintTechFilter === 'unclaimed' ? 'bg-white text-amber-800' : 'bg-amber-200 text-amber-900'" x-text="maintenanceStats.unclaimed || 0"></span>
+            </button>
+
+            <button 
+                type="button" 
+                @click="maintTechFilter = 'my_jobs'; fetchMaintenance()" 
+                class="px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap flex items-center gap-1.5"
+                :class="maintTechFilter === 'my_jobs' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200'"
+            >
+                <i class="fa-solid fa-user-check text-[10px]"></i>
+                <span>Lịch Của Tôi</span>
+                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-black" :class="maintTechFilter === 'my_jobs' ? 'bg-white text-indigo-800' : 'bg-indigo-200 text-indigo-900'" x-text="maintenanceStats.my_jobs || 0"></span>
+            </button>
+        </div>
     </div>
 
     <!-- Table of Maintenance Schedules -->
@@ -150,18 +271,19 @@
                 <thead>
                     <tr class="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                         <th class="py-3 px-3 text-center w-12">STT</th>
-                        <th class="py-3 px-3 min-w-[220px]">Khách Hàng & Địa Chỉ</th>
-                        <th class="py-3 px-3 min-w-[220px]">Thiết Bị & Model Máy</th>
-                        <th class="py-3 px-3 min-w-[130px] text-center">Kỳ Bảo Dưỡng</th>
-                        <th class="py-3 px-3 min-w-[180px]">Hạn Bảo Dưỡng Tới</th>
-                        <th class="py-3 px-3 min-w-[150px]">KTV Phụ Trách</th>
-                        <th class="py-3 px-3 text-center min-w-[140px]">Thao Tác</th>
+                        <th class="py-3 px-3 min-w-[210px]">Khách Hàng & Địa Chỉ</th>
+                        <th class="py-3 px-3 min-w-[190px]">Thiết Bị & Model Máy</th>
+                        <th class="py-3 px-3 min-w-[240px]">Phụ Tùng / Lõi Cần Thay</th>
+                        <th class="py-3 px-3 min-w-[110px] text-center">Kỳ Bảo Dưỡng</th>
+                        <th class="py-3 px-3 min-w-[160px]">Hạn Bảo Dưỡng Tới</th>
+                        <th class="py-3 px-3 min-w-[130px]">KTV Phụ Trách</th>
+                        <th class="py-3 px-3 text-center min-w-[130px]">Thao Tác</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     <template x-if="maintenanceList.length === 0">
                         <tr>
-                            <td colspan="7" class="py-12 text-center text-slate-400">
+                            <td colspan="8" class="py-12 text-center text-slate-400">
                                 <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl text-slate-400">
                                     <i class="fa-solid fa-calendar-xmark"></i>
                                 </div>
@@ -176,7 +298,7 @@
                             <!-- STT -->
                             <td class="py-3.5 px-3 text-center text-slate-400 font-mono font-semibold" x-text="index + 1"></td>
 
-                            <!-- Khách hàng -->
+                            <!-- Khách hàng & Địa chỉ -->
                             <td class="py-3.5 px-3 align-top">
                                 <div class="font-bold text-slate-900 flex items-center gap-1.5">
                                     <span x-text="item.customer_name"></span>
@@ -207,6 +329,21 @@
                                     <i class="fa-solid fa-location-dot text-slate-400 text-[10px] mt-0.5 shrink-0"></i>
                                     <span x-text="item.customer_address || 'Chưa có địa chỉ'"></span>
                                 </div>
+                                <!-- Badge Khu vực gom tuyến -->
+                                <template x-if="item.area">
+                                    <div class="mt-1.5">
+                                        <button 
+                                            type="button" 
+                                            @click="filterMaintenanceByArea(item.area)" 
+                                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold transition cursor-pointer"
+                                            :class="maintAreaFilter === item.area ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-100'"
+                                            :title="'Lọc tất cả khách hàng cùng khu vực: ' + item.area"
+                                        >
+                                            <i class="fa-solid fa-location-dot text-[9px]"></i>
+                                            <span x-text="item.area"></span>
+                                        </button>
+                                    </div>
+                                </template>
                             </td>
 
                             <!-- Thiết bị & Model -->
@@ -220,12 +357,45 @@
                                         <span class="font-mono text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded text-[10px] font-bold" x-text="'QR: ' + item.qr_code"></span>
                                     </template>
                                 </div>
-                                <!-- Gợi ý lõi lọc đi kèm model nếu có -->
-                                <template x-if="item.default_parts && item.default_parts.length > 0">
-                                    <div class="text-[10px] text-teal-700 bg-teal-50/80 px-2 py-1 rounded-lg mt-1.5 border border-teal-100">
-                                        <span class="font-bold">Lõi chuẩn: </span>
-                                        <span x-text="item.default_parts.map(p => p.part_name || p.name).slice(0, 3).join(', ') + (item.default_parts.length > 3 ? '...' : '')"></span>
+                            </td>
+
+                            <!-- Phụ tùng / Lõi cần bảo dưỡng -->
+                            <td class="py-3.5 px-3 align-top">
+                                <template x-if="item.maintenance_parts && item.maintenance_parts.length > 0">
+                                    <div class="space-y-1">
+                                        <template x-for="part in item.maintenance_parts" :key="part.part_name">
+                                            <div class="flex items-center justify-between gap-1.5 p-1 rounded-md bg-slate-50 border border-slate-200/70 text-[11px] hover:bg-white transition">
+                                                <div class="flex items-center gap-1.5 truncate text-slate-800 font-semibold" :title="part.part_name + (part.note ? ' (' + part.note + ')' : '')">
+                                                    <i class="fa-solid fa-filter text-teal-600 text-[9px] shrink-0"></i>
+                                                    <span class="truncate" x-text="part.part_name"></span>
+                                                    <span class="text-slate-400 font-mono text-[10px] shrink-0" x-text="'x' + part.quantity"></span>
+                                                </div>
+                                                <template x-if="part.stock_qty !== null && part.stock_qty !== undefined">
+                                                    <span 
+                                                        :class="part.stock_qty > 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'" 
+                                                        class="px-1.5 py-0.2 rounded text-[9px] font-bold border shrink-0"
+                                                        :title="'Tồn kho hiện có: ' + part.stock_qty"
+                                                        x-text="part.stock_qty > 0 ? 'Còn ' + part.stock_qty : 'Hết'"
+                                                    ></span>
+                                                </template>
+                                            </div>
+                                        </template>
+                                        <div class="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+                                            <span class="font-medium" x-text="'Cần mang: ' + item.maintenance_parts.length + ' vật tư'"></span>
+                                            <button 
+                                                type="button" 
+                                                @click="quickCreateRepairFromInstalled(item)" 
+                                                class="text-amber-600 hover:text-amber-700 hover:underline font-bold text-[10px] flex items-center gap-1 cursor-pointer"
+                                                title="Nạp nhanh vào phiếu thay lõi / bảo dưỡng"
+                                            >
+                                                <i class="fa-solid fa-wrench text-[9px]"></i>
+                                                <span>+ Lập phiếu</span>
+                                            </button>
+                                        </div>
                                     </div>
+                                </template>
+                                <template x-if="!item.maintenance_parts || item.maintenance_parts.length === 0">
+                                    <span class="text-slate-400 italic text-[11px]">Chưa có thông tin vật tư</span>
                                 </template>
                             </td>
 
@@ -284,13 +454,81 @@
                             </td>
 
                             <!-- KTV Phụ Trách -->
-                            <td class="py-3.5 px-3 align-top">
-                                <div class="flex items-center gap-1.5 font-semibold text-slate-800 text-[11px]">
-                                    <div class="w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold">
-                                        <i class="fa-solid fa-user-gear text-[9px]"></i>
+                            <td class="py-3.5 px-3 align-top min-w-[150px]">
+                                <!-- 1. DÀNH CHO NGƯỜI CÓ QUYỀN PHÂN CÔNG (Admin / Quản lý) -->
+                                <template x-if="canAssignMaint">
+                                    <div class="space-y-1">
+                                        <select 
+                                            @change="assignMaintenanceTech(item, $event.target.value)" 
+                                            class="w-full text-[11px] font-bold rounded-lg border py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer transition shadow-2xs"
+                                            :class="item.is_unclaimed ? 'bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100' : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-white'"
+                                            :title="item.is_unclaimed ? 'Bấm để phân công KTV' : 'Bấm để đổi KTV phụ trách'"
+                                        >
+                                            <option value="" :selected="item.is_unclaimed">-- Chưa phân công --</option>
+                                            <template x-for="tech in technicians" :key="tech.id">
+                                                <option :value="tech.id" :selected="item.technician_id == tech.id" x-text="tech.name"></option>
+                                            </template>
+                                        </select>
+                                        <template x-if="item.is_unclaimed">
+                                            <div class="text-[9px] font-bold text-amber-700 flex items-center gap-1">
+                                                <i class="fa-solid fa-circle-exclamation text-[8px]"></i>
+                                                <span>Chờ phân công</span>
+                                            </div>
+                                        </template>
                                     </div>
-                                    <span x-text="item.technician_name"></span>
-                                </div>
+                                </template>
+
+                                <!-- 2. DÀNH CHO KỸ THUẬT VIÊN (Không có quyền phân công người khác) -->
+                                <template x-if="!canAssignMaint">
+                                    <div>
+                                        <!-- Nếu chưa ai nhận: KTV có nút Tự Nhận Việc -->
+                                        <template x-if="item.is_unclaimed">
+                                            <div>
+                                                <button 
+                                                    type="button" 
+                                                    @click="claimMaintenanceJob(item)" 
+                                                    class="w-full inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs shadow-xs transition active:scale-95 cursor-pointer"
+                                                    title="Bấm để nhận phụ trách lịch bảo dưỡng này"
+                                                >
+                                                    <i class="fa-solid fa-hand text-[10px]"></i>
+                                                    <span>Tự nhận việc</span>
+                                                </button>
+                                                <div class="text-[9px] text-amber-600 text-center font-semibold mt-0.5">Chưa ai nhận</div>
+                                            </div>
+                                        </template>
+
+                                        <!-- Nếu chính KTV này đã nhận -->
+                                        <template x-if="item.is_my_job">
+                                            <div class="space-y-0.5">
+                                                <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 text-[11px]">
+                                                    <i class="fa-solid fa-circle-check text-emerald-600 text-[9px]"></i>
+                                                    <span>Tôi phụ trách</span>
+                                                </div>
+                                                <div>
+                                                    <button 
+                                                        type="button" 
+                                                        @click="unclaimMaintenanceJob(item)" 
+                                                        class="text-[9px] text-slate-400 hover:text-rose-600 hover:underline cursor-pointer"
+                                                        title="Hủy nhận để KTV khác có thể nhận"
+                                                    >
+                                                        Hủy nhận việc
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </template>
+
+                                        <!-- Nếu KTV khác đã nhận -->
+                                        <template x-if="!item.is_unclaimed && !item.is_my_job">
+                                            <div class="flex items-center gap-1.5 font-semibold text-slate-700 text-[11px]">
+                                                <div class="w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold shrink-0">
+                                                    <i class="fa-solid fa-user-check text-[9px]"></i>
+                                                </div>
+                                                <span class="truncate" x-text="item.technician_name"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+
                                 <template x-if="item.warranty_status === 'active' || item.warranty_status === 'expiring_soon'">
                                     <div class="text-[10px] text-emerald-600 font-semibold mt-1">
                                         BH: <span x-text="item.warranty_until"></span>

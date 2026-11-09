@@ -141,15 +141,7 @@
                                                             placeholder="Chọn hoặc gõ tên..." 
                                                             class="w-full pl-6 pr-6 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none placeholder-slate-400"
                                                         >
-                                                        <button 
-                                                            type="button" 
-                                                            x-show="p.part_name || p.part_id" 
-                                                            @click="clearModelPart(pIdx)" 
-                                                            class="absolute right-1.5 top-1.5 text-slate-400 hover:text-rose-500 p-0.5 cursor-pointer" 
-                                                            title="Xóa lựa chọn"
-                                                        >
-                                                            <i class="fa-solid fa-xmark text-xs"></i>
-                                                        </button>
+                                                        
                                                     </div>
 
                                                     <!-- Dropdown danh sách gợi ý linh kiện -->

@@ -157,7 +157,7 @@ class Dealer extends Model
         // Đồng bộ công nợ cho Nhân viên đại lý (gắn cho đại lý thì công nợ vào đại lý VÀ nhân viên đó luôn)
         User::where('dealer_id', $this->id)
             ->where(function($q) {
-                $q->where('staff_type', 'dealer_sales')
+                $q->whereIn('staff_type', ['brand', 'brand_staff', 'dealer_sales', 'hang'])
                   ->orWhereNotNull('dealer_id');
             })
             ->update(['current_debt' => $liveDebt]);

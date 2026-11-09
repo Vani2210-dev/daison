@@ -35,6 +35,11 @@ class BackorderService
                 }
             }
 
+            // Nếu có truyền danh sách mặt hàng thiếu cụ thể ($shortageItems), chỉ tách đúng các mặt hàng này
+            if (!empty($shortageItems) && !$matchedShortage) {
+                continue;
+            }
+
             $currentPicked = $matchedShortage && isset($matchedShortage['picked_qty']) 
                 ? (float)$matchedShortage['picked_qty'] 
                 : (float)($it->picked_qty ?? 0);
@@ -176,7 +181,20 @@ class BackorderService
             $order->subtotal = $origSubtotal;
             $order->tax_amount = $origTax;
             $order->total_amount = max(0, $origSubtotal - (float)$order->discount_amount + $origTax);
-            $order->shortage_reported = true;
+
+            // Kiểm tra trạng thái đơn gốc sau khi cắt phần thiếu
+            $order->load('items');
+            $allPicked = $order->items->count() > 0 && $order->items->every(fn($it) => (bool)$it->is_picked || (float)$it->picked_qty >= (float)$it->quantity);
+            if ($allPicked) {
+                $order->status = 'Đã bốc xong';
+                $order->shortage_reported = false;
+            } else {
+                $order->shortage_reported = false;
+                $hasPicked = $order->items->some(fn($it) => (float)$it->picked_qty > 0 || (bool)$it->is_picked);
+                if ($hasPicked) {
+                    $order->status = 'Đang bốc hàng';
+                }
+            }
             $order->shortage_reported_at = now();
             $order->shortage_reported_note = "Đã tự động tách phần thiếu sang đơn giao sau: {$backOrderCode}";
             $order->save();

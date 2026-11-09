@@ -1366,14 +1366,14 @@ class DeliveryController extends Controller
             $query->where('slip_code', $slipCode);
         } elseif ($vehiclePlate) {
             $query->where('vehicle_plate', $vehiclePlate)
-                  ->whereIn('status', ['Chở trên xe', 'Chờ thủ kho duyệt nhập', 'Chờ nhập kho lại']);
+                  ->whereIn('status', ['Chở trên xe', 'Chờ thủ kho duyệt nhập', 'Chờ nhập kho lại', 'Tài xế đã nhận ôm hàng']);
         }
 
         $slips = $query->get();
         if ($slips->isEmpty() && $vehiclePlate) {
             $slips = \App\Models\DeliveryReturn::with('items')
                 ->where('vehicle_plate', $vehiclePlate)
-                ->whereIn('status', ['Chở trên xe', 'Chờ thủ kho duyệt nhập', 'Chờ nhập kho lại'])
+                ->whereIn('status', ['Chở trên xe', 'Chờ thủ kho duyệt nhập', 'Chờ nhập kho lại', 'Tài xế đã nhận ôm hàng'])
                 ->get();
         }
 
@@ -1546,6 +1546,66 @@ class DeliveryController extends Controller
                     'notes'                => "{$warehouseName} ({$intakeUserName}) đã kiểm đếm và duyệt nhập kho lại hàng hoàn trả từ xe {$returnSlip->vehicle_plate} theo phiếu {$returnSlip->slip_code} (" . number_format($returnSlip->total_returned_amount, 0, ',', '.') . " đ). Đã tự động cộng lại tồn kho cho các sản phẩm và đồng bộ sổ kho chung.",
                 ]);
             } catch (\Throwable $e) {}
+
+            // Đồng bộ trạng thái đơn hàng nếu phiếu này thuộc về một đơn hàng đang chờ duyệt hoàn
+            if (!empty($returnSlip->order_id) || !empty($returnSlip->order_code)) {
+                $order = $returnSlip->order ?: \App\Models\Order::where(function($q) use ($returnSlip) {
+                    if ($returnSlip->order_id) $q->where('id', $returnSlip->order_id);
+                    if ($returnSlip->order_code) $q->orWhere('order_code', $returnSlip->order_code);
+                })->first();
+
+                if ($order && in_array($order->status, ['Chờ thủ kho duyệt hoàn', 'Chờ nhập kho lại', 'Không thành công'])) {
+                    $oldOrderStatus = $order->status;
+                    $order->status = 'Đã hoàn kho';
+                    $order->stock_deducted = false;
+                    $order->warehouse_staff_id = auth()->id() ?? $intakeUserId;
+                    $order->assigned_vehicle_plate = null;
+                    $order->assigned_driver_id = null;
+                    $order->save();
+
+                    // Reset trạng thái bốc/kiểm của các sản phẩm trong đơn
+                    foreach ($order->items as $it) {
+                        $it->is_picked = false;
+                        $it->picked_qty = 0;
+                        $it->is_checked = false;
+                        $it->checked_qty = 0;
+                        $it->checked_by = null;
+                        $it->checked_at = null;
+                        $it->assigned_staff = null;
+                        $it->assigned_staff_list = [];
+                        $it->item_status = 'Chờ bốc';
+                        $it->shortage_reported = false;
+                        $it->shortage_reason = null;
+                        $it->save();
+                    }
+
+                    if ($order->dealer_id) {
+                        \App\Models\Dealer::find($order->dealer_id)?->recalculateCurrentDebt();
+                    }
+
+                    $order->logOperation(
+                        'Thủ Kho Xác Nhận Nhập Kho',
+                        "Thủ kho {$intakeUserName} đã kiểm đếm và duyệt nhập kho lại hàng đơn {$order->order_code} vào {$warehouseName} (Phiếu {$returnSlip->slip_code}). Toàn bộ tồn kho đã được cộng lại và cập nhật hệ thống.",
+                        $intakeUserName,
+                        $oldOrderStatus,
+                        'Đã hoàn kho'
+                    );
+
+                    if ($returnSlip->driver_id) {
+                        try {
+                            \App\Models\SystemNotification::send(
+                                (int)$returnSlip->driver_id,
+                                "Thủ kho đã duyệt nhập kho đơn #{$order->order_code}",
+                                "Thủ kho {$intakeUserName} đã kiểm đếm và xác nhận nhập kho thành công cho đơn #{$order->order_code} tại {$warehouseName}. Tồn kho đã được hoàn lại.",
+                                '/driver/portal',
+                                'order_return_approved',
+                                $order,
+                                ['order_code' => $order->order_code, 'slip_code' => $returnSlip->slip_code]
+                            );
+                        } catch (\Throwable $e) {}
+                    }
+                }
+            }
         }
 
         return response()->json([
@@ -1555,6 +1615,170 @@ class DeliveryController extends Controller
             'intakeUserName' => $intakeUserName,
             'count'          => $slips->count(),
         ]);
+    }
+
+    /**
+     * API: Lái xe tự nhận ôm hàng hoàn trả vào Kho nhân sự / Kho xe lưu động
+     */
+    public function acceptHoldingReturn(Request $request)
+    {
+        $raw = json_decode($request->getContent(), true) ?: [];
+        $data = array_merge($request->all(), $raw);
+
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Vui lòng đăng nhập để thực hiện'], 401);
+        }
+
+        $slipId = $data['slipId'] ?? null;
+        $slipIds = $data['slipIds'] ?? ($slipId ? [$slipId] : []);
+        $vehiclePlate = $data['vehiclePlate'] ?? null;
+        $notes = $data['notes'] ?? 'Tài xế tự nhận ôm hàng hoàn trả vào kho nhân sự để bán lưu động';
+
+        $query = \App\Models\DeliveryReturn::with(['items', 'order']);
+        if (!empty($slipIds)) {
+            $query->whereIn('id', $slipIds);
+        } elseif ($vehiclePlate) {
+            $query->where('vehicle_plate', $vehiclePlate)->whereIn('status', ['Chở trên xe', 'Chờ nhập kho lại']);
+        } else {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy phiếu trả hàng cần ôm'], 422);
+        }
+
+        $slips = $query->get();
+        if ($slips->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'Không có phiếu hoàn trả nào phù hợp'], 404);
+        }
+
+        // 1. Tìm hoặc tự động tạo Kho hàng ôm cho Lái xe / Xe
+        $driverUser = $user;
+        $firstSlipDriverId = $slips->first()->driver_id;
+        if ($firstSlipDriverId) {
+            $matchedDriver = \App\Models\User::find($firstSlipDriverId);
+            if ($matchedDriver) {
+                $driverUser = $matchedDriver;
+            }
+        }
+
+        $holdingWarehouse = \App\Models\Warehouse::whereIn('type', ['Kho hàng ôm', 'Kho xe lưu động'])
+            ->where(function($q) use ($driverUser) {
+                $q->where('code', 'KHO-OM-' . $driverUser->id)
+                  ->orWhere('manager_name', $driverUser->name);
+            })
+            ->first();
+
+        if (!$holdingWarehouse && $vehiclePlate) {
+            $cleanPlate = preg_replace('/[^A-Za-z0-9]/', '', $vehiclePlate);
+            $holdingWarehouse = \App\Models\Warehouse::whereIn('type', ['Kho hàng ôm', 'Kho xe lưu động'])
+                ->where(function($q) use ($cleanPlate, $vehiclePlate) {
+                    $q->where('code', 'KHO-XE-' . $cleanPlate)
+                      ->orWhere('name', 'LIKE', '%' . $vehiclePlate . '%');
+                })
+                ->first();
+        }
+
+        if (!$holdingWarehouse) {
+            $holdingWarehouse = \App\Models\Warehouse::create([
+                'code'         => 'KHO-OM-' . $driverUser->id,
+                'name'         => 'Kho Hàng Ôm - ' . $driverUser->name,
+                'type'         => 'Kho hàng ôm',
+                'manager_name' => $driverUser->name,
+                'address'      => 'Hàng ôm nhân viên: ' . $driverUser->name . ($driverUser->phone ? ' (' . $driverUser->phone . ')' : ''),
+                'is_active'    => true,
+            ]);
+        }
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $totalAcceptedAmount = 0;
+            $totalItemsCount = 0;
+            $acceptedSlipsCount = 0;
+
+            foreach ($slips as $returnSlip) {
+                if (in_array($returnSlip->status, ['Đã nhập kho lại', 'Tài xế đã nhận ôm hàng'])) {
+                    continue;
+                }
+
+                foreach ($returnSlip->items as $it) {
+                    $qty = (float)($it->returned_qty ?? 0);
+                    if ($qty <= 0) continue;
+
+                    $productId = $it->product_id;
+                    if (!$productId && !empty($it->sku)) {
+                        $productId = \App\Models\Product::where('sku', $it->sku)->value('id');
+                    }
+
+                    if ($productId) {
+                        $stock = \App\Models\WarehouseStock::firstOrNew([
+                            'warehouse_id' => $holdingWarehouse->id,
+                            'product_id'   => $productId,
+                        ]);
+                        $stock->stock_quantity = (float)($stock->stock_quantity ?? 0) + $qty;
+                        $stock->save();
+                        $totalItemsCount += $qty;
+                    }
+                }
+
+                $totalAcceptedAmount += (float)$returnSlip->total_returned_amount;
+                $acceptedSlipsCount++;
+
+                $logNote = "[TÀI XẾ ÔM HÀNG " . now()->format('H:i d/m/Y') . "]: Lái xe {$driverUser->name} tự nhận ôm hàng vào {$holdingWarehouse->name} để bán lưu động.";
+
+                $returnSlip->update([
+                    'status'              => 'Tài xế đã nhận ôm hàng',
+                    'intake_warehouse_id' => $holdingWarehouse->id,
+                    'intake_by_user_id'   => $driverUser->id,
+                    'intake_at'           => now(),
+                    'notes'               => $returnSlip->notes ? $returnSlip->notes . "\n" . $logNote : $logNote,
+                ]);
+
+                // Ghi nhận giao dịch nhập hàng vào kho nhân sự
+                try {
+                    \App\Models\InventoryTransaction::create([
+                        'code'                => 'NK-OM-' . $returnSlip->slip_code . '-' . time(),
+                        'type'                => 'import',
+                        'warehouse_id'        => $holdingWarehouse->id,
+                        'created_by_id'       => $user->id,
+                        'approved_by_id'      => $user->id,
+                        'status'              => 'Hoàn thành',
+                        'notes'               => "Tài xế [{$driverUser->name}] nhận ôm hàng trả về từ phiếu {$returnSlip->slip_code} (" . number_format($returnSlip->total_returned_amount, 0, ',', '.') . " đ) vào {$holdingWarehouse->name}.",
+                    ]);
+                } catch (\Throwable $e) {}
+
+                // Audit log
+                try {
+                    \App\Models\AuditLog::create([
+                        'timestamp'            => now()->format('Y-m-d H:i:s'),
+                        'performer_name'       => $user->name,
+                        'user_id'              => $user->id,
+                        'action'               => 'Tài Xế Nhận Ôm Hàng Hoàn Trả',
+                        'module'               => 'Kho Vận & Bốc Xếp',
+                        'target_document_code' => $returnSlip->slip_code,
+                        'field_name'           => 'Tự ôm hàng trả về',
+                        'old_value'            => 'Chở trên xe',
+                        'new_value'            => 'Tài xế đã nhận ôm hàng',
+                        'notes'                => "Xe {$returnSlip->vehicle_plate}: Lái xe {$driverUser->name} đã nhận ôm {$returnSlip->slip_code} (" . number_format($returnSlip->total_returned_amount, 0, ',', '.') . " đ) vào {$holdingWarehouse->name} để bán lưu động.",
+                    ]);
+                } catch (\Throwable $e) {}
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            return response()->json([
+                'success'             => true,
+                'message'             => "Đã nhận ôm thành công {$acceptedSlipsCount} phiếu hàng hoàn trả (" . number_format($totalAcceptedAmount, 0, ',', '.') . " đ) vào {$holdingWarehouse->name}!",
+                'acceptedCount'       => $acceptedSlipsCount,
+                'totalAcceptedAmount' => $totalAcceptedAmount,
+                'warehouseName'       => $holdingWarehouse->name,
+                'warehouseId'         => $holdingWarehouse->id,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Error acceptHoldingReturn: ' . $e->getMessage(), ['exception' => $e]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi nhận ôm hàng: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -1620,6 +1844,40 @@ class DeliveryController extends Controller
               ->whereYear('intake_at', now()->year);
         })->sum('returned_qty');
 
+        $warehouses = \App\Models\Warehouse::all();
+        $physicalWarehouses = \App\Models\Warehouse::whereNotIn('type', ['Kho hàng ôm', 'Kho xe lưu động'])->where('is_active', true)->get();
+        $warehouseStaff = \App\Models\User::where(function($q) {
+            $q->whereIn('department', ['Warehouse', 'Kho', 'Kho vận', 'Vận hành', 'Executive', 'Ban Giám Đốc'])
+              ->orWhereHas('roles', function($rq) {
+                  $rq->whereIn('slug', ['warehouse', 'warehouse_staff', 'stocker', 'admin', 'manager', 'Director', 'Admin']);
+              });
+        })->where('status', '!=', 'Đã nghỉ việc')->get(['id', 'name', 'department', 'phone']);
+
+        return view('inventory.returns.index', compact(
+            'returns',
+            'status',
+            'search',
+            'warehouseId',
+            'totalPendingCount',
+            'totalPendingAmount',
+            'totalPendingItemsCount',
+            'approvedTodayCount',
+            'approvedTodayAmount',
+            'approvedTodayItemsCount',
+            'totalMonthApprovedCount',
+            'totalMonthAmount',
+            'totalMonthItemsCount',
+            'warehouses',
+            'physicalWarehouses',
+            'warehouseStaff'
+        ));
+    }
+
+    /**
+     * Màn hình Quản Lý Kho Hàng Ôm Nhân Viên (Hàng Ôm & Ký Gửi NVKD)
+     */
+    public function holdingStocksPage(Request $request)
+    {
         \App\Models\Warehouse::syncEmployeeWarehouses();
         \App\Models\ConsignmentOrder::syncAllHoldingStocks();
 
@@ -1732,20 +1990,7 @@ class DeliveryController extends Controller
 
         $activeTab = $request->query('tab', 'stocks');
 
-        return view('inventory.import', compact(
-            'returns',
-            'status',
-            'search',
-            'warehouseId',
-            'totalPendingCount',
-            'totalPendingAmount',
-            'totalPendingItemsCount',
-            'approvedTodayCount',
-            'approvedTodayAmount',
-            'approvedTodayItemsCount',
-            'totalMonthApprovedCount',
-            'totalMonthAmount',
-            'totalMonthItemsCount',
+        return view('inventory.holding.index', compact(
             'warehouses',
             'physicalWarehouses',
             'warehouseStaff',
@@ -1848,16 +2093,31 @@ class DeliveryController extends Controller
     }
 
     /**
-     * API: Hoàn đơn hàng còn trên xe về kho (trả hàng, cộng lại tồn kho, gỡ khỏi xe)
+     * API: Hoàn đơn hàng còn trên xe về kho (trả hàng, cộng lại tồn kho, gỡ khỏi xe, reset bốc/kiểm hàng)
      */
     public function returnOrderToWarehouse(Request $request)
     {
-        $orderId = $request->input('orderId');
-        $orderCode = $request->input('orderCode');
-        $warehouseName = $request->input('warehouseName', 'Kho Tổng Mê Linh (MQ)');
-        $reason = $request->input('reason', 'Không giao được hàng, hoàn nhập lại kho');
+        $raw = [];
+        if ($request->getContent()) {
+            $raw = json_decode($request->getContent(), true) ?: [];
+        }
+        $data = array_merge($request->all(), $raw);
+
+        $orderId = $data['orderId'] ?? ($data['order_id'] ?? null);
+        $orderCode = $data['orderCode'] ?? ($data['order_code'] ?? null);
+        $warehouseName = $data['warehouseName'] ?? ($data['warehouse_name'] ?? 'Kho Tổng Mê Linh (MQ)');
+        $warehouseId = $data['warehouseId'] ?? ($data['warehouse_id'] ?? 1);
+        $reason = $data['reason'] ?? 'Không giao được hàng, hoàn nhập lại kho';
         $performerName = auth()->user()?->name ?? 'Lái xe / Điều phối';
         $performerId = auth()->id();
+
+        $intakeStaffId = $data['intakeStaffId'] ?? ($data['intake_staff_id'] ?? null);
+        $intakeStaffName = $data['intakeStaffName'] ?? ($data['intake_staff_name'] ?? null);
+        if ($intakeStaffId && !$intakeStaffName) {
+            $staffUser = \App\Models\User::find($intakeStaffId);
+            $intakeStaffName = $staffUser?->name;
+        }
+        $notes = $data['notes'] ?? '';
 
         $order = Order::with('items')->where(function ($q) use ($orderId, $orderCode) {
             if ($orderId) $q->where('id', $orderId)->orWhere('order_code', $orderId);
@@ -1868,48 +2128,131 @@ class DeliveryController extends Controller
             return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng'], 404);
         }
 
-        // Hoàn lại số lượng tồn kho nếu đơn đã từng bị trừ kho
-        if ($order->stock_deducted) {
-            app(\App\Http\Controllers\OrderController::class)->restoreOrderStock($order);
-        }
-
         $oldStatus = $order->status;
         $oldVehiclePlate = $order->assigned_vehicle_plate;
 
-        $order->status = 'Đã hoàn kho';
-        $order->assigned_vehicle_plate = null;
-        $order->assigned_driver_id = null;
-        $order->notes = ($order->notes ? $order->notes . "\n" : '') . 
-            "[HOÀN KHO " . now()->format('H:i d/m/Y') . "]: Nhập lại {$warehouseName} từ xe {$oldVehiclePlate}. Lý do: {$reason}. Người thực hiện: {$performerName}.";
-        $order->save();
+        // 1. Lập / Cập nhật phiếu trả hàng DeliveryReturn chờ thủ kho duyệt nhập
+        $slipCode = 'TH-' . $order->order_code;
+        $returnSlip = \App\Models\DeliveryReturn::updateOrCreate(
+            ['slip_code' => $slipCode],
+            [
+                'order_id'              => $order->id,
+                'order_code'            => $order->order_code,
+                'dealer_id'             => $order->dealer_id,
+                'dealer_name'           => $order->customer_name,
+                'vehicle_plate'         => $oldVehiclePlate,
+                'driver_id'             => $order->assigned_driver_id ?? $performerId,
+                'driver_name'           => $order->assignedDriver?->name ?? $performerName,
+                'total_returned_amount' => (float)$order->total_amount,
+                'status'                => 'Chờ thủ kho duyệt nhập',
+                'intake_by_user_id'     => $intakeStaffId,
+                'intake_warehouse_id'   => $warehouseId,
+                'notes'                 => "Bàn giao hàng hoàn từ xe {$oldVehiclePlate} cho Thủ kho [{$intakeStaffName}]. Lý do: {$reason}." . ($notes ? " Ghi chú: {$notes}." : ""),
+            ]
+        );
 
-        // Cập nhật lại công nợ đại lý nếu có
-        if ($order->dealer_id) {
-            $dealer = \App\Models\Dealer::find($order->dealer_id);
-            if ($dealer) {
-                $dealer->recalculateCurrentDebt();
-            }
+        // Lưu chi tiết các sản phẩm trong phiếu trả hàng
+        $returnSlip->items()->delete();
+        foreach ($order->items as $it) {
+            \App\Models\DeliveryReturnItem::create([
+                'delivery_return_id' => $returnSlip->id,
+                'order_item_id'      => $it->id,
+                'product_id'         => $it->product_id,
+                'sku'                => $it->sku ?? '',
+                'name'               => $it->product_name ?? ($it->name ?? 'Sản phẩm'),
+                'unit'               => $it->unit ?? 'cái',
+                'returned_qty'       => (float)$it->quantity,
+                'unit_price'         => (float)$it->unit_price,
+                'amount'             => (float)($it->quantity * $it->unit_price),
+                'reason'             => $reason,
+            ]);
         }
 
-        // Ghi nhật ký audit
+        // 2. Chuyển trạng thái đơn sang 'Chờ thủ kho duyệt hoàn' và gỡ khỏi xe (TỒN KHO CHƯA ĐƯỢC CỘNG LẠI Ở ĐÂY)
+        $order->status = 'Chờ thủ kho duyệt hoàn';
+        if ($intakeStaffId) {
+            $order->warehouse_staff_id = $intakeStaffId;
+        }
+        $order->assigned_vehicle_plate = null;
+        $order->assigned_driver_id = null;
+        $order->save();
+
+        // 3. Ghi nhật ký thao tác đơn hàng
+        $order->logOperation(
+            'Bàn Giao Hoàn Kho Cho Thủ Kho',
+            "Tài xế {$performerName} (Xe {$oldVehiclePlate}) đã bàn giao hàng về kho {$warehouseName} và gửi yêu cầu xác nhận cho Thủ kho [{$intakeStaffName}]. Đơn hàng chuyển sang trạng thái [Chờ thủ kho duyệt hoàn]. Tồn kho CHƯA tính lại cho đến khi Thủ kho kiểm đếm và bấm duyệt nhập kho.",
+            $performerName,
+            $oldStatus,
+            $order->status
+        );
+
+        // 4. Ghi AuditLog
         try {
             \App\Models\AuditLog::create([
                 'timestamp'            => now()->format('Y-m-d H:i:s'),
                 'performer_name'       => $performerName,
                 'user_id'              => $performerId,
-                'action'               => 'Hoàn Hàng Về Kho',
+                'action'               => 'Bàn Giao Hoàn Kho Cho Thủ Kho',
                 'module'               => 'Kho Vận & Giao Nhận',
                 'target_document_code' => $order->order_code,
                 'field_name'           => 'Trạng thái & Phân bổ xe',
                 'old_value'            => "{$oldStatus} (Xe {$oldVehiclePlate})",
-                'new_value'            => "Đã hoàn kho ({$warehouseName})",
-                'notes'                => "Hoàn trả hàng về kho {$warehouseName}. Tồn kho đã được cộng lại. Lý do: {$reason}.",
+                'new_value'            => "{$order->status} (Chờ Thủ kho {$intakeStaffName} duyệt)",
+                'notes'                => "Tài xế {$performerName} đã chuyển giao hàng đơn {$order->order_code} về {$warehouseName}. Đã thông báo cho Thủ kho [{$intakeStaffName}] kiểm đếm và duyệt nhập kho lại.",
+            ]);
+        } catch (\Throwable $e) {}
+
+        // 5. Gửi thông báo nổi và chuông cho Thủ kho được chọn
+        if ($intakeStaffId) {
+            try {
+                \App\Models\SystemNotification::send(
+                    (int)$intakeStaffId,
+                    "Yêu cầu duyệt nhận hàng hoàn: Đơn #{$order->order_code}",
+                    "Tài xế {$performerName} (Xe {$oldVehiclePlate}) đã bàn giao đơn #{$order->order_code} về kho {$warehouseName}. Vui lòng kiểm đếm và duyệt nhập kho để cộng lại tồn kho.",
+                    "/inventory/returns?search=" . urlencode($order->order_code),
+                    'warehouse_intake',
+                    $returnSlip,
+                    [
+                        'order_id'       => $order->id,
+                        'order_code'     => $order->order_code,
+                        'slip_code'      => $returnSlip->slip_code,
+                        'customer_name'  => $order->customer_name,
+                        'vehicle_plate'  => $oldVehiclePlate,
+                        'driver_name'    => $performerName,
+                        'warehouse_name' => $warehouseName,
+                        'total_amount'   => (float)$order->total_amount,
+                    ]
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Lỗi gửi thông báo cho thủ kho: ' . $e->getMessage());
+            }
+        }
+
+        // 6. Phát sinh sự kiện PickingSyncEvent để các màn hình liên quan nhận biết
+        try {
+            \App\Models\PickingSyncEvent::create([
+                'order_id'            => (string) $order->id,
+                'event_type'          => 'ORDER_STATUS_CHANGED',
+                'performer_name'      => $performerName,
+                'order_status'        => $order->status,
+                'extra_data'          => [
+                    'orderId'        => $order->id,
+                    'orderCode'      => $order->order_code,
+                    'oldStatus'      => $oldStatus,
+                    'newStatus'      => $order->status,
+                    'action'         => 'WAITING_WAREHOUSE_INTAKE',
+                    'intakeStaffId'  => $intakeStaffId,
+                    'intakeStaffName'=> $intakeStaffName,
+                    'returnSlipCode' => $slipCode,
+                ],
+                'created_at'          => now(),
             ]);
         } catch (\Throwable $e) {}
 
         return response()->json([
             'success' => true,
-            'message' => "Đã hoàn hàng đơn {$order->order_code} về kho thành công và cập nhật tồn kho.",
+            'message' => "Đã bàn giao đơn {$order->order_code} và gửi thông báo cho Thủ kho [{$intakeStaffName}]. Đang chờ thủ kho kiểm đếm và duyệt nhập kho.",
+            'intakeStaffName' => $intakeStaffName,
             'order'   => [
                 'id'                   => (string) $order->id,
                 'orderCode'            => $order->order_code,
@@ -1917,6 +2260,144 @@ class DeliveryController extends Controller
                 'assignedVehiclePlate' => null,
                 'assignedDriverId'     => null,
                 'stockDeducted'        => (bool) $order->stock_deducted,
+            ]
+        ]);
+    }
+
+    /**
+     * API: Thủ kho xác nhận duyệt nhập kho đơn hàng hoàn (Cộng lại tồn kho và hoàn tất)
+     */
+    public function approveOrderReturnByWarehouse(Request $request)
+    {
+        $raw = [];
+        if ($request->getContent()) {
+            $raw = json_decode($request->getContent(), true) ?: [];
+        }
+        $data = array_merge($request->all(), $raw);
+
+        $orderId = $data['orderId'] ?? ($data['order_id'] ?? null);
+        $orderCode = $data['orderCode'] ?? ($data['order_code'] ?? null);
+        $warehouseId = $data['warehouseId'] ?? ($data['warehouse_id'] ?? null);
+        $notes = $data['notes'] ?? '';
+
+        $user = auth()->user();
+        $intakeUserId = $user?->id ?? 1;
+        $intakeUserName = $user?->name ?? 'Thủ kho';
+
+        $order = Order::with('items')->where(function ($q) use ($orderId, $orderCode) {
+            if ($orderId) $q->where('id', $orderId)->orWhere('order_code', $orderId);
+            if ($orderCode) $q->orWhere('order_code', $orderCode);
+        })->first();
+
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng'], 404);
+        }
+
+        $warehouse = $warehouseId ? \App\Models\Warehouse::find($warehouseId) : null;
+        if (!$warehouse && $order->warehouse_staff_id) {
+            $warehouse = \App\Models\Warehouse::first();
+        }
+        $warehouseName = $warehouse?->name ?? 'Kho Tổng Mê Linh (MQ)';
+        $warehouseId = $warehouse?->id ?? 1;
+
+        // 1. Hoàn lại số lượng tồn kho (cộng lại tồn kho)
+        if ($order->stock_deducted) {
+            app(\App\Http\Controllers\OrderController::class)->restoreOrderStock($order);
+        }
+
+        $oldStatus = $order->status;
+        $order->status = 'Đã hoàn kho';
+        $order->stock_deducted = false;
+        $order->warehouse_staff_id = $intakeUserId;
+        $order->assigned_vehicle_plate = null;
+        $order->assigned_driver_id = null;
+        $order->save();
+
+        // 2. Cập nhật phiếu trả hàng DeliveryReturn nếu có
+        $returnSlip = \App\Models\DeliveryReturn::where('order_id', $order->id)
+            ->orWhere('order_code', $order->order_code)
+            ->latest('id')
+            ->first();
+
+        if ($returnSlip) {
+            $returnSlip->update([
+                'status'              => 'Đã nhập kho lại',
+                'intake_by_user_id'   => $intakeUserId,
+                'intake_warehouse_id' => $warehouseId,
+                'intake_at'           => now(),
+                'notes'               => $notes ?: $returnSlip->notes,
+            ]);
+        }
+
+        // 3. Reset các sản phẩm trong đơn để lần sau giao bốc kiểm lại từ đầu
+        foreach ($order->items as $it) {
+            $it->is_picked = false;
+            $it->picked_qty = 0;
+            $it->is_checked = false;
+            $it->checked_qty = 0;
+            $it->checked_by = null;
+            $it->checked_at = null;
+            $it->assigned_staff = null;
+            $it->assigned_staff_list = [];
+            $it->item_status = 'Chờ bốc';
+            $it->shortage_reported = false;
+            $it->shortage_reason = null;
+            $it->save();
+        }
+
+        // 4. Cập nhật lại công nợ nếu có
+        if ($order->dealer_id) {
+            \App\Models\Dealer::find($order->dealer_id)?->recalculateCurrentDebt();
+        }
+
+        // 5. Ghi log hoạt động đơn hàng
+        $order->logOperation(
+            'Thủ Kho Xác Nhận Nhập Kho',
+            "Thủ kho {$intakeUserName} đã kiểm đếm và duyệt nhập kho lại hàng đơn {$order->order_code} vào {$warehouseName}." . ($notes ? " Ghi chú: {$notes}." : "") . " Toàn bộ tồn kho đã được cộng lại và cập nhật hệ thống.",
+            $intakeUserName,
+            $oldStatus,
+            $order->status
+        );
+
+        // 6. Ghi AuditLog
+        try {
+            \App\Models\AuditLog::create([
+                'timestamp'            => now()->format('Y-m-d H:i:s'),
+                'performer_name'       => $intakeUserName,
+                'user_id'              => $intakeUserId,
+                'action'               => 'Duyệt Nhập Kho Đơn Hoàn',
+                'module'               => 'Kho Vận & Bốc Xếp',
+                'target_document_code' => $order->order_code,
+                'field_name'           => 'Trạng thái đơn hàng',
+                'old_value'            => $oldStatus,
+                'new_value'            => 'Đã hoàn kho',
+                'notes'                => "Thủ kho {$intakeUserName} đã duyệt nhập kho đơn #{$order->order_code} tại {$warehouseName}. Tồn kho đã được hoàn lại thành công.",
+            ]);
+        } catch (\Throwable $e) {}
+
+        // 7. Gửi thông báo cho tài xế phụ trách
+        $driverId = $order->assigned_driver_id ?? ($returnSlip?->driver_id);
+        if ($driverId) {
+            try {
+                \App\Models\SystemNotification::send(
+                    (int)$driverId,
+                    "Thủ kho đã duyệt nhập kho đơn #{$order->order_code}",
+                    "Thủ kho {$intakeUserName} đã kiểm đếm và xác nhận nhập kho thành công cho đơn #{$order->order_code} tại {$warehouseName}. Tồn kho đã được cộng lại.",
+                    '/driver/portal',
+                    'order_return_approved',
+                    $order,
+                    ['order_code' => $order->order_code, 'order_id' => $order->id]
+                );
+            } catch (\Throwable $e) {}
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Thủ kho {$intakeUserName} đã xác nhận nhập kho đơn {$order->order_code} thành công. Tồn kho đã được hoàn lại.",
+            'order'   => [
+                'id'        => (string)$order->id,
+                'orderCode' => $order->order_code,
+                'status'    => $order->status,
             ]
         ]);
     }
@@ -2201,10 +2682,16 @@ class DeliveryController extends Controller
 
         $orders = [];
         if ($selectedVehicle) {
-            $orders = Order::with(['items.product', 'dealer'])
+            $ordersQuery = Order::with(['items.product', 'dealer'])
                 ->where('assigned_vehicle_plate', $selectedVehicle->plate_number)
-                ->whereNotIn('status', ['Đã hoàn kho', 'Hủy', 'Đã hủy'])
-                ->orderByRaw("CASE WHEN status IN ('Đã giao', 'Giao thành công') THEN 1 ELSE 0 END")
+                ->whereNotIn('status', ['Đã hoàn kho', 'Hủy', 'Đã hủy']);
+
+            // Nếu xe chưa xuất bến, loại bỏ các đơn cũ đã giao thành công của các chuyến trước đó
+            if ($selectedVehicle->status !== 'Đang di chuyển') {
+                $ordersQuery->whereNotIn('status', ['Đã giao', 'Giao thành công']);
+            }
+
+            $orders = $ordersQuery->orderByRaw("CASE WHEN status IN ('Đã giao', 'Giao thành công') THEN 1 ELSE 0 END")
                 ->orderBy('id', 'asc')
                 ->get();
 
@@ -2215,7 +2702,35 @@ class DeliveryController extends Controller
                 ->get()
                 ->groupBy('order_id');
 
+            // Kiểm tra trạng thái bàn giao nợ của các đơn (đơn nào đã bàn giao chưa bị từ chối)
+            $activeHandovers = \App\Models\DebtHandover::whereIn('status', ['pending', 'pending_accountant', 'pending_sale', 'confirmed'])
+                ->get(['id', 'code', 'status', 'order_id', 'order_ids', 'order_code']);
+
+            $handoverMap = [];
+            foreach ($activeHandovers as $h) {
+                $ids = $h->order_ids ?: ($h->order_id ? [$h->order_id] : []);
+                $codes = array_filter(array_map('trim', explode(',', (string)$h->order_code)));
+                foreach ($ids as $oid) {
+                    $handoverMap['id_' . (int)$oid] = [
+                        'id'     => $h->id,
+                        'code'   => $h->code,
+                        'status' => $h->status,
+                    ];
+                }
+                foreach ($codes as $cd) {
+                    $handoverMap['code_' . $cd] = [
+                        'id'     => $h->id,
+                        'code'   => $h->code,
+                        'status' => $h->status,
+                    ];
+                }
+            }
+
             foreach ($orders as $ord) {
+                $hInfo = $handoverMap['id_' . $ord->id] ?? ($handoverMap['code_' . $ord->order_code] ?? null);
+                $ord->is_debt_handed_over = !empty($hInfo);
+                $ord->debt_handover_info = $hInfo;
+
                 $orderRetSlips = $allReturns->get($ord->id, collect());
                 $retItems = $orderRetSlips->flatMap->items;
                 $hasRet = (bool)($ord->has_returns || $retItems->isNotEmpty() || $ord->items->contains(fn($it) => (float)($it->returned_qty ?? 0) > 0));
@@ -2253,9 +2768,21 @@ class DeliveryController extends Controller
               });
         })->where('status', '!=', 'Đã nghỉ việc')->get(['id', 'name', 'department', 'phone']);
 
+        $salesStaff = \App\Models\User::where('status', '!=', 'Đã nghỉ việc')
+            ->where(function($q) {
+                $q->whereIn('department', ['Sales', 'Logistics', 'Kinh doanh', 'Thị trường', 'Giao hàng', 'Executive'])
+                  ->orWhereIn('staff_type', ['company_sales', 'dealer_sales'])
+                  ->orWhereHas('roles', function($rq) {
+                      $rq->whereIn('slug', ['sales', 'sales_staff', 'sale', 'salesman', 'dealer_sales']);
+                  });
+            })
+            ->select('id', 'name', 'phone', 'department', 'staff_type', 'dealer_id')
+            ->orderBy('name')
+            ->get();
+
         $deliveryReturns = \App\Models\DeliveryReturn::with('items')
             ->where('vehicle_plate', $selectedVehicle?->plate_number)
-            ->whereIn('status', ['Chở trên xe', 'Chờ thủ kho duyệt nhập', 'Chờ nhập kho lại'])
+            ->whereIn('status', ['Chở trên xe', 'Chờ thủ kho duyệt nhập', 'Chờ nhập kho lại', 'Tài xế đã nhận ôm hàng'])
             ->latest('id')
             ->get()
             ->map(function ($r) {
@@ -2405,7 +2932,7 @@ class DeliveryController extends Controller
         $totalVanSaleDebt = (float)$driverVanDispatches->sum('total_amount');
         $dealers = \App\Models\Dealer::where('status', '!=', 'Đã ngừng')->select('id', 'name', 'code', 'phone', 'address')->orderBy('name')->get();
 
-        return view('delivery.execution', compact(
+        return view('driver_portal.index', compact(
             'vehicles',
             'selectedVehicle',
             'selectedPlate',
@@ -2427,7 +2954,8 @@ class DeliveryController extends Controller
             'empDebt',
             'vehicleManagerName',
             'vehicleManagerId',
-            'dealers'
+            'dealers',
+            'salesStaff'
         ));
     }
 
@@ -2549,7 +3077,7 @@ class DeliveryController extends Controller
         $vehicle->save();
 
         Order::where('assigned_vehicle_plate', $plate)
-            ->whereIn('status', ['Đã kiểm hàng', 'Đã kiểm'])
+            ->whereIn('status', ['Đã kiểm hàng', 'Đã kiểm', 'Sẵn sàng xuất xe', 'Kho đã xuất đủ', 'Đã bốc xong'])
             ->update([
                 'status' => 'Đang vận chuyển'
             ]);
@@ -2582,6 +3110,13 @@ class DeliveryController extends Controller
     public function confirmDeliveryPage($id)
     {
         $order = Order::with(['items.product', 'dealer'])->where('id', $id)->orWhere('order_code', $id)->firstOrFail();
+
+        // Đảm bảo đơn hàng khi vào luồng giao nhận thực tế sẽ ở trạng thái "Đang vận chuyển"
+        if (in_array($order->status, ['Đã kiểm hàng', 'Đã kiểm', 'Sẵn sàng xuất xe', 'Kho đã xuất đủ', 'Đã bốc xong'])) {
+            $order->status = 'Đang vận chuyển';
+            $order->save();
+        }
+
         $dealer = $order->dealer;
         $previousDebt = $dealer ? $dealer->getDebtExcludingOrder($order->id) : 0;
         $creditLimit = (float)($dealer?->credit_limit ?? 0);
@@ -2740,6 +3275,12 @@ class DeliveryController extends Controller
         $splitCollectAmount = (float)($data['splitCollectAmount'] ?? 0);
         $splitDebtAmount = (float)($data['splitDebtAmount'] ?? 0);
 
+        // Hỗ trợ Thanh toán kết hợp (Tiền mặt + Chuyển khoản VietQR + Ghi nợ)
+        $isCombined = !empty($data['isCombinedPayment']) || ($paymentMethod === 'Thanh toán kết hợp');
+        $combinedCash = max(0, (float)($data['combinedCash'] ?? 0));
+        $combinedBank = max(0, (float)($data['combinedBank'] ?? 0));
+        $combinedDebt = max(0, (float)($data['combinedDebt'] ?? 0));
+
         $totalReturned = 0;
         $returnSlipCode = null;
 
@@ -2813,7 +3354,111 @@ class DeliveryController extends Controller
         $finalOrderAmount = max(0, (float)$order->total_amount - $totalReturned);
         $order->status = 'Đã giao';
 
-        if ($isSplitPayment) {
+        if ($isCombined) {
+            $isDebt = ($combinedDebt > 0);
+            $order->driver_debt_amount = $combinedCash;
+
+            $parts = [];
+            if ($combinedCash > 0) $parts[] = 'Tiền mặt: ' . number_format($combinedCash, 0, ',', '.') . ' đ';
+            if ($combinedBank > 0) $parts[] = 'VietQR: ' . number_format($combinedBank, 0, ',', '.') . ' đ';
+            if ($combinedDebt > 0) $parts[] = 'Ghi nợ: ' . number_format($combinedDebt, 0, ',', '.') . ' đ';
+            $order->payment_method = !empty($parts) ? ('Kết hợp (' . implode(' + ', $parts) . ')') : 'Thanh toán kết hợp';
+
+            if ($combinedDebt <= 0) {
+                $order->payment_status = 'Đã thanh toán';
+            } elseif ($combinedCash > 0 || $combinedBank > 0) {
+                $order->payment_status = 'Thanh toán một phần';
+            } else {
+                $order->payment_status = $customPaymentStatus ?: 'Ghi nợ đại lý';
+            }
+
+            // Ghi nhận Phiếu thu tiền mặt nếu có
+            if ($combinedCash > 0) {
+                try {
+                    \App\Models\Transaction::create([
+                        'code'                  => 'PT-' . $order->order_code . '-TM',
+                        'type'                  => 'Thu',
+                        'fund_id'               => 1,
+                        'created_by_id'         => auth()->id() ?? 1,
+                        'category'              => 'Thu tiền giao hàng (Tiền mặt)',
+                        'amount'                => $combinedCash,
+                        'customer_partner_name' => $order->customer_name,
+                        'order_id'              => $order->id,
+                        'date'                  => now()->format('Y-m-d'),
+                        'notes'                 => "Thu tiền mặt khi giao đơn {$order->order_code}: " . number_format($combinedCash, 0, ',', '.') . " đ" . ($combinedDebt > 0 ? " (còn nợ " . number_format($combinedDebt, 0, ',', '.') . " đ)" : ""),
+                    ]);
+                } catch (\Throwable $e) {}
+            }
+
+            // Ghi nhận Phiếu thu chuyển khoản VietQR nếu có
+            if ($combinedBank > 0) {
+                try {
+                    \App\Models\Transaction::create([
+                        'code'                  => 'PT-' . $order->order_code . '-CK',
+                        'type'                  => 'Thu',
+                        'fund_id'               => 2,
+                        'created_by_id'         => auth()->id() ?? 1,
+                        'category'              => 'Thu tiền giao hàng (Chuyển khoản VietQR)',
+                        'amount'                => $combinedBank,
+                        'customer_partner_name' => $order->customer_name,
+                        'order_id'              => $order->id,
+                        'date'                  => now()->format('Y-m-d'),
+                        'notes'                 => "Thu chuyển khoản VietQR khi giao đơn {$order->order_code}: " . number_format($combinedBank, 0, ',', '.') . " đ",
+                    ]);
+                } catch (\Throwable $e) {}
+            }
+
+            // Xử lý bàn giao nợ nếu có phần nợ và có chọn nhân viên Sale
+            $handoverToUserId = $data['handoverToUserId'] ?? ($data['handover_to_user_id'] ?? null);
+            if ($combinedDebt > 0 && $handoverToUserId) {
+                $toUser = \App\Models\User::find($handoverToUserId);
+                if ($toUser) {
+                    $handoverCode = 'BGCN-' . date('Ymd') . '-' . str_pad((string)rand(100, 999), 3, '0', STR_PAD_LEFT);
+                    $targetDealerId = ($toUser->staff_type === 'dealer_sales') ? $toUser->dealer_id : null;
+                    $targetDealerName = $targetDealerId ? \App\Models\Dealer::find($targetDealerId)?->name : null;
+
+                    \App\Models\DebtHandover::create([
+                        'code'               => $handoverCode,
+                        'order_id'           => $order->id,
+                        'order_code'         => $order->order_code,
+                        'from_user_id'       => auth()->id() ?? $order->assigned_driver_id,
+                        'from_user_name'     => auth()->user()?->name ?? ($order->assignedDriver?->name ?? 'Lái xe'),
+                        'to_user_id'         => $toUser->id,
+                        'to_user_name'       => $toUser->name,
+                        'to_staff_type'      => $toUser->staff_type ?? 'company_sales',
+                        'target_dealer_id'   => $targetDealerId,
+                        'target_dealer_name' => $targetDealerName,
+                        'amount'             => $combinedDebt,
+                        'handover_type'      => 'order_debt',
+                        'status'             => 'pending',
+                        'notes'              => "Lái xe bàn giao công nợ (phần nợ lại) đơn {$order->order_code} cho [" . $toUser->name . "].",
+                        'created_by_id'      => auth()->id(),
+                    ]);
+
+                    try {
+                        \App\Models\SystemNotification::send(
+                            (int)$toUser->id,
+                            "📑 Nhận bàn giao nợ đơn {$order->order_code}: " . number_format($combinedDebt, 0, ',', '.') . " đ",
+                            "Lái xe " . (auth()->user()?->name ?? 'Giao hàng') . " vừa giao xong đơn {$order->order_code} và lập biên bản {$handoverCode} bàn giao nợ cho bạn. Bấm để xác nhận nhận nợ.",
+                            '/staff-debt',
+                            'debt_handover_pending_sale',
+                            $order,
+                            ['handover_code' => $handoverCode, 'amount' => $combinedDebt, 'order_code' => $order->order_code]
+                        );
+                    } catch (\Throwable $e) {}
+
+                    \App\Models\Announcement::create([
+                        'title'             => "📑 Bàn giao nợ đơn {$order->order_code}: " . number_format($combinedDebt, 0, ',', '.') . " đ (Chờ xác nhận)",
+                        'content'           => "Lái xe " . (auth()->user()?->name ?? 'Giao hàng') . " vừa giao xong đơn {$order->order_code} và lập biên bản {$handoverCode} bàn giao nợ cho bạn.\nVui lòng vào menu 'Quản lý Công nợ' để bấm 'Xác nhận nhận nợ'.",
+                        'author'            => auth()->user()?->name ?? 'Lái xe',
+                        'author_role'       => 'Vận tải',
+                        'priority'          => 'Khẩn cấp',
+                        'target_department' => 'Kinh doanh',
+                        'read_by'           => [],
+                    ]);
+                }
+            }
+        } elseif ($isSplitPayment) {
             $isDebt = false;
             $order->payment_method = ($splitCollectMethod === 'VietQR' ? 'VietQR' : 'Tiền mặt') . ($splitDebtAmount > 0 ? ' + Ghi nợ' : '');
             $order->payment_status = ($splitDebtAmount > 0) ? 'Thanh toán một phần' : 'Đã thanh toán';
@@ -2878,6 +3523,18 @@ class DeliveryController extends Controller
                         'created_by_id'      => auth()->id(),
                     ]);
 
+                    try {
+                        \App\Models\SystemNotification::send(
+                            (int)$toUser->id,
+                            "📑 Nhận bàn giao nợ đơn {$order->order_code}: " . number_format($finalOrderAmount, 0, ',', '.') . " đ",
+                            "Lái xe " . (auth()->user()?->name ?? 'Giao hàng') . " vừa giao xong đơn {$order->order_code} và lập biên bản {$handoverCode} bàn giao nợ cho bạn. Bấm để xác nhận nhận nợ.",
+                            '/staff-debt',
+                            'debt_handover_pending_sale',
+                            $order,
+                            ['handover_code' => $handoverCode, 'amount' => $finalOrderAmount, 'order_code' => $order->order_code]
+                        );
+                    } catch (\Throwable $e) {}
+
                     \App\Models\Announcement::create([
                         'title'             => "📑 Bàn giao nợ đơn {$order->order_code}: " . number_format($finalOrderAmount, 0, ',', '.') . " đ (Chờ xác nhận)",
                         'content'           => "Lái xe " . (auth()->user()?->name ?? 'Giao hàng') . " vừa giao xong đơn {$order->order_code} và lập biên bản {$handoverCode} bàn giao nợ cho bạn.\nVui lòng vào menu 'Quản lý Công nợ' để bấm 'Xác nhận nhận nợ'.",
@@ -2907,16 +3564,28 @@ class DeliveryController extends Controller
             }
         }
 
-        $nowStr = now()->format('H:i d/m/Y');
-        $noteAppend = "[GIAO HÀNG THÀNH CÔNG {$nowStr}]: Người nhận: {$recipientName}. " .
+        $logDetails = "Người nhận: {$recipientName}. " .
             ($hasReturns ? "Có trả hàng: " . number_format($totalReturned, 0, ',', '.') . " đ. " : "Đã giao đủ 100%. ") .
-            ($isSplitPayment 
-                ? "Thanh toán kết hợp: Đã thu phần vượt " . number_format($splitCollectAmount, 0, ',', '.') . " đ ({$splitCollectMethod}), ghi nợ " . number_format($splitDebtAmount, 0, ',', '.') . " đ. "
-                : "Thu: " . number_format($collectedAmount, 0, ',', '.') . " đ ({$order->payment_method}). ") .
+            ($isCombined
+                ? "Thanh toán kết hợp: " . $order->payment_method . ". "
+                : ($isSplitPayment 
+                    ? "Thanh toán kết hợp: Đã thu phần vượt " . number_format($splitCollectAmount, 0, ',', '.') . " đ ({$splitCollectMethod}), ghi nợ " . number_format($splitDebtAmount, 0, ',', '.') . " đ. "
+                    : "Thu: " . number_format($collectedAmount, 0, ',', '.') . " đ ({$order->payment_method}). ")) .
             ($order->credit_overrun_status === 'Đã duyệt' ? "[Bảo lãnh nợ duyệt bởi {$order->credit_overrun_approved_name}] " : "") .
-            ($deliveryNotes ? "Ghi chú: {$deliveryNotes}" : "");
-        $order->notes = ($order->notes ? $order->notes . "\n" : '') . $noteAppend;
+            ($deliveryNotes ? "Ghi chú tài xế: {$deliveryNotes}" : "");
+
+        if (!empty($deliveryNotes)) {
+            $order->notes = ($order->notes ? $order->notes . "\n" : '') . "Ghi chú giao: {$deliveryNotes}";
+        }
         $order->save();
+
+        $order->logOperation(
+            'Giao Hàng Thành Công',
+            $logDetails,
+            auth()->user()?->name ?? ($order->assignedDriver?->name ?? 'Lái xe giao hàng'),
+            'Đang vận chuyển',
+            $order->status
+        );
 
         if ($order->dealer_id) {
             $dealer = \App\Models\Dealer::find($order->dealer_id);
@@ -3267,7 +3936,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * API: Báo giao hàng không thành công
+     * API: Báo giao hàng không thành công (Hỗ trợ Hoàn kho hoặc Lưu hàng trên xe)
      */
     public function failDeliveryOrder(Request $request)
     {
@@ -3280,7 +3949,7 @@ class DeliveryController extends Controller
         $orderId = $data['orderId'] ?? ($data['order_id'] ?? null);
         $orderCode = $data['orderCode'] ?? ($data['order_code'] ?? null);
 
-        $order = Order::where(function ($q) use ($orderId, $orderCode) {
+        $order = Order::with('items')->where(function ($q) use ($orderId, $orderCode) {
             if ($orderId) $q->where('id', $orderId)->orWhere('order_code', $orderId);
             if ($orderCode) $q->orWhere('order_code', $orderCode);
         })->first();
@@ -3289,47 +3958,242 @@ class DeliveryController extends Controller
             return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng'], 404);
         }
 
-        $reason = $data['reason'] ?? 'Khách hẹn giao lại';
-        $notes = $data['notes'] ?? '';
+        $reason = $data['reason'] ?? ($data['failReason'] ?? 'Khách hẹn giao lại');
+        $notes = $data['notes'] ?? ($data['failNotes'] ?? '');
         $rescheduledDate = $data['rescheduledDate'] ?? null;
+        $failAction = $data['action'] ?? ($data['failAction'] ?? 'return_warehouse'); // 'return_warehouse' hoặc 'keep_on_truck'
         $now = now();
+        $performerName = auth()->user()?->name ?? ($order->assignedDriver?->name ?? 'Lái xe');
+        $oldVehiclePlate = $order->assigned_vehicle_plate;
 
-        $order->status = 'Không thành công';
-        $order->failed_delivery_reason = $reason;
-        $order->failed_delivery_note = $notes;
-        $order->failed_delivery_at = $now;
-        $order->failed_delivery_by = auth()->user()?->name ?? ($order->assignedDriver?->name ?? 'Lái xe');
-        $order->rescheduled_date = $rescheduledDate;
+        if ($failAction === 'return_warehouse') {
+            // 1. HOÀN HÀNG VỀ KHO NGAY: Nhập kho & Reset bốc/kiểm
+            if ($order->stock_deducted) {
+                app(\App\Http\Controllers\OrderController::class)->restoreOrderStock($order);
+            }
 
-        $noteAppend = "[GIAO KHÔNG THÀNH CÔNG " . $now->format('H:i d/m/Y') . "]: Lý do: {$reason}. " .
-            ($rescheduledDate ? "Hẹn lại: {$rescheduledDate}. " : "") .
-            ($notes ? "Ghi chú: {$notes}" : "");
-        $order->notes = ($order->notes ? $order->notes . "\n" : '') . $noteAppend;
+            $order->status = 'Đã hoàn kho';
+            $order->assigned_vehicle_plate = null;
+            $order->assigned_driver_id = null;
+            $order->failed_delivery_reason = $reason;
+            $order->failed_delivery_note = $notes;
+            $order->failed_delivery_at = $now;
+            $order->failed_delivery_by = $performerName;
+            $order->rescheduled_date = $rescheduledDate;
+
+            $order->save();
+            $order->logOperation(
+                'Báo Giao Thất Bại & Hoàn Kho',
+                "Nhập lại kho từ xe {$oldVehiclePlate}. Lý do: {$reason}." . ($rescheduledDate ? " Hẹn lại: {$rescheduledDate}." : "") . ($notes ? " Ghi chú tài xế: {$notes}." : "") . " Hàng đã hoàn kho, lần sau giao phải bốc và kiểm hàng lại từ đầu.",
+                $performerName,
+                "Đang vận chuyển (Xe {$oldVehiclePlate})",
+                'Đã hoàn kho'
+            );
+
+            // RESET TOÀN BỘ SẢN PHẨM TRONG ĐƠN: Bắt buộc kho bốc & kiểm lại lần sau
+            foreach ($order->items as $it) {
+                $it->is_picked = false;
+                $it->picked_qty = 0;
+                $it->is_checked = false;
+                $it->checked_qty = 0;
+                $it->checked_by = null;
+                $it->checked_at = null;
+                $it->assigned_staff = null;
+                $it->assigned_staff_list = [];
+                $it->item_status = 'Chờ bốc';
+                $it->shortage_reported = false;
+                $it->shortage_reason = null;
+                $it->save();
+            }
+
+            try {
+                \App\Models\AuditLog::create([
+                    'timestamp'            => $now->format('Y-m-d H:i:s'),
+                    'performer_name'       => $performerName,
+                    'user_id'              => auth()->id() ?? $order->assigned_driver_id,
+                    'action'               => 'Báo Giao Thất Bại & Hoàn Kho',
+                    'module'               => 'Vận Tải & Giao Nhận',
+                    'target_document_code' => $order->order_code,
+                    'field_name'           => 'Trạng thái giao hàng & Kho',
+                    'old_value'            => "Đang vận chuyển (Xe {$oldVehiclePlate})",
+                    'new_value'            => 'Đã hoàn kho',
+                    'notes'                => "Báo giao thất bại và hoàn kho đơn {$order->order_code}. Hàng đã cộng lại tồn kho và reset trạng thái bốc/kiểm để bốc lại lần sau.",
+                ]);
+
+                \App\Models\PickingSyncEvent::create([
+                    'order_id'            => (string) $order->id,
+                    'event_type'          => 'ORDER_STATUS_CHANGED',
+                    'performer_name'      => $performerName,
+                    'order_status'        => $order->status,
+                    'extra_data'          => [
+                        'orderId'      => $order->id,
+                        'orderCode'    => $order->order_code,
+                        'oldStatus'    => 'Đang vận chuyển',
+                        'newStatus'    => $order->status,
+                        'action'       => 'RETURNED_TO_WAREHOUSE',
+                        'reason'       => $reason,
+                        'resetPicking' => true,
+                    ],
+                    'created_at'          => now(),
+                ]);
+            } catch (\Throwable $e) {}
+
+            return response()->json([
+                'success' => true,
+                'message' => "Đã ghi nhận giao không thành công và hoàn hàng đơn {$order->order_code} về kho thành công (Lần sau giao sẽ bốc & kiểm lại).",
+                'order'   => [
+                    'id'                   => (string) $order->id,
+                    'orderCode'            => $order->order_code,
+                    'status'               => $order->status,
+                    'failedDeliveryReason' => $order->failed_delivery_reason,
+                    'returnedToWarehouse'  => true,
+                ]
+            ]);
+        } else {
+            // 2. LƯU HÀNG TRÊN XE: Hẹn giao lại ca sau
+            $order->status = 'Không thành công';
+            $order->failed_delivery_reason = $reason;
+            $order->failed_delivery_note = $notes;
+            $order->failed_delivery_at = $now;
+            $order->failed_delivery_by = $performerName;
+            $order->rescheduled_date = $rescheduledDate;
+
+            $order->save();
+            $order->logOperation(
+                'Báo Giao Thất Bại (Lưu Trên Xe)',
+                "Hàng lưu trên xe {$oldVehiclePlate}. Lý do: {$reason}." . ($rescheduledDate ? " Hẹn lại: {$rescheduledDate}." : "") . ($notes ? " Ghi chú tài xế: {$notes}." : ""),
+                $performerName,
+                'Đang vận chuyển',
+                'Không thành công'
+            );
+
+            try {
+                \App\Models\AuditLog::create([
+                    'timestamp'            => $now->format('Y-m-d H:i:s'),
+                    'performer_name'       => $performerName,
+                    'user_id'              => auth()->id() ?? $order->assigned_driver_id,
+                    'action'               => 'Báo Giao Thất Bại',
+                    'module'               => 'Vận Tải & Giao Nhận',
+                    'target_document_code' => $order->order_code,
+                    'field_name'           => 'Trạng thái giao hàng',
+                    'old_value'            => 'Đang vận chuyển',
+                    'new_value'            => 'Không thành công',
+                    'notes'                => "Báo giao thất bại đơn {$order->order_code}. Hàng lưu trên xe. Lý do: {$reason}.",
+                ]);
+            } catch (\Throwable $e) {}
+
+            return response()->json([
+                'success' => true,
+                'message' => "Đã ghi nhận báo giao hàng không thành công cho đơn {$order->order_code} (Hàng lưu trên xe).",
+                'order'   => [
+                    'id'                   => (string) $order->id,
+                    'orderCode'            => $order->order_code,
+                    'status'               => $order->status,
+                    'failedDeliveryReason' => $order->failed_delivery_reason,
+                    'returnedToWarehouse'  => false,
+                ]
+            ]);
+        }
+    }
+
+    /**
+     * API: Kích hoạt giao lại đơn hàng đã hoàn kho hoặc giao không thành công
+     * Đưa đơn vào trạng thái "Chờ bốc" để kho bốc và kiểm hàng lại từ đầu
+     */
+    public function redeliverOrder(Request $request)
+    {
+        $raw = [];
+        if ($request->getContent()) {
+            $raw = json_decode($request->getContent(), true) ?: [];
+        }
+        $data = array_merge($request->all(), $raw);
+
+        $orderId = $data['orderId'] ?? ($data['order_id'] ?? null);
+        $orderCode = $data['orderCode'] ?? ($data['order_code'] ?? null);
+        $performerName = auth()->user()?->name ?? 'Điều phối';
+
+        $order = Order::with('items')->where(function ($q) use ($orderId, $orderCode) {
+            if ($orderId) $q->where('id', $orderId)->orWhere('order_code', $orderId);
+            if ($orderCode) $q->orWhere('order_code', $orderCode);
+        })->first();
+
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng'], 404);
+        }
+
+        $oldStatus = $order->status;
+        $order->status = 'Chờ bốc';
+        $order->assigned_vehicle_plate = null;
+        $order->assigned_driver_id = null;
+        $order->failed_delivery_reason = null;
+
+        // Trừ lại tồn kho nếu đơn đang ở trạng thái chưa trừ kho
+        if (!$order->stock_deducted) {
+            app(\App\Http\Controllers\OrderController::class)->deductOrderStock($order);
+        }
+
+        // Đảm bảo toàn bộ sản phẩm ở trạng thái Chờ bốc, chưa kiểm
+        foreach ($order->items as $it) {
+            $it->is_picked = false;
+            $it->picked_qty = 0;
+            $it->is_checked = false;
+            $it->checked_qty = 0;
+            $it->checked_by = null;
+            $it->checked_at = null;
+            $it->assigned_staff = null;
+            $it->assigned_staff_list = [];
+            $it->item_status = 'Chờ bốc';
+            $it->shortage_reported = false;
+            $it->shortage_reason = null;
+            $it->save();
+        }
+
         $order->save();
+        $order->logOperation(
+            'Kích Hoạt Giao Lại Đơn',
+            "Kích hoạt giao lại đơn từ trạng thái [{$oldStatus}]. Đơn hàng chuyển sang 'Chờ bốc' để nhân viên kho bốc và kiểm hàng lại từ đầu.",
+            $performerName,
+            $oldStatus,
+            'Chờ bốc'
+        );
 
         try {
             \App\Models\AuditLog::create([
-                'timestamp'            => $now->format('Y-m-d H:i:s'),
-                'performer_name'       => auth()->user()?->name ?? ($order->assignedDriver?->name ?? 'Lái xe'),
-                'user_id'              => auth()->id() ?? $order->assigned_driver_id,
-                'action'               => 'Báo Giao Thất Bại',
+                'timestamp'            => now()->format('Y-m-d H:i:s'),
+                'performer_name'       => $performerName,
+                'user_id'              => auth()->id(),
+                'action'               => 'Kích Hoạt Giao Lại Đơn',
                 'module'               => 'Vận Tải & Giao Nhận',
                 'target_document_code' => $order->order_code,
-                'field_name'           => 'Trạng thái giao hàng',
-                'old_value'            => 'Đang vận chuyển',
-                'new_value'            => 'Không thành công',
-                'notes'                => "Báo giao thất bại đơn {$order->order_code}. Lý do: {$reason}.",
+                'field_name'           => 'Trạng thái đơn hàng',
+                'old_value'            => $oldStatus,
+                'new_value'            => 'Chờ bốc',
+                'notes'                => "Đơn {$order->order_code} được đưa vào luồng giao lại. Trạng thái: Chờ bốc (Cần bốc và kiểm hàng lại).",
+            ]);
+
+            \App\Models\PickingSyncEvent::create([
+                'order_id'            => (string) $order->id,
+                'event_type'          => 'ORDER_STATUS_CHANGED',
+                'performer_name'      => $performerName,
+                'order_status'        => 'Chờ bốc',
+                'extra_data'          => [
+                    'orderId'      => $order->id,
+                    'orderCode'    => $order->order_code,
+                    'oldStatus'    => $oldStatus,
+                    'newStatus'    => 'Chờ bốc',
+                    'action'       => 'REDELIVER_ORDER',
+                ],
+                'created_at'          => now(),
             ]);
         } catch (\Throwable $e) {}
 
         return response()->json([
             'success' => true,
-            'message' => "Đã ghi nhận báo giao hàng không thành công cho đơn {$order->order_code}.",
+            'message' => "Đã kích hoạt giao lại đơn {$order->order_code}. Đơn đã chuyển sang trạng thái 'Chờ bốc' để nhân viên kho bốc và kiểm hàng lại.",
             'order'   => [
-                'id'                   => (string) $order->id,
-                'orderCode'            => $order->order_code,
-                'status'               => $order->status,
-                'failedDeliveryReason' => $order->failed_delivery_reason,
+                'id'        => (string) $order->id,
+                'orderCode' => $order->order_code,
+                'status'    => $order->status,
             ]
         ]);
     }

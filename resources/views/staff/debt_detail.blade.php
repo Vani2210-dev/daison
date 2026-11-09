@@ -752,7 +752,7 @@
                         <i class="fa-solid fa-plus text-xs"></i>
                         <span>+ Thêm Hàng Vào Kho Ôm</span>
                     </a>
-                    <a href="{{ url('/inventory/import?tab=stocks') }}" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 flex items-center gap-1 transition-colors">
+                    <a href="{{ url('/inventory/holding') }}" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 flex items-center gap-1 transition-colors">
                         <i class="fa-solid fa-warehouse text-xs text-slate-500"></i>
                         <span>Xem Tất Cả Kho Ôm</span>
                     </a>

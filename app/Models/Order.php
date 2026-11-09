@@ -147,4 +147,57 @@ class Order extends Model
               });
         });
     }
+
+    /**
+     * Ghi nhật ký thao tác nghiệp vụ cho đơn hàng vào file log (storage/logs/orders/{order_code}.log)
+     * và AuditLog, không lưu đè hoặc tự động chèn vào trường `notes` (ghi chú đơn hàng của khách).
+     */
+    public function logOperation(string $action, string $details, ?string $performerName = null, ?string $oldValue = null, ?string $newValue = null)
+    {
+        $performer = $performerName ?? (auth()->user()?->name ?? 'Hệ thống');
+        $now = now();
+        $dateStr = $now->format('Y-m-d H:i:s');
+
+        // 1. Ghi vào file log riêng cho đơn hàng: storage/logs/orders/{order_code}.log
+        try {
+            $logDir = storage_path('logs/orders');
+            if (!is_dir($logDir)) {
+                @mkdir($logDir, 0755, true);
+            }
+            $safeCode = preg_replace('/[^A-Za-z0-9_-]/', '_', $this->order_code);
+            $logFile = $logDir . '/' . $safeCode . '.log';
+            $logEntry = sprintf(
+                "[%s] [%s] [Người thực hiện: %s] [Trạng thái: %s -> %s]\nChi tiết: %s\n--------------------------------------------------------------------------------\n",
+                $dateStr,
+                $action,
+                $performer,
+                $oldValue ?? '-',
+                $newValue ?? $this->status,
+                $details
+            );
+            @file_put_contents($logFile, $logEntry, FILE_APPEND);
+
+            // Ghi thêm vào file tổng hợp order_operations.log
+            $generalLog = storage_path('logs/order_operations.log');
+            @file_put_contents($generalLog, "[{$dateStr}] [ĐƠN {$this->order_code}] [{$action}] ({$performer}): {$details}\n", FILE_APPEND);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Lỗi ghi file log đơn hàng {$this->order_code}: " . $e->getMessage());
+        }
+
+        // 2. Ghi vào AuditLog trong database
+        try {
+            AuditLog::create([
+                'timestamp'            => $dateStr,
+                'performer_name'       => $performer,
+                'user_id'              => auth()->id(),
+                'action'               => $action,
+                'module'               => 'Đơn Hàng & Vận Tải',
+                'target_document_code' => $this->order_code,
+                'field_name'           => 'Trạng thái / Thao tác',
+                'old_value'            => $oldValue,
+                'new_value'            => $newValue ?? $this->status,
+                'notes'                => $details,
+            ]);
+        } catch (\Throwable $e) {}
+    }
 }

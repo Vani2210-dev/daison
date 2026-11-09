@@ -24,6 +24,8 @@ function technicianTasksApp() {
         customPartName: '',
         customPartQty: 1,
         customPartUnit: 'Cái',
+        customPartIsFree: true,
+        customPartPrice: 0,
         customPartDate: new Date().toISOString().slice(0, 10),
         customPartMaintenanceMonths: 6,
         showCustomPartForm: false,
@@ -183,18 +185,22 @@ function technicianTasksApp() {
 
         addCustomAccessory() {
             if (!this.customPartName.trim()) return;
+            const isFree = Boolean(this.customPartIsFree);
+            const price = isFree ? 0 : (parseFloat(this.customPartPrice) || 0);
             this.selectedAccessories.push({
                 name: this.customPartName.trim(),
                 quantity: parseInt(this.customPartQty) || 1,
                 unit: this.customPartUnit || 'Cái',
-                unit_price: 0,
-                is_free: true,
+                unit_price: price,
+                is_free: isFree,
                 maintenance_months: this.parseMaintMonths(this.customPartMaintenanceMonths, 6),
                 installed_date: this.customPartDate || new Date().toISOString().slice(0, 10)
             });
             this.customPartName = '';
             this.customPartQty = 1;
             this.customPartUnit = 'Cái';
+            this.customPartPrice = 0;
+            this.customPartIsFree = true;
             this.customPartMaintenanceMonths = 6;
             this.customPartDate = new Date().toISOString().slice(0, 10);
             this.showCustomPartForm = false;
@@ -211,10 +217,19 @@ function technicianTasksApp() {
                     if (acc.id) {
                         const part = this.partsCatalog.find(p => p.id == acc.id);
                         acc.unit_price = part ? Number(part.out_price || 0) : 0;
+                    } else if (!acc.unit_price || acc.unit_price <= 0) {
+                        acc.unit_price = 0;
                     }
                 }
                 this.syncAccessoriesJson();
             }
+        },
+
+        calcAccessoriesFee() {
+            return (this.selectedAccessories || []).reduce((sum, acc) => {
+                if (acc.is_free) return sum;
+                return sum + ((parseInt(acc.quantity) || 1) * (parseFloat(acc.unit_price) || 0));
+            }, 0);
         },
 
         removeAccessory(index) {

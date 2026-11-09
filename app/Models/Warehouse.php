@@ -13,6 +13,7 @@ class Warehouse extends Model
         'code',
         'name',
         'type',
+        'is_vehicle_warehouse',
         'branch_id',
         'address',
         'manager_name',
@@ -21,6 +22,7 @@ class Warehouse extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_vehicle_warehouse' => 'boolean',
     ];
 
     public function branch()
@@ -93,7 +95,7 @@ class Warehouse extends Model
         $staff = User::where('status', '!=', 'Đã nghỉ việc')
             ->where(function($q) {
                 $q->whereIn('department', ['Sales', 'Logistics', 'Kinh doanh', 'Thị trường', 'Giao hàng', 'Executive'])
-                  ->orWhere('staff_type', 'company_sales');
+                  ->orWhereIn('staff_type', ['company_sales', 'company']);
             })
             ->get();
 
@@ -124,7 +126,7 @@ class Warehouse extends Model
      */
     public function scopeEmployeeWarehouses($query)
     {
-        return $query->whereIn('type', ['Kho hàng ôm', 'Kho xe lưu động']);
+        return $query->where('type', 'Kho hàng ôm');
     }
 
     /**

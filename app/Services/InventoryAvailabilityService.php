@@ -95,7 +95,7 @@ class InventoryAvailabilityService
                     $convUnit = mb_strtolower(trim($prod->conversion_unit));
                     $baseUnit = mb_strtolower(trim($prod->unit ?? ''));
                     if ($itemUnit === $convUnit && $convUnit !== $baseUnit) {
-                        $baseQty = $reqQty / (float)$prod->conversion_rate;
+                        $baseQty = $prod->toBaseQuantity($reqQty);
                     }
                 }
 
@@ -144,7 +144,7 @@ class InventoryAvailabilityService
                     $convUnit = mb_strtolower(trim($prod->conversion_unit));
                     $baseUnit = mb_strtolower(trim($prod->unit ?? ''));
                     if ($itemUnit === $convUnit && $convUnit !== $baseUnit) {
-                        $baseQty = $reqQty / (float)$prod->conversion_rate;
+                        $baseQty = $prod->toBaseQuantity($reqQty);
                     }
                 }
 
@@ -238,7 +238,7 @@ class InventoryAvailabilityService
                         $convUnit = mb_strtolower(trim($pObj->conversion_unit ?? ''));
                         $baseUnit = mb_strtolower(trim($pObj->unit ?? ''));
                         if ($itemUnit === $convUnit && $convUnit !== $baseUnit) {
-                            $qty = $qty / (float)$pObj->conversion_rate;
+                            $qty = $pObj->toBaseQuantity((float)$qty);
                         }
                     }
 
@@ -422,12 +422,19 @@ class InventoryAvailabilityService
 
             // Quy đổi về đơn vị gốc nếu cần
             $baseReqQty = $reqQty;
+            $rate = 1;
+            $isConvUnit = false;
+            $isConvLarger = false;
             if (!empty($prod['conversion_unit']) && (float)$prod['conversion_rate'] > 0) {
                 $itemUnit = mb_strtolower(trim($it['unit'] ?? ''));
                 $convUnit = mb_strtolower(trim($prod['conversion_unit']));
                 $baseUnit = mb_strtolower(trim($prod['unit'] ?? ''));
                 if ($itemUnit === $convUnit && $convUnit !== $baseUnit) {
-                    $baseReqQty = $reqQty / (float)$prod['conversion_rate'];
+                    $isConvUnit = true;
+                    $rate = (float)$prod['conversion_rate'];
+                    $bulkUnits = ['kiện', 'thùng', 'bao', 'lô', 'pallet', 'carton', 'két', 'thưng', 'lốc', 'dây'];
+                    $isConvLarger = in_array($convUnit, $bulkUnits) || ($convUnit === 'hộp' && in_array($baseUnit, ['chai', 'lọ', 'tuýp', 'gói', 'vỉ', 'cái', 'viên', 'miếng', 'ống']));
+                    $baseReqQty = $isConvLarger ? ($reqQty * $rate) : ($reqQty / $rate);
                 }
             }
 
@@ -451,13 +458,15 @@ class InventoryAvailabilityService
             $available = is_array($stockData) ? (float)($stockData['available'] ?? 0) : $onHand;
 
             // Chuyển lại về đơn vị mà nhân viên đang nhập trên form để hiển thị cảnh báo
-            $rate = (!empty($prod['conversion_unit']) && (float)$prod['conversion_rate'] > 0 && mb_strtolower(trim($it['unit'] ?? '')) === mb_strtolower(trim($prod['conversion_unit'])))
-                ? (float)$prod['conversion_rate']
-                : 1;
-
-            $displayAvailable = round($available * $rate, 2);
-            $displayOnHand = round($onHand * $rate, 2);
-            $displayReserved = round($reserved * $rate, 2);
+            if ($isConvUnit && $rate > 0) {
+                $displayAvailable = round($isConvLarger ? ($available / $rate) : ($available * $rate), 2);
+                $displayOnHand = round($isConvLarger ? ($onHand / $rate) : ($onHand * $rate), 2);
+                $displayReserved = round($isConvLarger ? ($reserved / $rate) : ($reserved * $rate), 2);
+            } else {
+                $displayAvailable = round($available, 2);
+                $displayOnHand = round($onHand, 2);
+                $displayReserved = round($reserved, 2);
+            }
 
             if ($reqQty > $displayAvailable) {
                 $hasOverAvailable = true;

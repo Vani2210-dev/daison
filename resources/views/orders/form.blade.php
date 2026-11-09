@@ -2,6 +2,404 @@
 
 @section('title', ($order ? 'Chỉnh Sửa Đơn Hàng ' . $order->order_code : 'Đơn Hàng ERP Form Standard') . ' | ERP Đại Sơn')
 
+@push('styles')
+<style>
+/* ==========================================================================
+   TỐI ƯU GIAO DIỆN FORM ĐƠN HÀNG TRÊN MÀN HÌNH MOBILE (<= 768px)
+   Tất cả thuộc tính được bọc 100% trong @media (max-width: 768px)
+   => Tuyệt đối KHÔNG xung đột hay làm thay đổi giao diện Desktop (> 768px).
+   ========================================================================== */
+@media (max-width: 768px) {
+    /* 1. Spacing & Card chính của Form */
+    .order-form-app-wrapper {
+        padding-bottom: 8.5rem !important;
+        margin-left: -0.5rem !important;
+        margin-right: -0.5rem !important;
+    }
+    .order-form-main-card {
+        padding: 0.875rem 0.75rem !important;
+        border-radius: 1rem !important;
+        gap: 1rem !important;
+    }
+
+    /* 2. Thanh Tabs phía trên */
+    .order-form-top-tabs {
+        padding: 0.5rem 0.5rem !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .order-form-top-tabs::-webkit-scrollbar {
+        display: none;
+    }
+    .order-form-top-tabs kbd,
+    .order-form-title-bar .text-xs.text-slate-500.flex {
+        display: none !important; /* Ẩn phím tắt F2/Esc trên màn hình cảm ứng */
+    }
+    .order-form-title-bar h1 {
+        font-size: 1.25rem !important;
+        line-height: 1.25 !important;
+    }
+
+    /* 3. Ô nhập liệu thông tin đơn (Row 1 & Row 2) */
+    .order-form-main-card input,
+    .order-form-main-card select,
+    .order-form-main-card textarea {
+        font-size: 13px !important;
+        min-height: 40px !important;
+    }
+    .order-form-main-card label {
+        font-size: 10px !important;
+        margin-bottom: 0.25rem !important;
+    }
+
+    /* Dropdown tìm kiếm Khách hàng & Sản phẩm */
+    .order-customer-dropdown {
+        width: min(440px, calc(100vw - 1.5rem)) !important;
+        max-width: calc(100vw - 1.5rem) !important;
+        min-width: 100% !important;
+        left: 0 !important;
+        right: auto !important;
+        border-radius: 1rem !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2) !important;
+    }
+    .order-product-dropdown {
+        width: 100% !important;
+        max-width: 100% !important;
+        left: 0 !important;
+        right: 0 !important;
+        border-radius: 1rem !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    /* 4. CHUYỂN BẢNG SẢN PHẨM THÀNH DẠNG CARD CỰC KỲ DỄ THAO TÁC TRÊN MOBILE */
+    .order-items-table-container {
+        border: none !important;
+        background: transparent !important;
+        overflow: visible !important;
+    }
+    .order-items-table,
+    .order-items-table tbody {
+        display: block !important;
+        width: 100% !important;
+    }
+    .order-items-table thead {
+        display: none !important;
+    }
+    .order-items-table tr.order-item-row {
+        display: grid !important;
+        grid-template-columns: 2.1fr 1.6fr 2.3fr !important;
+        grid-template-areas:
+            "stt . action"
+            "product product product"
+            "unit qty price"
+            "policy policy policy"
+            "discount discount vat"
+            "picking picking picking"
+            "amount amount amount";
+        gap: 0.45rem 0.5rem !important;
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 0.875rem !important;
+        padding: 0.75rem !important;
+        margin-bottom: 0.625rem !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+        position: relative !important;
+    }
+    .order-items-table tr.order-item-row:last-child {
+        margin-bottom: 0 !important;
+    }
+
+    .order-items-table td {
+        display: block !important;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+    }
+
+    /* Dòng 1: STT/Checkbox bên trái, nút Xóa bên phải */
+    .order-items-table td.col-stt {
+        grid-area: stt !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+    }
+    .order-items-table td.col-stt .flex {
+        justify-content: flex-start !important;
+        gap: 0.375rem !important;
+    }
+    .order-items-table td.col-actions {
+        grid-area: action !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+    }
+    .order-items-table td.col-actions button {
+        width: 28px !important;
+        height: 28px !important;
+        border-radius: 0.375rem !important;
+        background: #fff1f2 !important;
+        color: #e11d48 !important;
+        border: 1px solid #ffe4e6 !important;
+    }
+
+    /* Dòng 2: Ô tìm & chọn sản phẩm (chiếm trọn 100% bề ngang) */
+    .order-items-table td.col-product {
+        grid-area: product !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        padding-top: 0.25rem !important;
+        border-top: 1px dashed #f1f5f9 !important;
+    }
+    .order-items-table td.col-product input.product-search-input {
+        height: 38px !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        border-radius: 0.5rem !important;
+        border-color: #cbd5e1 !important;
+    }
+
+    /* Dòng 3: ĐVT, Số lượng & Đơn giá (Gom gọn trên 1 hàng) */
+    .order-items-table td.col-unit {
+        grid-area: unit !important;
+        min-width: 0 !important;
+    }
+    .order-items-table td.col-unit::before {
+        content: "ĐƠN VỊ TÍNH";
+        display: block;
+        font-size: 9px;
+        font-weight: 700;
+        color: #64748b;
+        letter-spacing: 0.02em;
+        margin-bottom: 2px;
+    }
+    .order-items-table td.col-unit select {
+        height: 36px !important;
+        width: 100% !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        border-radius: 0.5rem !important;
+        border: 1px solid #cbd5e1 !important;
+        padding-left: 0.35rem !important;
+        padding-right: 0.35rem !important;
+    }
+
+    .order-items-table td.col-qty {
+        grid-area: qty !important;
+        min-width: 0 !important;
+    }
+    .order-items-table td.col-qty::before {
+        content: "SỐ LƯỢNG";
+        display: block;
+        font-size: 9px;
+        font-weight: 700;
+        color: #64748b;
+        letter-spacing: 0.02em;
+        margin-bottom: 2px;
+        text-align: center;
+    }
+    .order-items-table td.col-qty input {
+        height: 36px !important;
+        width: 100% !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 0.5rem !important;
+        font-size: 13.5px !important;
+        font-weight: 800 !important;
+        text-align: center !important;
+        background: #ffffff !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
+        padding: 0 0.25rem !important;
+    }
+
+    .order-items-table td.col-price {
+        grid-area: price !important;
+        min-width: 0 !important;
+    }
+    .order-items-table td.col-price::before {
+        content: "ĐƠN GIÁ (Đ)";
+        display: block;
+        font-size: 9px;
+        font-weight: 700;
+        color: #64748b;
+        letter-spacing: 0.02em;
+        margin-bottom: 2px;
+        text-align: right;
+    }
+    .order-items-table td.col-price input {
+        height: 36px !important;
+        width: 100% !important;
+        font-size: 12.5px !important;
+        font-weight: 800 !important;
+        border-radius: 0.5rem !important;
+        border: 1px solid #cbd5e1 !important;
+        text-align: right !important;
+        padding-left: 0.35rem !important;
+        padding-right: 0.35rem !important;
+    }
+
+    /* Ẩn các dòng quà tặng khỏi bảng chính (đã được hiển thị riêng ở khối Danh Sách Hàng Tặng bên dưới) */
+    .order-items-table tr.order-item-row.is-promo-gift,
+    .order-items-table tr.order-item-row[style*="display: none"] {
+        display: none !important;
+    }
+
+    /* Dòng 4: Ô chọn Chính sách (chiếm trọn 100% bề ngang) */
+
+    .order-items-table td.col-policy {
+        grid-area: policy !important;
+    }
+    .order-items-table td.col-policy::before {
+        content: "CHÍNH SÁCH";
+        display: block;
+        font-size: 9.5px;
+        font-weight: 700;
+        color: #0284c7;
+        letter-spacing: 0.025em;
+        margin-bottom: 2px;
+    }
+    .order-items-table td.col-policy select {
+        height: 36px !important;
+        width: 100% !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 0.5rem !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        color: #0f172a !important;
+        background: #ffffff !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+
+    /* Dòng 5: Chiết khấu & VAT */
+    .order-items-table td.col-discount {
+        grid-area: discount !important;
+    }
+    .order-items-table td.col-discount::before {
+        content: "CHIẾT KHẤU";
+        display: block;
+        font-size: 9.5px;
+        font-weight: 700;
+        color: #0284c7;
+        letter-spacing: 0.025em;
+        margin-bottom: 2px;
+    }
+    .order-items-table td.col-discount .flex {
+        align-items: center !important;
+    }
+    .order-items-table td.col-discount input {
+        height: 34px !important;
+        font-size: 12px !important;
+        border-radius: 0.375rem !important;
+        border-color: #cbd5e1 !important;
+    }
+
+    .order-items-table td.col-vat {
+        grid-area: vat !important;
+    }
+    .order-items-table td.col-vat::before {
+        content: "THUẾ VAT";
+        display: block;
+        font-size: 9.5px;
+        font-weight: 700;
+        color: #0284c7;
+        letter-spacing: 0.025em;
+        margin-bottom: 2px;
+        text-align: right;
+    }
+    .order-items-table td.col-vat .flex {
+        height: 34px !important;
+        align-items: center !important;
+    }
+    .order-items-table td.col-vat input {
+        height: 34px !important;
+        font-size: 12px !important;
+        border-radius: 0.375rem !important;
+        border-color: #cbd5e1 !important;
+    }
+
+    /* Dòng 6 (Nếu có): SL Đã Bốc */
+    .order-items-table td.col-picking {
+        grid-area: picking !important;
+        padding-top: 0.35rem !important;
+        border-top: 1px dashed #f1f5f9 !important;
+    }
+    .order-items-table td.col-picking::before {
+        content: "TIẾN ĐỘ BỐC HÀNG: ";
+        display: inline-block;
+        font-size: 9.5px;
+        font-weight: 700;
+        color: #ea580c;
+        margin-right: 4px;
+    }
+
+    /* Dòng 7: Thành tiền nổi bật ở đáy card */
+    .order-items-table td.col-amount {
+        grid-area: amount !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding-top: 0.5rem !important;
+        border-top: 1px dashed #cbd5e1 !important;
+        margin-top: 0.2rem !important;
+    }
+    .order-items-table td.col-amount::before {
+        content: "THÀNH TIỀN:";
+        font-size: 11px;
+        font-weight: 800;
+        color: #334155;
+    }
+    .order-items-table td.col-amount > span {
+        font-size: 16px !important;
+        font-weight: 900 !important;
+        color: #0284c7 !important;
+    }
+
+    /* 5. Nút Thêm dòng dưới bảng */
+    .order-under-table-actions {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.5rem !important;
+    }
+    .order-under-table-actions button {
+        width: 100% !important;
+        justify-content: center !important;
+        height: 40px !important;
+    }
+    .order-under-table-actions .text-\[11px\] {
+        display: none !important; /* Ẩn gợi ý phím tắt trên điện thoại */
+    }
+
+    /* 6. Thanh Footer Thao Tác Cố Định (Sticky Bottom Bar) */
+    .order-form-bottom-bar {
+        padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px)) 0.75rem !important;
+        flex-direction: column !important;
+        gap: 0.375rem !important;
+    }
+    .order-form-bottom-bar > div:first-child {
+        width: 100% !important;
+        justify-content: space-between !important;
+    }
+    .order-form-bottom-bar > div:last-child {
+        width: 100% !important;
+        display: flex !important;
+        gap: 0.375rem !important;
+    }
+    .order-form-bottom-bar button,
+    .order-form-bottom-bar a {
+        flex: 1 1 auto !important;
+        height: 44px !important;
+        font-size: 12px !important;
+        padding: 0 0.5rem !important;
+        justify-content: center !important;
+    }
+    .order-form-bottom-bar button:first-child {
+        flex: 0 0 auto !important;
+        padding: 0 0.75rem !important;
+    }
+}
+</style>
+@endpush
+
 @section('content')
 @php
     $orderTier = ($order && !empty($order->dealer_tier)) ? $order->dealer_tier : ($order?->dealer?->tier ?: 'Nguyên Giá');
@@ -71,40 +469,7 @@
     }
 @endphp
 
-<div x-data="orderFormApp()" x-init="init()" @keydown.window="handleGlobalKeydown($event)" class="space-y-4 pb-24">
-
-    <!-- 1. Top Bar / Tabs (Hỗ trợ mở nhiều phiếu tạo đơn đồng thời) -->
-    <div class="flex items-center justify-between border-b border-slate-200 bg-slate-100/80 -mx-4 sm:-mx-6 -mt-4 px-4 sm:px-6 py-2 text-xs overflow-x-auto">
-        <div class="flex items-center gap-1.5 min-w-0">
-            <!-- Danh sách các tab phiếu -->
-            <template x-for="(t, idx) in tickets" :key="t.id">
-                <div @click="switchTicket(idx)" 
-                     :class="activeTicketIndex === idx ? 'bg-white text-sky-700 font-bold border-sky-400 shadow-xs ring-1 ring-sky-300' : 'bg-slate-200/80 text-slate-600 hover:bg-slate-200 border-slate-300 font-semibold'"
-                     class="inline-flex items-center gap-2 px-3 py-1.5 border rounded-lg cursor-pointer transition-all shrink-0 max-w-[200px] select-none">
-                    <i class="fa-solid fa-file-invoice text-[10px]" :class="activeTicketIndex === idx ? 'text-sky-600' : 'text-slate-400'"></i>
-                    <span class="truncate" x-text="t.formData.customer_name ? (t.formData.customer_name.length > 18 ? t.formData.customer_name.substring(0, 18) + '...' : t.formData.customer_name) : t.title"></span>
-                    <button type="button" @click.stop="closeTicket(idx)" class="text-slate-400 hover:text-rose-600 font-bold rounded p-0.5 hover:bg-slate-100 transition-colors ml-1" title="Đóng phiếu này">
-                        <i class="fa-solid fa-xmark text-[10px]"></i>
-                    </button>
-                </div>
-            </template>
-
-            <!-- Nút Thêm phiếu mới (F2) -->
-            <template x-if="!isReadonly">
-                <button type="button" @click="addNewTicket()" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg transition-colors shadow-2xs cursor-pointer shrink-0 ml-1" title="Thêm phiếu tạo đơn mới (F2)">
-                    <i class="fa-solid fa-plus text-[10px]"></i>
-                    <span>Thêm phiếu (F2)</span>
-                </button>
-            </template>
-        </div>
-
-        <div class="shrink-0 ml-3">
-            <button type="button" @click="closeTicket(activeTicketIndex)" class="text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 cursor-pointer">
-                <i class="fa-solid fa-xmark"></i>
-                <span>Đóng phiếu (Esc)</span>
-            </button>
-        </div>
-    </div>
+<div x-data="orderFormApp()" x-init="init()" @keydown.window="handleGlobalKeydown($event)" class="order-form-app-wrapper space-y-4 pb-24">
 
     <!-- Alert / Toast -->
     <div x-show="errorMessage" x-cloak class="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs font-bold text-rose-700 flex items-center justify-between shadow-xs">
@@ -146,121 +511,61 @@
     </style>
 
     <!-- 2. Main ERP Form Standard Container (Locked strictly in readonly mode) -->
-    <fieldset :disabled="isReadonly" class="border-0 p-0 m-0 space-y-6 block">
-    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-6">
+    <fieldset :disabled="isReadonly" class="border-0 p-0 m-0 space-y-4 sm:space-y-6 block">
+    <div class="order-form-main-card bg-white p-3.5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4 sm:space-y-6">
 
         <!-- Title Block -->
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2 border-b border-slate-100">
+        <div class="order-form-title-bar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2 border-b border-slate-100">
             <div>
-                <div class="flex items-center gap-3">
-                    <h1 class="text-2xl font-black text-slate-900 tracking-tight">Đơn hàng</h1>
-                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200">ERP Form Standard</span>
+                <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+                    <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Đơn hàng</h1>
+                    <span class="hidden sm:inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200">ERP Form Standard</span>
                     <span x-show="formData.order_type === 'backorder' || formData.status === 'Giao sau'" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-300">📋 Đơn giao sau</span>
-                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold" :class="formData.status === 'Báo giá' ? 'bg-amber-100 text-amber-800 border border-amber-300' : (formData.status === 'Giao sau' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300')" x-text="formData.status"></span>
+                    <span x-show="orderId" class="px-2.5 py-0.5 rounded-full text-xs font-bold" :class="formData.status === 'Giao sau' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'" x-text="formData.status"></span>
                 </div>
-                <p class="text-xs text-slate-500 mt-1">
-                    Quản lý đơn hàng theo quy trình: Báo giá &bull; Chốt đơn &bull; Soạn hàng &bull; Đang vận chuyển &bull; Đã giao &bull; Hủy
+                <p class="hidden sm:block text-xs text-slate-500 mt-1">
+                    Quản lý đơn hàng theo quy trình: Chốt đơn &bull; Soạn hàng &bull; Đang vận chuyển &bull; Đã giao &bull; Hủy
                 </p>
             </div>
-            <div class="text-xs text-slate-500 flex items-center gap-1.5 shrink-0">
+            <div class="hidden sm:flex text-xs text-slate-500 items-center gap-1.5 shrink-0">
                 <span>Phím tắt:</span>
-                <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">F2</kbd>
-                <span>Thêm phiếu</span>
+                <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">F9</kbd>
+                <span>Lưu đơn</span>
                 <span class="text-slate-300 mx-1">|</span>
-                <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">Esc</kbd>
-                <span>Đóng phiếu</span>
+                <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">F8</kbd>
+                <span>Thêm dòng</span>
             </div>
         </div>
 
         <!-- 3. Form Information: Row 1 & Row 2 -->
         <div class="space-y-4">
-            <!-- Row 1: 6 columns (lg:grid-cols-12) -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-12 gap-4">
-                <!-- Mã chứng từ -->
-                <div class="lg:col-span-2">
-                    <label class="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1">MÃ CHỨNG TỪ</label>
-                    <input type="text" readonly :value="formData.order_code || 'TỰ SINH KHI LƯU'" class="w-full px-3 py-2 bg-slate-100/80 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 cursor-not-allowed select-none">
-                </div>
-
-                <!-- Ngày chứng từ -->
-                <div class="lg:col-span-2">
-                    <label class="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1">NGÀY CHỨNG TỪ</label>
-                    <div class="relative">
-                        <input type="date" x-model="formData.order_date" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none">
+            <!-- Thông tin chung đơn hàng: 1 hàng ngang tối ưu trên Desktop, giữ nguyên 100% Mobile -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 items-start">
+                <!-- Mã chứng từ (Ẩn trên mobile, hiện trên desktop) -->
+                <div class="hidden md:block md:col-span-3 lg:col-span-2">
+                    <div class="h-5 flex items-center mb-1">
+                        <label class="text-[10px] sm:text-[11px] font-bold text-slate-500 tracking-wide uppercase truncate">MÃ CHỨNG TỪ</label>
                     </div>
-                </div>
-
-                <!-- Ngày soạn hàng -->
-                <div class="lg:col-span-2">
-                    <label class="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1">NGÀY SOẠN HÀNG</label>
-                    <div class="relative">
-                        <input type="date" x-model="formData.picking_date" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none">
-                    </div>
-                </div>
-
-                <!-- Ngày giao hàng -->
-                <div class="lg:col-span-2">
-                    <label class="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1">NGÀY GIAO HÀNG</label>
-                    <div class="relative">
-                        <input type="date" x-model="formData.delivery_date" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none">
-                    </div>
+                    <input type="text" readonly :value="formData.order_code || 'TỰ SINH KHI LƯU'" class="w-full px-2.5 py-1.5 sm:px-3 sm:py-2 bg-slate-100/80 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 cursor-not-allowed select-none truncate">
                 </div>
 
                 <!-- Loại đơn hàng -->
-                <div class="lg:col-span-2">
-                    <label class="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1">LOẠI ĐƠN HÀNG</label>
-                    <select x-model="formData.order_type" @change="handleOrderTypeChange()" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none">
-                        <option value="normal">🛒 Bình thường</option>
-                        <option value="project">📦 Công trình / dự án</option>
-                        <option value="wholesale">🚚 Xuất đại lý</option>
-                        <option value="backorder">📋 Đơn giao sau (nợ hàng)</option>
+                <div class="col-span-1 md:col-span-3 lg:col-span-2">
+                    <div class="h-5 flex items-center mb-1">
+                        <label class="text-[10px] sm:text-[11px] font-bold text-slate-500 tracking-wide uppercase truncate">LOẠI ĐƠN HÀNG</label>
+                    </div>
+                    <select x-model="formData.order_type" @change="handleOrderTypeChange()" class="w-full px-2 py-1.5 sm:px-3 sm:py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer">
+                        <option value="normal">🛒 Đơn bình thường</option>
+                        <option value="normal">🛒 Đơn thường</option>
+                        <option value="consignment">📦 Đơn gửi</option>
+                        <template x-if="formData.order_type && !['normal', 'consignment'].includes(formData.order_type)">
+                            <option :value="formData.order_type" x-text="formData.order_type"></option>
+                        </template>
                     </select>
                 </div>
 
-                <!-- Tình trạng đơn -->
-                <div class="lg:col-span-2">
-                    <label class="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1">TÌNH TRẠNG ĐƠN</label>
-                    <template x-if="formData.order_type === 'backorder' || formData.status === 'Giao sau'">
-                        <div class="py-2 px-3 bg-amber-600 text-white font-black rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs">
-                            <i class="fa-solid fa-clipboard-list"></i>
-                            <span>Giao sau</span>
-                        </div>
-                    </template>
-                    <template x-if="formData.order_type !== 'backorder' && formData.status !== 'Giao sau'">
-                        <div>
-                            <template x-if="['Báo giá', 'Chốt đơn'].includes(formData.status)">
-                                <div class="grid grid-cols-2 gap-1.5">
-                                    <button type="button" @click="formData.status = 'Báo giá'" :class="formData.status === 'Báo giá' ? 'bg-amber-500 text-white font-bold ring-2 ring-amber-300 shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-semibold'" class="py-2 px-1 rounded-xl text-xs transition-all flex items-center justify-center gap-1 cursor-pointer">
-                                        <i class="fa-solid fa-receipt text-[10px]"></i>
-                                        <span>Báo giá</span>
-                                    </button>
-                                    <button type="button" @click="formData.status = 'Chốt đơn'" :class="formData.status === 'Chốt đơn' ? 'bg-sky-600 text-white font-bold ring-2 ring-sky-300 shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-semibold'" class="py-2 px-1 rounded-xl text-xs transition-all flex items-center justify-center gap-1 cursor-pointer">
-                                        <i class="fa-solid fa-circle-check text-[10px]"></i>
-                                        <span>Chốt đơn</span>
-                                    </button>
-                                </div>
-                            </template>
-                            <template x-if="!['Báo giá', 'Chốt đơn'].includes(formData.status)">
-                                <select x-model="formData.status" class="w-full px-2 py-2 bg-purple-50 border border-purple-300 font-bold text-purple-900 rounded-xl text-xs focus:border-sky-500 focus:outline-none cursor-pointer">
-                                    <option value="Báo giá">📋 Báo giá</option>
-                                    <option value="Chốt đơn">🤝 Chốt đơn</option>
-                                    <option value="Giao sau">📋 Giao sau</option>
-                                    <option value="Soạn hàng">📦 Soạn hàng</option>
-                                    <option value="Kiểm hàng">🛡️ Kiểm hàng</option>
-                                    <option value="Đang vận chuyển">🚚 Đang vận chuyển</option>
-                                    <option value="Đã giao">✅ Đã giao</option>
-                                    <option value="Hủy">❌ Hủy đơn</option>
-                                </select>
-                            </template>
-                        </div>
-                    </template>
-                </div>
-            </div>
-
-            <!-- Row 2: 3 columns (Top aligned, labels & inputs perfectly level) -->
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
                 <!-- Khách hàng (Chọn từ danh sách đại lý / khách hàng kèm phím mũi tên Lên/Xuống + Enter) -->
-                <div class="md:col-span-6 lg:col-span-4" 
+                <div class="col-span-1 md:col-span-6 lg:col-span-3" 
                      x-data="{ 
                          openDealerDropdown: false, 
                          dealerSearch: '', 
@@ -273,12 +578,12 @@
                          }
                      }" 
                      @click.outside="openDealerDropdown = false">
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="text-[11px] font-bold text-slate-500 tracking-wide uppercase">KHÁCH HÀNG / ĐẠI LÝ</label>
-                        <span class="text-[11px] font-medium" :class="formData.customer_name ? 'text-sky-600 font-semibold' : 'text-slate-400'" x-text="formData.customer_name ? (formData.customer_phone ? formData.customer_name + ' (' + formData.customer_phone + ')' : formData.customer_name) : 'Chưa chọn khách hàng'"></span>
+                    <div class="h-5 flex items-center justify-between mb-1 gap-1">
+                        <label class="text-[11px] font-bold text-slate-500 tracking-wide uppercase truncate">KHÁCH HÀNG / ĐẠI LÝ</label>
+                        <span class="text-[11px] font-medium truncate max-w-[120px]" :class="formData.customer_name ? 'text-sky-600 font-semibold' : 'text-slate-400'" x-text="formData.customer_name ? (formData.customer_phone ? formData.customer_name + ' (' + formData.customer_phone + ')' : formData.customer_name) : 'Chưa chọn khách hàng'"></span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <div class="relative flex-1">
+                        <div class="relative flex-1 min-w-0">
                             <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
                             <input type="text"
                                    autocomplete="off"
@@ -312,40 +617,51 @@
                                        }
                                    "
                                    @keydown.escape.prevent="openDealerDropdown = false"
-                                   placeholder="🔍 Bấm chọn hoặc gõ tìm khách hàng, đại lý, SĐT (phím ↑ ↓ Enter)..." 
-                                   class="w-full pl-9 pr-14 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer shadow-2xs hover:border-slate-400 transition-colors">
+                                   placeholder="Bấm chọn hoặc gõ tìm đại lý, SĐT..." 
+                                   class="w-full pl-9 pr-8 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer shadow-2xs hover:border-slate-400 transition-colors">
                             
-                            <!-- Nút xóa & mũi tên dropdown -->
-                            <div class="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                                <button type="button" x-show="formData.customer_name" @click.stop="clearCustomer()" class="text-slate-400 hover:text-rose-500 p-0.5 cursor-pointer" title="Hủy chọn">
-                                    <i class="fa-solid fa-xmark text-xs"></i>
-                                </button>
+                            <!-- Mũi tên dropdown -->
+                            <div class="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center">
                                 <button type="button" @click.stop="openDealerDropdown = !openDealerDropdown" class="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer">
                                     <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200" :class="openDealerDropdown ? 'rotate-180 text-sky-600' : ''"></i>
                                 </button>
                             </div>
 
                             <!-- Menu Dropdown hiển thị danh sách khách hàng -->
-                            <div x-show="openDealerDropdown" x-cloak class="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-xl shadow-2xl border border-slate-200 max-h-64 overflow-y-auto py-1 text-xs">
+                            <div x-show="openDealerDropdown" x-cloak class="order-customer-dropdown absolute left-0 top-full mt-1.5 z-50 bg-white rounded-xl shadow-2xl border border-slate-200 max-h-72 overflow-y-auto py-1 text-xs w-[440px] max-w-[92vw] min-w-full">
                                 <div class="px-3 py-1.5 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
                                     <span>Chọn khách hàng / đại lý có sẵn ({{ count($dealers) }})</span>
-                                    <span class="text-sky-600 font-normal lowercase">dùng phím &uarr; &darr; &bull; Enter chọn</span>
+                                    <span class="text-sky-600 font-normal lowercase hidden sm:inline">dùng phím &uarr; &darr; &bull; Enter chọn</span>
                                 </div>
                                 <template x-for="(d, dIdx) in filteredDealers(dealerSearch)" :key="d.id">
                                     <div :id="'dealer-opt-' + dIdx"
                                          @click="selectDealer(d); openDealerDropdown = false; $nextTick(() => { const p = document.getElementById('row-product-input-0'); if(p) p.focus(); })" 
                                          @mouseenter="highlightedDealerIndex = dIdx"
-                                         class="px-3 py-2.5 cursor-pointer flex items-center justify-between transition-colors border-b border-slate-50 last:border-0"
-                                         :class="highlightedDealerIndex === dIdx ? 'bg-sky-100 text-sky-950 font-bold ring-1 ring-sky-300' : (formData.dealer_id == d.id ? 'bg-sky-50 font-bold text-sky-700' : 'hover:bg-slate-50')">
-                                        <div class="min-w-0 pr-2">
-                                            <div class="font-bold text-slate-900 truncate" x-text="d.name"></div>
-                                            <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
-                                                <span x-show="d.phone" class="font-mono text-slate-600" x-text="d.phone"></span>
-                                                <span x-show="d.address" class="text-slate-400 truncate max-w-[220px]" x-text="'· ' + d.address"></span>
-                                            </div>
+                                         class="px-3 py-2 cursor-pointer transition-colors border-b border-slate-100 last:border-0"
+                                         :class="highlightedDealerIndex === dIdx ? 'bg-sky-50 text-sky-950 ring-1 ring-sky-300' : (formData.dealer_id == d.id ? 'bg-sky-50/80 font-bold text-sky-700' : 'hover:bg-slate-50')">
+                                        <!-- Dòng 1: Tên khách hàng & Cấp đại lý -->
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="font-bold text-slate-900 text-xs truncate" x-text="d.name"></span>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 shrink-0 whitespace-nowrap" x-text="d.tier || 'Cấp 1'"></span>
                                         </div>
-                                        <div class="shrink-0 text-right">
-                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800" x-text="d.tier || 'Cấp 1'"></span>
+                                        <!-- Dòng 2: MST badge, Số điện thoại (ngăn vỡ dòng), Địa chỉ -->
+                                        <div class="flex items-center gap-2 mt-1 text-[11px] text-slate-500 flex-wrap">
+                                            <template x-if="d.tax_code && d.tax_code.trim()">
+                                                <span class="px-1.5 py-0.2 rounded text-[9.5px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 whitespace-nowrap" :title="'MST: ' + d.tax_code">
+                                                    ✓ MST: <span x-text="d.tax_code"></span>
+                                                </span>
+                                            </template>
+                                            <template x-if="!d.tax_code || !d.tax_code.trim()">
+                                                <span class="px-1.5 py-0.2 rounded text-[9.5px] font-bold shrink-0 whitespace-nowrap"
+                                                      :class="(d.orders_count || 0) >= 3 ? 'bg-rose-100 text-rose-700 border border-rose-300' : 'bg-amber-100 text-amber-800 border border-amber-300'"
+                                                      :title="(d.orders_count || 0) >= 3 ? 'Đã đạt giới hạn 3 đơn - Chặn lên đơn thứ 4 vì chưa có MST' : 'Chưa có MST (Đã lên ' + (d.orders_count || 0) + '/3 đơn)'">
+                                                    Chưa MST (<span x-text="(d.orders_count || 0) + '/3'"></span>)
+                                                </span>
+                                            </template>
+                                            <span x-show="d.phone" class="font-mono text-slate-700 font-semibold shrink-0 whitespace-nowrap flex items-center gap-1">
+                                                <i class="fa-solid fa-phone text-[9px] text-slate-400"></i>
+                                                <span x-text="d.phone"></span>
+                                            </span>
                                         </div>
                                     </div>
                                 </template>
@@ -363,10 +679,10 @@
                 </div>
 
                 <!-- Vị trí giao hàng -->
-                <div class="md:col-span-6 lg:col-span-5">
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="text-[11px] font-bold text-slate-500 tracking-wide uppercase">VỊ TRÍ GIAO HÀNG</label>
-                        <span class="text-[11px] text-slate-400 font-medium" x-show="formData.customer_address" x-text="'Địa chỉ nhận hàng'"></span>
+                <div class="col-span-1 md:col-span-6 lg:col-span-3">
+                    <div class="h-5 flex items-center justify-between mb-1">
+                        <label class="text-[11px] font-bold text-slate-500 tracking-wide uppercase truncate">VỊ TRÍ GIAO HÀNG</label>
+                        <span class="text-[11px] text-slate-400 font-medium truncate hidden xl:inline" x-show="formData.customer_address" x-text="'Địa chỉ nhận hàng'"></span>
                     </div>
                     <div class="relative">
                         <i class="fa-solid fa-location-dot absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
@@ -384,47 +700,59 @@
                     </div>
                 </div>
 
-                <!-- Kho dự kiến xuất -->
-                <div class="md:col-span-12 lg:col-span-3">
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="text-[11px] font-bold text-slate-500 tracking-wide uppercase">KHO DỰ KIẾN XUẤT</label>
-                        @if($isDriverUser ?? false)
-                            <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                                <i class="fa-solid fa-truck text-[9px] text-emerald-600"></i>
-                                <span>Kho trên xe của bạn</span>
-                            </span>
-                        @endif
+                <!-- Kho dự kiến xuất (Ẩn trên mobile, hiện trên desktop) -->
+                <div class="hidden md:block md:col-span-6 lg:col-span-2">
+                    <div class="h-5 flex items-center justify-between mb-1 gap-1">
+                        <label class="text-[11px] font-bold text-slate-500 tracking-wide uppercase truncate">KHO DỰ KIẾN XUẤT</label>
+                        <span class="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 shrink-0" x-show="formData.order_type === 'consignment'" x-cloak>
+                            📦 Kho NV
+                        </span>
+                        <span class="text-[10px] font-semibold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200 shrink-0" x-show="formData.order_type === 'normal'" x-cloak>
+                            🏢 Kho cty
+                        </span>
                     </div>
                     <select x-model="formData.warehouse" 
                             @change="onWarehouseChange()" 
-                            class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer shadow-2xs hover:border-slate-400 transition-colors {{ ($isDriverUser ?? false) ? 'bg-slate-100 cursor-not-allowed text-slate-500 opacity-90' : '' }}"
-                            {{ ($isDriverUser ?? false) ? 'disabled' : '' }}>
+                            class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer shadow-2xs hover:border-slate-400 transition-colors">
                         <option value="">-- Chọn kho xuất hàng --</option>
                         @foreach($warehouses as $wh)
-                            @if(empty($wh->is_holding_warehouse) && !str_starts_with($wh->code ?? '', 'KHO-OM-') && !str_contains($wh->name ?? '', 'Kho Hàng Ôm'))
-                                <option value="{{ $wh->name }}">
-                                    {{ $wh->name }} {{ !empty($wh->code) ? "({$wh->code})" : '' }}
-                                </option>
-                            @endif
+                            <option value="{{ $wh->name }}">{{ $wh->name }}</option>
                         @endforeach
                     </select>
-                    @if($isDriverUser ?? false)
-                        <p class="text-[10.5px] text-emerald-700 mt-1 flex items-center gap-1 font-semibold">
-                            <i class="fa-solid fa-lock text-[9.5px]"></i>
-                            <span>Lái xe chỉ được xuất bán từ kho trên xe của mình.</span>
-                        </p>
-                    @endif
                 </div>
+
+                <!-- Hidden inputs để lưu trữ trạng thái và ngày mà không hiển thị ra ngoài -->
+                <input type="hidden" name="status" :value="formData.status">
+                <input type="hidden" name="order_date" :value="formData.order_date">
+                <input type="hidden" name="picking_date" :value="formData.picking_date">
+                <input type="hidden" name="delivery_date" :value="formData.delivery_date">
             </div>
 
-            <!-- Badge / Card hiển thị công nợ & hạn mức tín dụng khách hàng -->
+            <!-- Badge / Card hiển thị công nợ, hạn mức & Mã số thuế khách hàng -->
             <div x-show="getSelectedDealer()" x-cloak class="p-2.5 rounded-xl border text-[11px] transition-all"
-                 :class="isDebtOverLimit() ? 'bg-rose-50 border-rose-300 text-rose-900 ring-1 ring-rose-200 shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-700'">
+                 :class="(isDebtOverLimit() || isNoTaxCodeLimitReached()) ? 'bg-rose-50 border-rose-300 text-rose-900 ring-1 ring-rose-200 shadow-xs' : (!hasTaxCode() ? 'bg-amber-50/80 border-amber-300 text-amber-900' : 'bg-slate-50 border-slate-200 text-slate-700')">
                 <div class="flex items-center justify-between gap-2 flex-wrap">
                     <div class="flex items-center gap-3 flex-wrap">
                         <span class="flex items-center gap-1.5 font-semibold">
-                            <i :class="isDebtOverLimit() ? 'fa-solid fa-triangle-exclamation text-rose-600' : 'fa-solid fa-wallet text-sky-600'"></i>
+                            <i :class="(isDebtOverLimit() || isNoTaxCodeLimitReached()) ? 'fa-solid fa-triangle-exclamation text-rose-600' : 'fa-solid fa-user-check text-sky-600'"></i>
                             <span>Khách: <b class="text-slate-900" x-text="getSelectedDealer()?.name"></b></span>
+                        </span>
+                        <span class="text-slate-300">|</span>
+                        <!-- Trạng thái Mã số thuế (MST) -->
+                        <span class="flex items-center gap-1 font-semibold">
+                            <template x-if="hasTaxCode()">
+                                <span class="text-emerald-700 font-mono text-[11px] flex items-center gap-1">
+                                    <i class="fa-solid fa-circle-check text-emerald-600 text-[10px]"></i>
+                                    <span>MST: <b x-text="getCustomerTaxCode()"></b></span>
+                                </span>
+                            </template>
+                            <template x-if="!hasTaxCode()">
+                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-bold"
+                                      :class="isNoTaxCodeLimitReached() ? 'bg-rose-100 text-rose-700 border border-rose-300' : 'bg-amber-100 text-amber-800 border border-amber-300'">
+                                    <i class="fa-solid" :class="isNoTaxCodeLimitReached() ? 'fa-triangle-exclamation text-rose-600' : 'fa-circle-exclamation text-amber-600'"></i>
+                                    <span x-text="isNoTaxCodeLimitReached() ? ('Chưa MST: Đã đạt 3 đơn (' + getCustomerOrdersCount() + '/3) - Chặn lên đơn!') : ('Chưa MST: Đơn thứ ' + (getCustomerOrdersCount() + 1) + '/3')"></span>
+                                </span>
+                            </template>
                         </span>
                         <span class="text-slate-300">|</span>
                         <span>Nợ hiện tại: <b class="font-mono text-xs font-bold text-slate-900" x-text="formatNumber(getSelectedDealer()?.current_debt || 0) + ' đ'"></b></span>
@@ -437,8 +765,20 @@
                             <b class="font-mono font-bold" :class="isDebtOverLimit() ? 'text-rose-700 font-black' : 'text-sky-700'" x-text="formatNumber(getProjectedDebt()) + ' đ'"></b>
                         </span>
                     </div>
-                    <div class="text-right shrink-0">
-                        <template x-if="isDebtOverLimit()">
+                    <div class="text-right shrink-0 flex items-center gap-2">
+                        <template x-if="isNoTaxCodeLimitReached()">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-rose-600 text-white font-black text-[10px] tracking-wide animate-pulse shadow-xs">
+                                <i class="fa-solid fa-ban"></i>
+                                <span>CHẶN: CHƯA MST (3 ĐƠN)</span>
+                            </span>
+                        </template>
+                        <template x-if="isNoTaxCodeLimitReached()">
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1 animate-pulse">
+                        <i class="fa-solid fa-ban text-rose-600"></i>
+                        <span>Chưa MST (đã 3 đơn)</span>
+                    </span>
+                </template>
+                <template x-if="isDebtOverLimit()">
                             <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-rose-600 text-white font-black text-[10px] tracking-wide animate-pulse">
                                 <i class="fa-solid fa-triangle-exclamation"></i>
                                 <span>VƯỢT HẠN MỨC: +<span x-text="formatNumber(getDebtExcessAmount()) + ' đ'"></span></span>
@@ -456,8 +796,42 @@
 
         <!-- 4. Product Line Items Table (Chi Tiết Mặt Hàng) -->
         <div class="space-y-3">
-            <!-- Banners cảnh báo tổng thể (Vượt hạn mức công nợ & Vượt tồn kho) -->
-            <div class="space-y-2" x-show="isDebtOverLimit() || getOverStockItems().length > 0" x-cloak>
+            <!-- Banners cảnh báo tổng thể (Chặn MST, Vượt hạn mức công nợ & Vượt tồn kho) -->
+            <div class="space-y-2" x-show="isDebtOverLimit() || getOverStockItems().length > 0 || isNoTaxCodeLimitReached() || (!hasTaxCode() && getSelectedDealer())" x-cloak>
+                <!-- 1. Chặn lên đơn khi khách chưa có MST và đã đạt giới hạn 3 đơn -->
+                <div x-show="isNoTaxCodeLimitReached()" class="p-3.5 bg-rose-50 border-2 border-rose-500 rounded-2xl flex items-start gap-3 shadow-xs">
+                    <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 font-bold">
+                        <i class="fa-solid fa-ban text-base"></i>
+                    </div>
+                    <div class="text-xs leading-relaxed flex-1 text-rose-950">
+                        <div class="font-black uppercase tracking-wider text-[11px] mb-1 flex items-center gap-2 flex-wrap text-rose-800">
+                            <span>CHẶN LÊN ĐƠN: KHÁCH HÀNG CHƯA CÓ MÃ SỐ THUẾ (MST)</span>
+                            <span class="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black tracking-wide uppercase shadow-2xs">Giới hạn 3 đơn</span>
+                        </div>
+                        <p class="text-[11.5px] text-rose-900 font-bold mb-1">
+                            Khách hàng <span class="text-slate-900 underline font-black" x-text="formData.customer_name"></span> chưa có Mã số thuế (MST) và đã đạt <span class="font-black font-mono text-rose-700" x-text="getCustomerOrdersCount()"></span> đơn hàng.
+                        </p>
+                        <p class="text-[11px] text-rose-800 font-medium">
+                            ⚠️ <strong>Quy định hệ thống:</strong> Chỉ được lên tối đa <strong>3 đơn hàng</strong> đối với khách hàng chưa có MST. Đơn thứ 4 trở đi sẽ <strong>không được phép lên đơn</strong>. Vui lòng cập nhật MST cho khách hàng trước khi tiếp tục!
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 2. Cảnh báo khách chưa có MST (đang trong hạn mức 1-3 đơn) -->
+                <div x-show="!hasTaxCode() && getSelectedDealer() && !isNoTaxCodeLimitReached()" class="p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3 shadow-xs">
+                    <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 font-bold">
+                        <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+                    </div>
+                    <div class="text-xs leading-relaxed flex-1 text-amber-950">
+                        <div class="font-black uppercase tracking-wider text-[11px] mb-0.5 flex items-center gap-2 text-amber-800">
+                            <span>CẢNH BÁO: KHÁCH HÀNG CHƯA CÓ MÃ SỐ THUẾ (MST)</span>
+                            <span class="px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px] font-bold" x-text="'Đơn thứ ' + (getCustomerOrdersCount() + 1) + '/3'"></span>
+                        </div>
+                        <span class="text-amber-900">
+                            Khách hàng <strong class="font-bold text-slate-900" x-text="formData.customer_name"></strong> chưa có MST. Hệ thống chỉ cho phép lên tối đa <strong>3 đơn hàng</strong> khi chưa có MST (đơn thứ 4 sẽ bị hệ thống chặn). Vui lòng sớm bổ sung MST cho khách hàng!
+                        </span>
+                    </div>
+                </div>
                 <!-- Cảnh báo công nợ -->
                 <div x-show="isDebtOverLimit()" class="p-3 bg-rose-50 border border-rose-300 rounded-xl flex items-start gap-3 shadow-xs">
                     <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 font-bold">
@@ -472,37 +846,30 @@
                     </div>
                 </div>
 
-                <!-- Cảnh báo tồn kho khả dụng -->
-                <div x-show="getOverStockItems().length > 0" class="p-3 border rounded-xl flex items-start gap-3 shadow-xs"
-                     :class="getPhysicalShortageItems().length > 0 ? 'bg-rose-50 border-rose-300' : 'bg-amber-50 border-amber-300'">
-                    <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold"
-                         :class="getPhysicalShortageItems().length > 0 ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'">
-                        <i :class="getPhysicalShortageItems().length > 0 ? 'fa-solid fa-circle-exclamation text-sm' : 'fa-solid fa-boxes-stacked text-sm'"></i>
+                <!-- Cảnh báo tồn kho khả dụng & Chặn lên đơn khi hết hàng -->
+                <div x-show="getOverStockItems().length > 0" class="p-3.5 bg-rose-50 border-2 border-rose-400 rounded-2xl flex items-start gap-3 shadow-xs">
+                    <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 font-bold">
+                        <i class="fa-solid fa-ban text-base"></i>
                     </div>
-                    <div class="text-xs leading-relaxed flex-1"
-                         :class="getPhysicalShortageItems().length > 0 ? 'text-rose-900' : 'text-amber-900'">
-                        <div class="font-black uppercase tracking-wider text-[11px] mb-1 flex items-center gap-1.5 flex-wrap"
-                             :class="getPhysicalShortageItems().length > 0 ? 'text-rose-800' : 'text-amber-800'">
-                            <span>CẢNH BÁO TỒN KHO TẠI [<span x-text="formData.warehouse || 'Kho xuất'"></span>]</span>
-                            <template x-if="getPhysicalShortageItems().length > 0">
-                                <span class="px-1.5 py-0.5 rounded bg-rose-200 text-rose-900 text-[10px] font-bold" x-text="getPhysicalShortageItems().length + ' SP vượt tồn thực tế'"></span>
-                            </template>
-                            <template x-if="getReservedShortageItems().length > 0">
-                                <span class="px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px] font-bold" x-text="getReservedShortageItems().length + ' SP tranh chấp đơn khác'"></span>
-                            </template>
+                    <div class="text-xs leading-relaxed flex-1 text-rose-950">
+                        <div class="font-black uppercase tracking-wider text-[11px] mb-1 flex items-center gap-2 flex-wrap text-rose-800">
+                            <span>CHẶN LÊN ĐƠN: HẾT TỒN KHO KHẢ DỤNG TẠI [<span x-text="formData.warehouse || 'Kho xuất'"></span>]</span>
+                            <span class="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black tracking-wide uppercase shadow-2xs">Không được lên đơn</span>
                         </div>
+                        <p class="text-[11px] text-rose-900 font-bold mb-1.5">
+                            Quy định hệ thống: <strong>Hết tồn khả dụng là không được lên đơn</strong>. Vui lòng giảm số lượng đặt về mức khả dụng hoặc chọn kho khác:
+                        </p>
                         <div class="space-y-1">
                             <template x-for="(it, idx) in getOverStockItems()" :key="idx">
-                                <div class="inline-block mr-2 my-0.5 px-2.5 py-1 rounded-lg border font-medium text-[11px]"
-                                     :class="isItemPhysicalShortage(it) ? 'bg-rose-100/90 border-rose-300 text-rose-950' : 'bg-amber-100/90 border-amber-300 text-amber-950'">
-                                    <span class="font-bold" x-text="it.name || it.sku"></span>: 
-                                    đặt <span class="font-bold text-rose-700" x-text="it.quantity + ' ' + (it.unit || '')"></span> 
-                                    (Khả dụng: <span class="font-bold font-mono" x-text="formatNumber(getItemAvailableStockInUnit(it)) + ' ' + (it.unit || '')"></span> &bull; 
+                                <div class="inline-block mr-2 my-0.5 px-2.5 py-1 rounded-lg border border-rose-300 bg-white font-medium text-[11px] shadow-2xs">
+                                    <span class="font-bold text-slate-900" x-text="it.name || it.sku"></span>: 
+                                    đặt <span class="font-black text-rose-700" x-text="it.quantity + ' ' + (it.unit || '')"></span> 
+                                    (Khả dụng: <span class="font-bold font-mono text-emerald-800" x-text="formatNumber(getItemAvailableStockInUnit(it)) + ' ' + (it.unit || '')"></span> &bull; 
                                     Kho thực tế: <span class="font-bold font-mono" x-text="formatNumber(getItemOnHandStockInUnit(it)) + ' ' + (it.unit || '')"></span>
                                     <template x-if="getItemReservedStockInUnit(it) > 0">
                                         <span> | Đang giữ: <b class="text-amber-800 font-mono" x-text="formatNumber(getItemReservedStockInUnit(it)) + ' ' + (it.unit || '')"></b></span>
                                     </template>
-                                    &rarr; <b :class="isItemPhysicalShortage(it) ? 'text-rose-700 underline' : 'text-amber-800'">thiếu <span x-text="formatNumber(getItemOverStockQty(it))"></span> <span x-text="it.unit || ''"></span></b>)
+                                    &rarr; <b class="text-rose-700 underline font-black">thiếu <span x-text="formatNumber(getItemOverStockQty(it))"></span> <span x-text="it.unit || ''"></span></b>)
                                 </div>
                             </template>
                         </div>
@@ -603,8 +970,8 @@
                 </div>
             </template>
 
-            <div class="rounded-xl border border-slate-200">
-                <table class="w-full text-left border-collapse text-xs">
+            <div class="order-items-table-container rounded-xl border border-slate-200">
+                <table class="order-items-table w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="bg-slate-50 text-slate-600 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
                             <th class="py-2.5 px-3 text-center w-14">
@@ -620,10 +987,10 @@
                             <th class="py-2.5 px-2 text-center w-20">ĐVT</th>
                             <th class="py-2.5 px-2 text-right w-28">ĐƠN GIÁ</th>
                             <th class="py-2.5 px-2 text-center w-16">SL</th>
-                            <!-- Cột Số Lượng Tặng -->
-                            <th class="py-2.5 px-2 text-center w-24 bg-emerald-50/70 border-x border-slate-200">
-                                <div class="text-emerald-800 font-bold">SL TẶNG</div>
-                                <div class="text-[9px] text-emerald-600 font-normal lowercase tracking-normal">(quà tặng)</div>
+                            <!-- Cột Chính Sách Áp Dụng -->
+                            <th class="py-2.5 px-2 text-center w-44 bg-sky-50/40 border-x border-slate-200">
+                                <div class="text-sky-900 font-bold">CHÍNH SÁCH</div>
+                                <div class="text-[9px] text-sky-600 font-normal lowercase tracking-normal">(áp dụng theo SP)</div>
                             </th>
                             <!-- Tiền chiết khấu cột -->
                             <th class="py-2 px-2 text-center w-52 bg-sky-50/60 border-r border-slate-200">
@@ -660,9 +1027,11 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100 font-medium">
                         <template x-for="(item, index) in items" :key="index">
-                            <tr class="hover:bg-slate-50/60 transition-colors">
+                            <tr x-show="!item.isPromotionalGift" 
+                                class="order-item-row hover:bg-slate-50/60 transition-colors" 
+                                :class="(activeProdDropdownIndex === index ? 'relative z-30 ' : '') + (item.isPromotionalGift ? 'is-promo-gift hidden !hidden' : '')">
                                 <!-- STT + Checkbox -->
-                                <td class="py-2 px-3 text-center">
+                                <td class="col-stt py-2 px-3 text-center">
                                     <div class="flex items-center justify-center gap-1.5">
                                         <input type="checkbox" x-model="item.checked" @change="calculateTotals()" class="rounded text-sky-600 focus:ring-0 cursor-pointer">
                                         <span class="font-bold text-slate-700" x-text="index + 1"></span>
@@ -670,7 +1039,7 @@
                                 </td>
 
                                 <!-- Tên / Mã SP Input với Menu gợi ý điều khiển bằng phím mũi tên Lên/Xuống + Enter -->
-                                <td class="py-2 px-3 relative">
+                                <td class="col-product py-2 px-3 relative" :class="activeProdDropdownIndex === index ? 'z-30' : ''">
                                     <!-- Nếu là hàng tặng kèm khuyến mại -->
                                     <template x-if="item.isPromotionalGift">
                                         <div class="py-1">
@@ -733,7 +1102,7 @@
                                         <!-- Menu Dropdown gợi ý sản phẩm -->
                                         <div x-show="activeProdDropdownIndex === index && getFilteredProducts(item.searchQuery, index).length > 0" 
                                              x-cloak 
-                                             class="absolute left-0 top-full mt-1 w-[460px] max-w-[90vw] z-50 bg-white rounded-xl shadow-2xl border border-slate-200 max-h-60 overflow-y-auto py-1 text-xs">
+                                             class="order-product-dropdown absolute left-0 top-full mt-1 w-[460px] max-w-[90vw] z-50 bg-white rounded-xl shadow-2xl border border-slate-200 max-h-60 overflow-y-auto py-1 text-xs">
                                             <div class="px-3 py-1 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
                                                 <span>Gợi ý sản phẩm (<span x-text="getFilteredProducts(item.searchQuery, index).length"></span>)</span>
                                                 <span class="text-sky-600 font-normal lowercase">dùng phím &uarr; &darr; &bull; Enter chọn</span>
@@ -754,6 +1123,11 @@
                                                             <span class="font-semibold text-slate-700" x-text="'ĐVT: ' + (p.unit || '') + (p.conversion_unit && p.conversion_unit.trim().toLowerCase() !== (p.unit || '').trim().toLowerCase() ? ' / ' + p.conversion_unit : '')"></span>
                                                             <span>&bull;</span>
                                                             <span class="inline-flex items-center gap-1.5">
+                                                                <template x-if="getProductStockData(p, formData.warehouse).available <= 0">
+                                                                    <span class="px-1.5 py-0.2 rounded bg-rose-600 text-white font-black text-[9px] uppercase tracking-wider flex items-center gap-1">
+                                                                        <i class="fa-solid fa-ban text-[8px]"></i> Hết khả dụng
+                                                                    </span>
+                                                                </template>
                                                                 <span class="px-1.5 py-0.2 rounded font-bold text-[10px]"
                                                                       :class="getProductStockData(p, formData.warehouse).available > 0 ? 'bg-emerald-100 text-emerald-800' : (getProductStockData(p, formData.warehouse).on_hand > 0 ? 'bg-amber-100 text-amber-900 ring-1 ring-amber-300' : 'bg-rose-100 text-rose-700')"
                                                                       x-text="'Khả dụng: ' + formatNumber(getProductStockData(p, formData.warehouse).available) + ' ' + (p.unit || '')"></span>
@@ -777,7 +1151,7 @@
                                               x-text="'Khả dụng: ' + formatNumber(getItemAvailableStockInUnit(item)) + ' ' + (item.unit || '')"></span>
                                         <span class="text-slate-400 font-mono text-[9px]" x-text="'(Kho: ' + formatNumber(getItemOnHandStockInUnit(item)) + (getItemReservedStockInUnit(item) > 0 ? ' | Đang giữ: ' + formatNumber(getItemReservedStockInUnit(item)) : '') + ')'"></span>
                                         <span class="text-slate-300">&bull;</span>
-                                        <span class="text-slate-400 font-medium" x-text="'Tổng toàn cty: ' + formatNumber(item.unit === getProduct(item.product_id)?.conversion_unit ? Math.round(Number(getProduct(item.product_id)?.stock_quantity || 0) * Number(getProduct(item.product_id)?.conversion_rate || 1)) : Number(getProduct(item.product_id)?.stock_quantity || 0)) + ' ' + (item.unit || '')"></span>
+                                        <span class="text-slate-400 font-medium" x-text="'Tổng toàn cty: ' + formatNumber(item.unit === getProduct(item.product_id)?.conversion_unit ? (isConvUnitLarger(getProduct(item.product_id)) ? (Math.round(Number(getProduct(item.product_id)?.stock_quantity || 0) / (Number(getProduct(item.product_id)?.conversion_rate) || 1) * 100) / 100) : Math.round(Number(getProduct(item.product_id)?.stock_quantity || 0) * (Number(getProduct(item.product_id)?.conversion_rate) || 1))) : Number(getProduct(item.product_id)?.stock_quantity || 0)) + ' ' + (item.unit || '')"></span>
                                         <template x-if="getItemStockStatus(item) === 'warning'">
                                             <span class="px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold text-[9px] flex items-center gap-0.5 border border-amber-300" title="Kho còn hàng thực tế nhưng đã bị giữ bởi các đơn hàng khác chưa xuất">
                                                 <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
@@ -795,7 +1169,7 @@
                                 </td>
 
                                 <!-- ĐVT (Luôn cho phép chọn ĐVT và ĐV quy đổi của từng sản phẩm) -->
-                                <td class="py-2 px-2 text-center align-top">
+                                <td class="col-unit py-2 px-2 text-center align-top">
                                     <template x-if="!item.isPromotionalGift">
                                         <select x-model="item.unit" 
                                                 @change="onItemUnitChange(index)" 
@@ -811,7 +1185,7 @@
                                 </td>
 
                                 <!-- Đơn giá (Hỗ trợ phím ↑ ↓ để tăng/giảm giá) -->
-                                <td class="py-2 px-2 text-right align-top">
+                                <td class="col-price py-2 px-2 text-right align-top">
                                     <template x-if="!item.isPromotionalGift">
                                         <div class="relative">
                                             <input type="text" 
@@ -834,14 +1208,10 @@
                                 </td>
 
                                 <!-- Số lượng (Hỗ trợ phím ↑ ↓ và bộ nút bấm +/-) -->
-                                <td class="py-2 px-2 text-center align-top">
+                                <td class="col-qty py-2 px-2 text-center align-top">
                                     <template x-if="!item.isPromotionalGift">
                                         <div class="relative">
                                             <div class="flex items-center">
-                                                <button type="button" 
-                                                        @click="decreaseQty(index)" 
-                                                        class="w-5 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-600 rounded-l border border-r-0 border-slate-300 font-black text-xs select-none transition-colors cursor-pointer shrink-0" 
-                                                        title="Giảm số lượng (Phím ↓)">-</button>
                                                 <input type="text" inputmode="decimal" 
                                                        :id="'row-qty-input-' + index"
                                                        autocomplete="off"
@@ -851,12 +1221,8 @@
                                                        @keydown.down.prevent="decreaseQty(index)"
                                                        @keydown.enter.prevent="addNewRow()"
                                                        title="Phím ↑ tăng SL, phím ↓ giảm SL"
-                                                       :class="getItemStockStatus(item) === 'danger' ? 'bg-rose-50 border-2 border-rose-500 text-rose-800 ring-2 ring-rose-200 font-black' : (getItemStockStatus(item) === 'warning' ? 'bg-amber-50 border-2 border-amber-500 text-amber-900 ring-2 ring-amber-200 font-black' : 'bg-white border-y border-slate-300 text-slate-900 font-bold hover:border-slate-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-200')"
-                                                       class="w-full h-7 px-1 text-center text-xs shadow-2xs outline-none transition-all rounded-none min-w-[32px]">
-                                                <button type="button" 
-                                                        @click="increaseQty(index)" 
-                                                        class="w-5 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-600 rounded-r border border-l-0 border-slate-300 font-black text-xs select-none transition-colors cursor-pointer shrink-0" 
-                                                        title="Tăng số lượng (Phím ↑)">+</button>
+                                                       :class="getItemStockStatus(item) === 'danger' ? 'bg-rose-50 border-2 border-rose-500 text-rose-800 ring-2 ring-rose-200 font-black' : (getItemStockStatus(item) === 'warning' ? 'bg-amber-50 border-2 border-amber-500 text-amber-900 ring-2 ring-amber-200 font-black' : 'bg-white border border-slate-300 text-slate-900 font-bold hover:border-slate-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-200')"
+                                                       class="w-full h-7 px-1 text-center text-xs shadow-2xs outline-none transition-all rounded min-w-[32px]">
                                             </div>
                                             
                                             <!-- Cảnh báo thiếu tồn kho dưới ô số lượng -->
@@ -869,11 +1235,7 @@
                                     </template>
                                     <template x-if="item.isPromotionalGift">
                                         <div class="relative">
-                                            <div class="flex items-center justify-center">
-                                                <button type="button" 
-                                                        @click="decreaseQty(index)" 
-                                                        class="w-5 h-7 flex items-center justify-center bg-emerald-100 hover:bg-emerald-200 active:bg-emerald-300 text-emerald-800 rounded-l border border-r-0 border-emerald-300 font-black text-xs select-none transition-colors cursor-pointer shrink-0" 
-                                                        title="Giảm số lượng">-</button>
+                                            <div>
                                                 <input type="text" inputmode="decimal" 
                                                        :id="'row-qty-input-' + index"
                                                        autocomplete="off"
@@ -882,58 +1244,34 @@
                                                        @keydown.up.prevent="increaseQty(index)"
                                                        @keydown.down.prevent="decreaseQty(index)"
                                                        title="Số lượng quà tặng (có thể sửa)"
-                                                       class="w-full h-7 px-1 text-center text-xs shadow-2xs outline-none transition-all rounded-none min-w-[32px] bg-emerald-50 border-y border-emerald-400 text-emerald-900 font-black">
-                                                <button type="button" 
-                                                        @click="increaseQty(index)" 
-                                                        class="w-5 h-7 flex items-center justify-center bg-emerald-100 hover:bg-emerald-200 active:bg-emerald-300 text-emerald-800 rounded-r border border-l-0 border-emerald-300 font-black text-xs select-none transition-colors cursor-pointer shrink-0" 
-                                                        title="Tăng số lượng">+</button>
+                                                       class="w-full h-7 px-1 text-center text-xs shadow-2xs outline-none transition-all rounded min-w-[32px] bg-emerald-50 border border-emerald-400 text-emerald-900 font-black">
                                             </div>
                                         </div>
                                     </template>
                                 </td>
 
-                                <!-- Cột Số Lượng Tặng (SL Tặng) -->
-                                <td class="py-2 px-2 text-center align-top bg-emerald-50/20 border-x border-slate-200">
-                                    <template x-if="!item.isPromotionalGift">
-                                        <div class="relative">
-                                            <div class="flex items-center justify-center">
-                                                <button type="button" 
-                                                        @click="decreaseGiftQty(index)" 
-                                                        class="w-5 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-600 rounded-l border border-r-0 border-slate-300 font-black text-xs select-none transition-colors cursor-pointer shrink-0" 
-                                                        title="Giảm SL tặng">-</button>
-                                                <input type="text" inputmode="decimal" 
-                                                       :id="'row-gift-qty-input-' + index"
-                                                       autocomplete="off"
-                                                       x-number="item.gift_quantity" 
-                                                       @input="onGiftQtyChange(index)" 
-                                                       @keydown.up.prevent="increaseGiftQty(index)"
-                                                       @keydown.down.prevent="decreaseGiftQty(index)"
-                                                       placeholder="0"
-                                                       title="Số lượng tặng kèm (0đ)"
-                                                       :class="Number(item.gift_quantity) > 0 ? 'bg-emerald-100/90 border-2 border-emerald-500 text-emerald-900 ring-2 ring-emerald-200 font-black' : 'bg-white border-y border-slate-300 text-slate-700 font-bold hover:border-slate-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200'"
-                                                       class="w-full h-7 px-1 text-center text-xs shadow-2xs outline-none transition-all rounded-none min-w-[32px]">
-                                                <button type="button" 
-                                                        @click="increaseGiftQty(index)" 
-                                                        class="w-5 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-600 rounded-r border border-l-0 border-slate-300 font-black text-xs select-none transition-colors cursor-pointer shrink-0" 
-                                                        title="Tăng SL tặng">+</button>
-                                            </div>
-                                            <div x-show="Number(item.gift_quantity) > 0" class="mt-0.5 text-[9px] text-emerald-700 font-bold truncate">
-                                                Tặng +<span x-text="item.gift_quantity"></span>
-                                            </div>
-                                            <div x-show="Number(item.discount_percent) > 0 || Number(item.discount_amount) > 0" class="mt-0.5 text-[9px] text-amber-600 font-semibold truncate" title="Đang có chiết khấu">
-                                                CK: <span x-text="item.discount_percent > 0 ? (item.discount_percent + '%') : (formatNumber(item.discount_amount) + 'đ')"></span>
-                                            </div>
-                                        </div>
-                                    </template>
-                                    <template x-if="item.isPromotionalGift">
-                                        <div class="py-1 text-center">
-                                            <span class="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">Quà tặng</span>
-                                        </div>
-                                    </template>
+                                <!-- Cột Chọn Chính Sách Áp Dụng -->
+                                <td class="col-policy py-2 px-2 text-center align-top bg-sky-50/20 border-x border-slate-200">
+                                    <div class="relative">
+                                        <select x-model="item.policy_id" 
+                                                @change="onItemPolicyChange(index)" 
+                                                class="w-full px-2 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none transition-colors shadow-2xs truncate cursor-pointer"
+                                                :title="item.appliedPolicyName || 'Chọn chính sách áp dụng'">
+                                            <option value="">-- Mặc định --</option>
+                                            <template x-for="p in getApplicablePoliciesForItem(item)" :key="p.id">
+                                                <option :value="p.id" 
+                                                        :selected="String(item.policy_id) === String(p.id)"
+                                                        x-text="p.name"></option>
+                                            </template>
+                                        </select>
+                                        <template x-if="item.policy_id && getPolicySummaryText(item)">
+                                            <div class="mt-0.5 text-[9px] text-emerald-700 font-bold truncate text-center" x-text="getPolicySummaryText(item)"></div>
+                                        </template>
+                                    </div>
                                 </td>
 
                                 <!-- Tiền chiết khấu (% mỗi dòng hoặc VNĐ) -->
-                                <td class="py-2 px-2 bg-sky-50/30 border-x border-slate-200 align-top">
+                                <td class="col-discount py-2 px-2 bg-sky-50/30 border-x border-slate-200 align-top">
                                     <template x-if="!item.isPromotionalGift">
                                         <div>
                                             <div class="flex items-center gap-1.5 justify-between">
@@ -971,7 +1309,7 @@
                                 </td>
 
                                 <!-- VAT (ăn theo sản phẩm chọn) -->
-                                <td class="py-2 px-2 bg-sky-50/30 border-r border-slate-200 align-top">
+                                <td class="col-vat py-2 px-2 bg-sky-50/30 border-r border-slate-200 align-top">
                                     <template x-if="!item.isPromotionalGift">
                                         <div class="flex items-center gap-1 justify-between">
                                             <div class="flex items-center gap-0.5">
@@ -988,7 +1326,7 @@
 
                                 <!-- Cột SL Bốc: chỉ render khi đang ở giai đoạn soạn hàng -->
                                 <template x-if="isPickingStage()">
-                                    <td class="py-2 px-2 text-center align-top bg-orange-50/20 border-x border-slate-200">
+                                    <td class="col-picking py-2 px-2 text-center align-top bg-orange-50/20 border-x border-slate-200">
                                         <template x-if="!item.isPromotionalGift">
                                             <div>
                                                 <div class="font-black text-sm font-mono"
@@ -1017,7 +1355,7 @@
                                 </template>
 
                                 <!-- Thành tiền -->
-                                <td class="py-2 px-3 text-right align-top">
+                                <td class="col-amount py-2 px-3 text-right align-top">
                                     <span class="font-bold text-xs block" :class="item.isPromotionalGift ? 'text-emerald-700' : 'text-slate-900'" x-text="formatNumber(item.amount) + ' đ'"></span>
                                     <!-- Hiển thị thiếu hàng dưới thành tiền khi có -->
                                     <template x-if="isItemShortage(item)">
@@ -1029,7 +1367,7 @@
                                 </td>
 
                                 <!-- Nút Xóa -->
-                                <td class="py-2 px-2 text-center">
+                                <td class="col-actions py-2 px-2 text-center">
                                     <button type="button" @click="removeItem(index)" class="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer" title="Xóa dòng">
                                         <i class="fa-solid fa-trash-can text-xs"></i>
                                     </button>
@@ -1041,7 +1379,7 @@
             </div>
 
             <!-- Under Table: Thêm dòng button + Shortcut tip -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
+            <div class="order-under-table-actions flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
                 <button type="button" @click="addNewRow()" class="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold text-xs rounded-xl border border-sky-200 transition-colors cursor-pointer shadow-2xs">
                     <i class="fa-solid fa-plus text-xs"></i>
                     <span>Thêm dòng</span>
@@ -1053,6 +1391,73 @@
                     <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">F9</kbd> lưu
                     <span class="text-slate-300">&bull;</span>
                     <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">Ctrl+F9</kbd> lưu và in
+                </div>
+            </div>
+
+            <!-- DANH SÁCH HÀNG TẶNG KÈM / KHUYẾN MẠI (CHỈ HIỆN THỊ KHI CÓ HÀNG TẶNG) -->
+            <div x-show="getGiftItems().length > 0" x-cloak class="mt-4 rounded-xl border border-emerald-300 bg-linear-to-br from-emerald-50/70 via-white to-emerald-50/40 p-3.5 space-y-2.5 shadow-2xs">
+                <div class="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-emerald-200">
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs shadow-2xs font-bold">
+                            <i class="fa-solid fa-gift"></i>
+                        </span>
+                        <span class="font-bold text-emerald-900 text-xs uppercase tracking-wide">Danh Sách Hàng Tặng Kèm / Khuyến Mại</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300" x-text="getGiftItems().length + ' sản phẩm tặng'"></span>
+                    </div>
+                    <span class="text-[11px] text-emerald-700 font-semibold italic flex items-center gap-1">
+                        <i class="fa-solid fa-circle-check text-[10px]"></i>
+                        <span>Đơn giá: 0đ (Hưởng theo chính sách khuyến mại)</span>
+                    </span>
+                </div>
+
+                <!-- Dạng Card cho Mobile -->
+                <div class="block md:hidden space-y-2">
+                    <template x-for="(gItem, gIdx) in getGiftItems()" :key="'gift-mob-' + gIdx">
+                        <div class="bg-white rounded-lg p-2.5 border border-emerald-200 shadow-2xs flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <div class="font-bold text-slate-900 text-xs truncate">
+                                    <span class="text-emerald-700 font-mono mr-1" x-text="'[' + gItem.sku + ']'"></span>
+                                    <span x-text="gItem.name"></span>
+                                </div>
+                                <div class="text-[10px] text-emerald-700 font-medium mt-0.5" x-text="gItem.appliedTierPolicy || 'Theo chính sách khuyến mại'"></div>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <div class="text-xs font-black text-emerald-700" x-text="gItem.quantity + ' ' + (gItem.unit || 'cái')"></div>
+                                <div class="text-[10px] text-slate-400 font-bold">0 đ</div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Dạng Bảng cho Desktop -->
+                <div class="hidden md:block overflow-x-auto rounded-lg border border-emerald-200 bg-white">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="bg-emerald-100/70 text-emerald-950 font-bold uppercase text-[10px] tracking-wider">
+                            <tr>
+                                <th class="py-2 px-3 text-center w-12">STT</th>
+                                <th class="py-2 px-3">TÊN / MÃ SẢN PHẨM QUÀ TẶNG</th>
+                                <th class="py-2 px-2 text-center w-24">ĐVT</th>
+                                <th class="py-2 px-2 text-center w-32">SỐ LƯỢNG TẶNG</th>
+                                <th class="py-2 px-3 text-right w-28">ĐƠN GIÁ</th>
+                                <th class="py-2 px-3 text-left w-64">CHÍNH SÁCH ÁP DỤNG</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-emerald-100 font-medium text-slate-800">
+                            <template x-for="(gItem, gIdx) in getGiftItems()" :key="'gift-desk-' + gIdx">
+                                <tr class="hover:bg-emerald-50/50 transition-colors">
+                                    <td class="py-2 px-3 text-center font-bold text-emerald-700" x-text="gIdx + 1"></td>
+                                    <td class="py-2 px-3 font-bold text-slate-900">
+                                        <span class="text-emerald-700 font-mono mr-1.5" x-text="'[' + gItem.sku + ']'"></span>
+                                        <span x-text="gItem.name"></span>
+                                    </td>
+                                    <td class="py-2 px-2 text-center font-bold text-slate-700" x-text="gItem.unit || 'cái'"></td>
+                                    <td class="py-2 px-2 text-center font-black text-emerald-700 text-sm" x-text="gItem.quantity"></td>
+                                    <td class="py-2 px-3 text-right font-black text-emerald-600">0 đ</td>
+                                    <td class="py-2 px-3 text-slate-600 text-[11px] font-semibold" x-text="gItem.appliedTierPolicy || 'Tặng theo chính sách'"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -1070,73 +1475,7 @@
                     <span>Tiền VAT được tính trực tiếp trên đơn giá của từng sản phẩm.</span>
                 </div>
 
-                <!-- Khối Chương Trình Khuyến Mại & Chính Sách Ưu Đãi -->
-                <div class="rounded-xl border border-amber-200 bg-linear-to-br from-amber-50/80 via-white to-amber-50/30 p-3.5 space-y-2.5 shadow-2xs">
-                    <div class="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-amber-200/70">
-                        <div class="flex items-center gap-2">
-                            <span class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs shadow-2xs font-bold">
-                                <i class="fa-solid fa-gift"></i>
-                            </span>
-                            <span class="font-bold text-slate-800 text-xs uppercase tracking-wide">Chương Trình Khuyến Mại & Ưu Đãi</span>
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300" x-text="salesPoliciesCatalog.length + ' chương trình'"></span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <label class="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold text-slate-700 select-none">
-                                <input type="checkbox" x-model="autoApplyPromotions" @change="checkAndApplyPromotions(true)" class="rounded text-amber-600 focus:ring-0 cursor-pointer">
-                                <span>Tự động áp dụng</span>
-                            </label>
-                            <button type="button" @click="checkAndApplyPromotions(true)" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1">
-                                <i class="fa-solid fa-arrows-rotate text-[10px]"></i>
-                                <span>Kiểm tra & Áp dụng</span>
-                            </button>
-                        </div>
-                    </div>
 
-                    <!-- Danh sách các chính sách khuyến mại đang hiệu lực -->
-                    <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                        <template x-for="policy in salesPoliciesCatalog" :key="policy.id">
-                            <div class="p-2 rounded-lg border transition-all text-xs flex items-center justify-between gap-2"
-                                 :class="isPolicyApplied(policy) ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950 shadow-2xs' : 'bg-white/80 border-slate-200 text-slate-600'">
-                                <div class="min-w-0 flex items-center gap-2">
-                                    <span class="font-mono font-bold text-[10px] px-1.5 py-0.5 rounded shrink-0"
-                                          :class="isPolicyApplied(policy) ? 'bg-emerald-200 text-emerald-900 font-extrabold' : 'bg-slate-100 text-slate-600'" 
-                                          x-text="policy.code"></span>
-                                    <div class="truncate">
-                                        <span class="font-bold text-slate-900" x-text="policy.name"></span>
-                                        <span class="text-[11px] text-slate-500 ml-1" x-text="getPolicyConditionDesc(policy)"></span>
-                                    </div>
-                                </div>
-                                <div class="shrink-0 flex items-center gap-1.5">
-                                    <template x-if="isPolicyApplied(policy)">
-                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white flex items-center gap-1 shadow-2xs">
-                                            <i class="fa-solid fa-circle-check text-[10px]"></i>
-                                            <span x-text="getPolicyBenefitDesc(policy)"></span>
-                                        </span>
-                                    </template>
-                                    <template x-if="!isPolicyApplied(policy)">
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-500" x-text="getPolicyIneligibleReason(policy)"></span>
-                                    </template>
-                                </div>
-                            </div>
-                        </template>
-                        <template x-if="salesPoliciesCatalog.length === 0">
-                            <div class="text-center py-2 text-slate-400 italic text-[11px]">
-                                Hiện chưa có chương trình khuyến mại nào đang hoạt động trong hệ thống.
-                            </div>
-                        </template>
-                    </div>
-
-                    <!-- Badge thông báo các ưu đãi đã được áp dụng vào đơn -->
-                    <div x-show="appliedPromotionNotices.length > 0" x-cloak class="pt-1.5 border-t border-amber-200/60 flex items-center gap-2 flex-wrap">
-                        <span class="text-[10px] font-bold text-amber-800 uppercase tracking-wide">Đã áp dụng:</span>
-                        <template x-for="(notice, nIdx) in appliedPromotionNotices" :key="nIdx">
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[10px] border border-emerald-300">
-                                <i class="fa-solid fa-gift text-emerald-600 text-[9px]"></i>
-                                <span x-text="notice"></span>
-                            </span>
-                        </template>
-                    </div>
-                </div>
             </div>
 
             <!-- Right Column: Financial Calculations Summary -->
@@ -1303,7 +1642,7 @@
     </fieldset>
 
     <!-- 6. Floating / Sticky Action Bar (Bottom Bar: 0 MẶT HÀNG | Đóng Esc | Lưu & In Ctrl+F9 | Lưu F9) -->
-    <div class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 sm:px-8 py-3 shadow-lg flex items-center justify-between gap-3">
+    <div class="order-form-bottom-bar fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 sm:px-8 py-3 shadow-lg flex items-center justify-between gap-3">
         <!-- Left: Items count & Total -->
         <div class="flex items-center gap-3 text-xs font-bold text-slate-600">
             <span class="uppercase tracking-wider" x-text="items.length + ' MẶT HÀNG'"></span>
@@ -1311,6 +1650,12 @@
             <div class="flex items-center gap-3">
                 <span class="text-sm font-black text-sky-600" x-text="formatNumber(finalTotal) + ' đ'"></span>
                 <!-- Badges cảnh báo nhanh ở thanh footer -->
+                <template x-if="isNoTaxCodeLimitReached()">
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1 animate-pulse">
+                        <i class="fa-solid fa-ban text-rose-600"></i>
+                        <span>Chưa MST (đã 3 đơn)</span>
+                    </span>
+                </template>
                 <template x-if="isDebtOverLimit()">
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1 animate-pulse">
                         <i class="fa-solid fa-triangle-exclamation"></i>
@@ -1367,14 +1712,22 @@
             <!-- Normal Edit / Create Mode Actions -->
             <template x-if="!isReadonly">
                 <div class="flex items-center gap-2.5">
-                    <button type="button" @click="submitOrder(true)" :disabled="saving" class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50" title="Lưu đơn và in chứng từ (Ctrl+F9)">
+                    <button type="button" @click="submitOrder(true)" 
+                            :disabled="saving || isNoTaxCodeLimitReached() || (formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0)" 
+                            class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
+                            :title="isNoTaxCodeLimitReached() ? 'Chặn lên đơn: Khách hàng chưa có MST và đã đạt 3 đơn' : ((formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0) ? 'Không thể lưu: Hết tồn kho khả dụng' : 'Lưu đơn và in chứng từ (Ctrl+F9)')">
                         <i class="fa-solid fa-print"></i>
                         <span>Lưu & In (Ctrl+F9)</span>
                     </button>
-                    <button type="button" @click="submitOrder(false)" :disabled="saving" class="px-6 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50" title="Lưu đơn hàng (F9)">
-                        <i class="fa-solid fa-floppy-disk" x-show="!saving"></i>
+                    <button type="button" @click="submitOrder(false)" 
+                            :disabled="saving || isNoTaxCodeLimitReached() || (formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0)" 
+                            :class="isNoTaxCodeLimitReached() || (formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0) ? 'bg-rose-600 hover:bg-rose-700' : 'bg-sky-600 hover:bg-sky-700'"
+                            class="px-6 py-2.5 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
+                            :title="isNoTaxCodeLimitReached() ? 'Chặn lên đơn: Khách hàng chưa có MST và đã đạt 3 đơn' : ((formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0) ? 'Không thể lên đơn do hết tồn kho khả dụng' : 'Lưu đơn hàng (F9)')">
+                        <i class="fa-solid fa-ban" x-show="!saving && (isNoTaxCodeLimitReached() || (formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0))"></i>
+                        <i class="fa-solid fa-floppy-disk" x-show="!saving && !isNoTaxCodeLimitReached() && (formData.order_type === 'backorder' || formData.status === 'Giao sau' || getOverStockItems().length === 0)"></i>
                         <i class="fa-solid fa-circle-notch fa-spin" x-show="saving" x-cloak></i>
-                        <span x-text="saving ? 'Đang lưu...' : 'Lưu (F9)'"></span>
+                        <span x-text="saving ? 'Đang lưu...' : (isNoTaxCodeLimitReached() ? 'Chặn: Cần MST (đã 3 đơn)' : ((formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0) ? 'Hết tồn khả dụng (' + getOverStockItems().length + ' SP)' : 'Lưu (F9)'))"></span>
                     </button>
                 </div>
             </template>
@@ -1403,6 +1756,11 @@
                     <input type="text" x-model="newDealer.phone" placeholder="09xxxx..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none">
                 </div>
                 <div>
+                    <div>
+                    <label class="block text-slate-600 font-semibold mb-1">Mã số thuế (MST)</label>
+                    <input type="text" x-model="newDealer.tax_code" placeholder="Ví dụ: 0101234567..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none">
+                </div>
+                <div>
                     <label class="block text-slate-600 font-semibold mb-1">Cấp đại lý / Bảng giá</label>
                     <select x-model="newDealer.tier" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none">
                         <template x-for="pt in priceTiersCatalog" :key="pt.id">
@@ -1417,7 +1775,10 @@
             </div>
             <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button type="button" @click="showAddDealer = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-xs cursor-pointer">Hủy</button>
-                <button type="button" @click="applyNewDealer()" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold text-xs cursor-pointer">Áp dụng vào đơn</button>
+                <button type="button" @click="applyNewDealer()" :disabled="addingDealer" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold text-xs cursor-pointer flex items-center gap-1.5 disabled:opacity-50">
+                    <i class="fa-solid fa-spinner fa-spin" x-show="addingDealer" x-cloak></i>
+                    <span x-text="addingDealer ? 'Đang lưu...' : 'Lưu & Áp dụng'"></span>
+                </button>
             </div>
         </div>
     </div>
@@ -1543,24 +1904,29 @@ function orderFormApp() {
         shortageModal: { show: false, item: null, index: -1 },
         backorderSaving: false,
         showAddDealer: false,
+        addingDealer: false,
         newDealer: {
             name: '',
             phone: '',
             tier: '',
-            address: ''
+            address: '',
+            tax_code: ''
         },
+        originalDealerId: '{{ $order ? $order->dealer_id : "" }}',
         pendingMergeOrders: [],
         isLoadingMergeOrders: false,
         showMergeModal: false,
         mergedOrderIds: [],
         dismissedPendingAlert: false,
-        dealersData: Object.freeze(_rawDealersData),
+        dealersData: [..._rawDealersData],
         warehousesCatalog: @json($warehouses ?? []),
-        isDriverUser: {{ ($isDriverUser ?? false) ? 'true' : 'false' }},
+        mainCompanyWarehouse: '{{ $mainCompanyWarehouse ?? "Kho Tổng Mê Linh (MQ)" }}',
+        employeeWarehouse: '{{ $employeeWarehouse ?? "" }}',
+        isDriverUser: false,
         productsCatalog: Object.freeze(_rawProductsCatalog),
         salesPoliciesCatalog: Object.freeze(_rawSalesPolicies),
         priceTiersCatalog: @json($priceTiers ?? []),
-        autoApplyPromotions: true,
+        autoApplyPromotions: false,
         appliedPromotionNotices: [],
         appliedPromoPolicyIds: [],
         _isApplyingPromotions: false,
@@ -1576,7 +1942,7 @@ function orderFormApp() {
         tickets: [
             {
                 id: 1,
-                title: '{{ $order ? ($order->order_code ?: "Phiếu đơn hàng") : (request("order_type") === "backorder" ? "Đơn giao sau mới" : "Phiếu mới 1") }}',
+                title: '{{ $order ? ($order->order_code ?: "Phiếu đơn hàng") : (request("order_type") === "backorder" ? "Đơn giao sau mới" : "Phiếu 1") }}',
                 orderId: '{{ $order ? $order->id : "" }}',
                 orderDiscountPercent: 0,
                 bulkDiscountPercent: '',
@@ -1587,18 +1953,18 @@ function orderFormApp() {
                 formData: {
                     id: '{{ $order ? $order->id : "" }}',
                     order_code: '{{ $order ? $order->order_code : "" }}',
-                    order_date: '{{ $order && $order->created_at ? $order->created_at->format("Y-m-d") : date("Y-m-d") }}',
-                    delivery_date: '{{ $order ? ($order->delivery_date ? \Carbon\Carbon::parse($order->delivery_date)->format("Y-m-d") : "") : date("Y-m-d") }}',
-                    picking_date: '{{ $order ? ($order->picking_date ? \Carbon\Carbon::parse($order->picking_date)->format("Y-m-d") : "") : date("Y-m-d") }}',
+                    order_date: '{{ $order && $order->created_at ? $order->created_at->format("Y-m-d") : "" }}',
+                    delivery_date: '{{ $order ? ($order->delivery_date ? \Carbon\Carbon::parse($order->delivery_date)->format("Y-m-d") : "") : "" }}',
+                    picking_date: '{{ $order ? ($order->picking_date ? \Carbon\Carbon::parse($order->picking_date)->format("Y-m-d") : "") : "" }}',
                     order_type: '{{ $order ? ($order->order_type ?? "normal") : (request("order_type") ?: "normal") }}',
                     dealer_id: '{{ $order ? $order->dealer_id : "" }}',
                     customer_name: '{{ $order ? addslashes($order->customer_name) : "" }}',
                     customer_phone: '{{ $order ? addslashes($order->customer_phone) : "" }}',
                     customer_address: '{{ $order ? addslashes($order->customer_address) : "" }}',
                     dealer_tier: '{{ ($order && !empty($order->dealer_tier)) ? $order->dealer_tier : "Nguyên Giá" }}',
-                    warehouse: '{{ $order ? $order->warehouse : ($warehouses->first()?->name ?? "Kho Tổng Mê Linh (MQ)") }}',
+                    warehouse: '{{ $order ? $order->warehouse : ((request("order_type") === "consignment") ? ($employeeWarehouse ?? "") : ($mainCompanyWarehouse ?? ($warehouses->first()?->name ?? "Kho Tổng Mê Linh (MQ)"))) }}',
                     payment_method: '{{ $order ? $order->payment_method : "Ghi nợ đại lý" }}',
-                    status: '{{ $order ? $order->status : (request("order_type") === "backorder" ? "Giao sau" : "Báo giá") }}',
+                    status: '{{ $order ? $order->status : (request("order_type") === "backorder" ? "Giao sau" : "Chốt đơn") }}',
                     notes: '{{ $order ? addslashes(str_replace(["\r", "\n"], ["", "\\n"], $order->notes)) : "" }}',
                     discount_amount: {{ $order ? (float)$order->discount_amount : 0 }},
                     tax_amount: {{ $order ? (float)$order->tax_amount : 0 }},
@@ -1638,10 +2004,14 @@ function orderFormApp() {
                 }
             });
 
+            this.recalculatePromotionalGifts();
             this.calculateTotals();
             if (this.formData.dealer_id || this.formData.customer_name || this.formData.customer_phone) {
                 this.checkPendingMergeOrders();
             }
+
+            // Nạp sản phẩm từ Giao diện Bán hàng (POS) nếu có giỏ hàng tạm
+            this.loadItemsFromPosCart();
 
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('print') === '1') {
@@ -1676,6 +2046,98 @@ function orderFormApp() {
             });
         },
 
+        // Nạp các sản phẩm từ Giỏ hàng Bán hàng (POS) chuyển sang
+        loadItemsFromPosCart() {
+            try {
+                const raw = sessionStorage.getItem('pos_cart_items');
+                if (!raw) return;
+                const cart = JSON.parse(raw);
+                if (!Array.isArray(cart) || cart.length === 0) return;
+
+                const targetTicket = this.tickets[this.activeTicketIndex];
+                if (!targetTicket) return;
+
+                // Nếu có chọn đại lý từ giao diện POS
+                const savedDealerId = sessionStorage.getItem('pos_dealer_id');
+                if (savedDealerId) {
+                    const d = (this.dealersData || []).find(x => String(x.id) === String(savedDealerId));
+                    if (d) {
+                        this.selectDealer(d);
+                    } else {
+                        this.formData.dealer_id = savedDealerId;
+                        targetTicket.formData.dealer_id = savedDealerId;
+                    }
+                }
+
+                // Nếu có chọn kho từ giao diện POS
+                const savedWarehouse = sessionStorage.getItem('pos_warehouse');
+                if (savedWarehouse) {
+                    this.formData.warehouse = savedWarehouse;
+                    targetTicket.formData.warehouse = savedWarehouse;
+                }
+
+                const topTier = this.formData.dealer_tier || 'Nguyên Giá';
+                const newItems = [];
+
+                cart.forEach(cIt => {
+                    const prod = this.getProduct(cIt.product_id) || {};
+                    const qty = Number(cIt.quantity) || 1;
+                    const price = Number(cIt.price !== undefined ? cIt.price : (prod.price || 0));
+                    const vatRate = (prod.vat_rate !== undefined && prod.vat_rate !== null && prod.vat_rate !== '') ? Number(prod.vat_rate) : 10;
+                    const lineBase = qty * price;
+                    const vatAmt = Math.round(lineBase * (vatRate / 100));
+
+                    newItems.push({
+                        id: '',
+                        itemId: String(cIt.product_id),
+                        product_id: cIt.product_id,
+                        sku: cIt.sku || prod.sku || '',
+                        name: cIt.name || prod.name || '',
+                        searchQuery: cIt.name || prod.name || '',
+                        unit: cIt.unit || prod.unit || 'cái',
+                        quantity: qty,
+                        gift_quantity: 0,
+                        unitPrice: price,
+                        originalPrice: Number(prod.cost_price || 0),
+                        costPrice: Number(prod.cost_price || 0),
+                        discount_percent: 0,
+                        discount_amount: 0,
+                        vat_percent: vatRate,
+                        vat_amount: vatAmt,
+                        appliedTierPolicy: topTier,
+                        price_type: topTier,
+                        amount: lineBase + vatAmt,
+                        checked: true,
+                        isPromotionalGift: false,
+                    });
+                });
+
+                if (newItems.length > 0) {
+                    // Cập nhật cả ticket đang kích hoạt và biến tham chiếu items
+                    targetTicket.items = newItems;
+                    this.items = newItems;
+
+                    // Tính lại chi tiết từng dòng và tổng đơn
+                    for (let i = 0; i < this.items.length; i++) {
+                        this.updateLineTotal(i);
+                    }
+                    this.calculateTotals();
+                }
+
+                // Xóa giỏ tạm sau khi đã nhập thành công vào đơn hàng
+                sessionStorage.removeItem('pos_cart_items');
+                sessionStorage.removeItem('pos_dealer_id');
+                sessionStorage.removeItem('pos_warehouse');
+
+                // Hiển thị thông báo toast
+                if (window.toast) {
+                    window.toast.success(`Đã thêm thành công ${cart.length} sản phẩm từ giao diện bán hàng!`);
+                }
+            } catch (err) {
+                console.error('Lỗi khi nạp giỏ hàng từ POS:', err);
+            }
+        },
+
         syncCurrentTicket() {
             const t = this.tickets[this.activeTicketIndex];
             if (t) {
@@ -1698,7 +2160,7 @@ function orderFormApp() {
             this.ticketCounter++;
             const newTicket = {
                 id: Date.now(),
-                title: 'Phiếu mới ' + this.ticketCounter,
+                title: 'Phiếu ' + this.ticketCounter,
                 orderId: '',
                 orderDiscountPercent: 0,
                 subtotalBeforeVat: 0,
@@ -1708,18 +2170,18 @@ function orderFormApp() {
                 formData: {
                     id: '',
                     order_code: '',
-                    order_date: new Date().toISOString().split('T')[0],
-                    delivery_date: new Date().toISOString().split('T')[0],
-                    picking_date: new Date().toISOString().split('T')[0],
+                    order_date: '',
+                    delivery_date: '',
+                    picking_date: '',
                     order_type: 'normal',
                     dealer_id: '',
                     customer_name: '',
                     customer_phone: '',
                     customer_address: '',
                     dealer_tier: 'Nguyên Giá',
-                    warehouse: (this.warehousesCatalog && this.warehousesCatalog.length > 0) ? this.warehousesCatalog[0].name : 'Kho Tổng Mê Linh (MQ)',
+                    warehouse: this.mainCompanyWarehouse || 'Kho Tổng Mê Linh (MQ)',
                     payment_method: 'Ghi nợ đại lý',
-                    status: 'Báo giá',
+                    status: 'Chốt đơn',
                     notes: '',
                     discount_amount: 0,
                     tax_amount: 0,
@@ -1845,18 +2307,62 @@ function orderFormApp() {
             }
         },
 
-        applyNewDealer() {
-            if (!this.newDealer.name) {
+        async applyNewDealer() {
+            if (!this.newDealer.name || !this.newDealer.name.trim()) {
                 alert('Vui lòng nhập tên khách hàng');
                 return;
             }
-            this.formData.customer_name = this.newDealer.name;
-            this.formData.customer_phone = this.newDealer.phone || '';
-            this.formData.customer_address = this.newDealer.address || '';
-            this.formData.dealer_tier = this.newDealer.tier || ((this.priceTiersCatalog && this.priceTiersCatalog.length > 0) ? this.priceTiersCatalog[0].name : 'Giá Đại lý Cấp 1');
-            this.recalculateItemPrices();
-            this.showAddDealer = false;
-            this.checkPendingMergeOrders();
+            this.addingDealer = true;
+            try {
+                const payload = {
+                    name: this.newDealer.name.trim(),
+                    phone: (this.newDealer.phone || '').trim(),
+                    address: (this.newDealer.address || '').trim(),
+                    tier: this.newDealer.tier || ((this.priceTiersCatalog && this.priceTiersCatalog.length > 0) ? this.priceTiersCatalog[0].name : 'Đại lý Cấp 2'),
+                    taxCode: (this.newDealer.tax_code || '').trim() || null,
+                };
+                const res = await fetch('/dealers/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success && data.dealer) {
+                    const d = {
+                        id: Number(data.dealer.id),
+                        name: data.dealer.name,
+                        code: data.dealer.code,
+                        phone: data.dealer.phone,
+                        address: data.dealer.address,
+                        tier: data.dealer.tier,
+                        current_debt: 0,
+                        credit_limit: Number(data.dealer.creditLimit || 100000000),
+                        tax_code: data.dealer.taxCode || '',
+                        orders_count: 0
+                    };
+                    this.dealersData = [d, ...(this.dealersData || [])];
+                    this.selectDealer(d);
+                } else {
+                    this.formData.customer_name = this.newDealer.name;
+                    this.formData.customer_phone = this.newDealer.phone || '';
+                    this.formData.customer_address = this.newDealer.address || '';
+                }
+            } catch (err) {
+                console.error('Lỗi lưu đại lý:', err);
+                this.formData.customer_name = this.newDealer.name;
+                this.formData.customer_phone = this.newDealer.phone || '';
+                this.formData.customer_address = this.newDealer.address || '';
+            } finally {
+                this.addingDealer = false;
+                this.showAddDealer = false;
+                this.newDealer = { name: '', phone: '', tier: '', address: '', tax_code: '' };
+                this.recalculateItemPrices();
+                this.checkPendingMergeOrders();
+            }
         },
 
         filteredDealers(keyword) {
@@ -1886,7 +2392,7 @@ function orderFormApp() {
             }
             this.dismissedPendingAlert = false;
             this.checkPendingMergeOrders();
-            this.checkAndApplyPromotions(true);
+            // this.checkAndApplyPromotions(true);
         },
 
         clearCustomer() {
@@ -1899,9 +2405,37 @@ function orderFormApp() {
             this.dismissedPendingAlert = false;
             const curT = this.tickets[this.activeTicketIndex];
             if (curT) {
-                curT.title = 'Phiếu mới ' + (this.activeTicketIndex + 1);
+                curT.title = 'Phiếu ' + (this.activeTicketIndex + 1);
             }
-            this.checkAndApplyPromotions(true);
+            // this.checkAndApplyPromotions(true);
+        },
+
+        hasTaxCode() {
+            const dealer = this.getSelectedDealer();
+            if (!dealer) return true;
+            return Boolean(dealer.tax_code && dealer.tax_code.trim());
+        },
+
+        getCustomerTaxCode() {
+            const dealer = this.getSelectedDealer();
+            return dealer ? (dealer.tax_code || '').trim() : '';
+        },
+
+        getCustomerOrdersCount() {
+            const dealer = this.getSelectedDealer();
+            if (!dealer) return 0;
+            const total = Number(dealer.orders_count || 0);
+            if (this.orderId && String(this.formData.dealer_id) === String(this.originalDealerId) && total > 0) {
+                return total - 1;
+            }
+            return total;
+        },
+
+        isNoTaxCodeLimitReached() {
+            const dealer = this.getSelectedDealer();
+            if (!dealer) return false;
+            if (this.hasTaxCode()) return false;
+            return this.getCustomerOrdersCount() >= 3;
         },
 
         getSelectedDealer() {
@@ -2021,6 +2555,26 @@ function orderFormApp() {
             return this.getProductStockData(p, whName).reserved;
         },
 
+        isConvUnitLarger(product) {
+            if (!product) return false;
+            const u1 = (product.unit || '').trim().toLowerCase();
+            const u2 = (product.conversion_unit || '').trim().toLowerCase();
+            if (!u2 || u1 === u2) return false;
+
+            const bulkUnits = ['kiện', 'thùng', 'bao', 'lô', 'pallet', 'carton', 'két', 'thưng', 'lốc', 'dây'];
+            if (bulkUnits.includes(u2)) return true;
+
+            if (u2 === 'hộp' && ['chai', 'lọ', 'tuýp', 'gói', 'vỉ', 'cái', 'viên', 'miếng', 'ống'].includes(u1)) {
+                return true;
+            }
+
+            if (['mét', 'm', 'cm', 'gam', 'g'].includes(u1) && ['cuộn', 'cây', 'tấm', 'hộp'].includes(u2)) {
+                return true;
+            }
+
+            return false;
+        },
+
         getItemStockDataInUnit(item, whName) {
             if (!item || !item.product_id) return { on_hand: 0, reserved: 0, available: 0, holding_orders: [] };
             const p = this.getProduct(item.product_id);
@@ -2033,10 +2587,11 @@ function orderFormApp() {
             const rate = Number(p.conversion_rate) > 0 ? Number(p.conversion_rate) : 1;
 
             if (convUnit && curUnit === convUnit && convUnit !== baseUnit) {
+                const isConvLarger = this.isConvUnitLarger(p);
                 return {
-                    on_hand: Math.round(baseData.on_hand * rate * 100) / 100,
-                    reserved: Math.round(baseData.reserved * rate * 100) / 100,
-                    available: Math.round(baseData.available * rate * 100) / 100,
+                    on_hand: isConvLarger ? Math.round(baseData.on_hand / rate * 100) / 100 : Math.round(baseData.on_hand * rate * 100) / 100,
+                    reserved: isConvLarger ? Math.round(baseData.reserved / rate * 100) / 100 : Math.round(baseData.reserved * rate * 100) / 100,
+                    available: isConvLarger ? Math.round(baseData.available / rate * 100) / 100 : Math.round(baseData.available * rate * 100) / 100,
                     holding_orders: baseData.holding_orders,
                 };
             }
@@ -2182,6 +2737,12 @@ function orderFormApp() {
             const convUnit = (p.conversion_unit || '').trim().toLowerCase();
             const isConv = convUnit && (targetUnit === convUnit) && (convUnit !== baseUnit);
             const rate = Number(p.conversion_rate) > 0 ? Number(p.conversion_rate) : 1;
+            const isConvLarger = this.isConvUnitLarger(p);
+            const calcConv = (price) => {
+                const num = Number(price || 0);
+                if (rate <= 1 || num <= 0) return num;
+                return isConvLarger ? Math.round(num * rate) : Math.round(num / rate);
+            };
 
             const cleanChosen = chosenTier.toLowerCase();
 
@@ -2203,7 +2764,7 @@ function orderFormApp() {
                             return Number(matchedTier.conversion_price);
                         }
                         if (Number(matchedTier.price) > 0) {
-                            return rate > 1 ? Math.round(Number(matchedTier.price) / rate) : Number(matchedTier.price);
+                            return calcConv(matchedTier.price);
                         }
                     } else if (Number(matchedTier.price) > 0) {
                         return Number(matchedTier.price);
@@ -2214,7 +2775,7 @@ function orderFormApp() {
                 const ngTier = p.price_tiers.find(t => t.name && t.name.toLowerCase().includes('nguyên giá') && Number(t.price) > 0);
                 if (ngTier) {
                     if (isConv) {
-                        return Number(ngTier.conversion_price) > 0 ? Number(ngTier.conversion_price) : (rate > 1 ? Math.round(Number(ngTier.price) / rate) : Number(ngTier.price));
+                        return Number(ngTier.conversion_price) > 0 ? Number(ngTier.conversion_price) : calcConv(ngTier.price);
                     }
                     return Number(ngTier.price);
                 }
@@ -2222,7 +2783,7 @@ function orderFormApp() {
                 const fallbackTier = p.price_tiers.find(t => Number(t.price) > 0);
                 if (fallbackTier) {
                     if (isConv) {
-                        return Number(fallbackTier.conversion_price) > 0 ? Number(fallbackTier.conversion_price) : (rate > 1 ? Math.round(Number(fallbackTier.price) / rate) : Number(fallbackTier.price));
+                        return Number(fallbackTier.conversion_price) > 0 ? Number(fallbackTier.conversion_price) : calcConv(fallbackTier.price);
                     }
                     return Number(fallbackTier.price);
                 }
@@ -2238,7 +2799,7 @@ function orderFormApp() {
 
                 if (p.price_tiers[key] && Number(p.price_tiers[key]) > 0) {
                     const base = Number(p.price_tiers[key]);
-                    return isConv && rate > 1 ? Math.round(base / rate) : base;
+                    return isConv ? calcConv(base) : base;
                 }
             }
 
@@ -2247,8 +2808,8 @@ function orderFormApp() {
                 return Number(p.conversion_price);
             }
             const baseCost = Number(p.cost_price || 0) * 1.1;
-            if (isConv && rate > 1) {
-                return Math.round(baseCost / rate);
+            if (isConv) {
+                return calcConv(baseCost);
             }
             return Math.round(baseCost);
         },
@@ -2290,6 +2851,7 @@ function orderFormApp() {
 
             this.activeProdDropdownIndex = null;
             this.updateLineTotal(index);
+            this.recalculatePromotionalGifts();
             this.calculateTotals();
         },
 
@@ -2319,6 +2881,149 @@ function orderFormApp() {
                     this.selectProductForRow(index, matched);
                 }
             }
+        },
+
+        getApplicablePoliciesForItem(item) {
+            if (!item || !item.product_id) return [];
+            return (this.salesPoliciesCatalog || []).filter(p => {
+                if (!this.isCustomerEligibleForPolicy(p)) return false;
+                if (!this.isProductInPolicy(p, item.product_id)) return false;
+                return true;
+            });
+        },
+
+        getPolicySummaryText(item) {
+            if (!item || !item.policy_id) return '';
+            const p = (this.salesPoliciesCatalog || []).find(x => String(x.id) === String(item.policy_id));
+            if (!p) return '';
+            if (p.policy_type === 'quantity') {
+                const buy = Number(p.buy_qty) || 0;
+                const free = Number(p.free_qty) || 0;
+                const q = Number(item.quantity) || 0;
+                if (q < buy) {
+                    return `Mua thêm ${buy - q} để nhận ${free} quà`;
+                }
+                const mult = Math.floor(q / buy);
+                return `Đạt tặng +${mult * free}`;
+            }
+            if (p.policy_type === 'percentage') {
+                return `CK: -${p.discount_percent}%`;
+            }
+            if (p.policy_type === 'amount') {
+                return `Giảm: -${this.formatNumber(p.discount_amount)}đ`;
+            }
+            return '';
+        },
+
+        onItemPolicyChange(index) {
+            const item = this.items[index];
+            if (!item) return;
+            const p = (this.salesPoliciesCatalog || []).find(x => String(x.id) === String(item.policy_id));
+            if (p) {
+                item.appliedPolicyName = p.name;
+                item._manualPolicy = true;
+                if (p.policy_type === 'percentage') {
+                    item.discount_percent = Number(p.discount_percent) || 0;
+                    this.updateLineTotal(index, 'from_percent');
+                } else if (p.policy_type === 'amount') {
+                    item.discount_amount = Number(p.discount_amount) || 0;
+                    this.updateLineTotal(index, 'from_amount');
+                }
+            } else {
+                item.policy_id = '';
+                item.appliedPolicyName = '';
+                item._manualPolicy = false;
+                if (!item._manualDiscount) {
+                    item.discount_percent = 0;
+                    item.discount_amount = 0;
+                    this.updateLineTotal(index, 'from_amount');
+                }
+            }
+            this.recalculatePromotionalGifts();
+            this.calculateTotals();
+        },
+
+        recalculatePromotionalGifts() {
+            const activeGiftKeys = [];
+
+            this.items.forEach((item, idx) => {
+                if (item.isPromotionalGift || !item.product_id) return;
+
+
+
+                if (!item.policy_id) return;
+                const policy = (this.salesPoliciesCatalog || []).find(p => String(p.id) === String(item.policy_id));
+                if (!policy || policy.policy_type !== 'quantity') return;
+
+                const buyQty = Number(policy.buy_qty) || 0;
+                const freeQty = Number(policy.free_qty) || 0;
+                const itemQty = Number(item.quantity) || 0;
+                if (buyQty <= 0 || itemQty < buyQty) return;
+
+                const mult = Math.floor(itemQty / buyQty);
+                const totalFree = mult * freeQty;
+                if (totalFree <= 0) return;
+
+                let freeProd = policy.free_product || null;
+                if (!freeProd && policy.free_product_id) {
+                    freeProd = this.getProduct(policy.free_product_id);
+                }
+                if (!freeProd) {
+                    freeProd = this.getProduct(item.product_id);
+                }
+
+                const freeSku = freeProd?.sku || item.sku || 'KM-SP';
+                const freeName = freeProd?.name || item.name || 'Hàng tặng khuyến mại';
+                const freeUnit = freeProd?.unit || item.unit || 'cái';
+                const giftKey = `${policy.id}_${item.sku}_${freeSku}`;
+                activeGiftKeys.push(giftKey);
+
+                const existing = this.items.find(g => g.isPromotionalGift && g._giftKey === giftKey);
+                if (existing) {
+                    if (!existing._manualQty) {
+                        existing.quantity = totalFree;
+                    }
+                    existing.unit = freeUnit;
+                    existing.appliedTierPolicy = `[TẶNG KÈM] ${policy.name}`;
+                } else {
+                    this.items.push({
+                        id: '',
+                        itemId: freeProd?.id ? String(freeProd.id) : String(item.product_id),
+                        product_id: freeProd?.id || item.product_id,
+                        sku: freeSku,
+                        name: freeName,
+                        searchQuery: freeName,
+                        unit: freeUnit,
+                        quantity: totalFree,
+                        gift_quantity: 0,
+                        unitPrice: 0,
+                        originalPrice: 0,
+                        costPrice: Number(freeProd?.cost_price || 0),
+                        discount_percent: 0,
+                        discount_amount: 0,
+                        vat_percent: 0,
+                        vat_amount: 0,
+                        appliedTierPolicy: `[TẶNG KÈM] ${policy.name}`,
+                        price_type: 'Khuyến mại',
+                        amount: 0,
+                        checked: true,
+                        isPromotionalGift: true,
+                        promoPolicyId: policy.id,
+                        _giftKey: giftKey,
+                        parentItemSku: item.sku,
+                    });
+                }
+            });
+
+            // Xóa các quà tặng tự động gắn với key này nếu điều kiện không còn thỏa mãn
+            this.items = this.items.filter(g => {
+                if (!g.isPromotionalGift || !g._giftKey) return true;
+                return activeGiftKeys.includes(g._giftKey);
+            });
+        },
+
+        getGiftItems() {
+            return (this.items || []).filter(it => it.isPromotionalGift && Number(it.quantity) > 0);
         },
 
         onItemPriceTypeChange(index) {
@@ -2356,6 +3061,8 @@ function orderFormApp() {
                 unit: '',
                 quantity: 1,
                 gift_quantity: 0,
+                policy_id: '',
+                appliedPolicyName: '',
                 unitPrice: 0,
                 originalPrice: 0,
                 costPrice: 0,
@@ -2529,6 +3236,7 @@ function orderFormApp() {
 
                 it.amount = Math.round(lineAfterDiscount + lineVat);
             }
+            this.recalculatePromotionalGifts();
             this.calculateTotals();
         },
 
@@ -3041,18 +3749,29 @@ function orderFormApp() {
         },
 
         handleOrderTypeChange() {
+            if (this.formData.order_type === 'consignment') {
+                if (this.employeeWarehouse) {
+                    this.formData.warehouse = this.employeeWarehouse;
+                } else {
+                    const empWh = this.warehousesCatalog.find(w => w.name && w.name.includes('Kho Hàng Ôm'));
+                    if (empWh) {
+                        this.formData.warehouse = empWh.name;
+                    }
+                }
+            } else {
+                // Loại bình thường: mặc định kho xuất là kho tổng công ty
+                this.formData.warehouse = this.mainCompanyWarehouse || 'Kho Tổng Mê Linh (MQ)';
+            }
+
             if (this.formData.order_type === 'backorder') {
                 this.formData.status = 'Giao sau';
-                this.recalculateItemPrices();
-                this.checkAndApplyPromotions(true);
-            } else {
-                if (this.formData.status === 'Giao sau') {
-                    this.formData.status = 'Báo giá';
-                }
-                this.recalculateItemPrices();
-                this.checkAndApplyPromotions(true);
+            } else if (this.formData.status === 'Giao sau') {
+                this.formData.status = 'Chốt đơn';
             }
+            this.recalculateItemPrices();
+            // this.checkAndApplyPromotions(true);
             this.calculateTotals();
+            this.onWarehouseChange();
         },
 
         async checkPendingMergeOrders() {
@@ -3207,10 +3926,7 @@ function orderFormApp() {
                 curT.bulkDiscountPercent = this.bulkDiscountPercent;
             }
 
-            // Tự động kiểm tra và áp dụng khuyến mại khi giỏ hàng hoặc thông tin đơn thay đổi
-            if (this.autoApplyPromotions && !this._isApplyingPromotions) {
-                this.checkAndApplyPromotions();
-            }
+
         },
 
         formatNumber(num) {
@@ -3263,31 +3979,51 @@ function orderFormApp() {
                 }
             }
 
-            // 2. Cảnh báo xác nhận khi vượt quá tồn kho khả dụng hoặc tồn kho thực tế
+            // 2. Chặn lên đơn khi hết / vượt quá tồn kho khả dụng (áp dụng cho mọi trạng thái kể cả Báo giá)
+            const isBackorder = this.formData.order_type === 'backorder' || this.formData.status === 'Giao sau';
             const overStockList = this.getOverStockItems();
-            if (overStockList.length > 0) {
+
+            if (!isBackorder && overStockList.length > 0) {
                 const targetWh = this.formData.warehouse || 'Kho xuất';
                 const itemsDesc = overStockList.map((it, i) => {
                     const avail = this.getItemAvailableStockInUnit(it);
-                    const onHand = this.getItemOnHandStockInUnit(it);
-                    const reserved = this.getItemReservedStockInUnit(it);
+                    const req = (Number(it.quantity) || 0) + (Number(it.gift_quantity) || 0);
                     const diff = this.getItemOverStockQty(it);
-                    const isPhysical = this.isItemPhysicalShortage(it);
-                    const statusText = isPhysical 
-                        ? `🚨 THIẾU TỒN THỰC TẾ (Kho chỉ có ${this.formatNumber(onHand)} ${it.unit} -> Thiếu ${this.formatNumber(diff)} ${it.unit})`
-                        : `⚠️ TRANH CHẤP ĐƠN KHÁC (Kho có ${this.formatNumber(onHand)} ${it.unit} nhưng đã giữ ${this.formatNumber(reserved)} ${it.unit} cho đơn khác -> Khả dụng còn ${this.formatNumber(avail)} ${it.unit})`;
-                    return `${i + 1}. [${it.sku || 'SP'}] ${it.name}: Đặt ${it.quantity} ${it.unit}\n   ${statusText}`;
+                    return `• [${it.sku || 'SP'}] ${it.name}\n   - Đặt: ${req} ${it.unit} | Tồn khả dụng: ${this.formatNumber(avail)} ${it.unit} (Thiếu: ${this.formatNumber(diff)} ${it.unit})`;
                 }).join('\n');
-                
-                const hasPhysical = this.getPhysicalShortageItems().length > 0;
-                const confirmMsg = 
-                    (hasPhysical ? `🚨 CẢNH BÁO THIẾU TỒN THỰC TẾ TẠI [${targetWh.toUpperCase()}]!\n\n` : `⚠️ CẢNH BÁO TRANH CHẤP TỒN KHẢ DỤNG TẠI [${targetWh.toUpperCase()}]!\n\n`) +
-                    `Có ${overStockList.length} sản phẩm vượt quá tồn kho khả dụng:\n` +
+
+                const alertMsg = 
+                    `🚫 KHÔNG THỂ LÊN ĐƠN HÀNG: HẾT TỒN KHO KHẢ DỤNG!\n\n` +
+                    `Kho [${targetWh}] không đủ tồn khả dụng cho ${overStockList.length} sản phẩm:\n\n` +
                     `${itemsDesc}\n\n` +
-                    `Bạn có chắc chắn muốn tiếp tục lưu đơn này không?`;
-                if (!confirm(confirmMsg)) {
-                    return;
-                }
+                    `⚠️ QUY ĐỊNH: Hết tồn khả dụng là không được lên đơn.\n` +
+                    `Vui lòng giảm số lượng đặt hoặc chọn kho xuất khác có đủ tồn khả dụng trước khi lưu đơn!`;
+
+                alert(alertMsg);
+                this.errorMessage = `Không thể lên đơn: ${overStockList.length} sản phẩm đã hết/vượt tồn kho khả dụng tại [${targetWh}].`;
+                this.saving = false;
+                return;
+            }
+
+            // 3. Chặn lên đơn khi khách hàng chưa có MST và đã đạt giới hạn 3 đơn (đơn thứ 4 không thể lên đơn)
+            if (this.isNoTaxCodeLimitReached()) {
+                const dealer = this.getSelectedDealer();
+                const count = this.getCustomerOrdersCount();
+                const orderNum = count + 1;
+                const alertMsg = 
+                    `🚫 KHÔNG THỂ LÊN ĐƠN HÀNG: KHÁCH HÀNG CHƯA CÓ MÃ SỐ THUẾ (MST)!\n\n` +
+                    `Khách hàng: ${dealer?.name || this.formData.customer_name}\n` +
+                    `• Số đơn đã có: ${count}/3 đơn\n` +
+                    `• Đơn hiện tại: Đơn thứ ${orderNum}\n\n` +
+                    `⚠️ QUY ĐỊNH HỆ THỐNG:\n` +
+                    `- Khách hàng chưa có MST chỉ được lên tối đa 3 đơn hàng.\n` +
+                    `- Đơn thứ 4 trở đi sẽ KHÔNG ĐƯỢC PHÉP LÊN ĐƠN!\n\n` +
+                    `Vui lòng cập nhật Mã số thuế (MST) cho khách hàng trước khi tiếp tục lên đơn.`;
+
+                alert(alertMsg);
+                this.errorMessage = `Chặn lên đơn: Khách hàng [${dealer?.name || this.formData.customer_name}] chưa có MST và đã đạt tối đa 3 đơn (${count}/3). Vui lòng cập nhật MST!`;
+                this.saving = false;
+                return;
             }
 
             this.saving = true;
@@ -3835,7 +4571,7 @@ function orderFormApp() {
                     final_total_words: '',
                     creator_name: '{{ auth()->user()->name ?? "" }}',
                     updater_name: '{{ auth()->user()->name ?? "" }}',
-                    delivery_status: this.formData.status || 'Báo giá',
+                    delivery_status: this.formData.status || 'Chốt đơn',
                     items: this.items.filter(it => it.product_id).map((it, idx) => ({
                         tt: idx + 1,
                         name: it.name,

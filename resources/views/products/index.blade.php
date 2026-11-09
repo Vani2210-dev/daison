@@ -5,10 +5,7 @@
 @section('content')
 <div class="space-y-4" x-data="productsManager()" x-init="initData()">
     
-    <!-- Sub-Section Navigation Tabs (Phân Hệ Hàng Tiêu Dùng Đại Sơn) -->
-    @include('inventory.nav_tabs')
-
-    <!-- Top Action Header -->
+<!-- Top Action Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs">
         <div>
             <h1 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
@@ -75,12 +72,6 @@
         </div>
 
         <div class="flex items-center gap-3">
-            <!-- Hint: Drag to scroll -->
-            <span class="hidden md:inline-flex items-center gap-1.5 text-[11px] text-slate-500 bg-slate-100/80 px-2.5 py-1 rounded-lg border border-slate-200/80 font-medium">
-                <i class="fa-solid fa-arrows-left-right text-slate-400 text-xs"></i>
-                <span>Giữ chuột kéo sang ngang để xem đủ cột</span>
-            </span>
-
             <!-- Price View Mode Switcher -->
             <div class="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs">
                 <button type="button" @click="priceViewMode = 'stacked'" :class="priceViewMode === 'stacked' ? 'bg-white text-emerald-700 font-bold shadow-xs' : 'text-slate-500 hover:text-slate-800'" class="px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer" title="Hiển thị Giá Chuẩn & Giá Quy Đổi trong cùng 1 cột">
@@ -185,7 +176,7 @@
                             <td class="py-3 px-3 whitespace-nowrap text-xs">
                                 <template x-if="item.conversion_unit && Number(item.conversion_rate) > 1">
                                     <div class="flex flex-col">
-                                        <span class="text-emerald-700 font-bold font-mono" x-text="'1 ' + item.unit + ' = ' + Number(item.conversion_rate) + ' ' + item.conversion_unit"></span>
+                                        <span class="text-emerald-700 font-bold font-mono" x-text="formatConversionRateText(item)"></span>
                                         <span x-show="item.specification" class="text-[10px] text-slate-400" x-text="item.specification"></span>
                                     </div>
                                 </template>
@@ -296,11 +287,7 @@
                                             <span :class="Number(item.max_stock_alert) > 0 ? 'text-purple-700 font-medium' : 'text-slate-400'" title="Định mức tồn tối đa">Max: <span x-text="formatNumber(item.max_stock_alert)"></span></span>
                                         </template>
                                     </div>
-                                    <!-- Nút xem Date/Lô hàng (Mở trang chi tiết) -->
-                                    <a :href="'{{ url('/cat_products') }}/' + item.id + '/batches'" class="inline-flex items-center gap-1 text-[10px] text-amber-800 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200/80 mt-1 cursor-pointer font-bold transition-all shadow-2xs hover:scale-102" title="Xem chi tiết Hạn Sử Dụng (Date) & các lần nhập hàng">
-                                        <i class="fa-solid fa-clock-rotate-left text-[9px] text-amber-600"></i>
-                                        <span>Date/Lô</span>
-                                    </a>
+
                                 </div>
                             </td>
 
@@ -318,9 +305,7 @@
                             <!-- Thao Tác (Trang riêng) - Cố định bên phải -->
                             <td class="sticky right-0 bg-white group-hover:bg-slate-50 transition-colors py-3 px-4 text-center whitespace-nowrap z-10 shadow-[-4px_0_8px_rgba(0,0,0,0.05)] border-l border-slate-200/80">
                                 <div class="flex items-center justify-center gap-1.5">
-                                    <a :href="'{{ url('/cat_products') }}/' + item.id + '/batches'" class="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 rounded-lg transition-colors cursor-pointer" title="Xem Hạn Sử Dụng (Date) & Chi Tiết Lô Hàng (Trang riêng)">
-                                        <i class="fa-solid fa-clock-rotate-left"></i>
-                                    </a>
+
                                     <a :href="'{{ url('/cat_products') }}/' + item.id + '/edit'" class="p-1.5 bg-slate-100 hover:bg-sky-100 text-slate-600 hover:text-sky-700 rounded-lg transition-colors cursor-pointer" title="Chỉnh sửa sản phẩm (Trang riêng)">
                                         <i class="fa-solid fa-pen-to-square"></i>
                                     </a>
@@ -530,6 +515,37 @@ function productsManager() {
             return b ? b.name : 'Chưa gắn hiệu';
         },
 
+        isConvUnitLarger(product) {
+            if (!product) return false;
+            const u1 = (product.unit || '').trim().toLowerCase();
+            const u2 = (product.conversion_unit || '').trim().toLowerCase();
+            if (!u2 || u1 === u2) return false;
+
+            const bulkUnits = ['kiện', 'thùng', 'bao', 'lô', 'pallet', 'carton', 'két', 'thưng', 'lốc', 'dây'];
+            if (bulkUnits.includes(u2)) return true;
+
+            if (u2 === 'hộp' && ['chai', 'lọ', 'tuýp', 'gói', 'vỉ', 'cái', 'viên', 'miếng', 'ống'].includes(u1)) {
+                return true;
+            }
+
+            if (['mét', 'm', 'cm', 'gam', 'g'].includes(u1) && ['cuộn', 'cây', 'tấm', 'hộp'].includes(u2)) {
+                return true;
+            }
+
+            return false;
+        },
+
+        formatConversionRateText(product) {
+            if (!product || !product.conversion_unit || Number(product.conversion_rate) <= 1) return '';
+            const rate = Number(product.conversion_rate);
+            const u1 = product.unit || 'ĐVT';
+            const u2 = product.conversion_unit;
+            if (this.isConvUnitLarger(product)) {
+                return `1 ${u2} = ${rate} ${u1}`;
+            }
+            return `1 ${u1} = ${rate} ${u2}`;
+        },
+
         getCostPrice(product) {
             return Number(product?.cost_price || 0);
         },
@@ -539,7 +555,10 @@ function productsManager() {
             if (Number(product.conversion_price) > 0) return Number(product.conversion_price);
             if (Number(product.cost_price) > 0) {
                 const rate = Number(product.conversion_rate) || 1;
-                return rate > 1 ? Number((product.cost_price / rate).toFixed(2)) : Number(product.cost_price);
+                if (rate <= 1) return Number(product.cost_price);
+                return this.isConvUnitLarger(product)
+                    ? Math.round(Number(product.cost_price) * rate)
+                    : Number((product.cost_price / rate).toFixed(2));
             }
             return 0;
         },
@@ -556,7 +575,10 @@ function productsManager() {
             const sellPrice = this.getSellingPrice(product);
             if (sellPrice > 0) {
                 const rate = Number(product.conversion_rate) || 1;
-                return rate > 1 ? Number((sellPrice / rate).toFixed(2)) : sellPrice;
+                if (rate <= 1) return sellPrice;
+                return this.isConvUnitLarger(product)
+                    ? Math.round(sellPrice * rate)
+                    : Number((sellPrice / rate).toFixed(2));
             }
             return 0;
         },
@@ -583,7 +605,10 @@ function productsManager() {
                         if (Number(found.conversion_price) > 0) return Number(found.conversion_price);
                         if (Number(found.price) > 0) {
                             const rate = Number(product.conversion_rate) || 1;
-                            return rate > 1 ? Number((found.price / rate).toFixed(2)) : Number(found.price);
+                            if (rate <= 1) return Number(found.price);
+                            return this.isConvUnitLarger(product)
+                                ? Math.round(Number(found.price) * rate)
+                                : Number((found.price / rate).toFixed(2));
                         }
                     }
                 }

@@ -2,6 +2,380 @@
 
 @section('title', 'Quản Lý Đơn Hàng & Báo Giá | ERP Đại Sơn')
 
+@push('styles')
+<style>
+/* ==========================================================================
+   TỐI ƯU DANH SÁCH ĐƠN HÀNG TRÊN MÀN HÌNH MOBILE (<= 768px)
+   Tất cả thuộc tính được bọc 100% trong @media (max-width: 768px)
+   => Tuyệt đối KHÔNG xung đột hay làm thay đổi giao diện Desktop (> 768px).
+   ========================================================================== */
+@media (max-width: 768px) {
+    /* 2. Header Banner: Gọn gàng 2 tầng trên Mobile */
+    .orders-header-banner {
+        padding: 0.75rem 0.875rem !important;
+        border-radius: 1rem !important;
+        gap: 0.5rem !important;
+    }
+    .orders-header-title-left {
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+    }
+    .orders-header-title-left a[title*="Quay lại"] {
+        width: 34px !important;
+        height: 34px !important;
+    }
+    .orders-header-title-left h1 {
+        font-size: 1.25rem !important;
+        line-height: 1.2 !important;
+        margin: 0 !important;
+    }
+    .orders-btn-create-mobile {
+        height: 34px !important;
+        padding: 0 0.875rem !important;
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        border-radius: 0.75rem !important;
+        white-space: nowrap !important;
+    }
+    /* Ẩn hoàn toàn hàng nút công cụ phụ (In phiếu, Bảng kê, Soạn & Kiểm Kho, Xếp Xe...) trên màn hình Mobile */
+    .orders-header-actions {
+        display: none !important;
+    }
+
+    /* 3. Thanh Pills trạng thái (Status Pills) */
+    .orders-status-pills {
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .orders-status-pills::-webkit-scrollbar {
+        display: none;
+    }
+    .orders-status-pills a {
+        white-space: nowrap !important;
+        padding: 0.4rem 0.75rem !important;
+        font-size: 11px !important;
+        border-radius: 0.75rem !important;
+        flex-shrink: 0 !important;
+    }
+
+    /* 4. Form Bộ Lọc (Filter Form) - Chia đôi 2 cột chuẩn tỉ lệ không tràn viền trên Mobile */
+    .orders-filter-container {
+        padding: 0.75rem 0.75rem !important;
+        border-radius: 1rem !important;
+        gap: 0.5rem !important;
+        box-sizing: border-box !important;
+    }
+    /* Ẩn toàn bộ form lọc trên Mobile, chỉ hiện khi ấn nút lọc */
+    .orders-filter-body {
+        display: none;
+    }
+    .orders-filter-body.is-open {
+        display: block !important;
+        animation: fadeInFilter 0.2s ease-out;
+    }
+    @keyframes fadeInFilter {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .orders-filter-form {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+        gap: 0.5rem 0.5rem !important;
+        padding-top: 0.25rem !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    .orders-filter-form > div {
+        grid-column: span 1 !important;
+        min-width: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+    /* Hàng nút Tìm kiếm + Lọc chiếm trọn cả 2 cột */
+    .orders-filter-form > div.col-filter-submit {
+        grid-column: span 2 !important;
+        margin-top: 0.25rem !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+    .orders-filter-form input,
+    .orders-filter-form select {
+        height: 38px !important;
+        font-size: 12.5px !important;
+        padding: 0.4rem 0.5rem !important;
+        border-radius: 0.75rem !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    .orders-filter-form input[type="date"] {
+        font-size: 11.5px !important;
+        padding: 0.4rem 0.35rem !important;
+    }
+    /* Chừa khoảng trống bên trái cho icon kính lúp của ô khách hàng không bị đè chữ */
+    .orders-filter-form input[name="customer"] {
+        padding-left: 2rem !important;
+    }
+    .orders-filter-form .col-filter-submit button {
+        height: 38px !important;
+        border-radius: 0.75rem !important;
+        box-sizing: border-box !important;
+    }
+    .orders-filter-form .col-filter-submit button[title*="nâng cao"] {
+        width: 38px !important;
+        flex-shrink: 0 !important;
+    }
+    .orders-filter-form label {
+        font-size: 10.5px !important;
+        font-weight: 700 !important;
+        margin-bottom: 2px !important;
+    }
+    .orders-filter-form label span.font-mono {
+        display: none !important; /* Ẩn phím tắt "F2 hoặc /" trên mobile */
+    }
+
+    /* 5. Chuyển Bảng Danh Sách Đơn Hàng Thành Card View Đẳng Cấp & Gọn Gàng Trên Mobile */
+    .orders-table-container {
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+    }
+    .orders-table-wrapper {
+        overflow: visible !important;
+    }
+    .orders-table,
+    .orders-table tbody {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+    .orders-table thead {
+        display: none !important;
+    }
+    .orders-table tr.order-table-row {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 1rem !important;
+        padding: 0.75rem 0.875rem !important;
+        margin-bottom: 0.75rem !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+        position: relative !important;
+        row-gap: 0.35rem !important;
+        column-gap: 0.5rem !important;
+        box-sizing: border-box !important;
+    }
+    .orders-table tr.order-table-row:last-child {
+        margin-bottom: 0 !important;
+    }
+
+    .orders-table tr.order-table-row td {
+        padding: 0;
+        border: none !important;
+        background: transparent !important;
+        box-sizing: border-box !important;
+    }
+
+    /* 1. Hàng 1 (Header Card): Checkbox + STT + Mã Đơn Hàng + Cảnh báo (Trải đều) & Loại Đơn (Góc phải) */
+    .orders-table tr.order-table-row td.col-checkbox {
+        position: absolute !important;
+        top: 0.75rem !important;
+        left: 0.75rem !important;
+        width: 18px !important;
+        height: 18px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 5 !important;
+    }
+    .orders-table tr.order-table-row td.col-stt {
+        position: absolute !important;
+        top: 0.78rem !important;
+        left: 2.3rem !important;
+        font-size: 11.5px !important;
+        font-weight: 800 !important;
+        color: #94a3b8 !important;
+        z-index: 5 !important;
+        line-height: 1 !important;
+        white-space: nowrap !important;
+    }
+    .orders-table tr.order-table-row td.col-stt::before {
+        content: "#";
+    }
+    /* Ẩn badge Loại Đơn Hàng (Thương mại / Dự án) trên Mobile theo yêu cầu để giao diện thoáng, không bị đè nhãn */
+    .orders-table tr.order-table-row td.col-type {
+        display: none !important;
+    }
+    .orders-table tr.order-table-row td.col-code {
+        grid-column: span 2 !important;
+        order: 1 !important;
+        display: block !important;
+        width: 100% !important;
+        min-height: 24px !important;
+        box-sizing: border-box !important;
+    }
+    .orders-table tr.order-table-row td.col-code > div {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.375rem !important;
+        flex-wrap: nowrap !important;
+        min-width: 0 !important;
+        margin-left: 4.85rem !important; /* Đứng sau Checkbox & STT */
+        margin-right: 0.5rem !important; /* Mở rộng toàn bộ chiều ngang khi đã ẩn Loại đơn hàng */
+    }
+    .orders-table td.col-code a {
+        font-size: 13.5px !important;
+        font-weight: 800 !important;
+        color: #0284c7 !important;
+        white-space: nowrap !important;
+    }
+    .orders-table td.col-code span {
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+    }
+
+    /* 2. Hàng 2: Khách Hàng (To, rõ ràng, chiếm trọn 2 cột) */
+    .orders-table td.col-customer {
+        grid-column: span 2 !important;
+        order: 2 !important;
+        display: block !important;
+        padding: 0.35rem 0 !important;
+        margin: 0.2rem 0 !important;
+        border-top: 1px solid #f1f5f9 !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+    }
+    .orders-table td.col-customer > div:first-child {
+        font-size: 13.5px !important;
+        font-weight: 800 !important;
+        color: #0f172a !important;
+        line-height: 1.35 !important;
+    }
+    .orders-table td.col-customer > div:last-child {
+        font-size: 11px !important;
+        color: #64748b !important;
+        margin-top: 2px !important;
+    }
+
+    /* 3. Hàng 3 & 4: Chi tiết Đơn Hàng (2 cột cân đối, không rớt chữ vụn vặt) */
+    /* Cột trái: Ngày tạo & Kho hàng */
+    .orders-table td.col-date {
+        grid-column: 1 !important;
+        order: 3 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 2px !important;
+        font-size: 11px !important;
+        color: #64748b !important;
+        line-height: 1.3 !important;
+    }
+    .orders-table td.col-warehouse {
+        grid-column: 1 !important;
+        order: 5 !important;
+        display: flex !important;
+        align-items: center !important;
+        font-size: 11px !important;
+        color: #475569 !important;
+        overflow: hidden !important;
+        line-height: 1.3 !important;
+        margin-top: 2px !important;
+    }
+    .orders-table td.col-warehouse::before {
+        content: "Kho: ";
+        font-weight: 600;
+        color: #94a3b8;
+        margin-right: 0.25rem !important;
+        white-space: nowrap !important;
+    }
+    .orders-table td.col-warehouse > div {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.25rem !important;
+        min-width: 0 !important;
+    }
+    .orders-table td.col-warehouse span {
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: 140px !important;
+    }
+
+    /* Cột phải: Người tạo & Thành tiền */
+    .orders-table td.col-creator {
+        grid-column: 2 !important;
+        order: 4 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        font-size: 11px !important;
+        color: #475569 !important;
+        text-align: right !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        line-height: 1.3 !important;
+    }
+    .orders-table td.col-creator::before {
+        content: "Tạo bởi: ";
+        font-weight: 600;
+        color: #94a3b8;
+        margin-right: 0.25rem !important;
+        white-space: nowrap !important;
+    }
+    .orders-table td.col-total {
+        grid-column: 2 !important;
+        order: 6 !important;
+        display: flex !important;
+        align-items: baseline !important;
+        justify-content: flex-end !important;
+        gap: 0.3rem !important;
+        font-size: 14.5px !important;
+        font-weight: 900 !important;
+        color: #0284c7 !important;
+        text-align: right !important;
+        white-space: nowrap !important;
+        margin-top: 2px !important;
+        line-height: 1.3 !important;
+    }
+    .orders-table td.col-total::before {
+        content: "Tổng tiền:";
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        color: #64748b !important;
+        white-space: nowrap !important;
+    }
+
+    /* 4. Hàng 5 (Footer Card): Trạng thái & Nút thao tác dưới cùng */
+    .orders-table td.col-status {
+        grid-column: span 2 !important;
+        order: 7 !important;
+        margin-top: 0.35rem !important;
+        padding-top: 0.5rem !important;
+        border-top: 1px dashed #e2e8f0 !important;
+        display: block !important;
+    }
+    .orders-table td.col-status > div {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+    }
+    .orders-table td.col-status button,
+    .orders-table td.col-status a {
+        min-height: 32px !important;
+        border-radius: 0.75rem !important;
+    }
+}
+</style>
+@endpush
+
 @section('content')
 @php
     $allOrders = $orders;
@@ -36,97 +410,164 @@
         'Đã giao' => \App\Models\Order::companyOrders()->whereIn('status', ['Đã giao', 'Giao thành công'])->count(),
         'Hủy' => \App\Models\Order::companyOrders()->whereIn('status', ['Hủy', 'Đã hủy'])->count(),
     ];
+
+    $allOrderIds = $orders->pluck('id')->map(fn($id) => (string)$id);
+    $tableOrdersData = $orders->map(function($o) {
+        return [
+            'id' => (string)$o->id,
+            'code' => $o->order_code,
+            'date' => $o->created_at ? $o->created_at->format('d/m/Y') : '',
+            'customer' => $o->dealer?->name ?? $o->customer_name ?? '',
+            'phone' => $o->customer_phone ?: ($o->dealer?->phone ?: ''),
+            'address' => $o->customer_address ?: ($o->dealer?->address ?: ''),
+            'warehouse' => $o->warehouse ?: 'Kho Tổng Mê Linh (MQ)',
+            'total' => (float)$o->total_amount,
+            'status' => $o->status ?: 'Báo giá',
+            'creator' => $o->order_creator ?: ($o->creator?->name ?? ''),
+        ];
+    });
 @endphp
 
 <div class="space-y-4 font-sans text-slate-800 antialiased">
 
     @php $currentTab = request('tab', 'orders'); @endphp
-    <!-- 1. Sub-Section Navigation Tabs (Matching exact React UI) -->
-    <div class="bg-white rounded-2xl p-2 border border-slate-200 shadow-2xs flex items-center gap-2 overflow-x-auto">
-        <a href="{{ url('/orders') }}" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer {{ $currentTab === 'orders' ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200' }}">
-            <span>Đơn hàng</span>
-        </a>
-
-        <a href="{{ url('/orders?tab=consignment') }}" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer {{ $currentTab === 'consignment' ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200' }}">
-            <i class="fa-solid fa-boxes-stacked text-sm"></i>
-            <span>Đơn hàng ôm</span>
-        </a>
-
-        <a href="{{ url('/orders?tab=returns') }}" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer {{ $currentTab === 'returns' ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200' }}">
-            <i class="fa-solid fa-rotate-left text-sm"></i>
-            <span>Khách trả hàng</span>
-        </a>
-
-        <a href="{{ url('/orders?tab=suppliers') }}" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer {{ $currentTab === 'suppliers' ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200' }}">
-            <i class="fa-solid fa-cart-shopping text-sm"></i>
-            <span>Đặt hàng NCC</span>
-        </a>
-
-        <a href="{{ url('/promotion-advances') }}" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer {{ $currentTab === 'promotions' || request()->is('promotion-advances*') ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200' }}">
-            <i class="fa-solid fa-gift text-sm"></i>
-            <span>Ứng khuyến mãi</span>
-        </a>
-    </div>
 
     @if($currentTab === 'consignment')
         @include('orders.consignment_tab')
     @else
+    @php
+        $activeFilterCount = 0;
+        if (request('from_date')) $activeFilterCount++;
+        if (request('to_date')) $activeFilterCount++;
+        if (request('search')) $activeFilterCount++;
+        if (request('customer')) $activeFilterCount++;
+        if (request('order_type')) $activeFilterCount++;
+        if (request('payment_status')) $activeFilterCount++;
+    @endphp
     <div class="space-y-4" x-data="ordersIndexApp()" @keydown.window="handleGlobalKeydown($event)" @scroll.window="closeActionMenu()" @resize.window="closeActionMenu()">
-    <!-- 2. Header Banner (Matching exact React UI) -->
-    <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <!-- 2. Header Banner (Matching exact React UI on Desktop, Ergonomic 2-row on Mobile) -->
+    <div class="orders-header-banner bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         
         <!-- Left: Blue circular back button + Title + Subtitle -->
-        <div class="flex items-center gap-3">
-            <a href="{{ url('/dashboard') }}" class="w-10 h-10 rounded-full bg-sky-600 hover:bg-sky-700 text-white flex items-center justify-center shrink-0 shadow-md shadow-sky-600/20 cursor-pointer transition-transform hover:scale-105" title="Quay lại Tổng quan">
-                <i class="fa-solid fa-arrow-left text-sm"></i>
-            </a>
+        <div class="orders-header-title-left flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
+            <div class="flex items-center gap-2.5 sm:gap-3">
+                <a href="{{ url('/dashboard') }}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-sky-600 hover:bg-sky-700 text-white flex items-center justify-center shrink-0 shadow-md shadow-sky-600/20 cursor-pointer transition-transform hover:scale-105" title="Quay lại Tổng quan">
+                    <i class="fa-solid fa-arrow-left text-xs sm:text-sm"></i>
+                </a>
 
-            <div>
-                <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Đơn hàng</h1>
-                <p class="text-xs text-slate-500 mt-0.5 font-medium">Quản lý đơn hàng theo quy trình: Báo giá · Chốt đơn · Soạn hàng · Đang vận chuyển · Đã giao · Hủy</p>
+                <div>
+                    <h1 class="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">Đơn hàng</h1>
+                    <p class="hidden sm:block text-xs text-slate-500 mt-0.5 font-medium">Quản lý đơn hàng theo quy trình: Báo giá · Chốt đơn · Soạn hàng · Đang vận chuyển · Đã giao · Hủy</p>
+                </div>
             </div>
+
+            <!-- Nút "+ Thêm mới" nổi bật ngay cạnh tiêu đề trên Mobile -->
+            <a href="{{ url('/orders/create') }}" class="sm:hidden orders-btn-create-mobile px-3.5 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-black rounded-xl text-xs transition-all shadow-md shadow-sky-600/20 flex items-center gap-1.5 cursor-pointer shrink-0" title="Lên đơn hàng mới">
+                <i class="fa-solid fa-plus text-xs"></i>
+                <span>Thêm mới</span>
+            </a>
         </div>
 
-        <!-- Right: Action Buttons -->
-        <div class="flex flex-wrap items-center gap-2">
-            <button type="button" @click="printSelected()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer" title="In phiếu đã chọn (F9 hoặc P)">
+        <!-- Right: Action Buttons (Gọn gàng, tập trung các thao tác chính, tiện ích cho vào Submenu) -->
+        <div class="orders-header-actions flex items-center gap-2">
+            <!-- 1. In phiếu -->
+            <button type="button" @click="printSelected()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer shrink-0" title="In phiếu đã chọn (F9 hoặc P)">
                 <i class="fa-solid fa-print text-slate-500"></i>
                 <span>In phiếu <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] text-slate-600 font-mono">F9</kbd></span>
             </button>
 
-            <button type="button" @click="exportManifest()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer" title="Bảng kê xuất hàng (F10 hoặc E)">
-                <i class="fa-solid fa-file-excel text-slate-500"></i>
-                <span>Bảng kê <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] text-slate-600 font-mono">F10</kbd></span>
-            </button>
+            <!-- 2. Submenu Tiện ích & Thao tác khác (Bảng kê, Phím tắt, Soạn kho, Xếp xe) -->
+            <div x-data="{ openUtilities: false }" @click.outside="openUtilities = false" class="relative">
+                <button 
+                    type="button" 
+                    @click="openUtilities = !openUtilities" 
+                    class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer shrink-0"
+                    title="Tiện ích & Thao tác liên quan"
+                >
+                    <i class="fa-solid fa-ellipsis-vertical text-slate-400"></i>
+                    <span>Tiện ích</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-150" :class="openUtilities ? 'rotate-180' : ''"></i>
+                </button>
 
-            <button type="button" @click="showShortcutsModal = true" class="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer" title="Xem danh sách phím tắt (F1 hoặc ?)">
-                <i class="fa-regular fa-keyboard text-amber-600"></i>
-                <span>Phím tắt <kbd class="px-1.5 py-0.5 bg-amber-100/80 border border-amber-300 rounded text-[10px] text-amber-900 font-mono">F1</kbd></span>
-            </button>
+                <div 
+                    x-show="openUtilities" 
+                    x-cloak 
+                    x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-75"
+                    x-transition:leave-start="opacity-100 scale-100"
+                    x-transition:leave-end="opacity-0 scale-95"
+                    class="absolute right-0 top-full mt-1.5 w-60 bg-white border border-slate-200 shadow-xl rounded-2xl py-1.5 z-40 text-xs"
+                >
+                    <!-- Bảng kê xuất hàng (F10) -->
+                    <button 
+                        type="button" 
+                        @click="exportManifest(); openUtilities = false" 
+                        class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center justify-between font-semibold text-slate-700 transition"
+                    >
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-file-excel text-emerald-600 w-4"></i>
+                            <span>Bảng kê xuất hàng</span>
+                        </div>
+                        <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] text-slate-500 font-mono">F10</kbd>
+                    </button>
 
-            <a href="{{ url('/inventory/picking') }}" class="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs" title="Soạn Đơn & Kiểm Hàng Xuất Kho">
-                <i class="fa-solid fa-boxes-packing text-amber-600"></i>
-                <span>Soạn & Kiểm Kho</span>
+                    <!-- Xem phím tắt (F1) -->
+                    <button 
+                        type="button" 
+                        @click="showShortcutsModal = true; openUtilities = false" 
+                        class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center justify-between font-semibold text-slate-700 transition border-b border-slate-100"
+                    >
+                        <div class="flex items-center gap-2">
+                            <i class="fa-regular fa-keyboard text-amber-600 w-4"></i>
+                            <span>Xem phím tắt</span>
+                        </div>
+                        <kbd class="px-1.5 py-0.5 bg-amber-50 border border-amber-200 rounded text-[10px] text-amber-800 font-mono">F1</kbd>
+                    </button>
+
+                    <div class="px-3 py-1 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Liên kết quy trình</div>
+
+                    <!-- Soạn & Kiểm Kho -->
+                    <a 
+                        href="{{ url('/inventory/picking') }}" 
+                        class="w-full text-left px-3.5 py-2 hover:bg-amber-50 flex items-center gap-2 font-semibold text-slate-700 hover:text-amber-800 transition"
+                    >
+                        <i class="fa-solid fa-boxes-packing text-amber-600 w-4"></i>
+                        <span>Soạn Đơn & Kiểm Kho</span>
+                    </a>
+
+                    <!-- Xếp Xe & Tuyến Giao -->
+                    <a 
+                        href="{{ url('/delivery-dispatch') }}" 
+                        class="w-full text-left px-3.5 py-2 hover:bg-purple-50 flex items-center gap-2 font-semibold text-slate-700 hover:text-purple-800 transition"
+                    >
+                        <i class="fa-solid fa-truck text-purple-600 w-4"></i>
+                        <span>Xếp Xe & Tuyến Giao</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- 3. Bán hàng POS -->
+            <a href="{{ url('/orders/pos') }}" class="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-purple-600/20 shrink-0" title="Giao diện bán hàng & chọn sản phẩm nhanh vào giỏ">
+                <i class="fa-solid fa-cash-register"></i>
+                <span>Bán Hàng POS</span>
             </a>
 
-            <a href="{{ url('/delivery-dispatch') }}" class="px-3.5 py-2 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs" title="Điều phối xe & Xếp người vào xe giao hàng">
-                <i class="fa-solid fa-truck text-purple-600"></i>
-                <span>Xếp Xe & Tuyến Giao</span>
-            </a>
-
-            <a href="{{ url('/orders/create') }}" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-black rounded-xl text-xs transition-all shadow-md shadow-sky-600/20 flex items-center gap-1.5 cursor-pointer" title="Lên đơn hàng mới (F8 hoặc N)">
+            <!-- 4. Nút Thêm mới trên Desktop -->
+            <a href="{{ url('/orders/create') }}" class="hidden sm:flex px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-black rounded-xl text-xs transition-all shadow-md shadow-sky-600/20 items-center gap-1.5 cursor-pointer shrink-0" title="Lên đơn hàng mới (F8 hoặc N)">
                 <i class="fa-solid fa-plus"></i>
-                <span>+ Thêm mới <kbd class="px-1.5 py-0.5 bg-sky-700/80 border border-sky-500 rounded text-[10px] text-white font-mono">F8</kbd></span>
+                <span>Thêm mới <kbd class="px-1.5 py-0.5 bg-sky-700/80 border border-sky-500 rounded text-[10px] text-white font-mono">F8</kbd></span>
             </a>
         </div>
 
     </div>
 
     <!-- 3. Status Filter Pills & Filter Toolbar (Matching exact React UI) -->
-    <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-3">
+    <div class="orders-filter-container bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-3">
         
         <!-- Status Tabs (Pills) -->
-        <div class="flex items-center gap-2 overflow-x-auto pb-1">
+        <div class="orders-status-pills flex items-center gap-2 overflow-x-auto pb-1">
             @foreach(['Tất cả', 'Báo giá', 'Chốt đơn', 'Chờ hàng', 'Soạn hàng', 'Đơn thiếu', 'Giao sau', 'Đã đủ hàng', 'Kiểm hàng', 'Đang vận chuyển', 'Đã giao', 'Hủy'] as $pill)
                 @php
                     $isSel = (request('status') === $pill) 
@@ -177,18 +618,38 @@
             @endforeach
         </div>
 
-        @php
-            $activeFilterCount = 0;
-            if (request('from_date')) $activeFilterCount++;
-            if (request('to_date')) $activeFilterCount++;
-            if (request('search')) $activeFilterCount++;
-            if (request('customer')) $activeFilterCount++;
-            if (request('order_type')) $activeFilterCount++;
-            if (request('payment_status')) $activeFilterCount++;
-        @endphp
+        <!-- Mobile Filter Toggle Bar: Chỉ hiện trên mobile -->
+        <div class="sm:hidden pt-1 flex items-center gap-2">
+            <button type="button" @click="showMobileFilter = !showMobileFilter" 
+                class="flex-1 flex items-center justify-between px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all shadow-2xs cursor-pointer">
+                <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center text-xs">
+                        <i class="fa-solid fa-filter"></i>
+                    </span>
+                    <span class="text-slate-800 font-extrabold text-[12.5px]">Bộ lọc & Tìm kiếm</span>
+                    @if($activeFilterCount > 0)
+                        <span class="px-2 py-0.5 bg-sky-600 text-white text-[10px] font-black rounded-full">{{ $activeFilterCount }}</span>
+                    @endif
+                </div>
+                <div class="flex items-center gap-1.5 text-slate-500 font-bold text-[11px]">
+                    <span x-text="showMobileFilter ? 'Thu gọn' : 'Bấm để lọc'"></span>
+                    <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200" :class="{ 'rotate-180': showMobileFilter }"></i>
+                </div>
+            </button>
+            @if($activeFilterCount > 0)
+                <a href="{{ url('/orders' . (request('status') ? '?status=' . urlencode(request('status')) : '')) }}" 
+                   class="px-3 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1 shrink-0 transition-colors shadow-2xs" 
+                   title="Xóa tất cả điều kiện lọc">
+                    <i class="fa-solid fa-rotate-left text-[11px]"></i>
+                    <span>Xóa lọc</span>
+                </a>
+            @endif
+        </div>
 
+        <!-- Filter Body: Mặc định ẩn trên Mobile, khi ấn nút lọc mới hiện; Trên Desktop luôn hiện -->
+        <div class="orders-filter-body space-y-3" :class="{ 'is-open': showMobileFilter }">
         <!-- Filter Form Row 1 -->
-        <form action="{{ url('/orders') }}" method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 text-xs pt-1 items-end">
+        <form action="{{ url('/orders') }}" method="GET" class="orders-filter-form grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 text-xs pt-1 items-end">
             @if(request('status'))
                 <input type="hidden" name="status" value="{{ request('status') }}">
             @endif
@@ -196,19 +657,13 @@
             <!-- Từ ngày -->
             <div class="lg:col-span-2 space-y-1">
                 <label class="font-bold text-slate-500 text-[11px]">Từ ngày</label>
-                <div class="relative">
-                    <input type="date" name="from_date" value="{{ request('from_date') }}" class="w-full p-2 pr-8 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:outline-none focus:border-sky-500 bg-white">
-                    <i class="fa-solid fa-calendar-days text-slate-400 absolute right-2.5 top-3 pointer-events-none"></i>
-                </div>
+                <input type="date" name="from_date" value="{{ request('from_date') }}" class="w-full p-2 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:outline-none focus:border-sky-500 bg-white">
             </div>
 
             <!-- Đến ngày -->
             <div class="lg:col-span-2 space-y-1">
                 <label class="font-bold text-slate-500 text-[11px]">Đến ngày</label>
-                <div class="relative">
-                    <input type="date" name="to_date" value="{{ request('to_date') }}" class="w-full p-2 pr-8 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:outline-none focus:border-sky-500 bg-white">
-                    <i class="fa-solid fa-calendar-days text-slate-400 absolute right-2.5 top-3 pointer-events-none"></i>
-                </div>
+                <input type="date" name="to_date" value="{{ request('to_date') }}" class="w-full p-2 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:outline-none focus:border-sky-500 bg-white">
             </div>
 
             <!-- Số phiếu -->
@@ -223,8 +678,8 @@
             <!-- Khách hàng (mã/tên) -->
             <div class="lg:col-span-2 space-y-1">
                 <label class="font-bold text-slate-500 text-[11px]">Khách hàng (mã/tên)</label>
-                <div class="relative">
-                    <i class="fa-solid fa-magnifying-glass text-slate-400 absolute left-2.5 top-3 pointer-events-none"></i>
+                <div class="relative flex items-center">
+                    <i class="fa-solid fa-magnifying-glass text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-xs"></i>
                     <input type="text" name="customer" value="{{ request('customer') }}" placeholder="Gõ mã hoặc tên..." class="w-full p-2 pl-8 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:outline-none focus:border-sky-500 bg-white placeholder-slate-400">
                 </div>
             </div>
@@ -243,16 +698,18 @@
             <!-- Loại đơn hàng -->
             <div class="space-y-1">
                 <label class="font-bold text-slate-500 text-[11px]">Loại đơn hàng</label>
-                <select name="order_type" class="w-full p-2 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:outline-none focus:border-sky-500 bg-white">
+                <select name="order_type" class="w-full p-2 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:outline-none focus:border-sky-500 bg-white cursor-pointer">
                     <option value="">Tất cả loại đơn</option>
-                    <option value="normal" {{ request('order_type') === 'normal' ? 'selected' : '' }}>🛒 Thương mại</option>
+                    <option value="normal" {{ request('order_type') === 'normal' ? 'selected' : '' }}>🛒 Đơn bình thường</option>
+                    <option value="normal" {{ request('order_type') === 'normal' ? 'selected' : '' }}>🛒 Đơn thường</option>
+                    <option value="consignment" {{ request('order_type') === 'consignment' ? 'selected' : '' }}>📦 Đơn gửi</option>
                     <option value="project" {{ request('order_type') === 'project' ? 'selected' : '' }}>🏗️ Đơn dự án</option>
                     <option value="backorder" {{ request('order_type') === 'backorder' ? 'selected' : '' }}>📋 Đơn giao sau (nợ hàng)</option>
                 </select>
             </div>
 
             <!-- Submit Button & Filter Icon -->
-            <div class="lg:col-span-2 flex items-center gap-1.5">
+            <div class="col-filter-submit lg:col-span-2 flex items-center gap-1.5">
                 <button type="submit" class="flex-1 p-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs">
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <span>Tìm kiếm</span>
@@ -287,17 +744,121 @@
                 </span>
             </label>
         </div>
+        </div>
 
     </div>
 
+    <!-- 3.5. Thanh Thao Tác Hàng Loạt (Bulk Actions Bar) khi tích chọn đơn hàng -->
+    <div x-show="selectedIds.length > 0" 
+         x-cloak 
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 -translate-y-2"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 -translate-y-2"
+         class="sticky top-2 z-30 bg-slate-900 text-white rounded-2xl p-3 sm:px-4 sm:py-3 shadow-xl border border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+        
+        <div class="flex items-center justify-between sm:justify-start gap-3 flex-wrap">
+            <div class="flex items-center gap-2 text-xs sm:text-sm font-black">
+                <span class="w-6 h-6 rounded-full bg-sky-500 text-white flex items-center justify-center text-xs shrink-0 font-bold shadow-xs">
+                    <i class="fa-solid fa-check"></i>
+                </span>
+                <span>Đã chọn <strong class="text-sky-400 font-mono text-sm sm:text-base" x-text="selectedIds.length"></strong> đơn hàng</span>
+            </div>
+
+            <!-- Nút Bỏ chọn & Chọn tất cả -->
+            <div class="flex items-center gap-1.5 text-xs">
+                <button type="button" @click="selectedIds = []" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer text-[11px] font-bold">
+                    Bỏ chọn (Esc)
+                </button>
+                <button type="button" @click="toggleSelectAll(true)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-sky-300 hover:text-white rounded-lg transition-colors cursor-pointer text-[11px] font-bold" x-show="selectedIds.length < allOrderIds.length">
+                    Chọn tất cả (<span x-text="allOrderIds.length"></span>)
+                </button>
+            </div>
+        </div>
+
+        <!-- Các nút thao tác hàng loạt -->
+        <div class="flex items-center gap-2 flex-wrap" x-data="{ openBulkStatus: false }">
+            <div x-show="isBulkProcessing" class="text-xs text-sky-400 flex items-center gap-1.5 mr-2">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                <span>Đang xử lý...</span>
+            </div>
+
+            <!-- 1. In phiếu đã chọn -->
+            <button type="button" @click="printSelected()" :disabled="isBulkProcessing" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-900 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50">
+                <i class="fa-solid fa-print text-sky-600"></i>
+                <span>In phiếu (<span x-text="selectedIds.length"></span>)</span>
+            </button>
+
+            <!-- 2. Bảng kê xuất hàng (Excel) -->
+            <button type="button" @click="exportSelectedManifest()" :disabled="isBulkProcessing" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50">
+                <i class="fa-solid fa-file-excel"></i>
+                <span>Bảng kê Excel</span>
+            </button>
+
+            <!-- 3. Nhanh: Chốt đơn hàng loạt -->
+            <button type="button" @click="bulkUpdateStatus('Chốt đơn')" :disabled="isBulkProcessing" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50">
+                <i class="fa-solid fa-check-double"></i>
+                <span>Chốt đơn</span>
+            </button>
+
+            <!-- 4. Dropdown đổi trạng thái hàng loạt -->
+            <div class="relative" @click.outside="openBulkStatus = false">
+                <button type="button" @click="openBulkStatus = !openBulkStatus" :disabled="isBulkProcessing" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 border border-slate-600 cursor-pointer disabled:opacity-50">
+                    <i class="fa-solid fa-arrows-rotate text-amber-400"></i>
+                    <span>Chuyển trạng thái</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-150" :class="openBulkStatus ? 'rotate-180' : ''"></i>
+                </button>
+
+                <div x-show="openBulkStatus" x-cloak 
+                     x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     class="absolute right-0 bottom-full sm:bottom-auto sm:top-full mb-1.5 sm:mb-0 sm:mt-1.5 w-52 bg-white text-slate-800 border border-slate-200 shadow-2xl rounded-2xl py-1.5 z-50 text-xs">
+                    <div class="px-3 py-1 text-[10px] font-black uppercase text-slate-400 tracking-wider">Chuyển trạng thái hàng loạt</div>
+                    <button type="button" @click="bulkUpdateStatus('Báo giá'); openBulkStatus = false" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 font-semibold text-slate-700 cursor-pointer">
+                        <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                        <span>Báo giá</span>
+                    </button>
+                    <button type="button" @click="bulkUpdateStatus('Chốt đơn'); openBulkStatus = false" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 font-semibold text-sky-700 cursor-pointer">
+                        <span class="w-2 h-2 rounded-full bg-sky-500"></span>
+                        <span>Chốt đơn</span>
+                    </button>
+                    <button type="button" @click="bulkUpdateStatus('Soạn hàng'); openBulkStatus = false" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 font-semibold text-amber-700 cursor-pointer">
+                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                        <span>Soạn hàng</span>
+                    </button>
+                    <button type="button" @click="bulkUpdateStatus('Kiểm hàng'); openBulkStatus = false" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 font-semibold text-indigo-700 cursor-pointer">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                        <span>Đã kiểm hàng</span>
+                    </button>
+                    <button type="button" @click="bulkUpdateStatus('Đang vận chuyển'); openBulkStatus = false" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 font-semibold text-purple-700 cursor-pointer">
+                        <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                        <span>Đang vận chuyển</span>
+                    </button>
+                    <button type="button" @click="bulkUpdateStatus('Đã giao'); openBulkStatus = false" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 font-semibold text-emerald-700 cursor-pointer">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>Đã giao thành công</span>
+                    </button>
+                    <div class="border-t border-slate-100 my-1"></div>
+                    <button type="button" @click="bulkUpdateStatus('Hủy'); openBulkStatus = false" class="w-full text-left px-3.5 py-2 hover:bg-rose-50 flex items-center gap-2 font-semibold text-rose-600 cursor-pointer">
+                        <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                        <span>Hủy các đơn đã chọn</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 4. Main Data Table (100% Matching exact React Table Headers & Row Layout) -->
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs border-collapse min-w-[1250px]">
+    <div class="orders-table-container bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+        <div class="orders-table-wrapper overflow-x-auto">
+            <table class="orders-table w-full text-left text-xs border-collapse min-w-[1250px]">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold border-b border-slate-300 uppercase tracking-tight text-[11px]">
                         <th class="py-3 px-3 text-center w-[40px]">
-                            <input type="checkbox" @change="toggleSelectAll($event.target.checked)" class="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300 cursor-pointer">
+                            <input type="checkbox" @change="toggleSelectAll($event.target.checked)" :checked="isAllSelected()" class="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300 cursor-pointer">
                         </th>
                         <th class="py-3 px-3 text-center w-[50px]">STT</th>
                         <th class="py-3 px-3 min-w-[130px]">MÃ CHỨNG TỪ</th>
@@ -335,19 +896,17 @@
                                 $rowClass = 'bg-amber-50/60 hover:bg-amber-100/60 border-l-4 border-amber-500';
                             }
                         @endphp
-                        <tr class="{{ $rowClass }} transition-colors">
+                        <tr class="order-table-row {{ $rowClass }} transition-colors">
                             <!-- Checkbox -->
-                            <td class="py-3 px-3 text-center">
+                            <td class="col-checkbox py-3 px-3 text-center">
                                 <input type="checkbox" :value="'{{ $order->id }}'" x-model="selectedIds" class="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300 cursor-pointer">
                             </td>
 
                             <!-- STT -->
-                            <td class="py-3 px-3 text-center font-bold text-slate-700">
-                                {{ $rowNum }}
-                            </td>
+                            <td class="col-stt py-3 px-3 text-center font-bold text-slate-700">{{ $rowNum }}</td>
 
                             <!-- MÃ CHỨNG TỪ -->
-                            <td class="py-3 px-3 font-bold text-sky-700">
+                            <td class="col-code py-3 px-3 font-bold text-sky-700">
                                 <div class="flex items-center gap-1.5 flex-wrap">
                                     <a href="{{ url('/orders/' . $order->id . '/edit') }}" class="hover:underline text-left cursor-pointer font-bold font-mono text-slate-900" title="Bấm để xem và sửa chi tiết chứng từ">
                                         {{ $orderCode }}
@@ -359,8 +918,14 @@
                             </td>
 
                             <!-- LOẠI ĐƠN HÀNG -->
-                            <td class="py-3 px-3">
-                                @if($isProject)
+                            <td class="col-type py-3 px-3">
+                                @if(in_array($order->order_type, ['consignment', 'holding_sale']))
+                                    <div class="flex flex-col items-start gap-0.5">
+                                        <span class="px-2.5 py-1 rounded-md bg-amber-50 text-amber-900 font-extrabold text-[11px] border border-amber-300 shadow-2xs shrink-0 inline-flex items-center gap-1">
+                                            <span>📦 Đơn gửi</span>
+                                        </span>
+                                    </div>
+                                @elseif($isProject)
                                     <div class="flex flex-col items-start gap-0.5">
                                         <span class="px-2.5 py-1 rounded-md bg-purple-100 text-purple-900 font-extrabold text-[11px] border border-purple-300 shadow-2xs shrink-0 inline-flex items-center gap-1">
                                             <span>🏗️ Đơn dự án</span>
@@ -388,13 +953,14 @@
                                     </div>
                                 @else
                                     <span class="px-2.5 py-1 rounded-md bg-sky-50 text-sky-800 font-extrabold text-[11px] border border-sky-200 shrink-0 inline-flex items-center gap-1">
-                                        <span>🛒 Thương mại</span>
+                                        <span>🛒 Đơn bình thường</span>
+                                        <span>🛒 Đơn thường</span>
                                     </span>
                                 @endif
                             </td>
 
                             <!-- NGÀY -->
-                            <td class="py-3 px-3 font-semibold text-slate-600">
+                            <td class="col-date py-3 px-3 font-semibold text-slate-600">
                                 <div>{{ $createdDate }}</div>
                                 @if(!empty($order->picking_date))
                                     <div class="text-[10px] text-purple-700 font-bold mt-0.5 flex items-center gap-1" title="Ngày soạn hàng xuất kho">
@@ -411,7 +977,7 @@
                             </td>
 
                             <!-- KHO -->
-                            <td class="py-3 px-3 font-semibold text-slate-700">
+                            <td class="col-warehouse py-3 px-3 font-semibold text-slate-700">
                                 <div class="flex items-center gap-1.5">
                                     <i class="fa-solid fa-warehouse text-slate-400 text-xs shrink-0"></i>
                                     <span class="truncate max-w-[150px]" title="{{ $whName }}">
@@ -421,7 +987,7 @@
                             </td>
 
                             <!-- KHÁCH HÀNG -->
-                            <td class="py-3 px-3 font-bold text-slate-900">
+                            <td class="col-customer py-3 px-3 font-bold text-slate-900">
                                 <div class="flex items-center gap-1.5 flex-wrap">
                                     <span>{{ $customerName }}</span>
                                 </div>
@@ -431,17 +997,17 @@
                             </td>
 
                             <!-- THÀNH TIỀN -->
-                            <td class="py-3 px-3 text-right font-extrabold text-slate-900">
+                            <td class="col-total py-3 px-3 text-right font-extrabold text-slate-900">
                                 {{ $totalAmtFormatted }}
                             </td>
 
                             <!-- NGƯỜI LÊN ĐƠN -->
-                            <td class="py-3 px-3 font-semibold text-slate-800">
+                            <td class="col-creator py-3 px-3 font-semibold text-slate-800">
                                 {{ $creator }}
                             </td>
 
                             <!-- TRẠNG THÁI Column (Badge + Action Buttons matching exact React UI) -->
-                            <td class="py-3 px-3">
+                            <td class="col-status py-3 px-3">
                                 <div class="flex items-center justify-between gap-2">
                                     <div class="flex flex-col gap-0.5 min-w-[110px]">
                                         @php
@@ -1194,8 +1760,12 @@
 <script>
 function ordersIndexApp() {
     return {
+        showMobileFilter: false,
         isAdvancedOpen: false,
         selectedIds: [],
+        allOrderIds: @json($allOrderIds),
+        tableOrders: @json($tableOrdersData),
+        isBulkProcessing: false,
         showShortcutsModal: false,
         activeActionOrder: null,
         actionMenuX: 0,
@@ -1393,10 +1963,14 @@ function ordersIndexApp() {
 
         toggleSelectAll(checked) {
             if (checked) {
-                this.selectedIds = @json($orders->pluck('id'));
+                this.selectedIds = [...this.allOrderIds];
             } else {
                 this.selectedIds = [];
             }
+        },
+
+        isAllSelected() {
+            return this.allOrderIds.length > 0 && this.selectedIds.length === this.allOrderIds.length;
         },
 
         printSelected() {
@@ -1412,8 +1986,79 @@ function ordersIndexApp() {
             this.openPrintModal(this.selectedIds[0]);
         },
 
+        exportSelectedManifest() {
+            const list = this.selectedIds.length > 0
+                ? this.tableOrders.filter(o => this.selectedIds.includes(String(o.id)))
+                : this.tableOrders;
+
+            if (list.length === 0) {
+                alert('Không có đơn hàng nào để xuất bảng kê.');
+                return;
+            }
+
+            let csv = "\uFEFF"; // UTF-8 BOM
+            csv += "BẢNG KÊ DANH SÁCH ĐƠN HÀNG XUẤT KHO\n";
+            csv += "Thời gian xuất," + new Date().toLocaleString('vi-VN') + "\n";
+            csv += "Tổng số chứng từ," + list.length + "\n\n";
+            csv += "STT,Mã đơn hàng,Ngày tạo,Khách hàng,Số điện thoại,Địa chỉ nhận hàng,Kho xuất,Thành tiền (đ),Người lên đơn,Trạng thái\n";
+
+            let totalAmt = 0;
+            list.forEach((o, idx) => {
+                const amt = Number(o.total || 0);
+                totalAmt += amt;
+                csv += `${idx + 1},"${o.code}","${o.date}","${(o.customer || '').replace(/"/g, '""')}","${o.phone}","${(o.address || '').replace(/"/g, '""')}","${(o.warehouse || '').replace(/"/g, '""')}",${amt},"${(o.creator || '').replace(/"/g, '""')}","${o.status}"\n`;
+            });
+
+            csv += `\nTổng cộng,,,,,,,${totalAmt},,\n`;
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Bang_ke_don_hang_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        },
+
         exportManifest() {
-            alert('Đang kết xuất bảng kê hàng xuất kho theo các chứng từ đã chọn.');
+            this.exportSelectedManifest();
+        },
+
+        async bulkUpdateStatus(newStatus) {
+            if (!this.selectedIds || this.selectedIds.length === 0) {
+                alert('Vui lòng tích chọn ít nhất một đơn hàng!');
+                return;
+            }
+            if (!confirm(`Bạn có chắc chắn muốn chuyển trạng thái của ${this.selectedIds.length} đơn hàng đã chọn sang [${newStatus}]?`)) {
+                return;
+            }
+
+            this.isBulkProcessing = true;
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const id of this.selectedIds) {
+                try {
+                    const res = await fetch('/api/orders/update-status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token || '' },
+                        body: JSON.stringify({ orderId: id, status: newStatus })
+                    });
+                    const data = await res.json();
+                    if (data.success || res.ok) {
+                        successCount++;
+                    } else {
+                        failCount++;
+                    }
+                } catch (e) {
+                    failCount++;
+                }
+            }
+
+            this.isBulkProcessing = false;
+            alert(`Đã hoàn tất cập nhật trạng thái [${newStatus}]: Thành công ${successCount} đơn` + (failCount > 0 ? `, thất bại ${failCount} đơn.` : '.'));
+            window.location.reload();
         },
 
         async confirmLockOrder(orderOrId, orderCode) {

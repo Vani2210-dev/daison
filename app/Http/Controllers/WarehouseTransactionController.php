@@ -684,51 +684,6 @@ class WarehouseTransactionController extends Controller
      */
     public function batchesView(Request $request)
     {
-        $warehouses = Warehouse::companyWarehouses()->orderBy('name')->get();
-
-        $query = ProductBatch::with([
-            'product:id,name,sku,unit,stock_quantity',
-            'warehouse:id,name,code',
-            'transactionItem.transaction:id,code,created_at,supplier_name'
-        ]);
-
-        if ($request->filled('warehouse_id')) {
-            $query->where('warehouse_id', $request->warehouse_id);
-        }
-
-        if ($request->filled('date_filter')) {
-            $df = $request->date_filter;
-            if ($df === 'near_expired') {
-                $query->nearExpired(60);
-            } elseif ($df === 'expired') {
-                $query->expired();
-            } elseif ($df === 'active') {
-                $query->active();
-            }
-        }
-
-        if ($request->filled('search')) {
-            $s = trim($request->search);
-            $query->where(function ($sq) use ($s) {
-                $sq->where('batch_code', 'like', "%{$s}%")
-                   ->orWhereHas('product', function ($pq) use ($s) {
-                       $pq->where('name', 'like', "%{$s}%")
-                          ->orWhere('sku', 'like', "%{$s}%");
-                   });
-            });
-        }
-
-        $batches = $query->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC, id DESC')
-            ->paginate(20)
-            ->withQueryString();
-
-        $stats = [
-            'total_batches' => ProductBatch::count(),
-            'active_batches' => ProductBatch::where('remaining_quantity', '>', 0)->count(),
-            'near_expired' => ProductBatch::nearExpired(60)->count(),
-            'expired' => ProductBatch::expired()->count(),
-        ];
-
-        return view('inventory.batches', compact('batches', 'warehouses', 'stats'));
+        return redirect('/cat_products');
     }
 }
