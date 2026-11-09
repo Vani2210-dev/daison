@@ -10,9 +10,17 @@
    => Tuyệt đối KHÔNG xung đột hay làm thay đổi giao diện Desktop (> 768px).
    ========================================================================== */
 @media (max-width: 768px) {
+    /* Ẩn hoàn toàn thanh bottom navigation chung của ERP khi ở trong màn hình lên đơn / sửa đơn để không che nút Lưu */
+    .mobile-bottom-nav,
+    .mobile-drawer-backdrop,
+    .mobile-drawer-sheet {
+        display: none !important;
+    }
+
     /* 1. Spacing & Card chính của Form */
-    .order-form-app-wrapper {
-        padding-bottom: 8.5rem !important;
+    .order-form-app-wrapper,
+    main .order-form-app-wrapper {
+        padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px)) !important;
         margin-left: -0.5rem !important;
         margin-right: -0.5rem !important;
     }
@@ -371,30 +379,51 @@
 
     /* 6. Thanh Footer Thao Tác Cố Định (Sticky Bottom Bar) */
     .order-form-bottom-bar {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 99999 !important;
         padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px)) 0.75rem !important;
         flex-direction: column !important;
         gap: 0.375rem !important;
+        background: rgba(255, 255, 255, 0.98) !important;
+        backdrop-filter: blur(12px) !important;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12) !important;
     }
     .order-form-bottom-bar > div:first-child {
         width: 100% !important;
+        display: flex !important;
         justify-content: space-between !important;
+        align-items: center !important;
     }
     .order-form-bottom-bar > div:last-child {
         width: 100% !important;
         display: flex !important;
+        align-items: center !important;
         gap: 0.375rem !important;
+    }
+    .order-form-bottom-bar > div:last-child > div {
+        flex: 1 1 auto !important;
+        display: flex !important;
+        gap: 0.375rem !important;
+        width: 100% !important;
     }
     .order-form-bottom-bar button,
     .order-form-bottom-bar a {
         flex: 1 1 auto !important;
-        height: 44px !important;
+        height: 42px !important;
         font-size: 12px !important;
         padding: 0 0.5rem !important;
         justify-content: center !important;
+        white-space: nowrap !important;
     }
     .order-form-bottom-bar button:first-child {
         flex: 0 0 auto !important;
         padding: 0 0.75rem !important;
+    }
+    .order-form-bottom-bar > div:last-child > div > button {
+        flex: 1 1 50% !important;
     }
 }
 </style>
@@ -1642,7 +1671,7 @@
     </fieldset>
 
     <!-- 6. Floating / Sticky Action Bar (Bottom Bar: 0 MẶT HÀNG | Đóng Esc | Lưu & In Ctrl+F9 | Lưu F9) -->
-    <div class="order-form-bottom-bar fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 sm:px-8 py-3 shadow-lg flex items-center justify-between gap-3">
+    <div class="order-form-bottom-bar fixed bottom-0 left-0 right-0 z-[9999] bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 sm:px-8 py-3 shadow-lg flex items-center justify-between gap-3">
         <!-- Left: Items count & Total -->
         <div class="flex items-center gap-3 text-xs font-bold text-slate-600">
             <span class="uppercase tracking-wider" x-text="items.length + ' MẶT HÀNG'"></span>
