@@ -2354,14 +2354,43 @@ function ordersIndexApp() {
 
             try {
                 const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                const res = await fetch('/orders/bulk-print-data', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': token || ''
-                    },
-                    body: JSON.stringify({ order_ids: this.selectedIds })
-                });
+                let res;
+                try {
+                    res = await fetch('/api/orders/bulk-print-data', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': token || ''
+                        },
+                        body: JSON.stringify({ order_ids: this.selectedIds })
+                    });
+                } catch (errPost) {
+                    console.warn('POST bulk-print-data failed, attempting GET fallback...', errPost);
+                }
+
+                // Fallback: nếu POST lỗi hoặc trả về status lỗi, thử qua GET
+                if (!res || !res.ok) {
+                    const params = new URLSearchParams();
+                    this.selectedIds.forEach(id => params.append('order_ids[]', id));
+                    res = await fetch(`/api/orders/bulk-print-data?${params.toString()}`, {
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
+                }
+
+                if (!res.ok) {
+                    let errMsg = `Lỗi máy chủ (${res.status})`;
+                    try {
+                        const errJson = await res.json();
+                        if (errJson.message) errMsg = errJson.message;
+                    } catch (_) {}
+                    alert(errMsg);
+                    this.showBulkPrintModal = false;
+                    return;
+                }
+
                 const json = await res.json();
                 if (json.success) {
                     this.bulkPrintData = json;
@@ -2371,7 +2400,7 @@ function ordersIndexApp() {
                 }
             } catch (e) {
                 console.error('Error fetching bulk print data:', e);
-                alert('Lỗi kết nối khi tải dữ liệu in hàng loạt');
+                alert('Lỗi khi tải dữ liệu in hàng loạt: ' + (e.message || 'Vui lòng thử lại'));
                 this.showBulkPrintModal = false;
             } finally {
                 this.bulkPrintLoading = false;
