@@ -37,6 +37,7 @@ class User extends Authenticatable
         'affiliate_code',
         'staff_type',
         'dealer_id',
+        'supplier_id',
         'credit_limit',
         'current_debt',
     ];
@@ -65,6 +66,11 @@ class User extends Authenticatable
     public function dealer()
     {
         return $this->belongsTo(Dealer::class, 'dealer_id');
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class, 'supplier_id');
     }
 
     /**

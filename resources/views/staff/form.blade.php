@@ -144,16 +144,16 @@
                     </select>
                 </div>
 
-                <!-- Hãng / Đại Lý Trực Thuộc (Hiển thị nếu là Nhân viên hãng) -->
-                <div x-show="formData.staff_type === 'brand' || formData.staff_type === 'dealer_sales'" x-cloak>
+                <!-- Nhà Cung Cấp / Hãng Trực Thuộc (Hiển thị nếu là Nhân viên hãng) -->
+                <div x-show="formData.staff_type === 'brand'" x-cloak>
                     <label class="block font-bold text-purple-900 mb-1.5">
-                        Hãng / Đại Lý Trực Thuộc
+                        Nhà Cung Cấp / Hãng Trực Thuộc <span class="text-rose-500">*</span>
                     </label>
-                    <select x-model="formData.dealer_id"
+                    <select x-model="formData.supplier_id"
                             class="w-full px-3.5 py-2.5 bg-purple-100/60 focus:bg-white border border-purple-300 rounded-xl font-bold text-purple-950 outline-none focus:border-purple-600 transition-all cursor-pointer">
-                        <option value="">-- Chọn hãng / đại lý trực thuộc --</option>
-                        <template x-for="dl in dealersList" :key="dl.id">
-                            <option :value="dl.id" x-text="dl.name + ' (' + (dl.code || 'DL-' + dl.id) + ')'"></option>
+                        <option value="">-- Chọn Nhà cung cấp / Hãng trực thuộc --</option>
+                        <template x-for="sup in suppliersList" :key="sup.id">
+                            <option :value="sup.id" x-text="sup.name + ' (' + (sup.code || 'NCC-' + sup.id) + ')'"></option>
                         </template>
                     </select>
                 </div>
@@ -473,6 +473,7 @@ function staffFormApp() {
         rolesList: @json($roles ?? []),
         branchesList: @json($branches ?? []),
         dealersList: @json($dealers ?? []),
+        suppliersList: @json($suppliers ?? []),
         userPermissions: @json($userPermissions ?? []),
         saving: false,
 
@@ -485,6 +486,7 @@ function staffFormApp() {
             password: '',
             department: '{{ addslashes($user->department ?? 'Sales') }}',
             staff_type: '{{ in_array($user->staff_type ?? '', ['brand', 'brand_staff', 'dealer_sales', 'hang']) ? 'brand' : 'company' }}',
+            supplier_id: {{ $user->supplier_id ?: 'null' }},
             dealer_id: {{ $user->dealer_id ?: 'null' }},
             credit_limit: {{ (float)($user->credit_limit ?? 50000000) }},
             role: '{{ $user->roles->first()?->slug ?? 'Sales_Rep' }}',

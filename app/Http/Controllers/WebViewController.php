@@ -988,8 +988,9 @@ class WebViewController extends Controller
         ]);
         $isEdit = false;
         $userPermissions = [];
+        $suppliers = \App\Models\Supplier::where('is_active', true)->orWhereNull('is_active')->select('id', 'name', 'code')->orderBy('name')->get();
 
-        return view('staff.form', compact('user', 'roles', 'branches', 'dealers', 'isEdit', 'userPermissions'));
+        return view('staff.form', compact('user', 'roles', 'branches', 'dealers', 'suppliers', 'isEdit', 'userPermissions'));
     }
 
     /**
@@ -997,10 +998,11 @@ class WebViewController extends Controller
      */
     public function staffEdit(Request $request, $id)
     {
-        $user = User::with(['roles.permissions', 'branch', 'dealer'])->findOrFail($id);
+        $user = User::with(['roles.permissions', 'branch', 'dealer', 'supplier'])->findOrFail($id);
         $roles = \App\Models\Role::with('permissions')->get();
         $branches = \App\Models\Branch::all();
         $dealers = Dealer::select('id', 'name', 'code')->orderBy('name')->get();
+        $suppliers = \App\Models\Supplier::where('is_active', true)->orWhereNull('is_active')->select('id', 'name', 'code')->orderBy('name')->get();
         $isEdit = true;
 
         $hasCustom = \App\Models\UserRolePermission::where('user_id', $user->id)->exists();
@@ -1016,7 +1018,7 @@ class WebViewController extends Controller
             $userPermissions = $user->roles->first()?->permissions->pluck('slug')->toArray() ?? [];
         }
 
-        return view('staff.form', compact('user', 'roles', 'branches', 'dealers', 'isEdit', 'userPermissions'));
+        return view('staff.form', compact('user', 'roles', 'branches', 'dealers', 'suppliers', 'isEdit', 'userPermissions'));
     }
 
     /**
@@ -1049,6 +1051,7 @@ class WebViewController extends Controller
             'status'               => $request->input('status', 'Đang làm việc'),
             'staff_type'           => $request->input('staff_type', 'company'),
             'dealer_id'            => $request->input('dealer_id') ?: null,
+            'supplier_id'          => $request->input('supplier_id') ?: null,
             'credit_limit'         => (float) str_replace(['.', ',', ' '], '', $request->input('credit_limit', 0)),
             'base_salary'          => (float) str_replace(['.', ',', ' '], '', $request->input('base_salary', 0)),
             'annual_leave_days'    => (int) $request->input('annual_leave_days', 12),

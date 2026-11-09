@@ -478,8 +478,11 @@ Artisan::command('db:import-staff {file=Danh sách NV Đại Sơn.xlsx : Đườ
         }
 
         $code = sprintf('NV-%03d', $s['stt']);
+        $supplierId = null;
         if ($isBrand) {
             $code = sprintf('NV-HL%02d', $s['stt'] - 8);
+            $supplierHoaLinh = \App\Models\Supplier::where('code', 'NCC-HL')->orWhere('name', 'like', '%Hoa Linh%')->first();
+            $supplierId = $supplierHoaLinh ? $supplierHoaLinh->id : 3;
         }
 
         $email = $makeEmail($s['name']);
@@ -497,6 +500,7 @@ Artisan::command('db:import-staff {file=Danh sách NV Đại Sơn.xlsx : Đườ
                 'password' => \Illuminate\Support\Facades\Hash::make('password123'),
                 'department' => $department,
                 'staff_type' => $staffType,
+                'supplier_id' => $supplierId,
                 'status' => 'Đang làm việc',
                 'dob' => $parseDate($s['dob']),
                 'citizen_id' => $s['cccd'] ?: null,
