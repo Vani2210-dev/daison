@@ -171,6 +171,7 @@
                     <label class="block font-bold text-slate-700 mb-1.5">Chi Nhánh / Kho Cơ Sở</label>
                     <select x-model="formData.branch_id"
                             class="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-sky-500 transition-all cursor-pointer">
+                        <option :value="null">-- Không gán chi nhánh / Mặc định --</option>
                         <template x-for="br in branchesList" :key="br.id">
                             <option :value="br.id" x-text="br.name"></option>
                         </template>
@@ -490,7 +491,7 @@ function staffFormApp() {
             dealer_id: {{ $user->dealer_id ?: 'null' }},
             credit_limit: {{ (float)($user->credit_limit ?? 50000000) }},
             role: '{{ $user->roles->first()?->slug ?? 'Sales_Rep' }}',
-            branch_id: {{ $user->branch_id ?? ($branches->first()?->id ?? 1) }},
+            branch_id: {{ $user->branch_id ?: ($branches->first()?->id ?: 'null') }},
             base_salary: {{ (float)($user->base_salary ?? 12000000) }},
             annual_leave_days: {{ (int)($user->annual_leave_days ?? 12) }},
             remaining_leave_days: {{ (float)($user->remaining_leave_days ?? 12) }},

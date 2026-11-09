@@ -1038,7 +1038,13 @@ class WebViewController extends Controller
         $branchName = $request->input('branch');
         if ($branchId && is_numeric($branchId)) {
             $b = \App\Models\Branch::find($branchId);
-            if ($b) $branchName = $b->name;
+            if ($b) {
+                $branchName = $b->name;
+            } else {
+                $branchId = null;
+            }
+        } else {
+            $branchId = null;
         }
 
         $data = [
