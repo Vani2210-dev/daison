@@ -20,7 +20,7 @@
     /* 1. Spacing & Card chính của Form */
     .order-form-app-wrapper,
     main .order-form-app-wrapper {
-        padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px)) !important;
+        padding-bottom: calc(75px + env(safe-area-inset-bottom, 0px)) !important;
         margin-left: -0.5rem !important;
         margin-right: -0.5rem !important;
     }
@@ -384,9 +384,9 @@
         left: 0 !important;
         right: 0 !important;
         z-index: 99999 !important;
-        padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px)) 0.75rem !important;
+        padding: 0.375rem 0.75rem calc(0.375rem + env(safe-area-inset-bottom, 0px)) 0.75rem !important;
         flex-direction: column !important;
-        gap: 0.375rem !important;
+        gap: 0.25rem !important;
         background: rgba(255, 255, 255, 0.98) !important;
         backdrop-filter: blur(12px) !important;
         box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12) !important;
@@ -396,6 +396,7 @@
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
+        padding-bottom: 0.125rem !important;
     }
     .order-form-bottom-bar > div:last-child {
         width: 100% !important;
@@ -409,21 +410,26 @@
         gap: 0.375rem !important;
         width: 100% !important;
     }
+    .btn-save-print {
+        display: none !important;
+    }
     .order-form-bottom-bar button,
     .order-form-bottom-bar a {
         flex: 1 1 auto !important;
-        height: 42px !important;
-        font-size: 12px !important;
-        padding: 0 0.5rem !important;
+        height: 40px !important;
+        font-size: 13px !important;
+        padding: 0 0.75rem !important;
         justify-content: center !important;
         white-space: nowrap !important;
     }
     .order-form-bottom-bar button:first-child {
         flex: 0 0 auto !important;
+        min-width: 90px !important;
         padding: 0 0.75rem !important;
     }
     .order-form-bottom-bar > div:last-child > div > button {
-        flex: 1 1 50% !important;
+        flex: 1 1 auto !important;
+        width: 100% !important;
     }
 }
 </style>
@@ -1743,7 +1749,7 @@
                 <div class="flex items-center gap-2.5">
                     <button type="button" @click="submitOrder(true)" 
                             :disabled="saving || isNoTaxCodeLimitReached() || (formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0)" 
-                            class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
+                            class="btn-save-print hidden sm:inline-flex px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
                             :title="isNoTaxCodeLimitReached() ? 'Chặn lên đơn: Khách hàng chưa có MST và đã đạt 3 đơn' : ((formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0) ? 'Không thể lưu: Hết tồn kho khả dụng' : 'Lưu đơn và in chứng từ (Ctrl+F9)')">
                         <i class="fa-solid fa-print"></i>
                         <span>Lưu & In (Ctrl+F9)</span>
