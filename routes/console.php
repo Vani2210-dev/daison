@@ -198,17 +198,10 @@ Artisan::command('db:import-products {file=Book1.xlsx : Đường dẫn file Exc
     $catCsrm->brands()->syncWithoutDetaching([$brandNgocChau->id, $brandHoaLinh->id]);
     $catVspn->brands()->syncWithoutDetaching([$brandDaHuong->id, $brandHoaLinh->id]);
 
-    // Đảm bảo có ít nhất 1 kho tổng
-    $mainWarehouse = \App\Models\Warehouse::firstOrCreate(
-        ['code' => 'KHO-TONG'],
-        [
-            'name' => 'Kho Tổng Mê Linh (MQ)',
-            'type' => 'Kho công ty',
-            'manager_name' => 'Nguyễn Văn Hùng',
-            'address' => 'KCN Quang Minh, Mê Linh, Hà Nội',
-            'is_active' => true,
-        ]
-    );
+    // Đảm bảo lấy đúng kho tổng Mê Linh (MQ)
+    $mainWarehouse = \App\Models\Warehouse::where('code', 'KHO-MQ-01')
+        ->orWhere('name', 'like', '%Mê Linh%')
+        ->first() ?: \App\Models\Warehouse::first();
 
     // 4. Import / Update từng sản phẩm
     $importedCount = 0;
