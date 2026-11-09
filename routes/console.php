@@ -315,5 +315,240 @@ Artisan::command('db:fix-conversion-prices', function () {
     return 0;
 })->purpose('Sửa lại conversion_price cho các sản phẩm có đơn vị quy đổi lớn hơn (Kiện, Thùng...)');
 
+Artisan::command('db:import-staff {file=Danh sách NV Đại Sơn.xlsx : Đường dẫn file Excel} {--wipe : Xóa sạch tài khoản nhân viên cũ (giữ admin)}', function ($file) {
+    $filePath = base_path($file);
+    if (!file_exists($filePath)) {
+        $this->error("Không tìm thấy file: {$filePath}");
+        return 1;
+    }
+
+    $zip = new \ZipArchive();
+    if ($zip->open($filePath) !== true) {
+        $this->error("Không thể mở file Excel định dạng .xlsx");
+        return 1;
+    }
+
+    $sharedStrings = [];
+    if (($index = $zip->locateName('xl/sharedStrings.xml')) !== false) {
+        $xml = simplexml_load_string($zip->getFromIndex($index));
+        foreach ($xml->si as $si) {
+            $t = '';
+            if (isset($si->t)) $t = (string)$si->t;
+            elseif (isset($si->r)) {
+                foreach ($si->r as $r) $t .= (string)$r->t;
+            }
+            $sharedStrings[] = $t;
+        }
+    }
+
+    $sheetIndex = $zip->locateName('xl/worksheets/sheet1.xml');
+    if ($sheetIndex === false) {
+        $this->error("Không tìm thấy dữ liệu Sheet1");
+        $zip->close();
+        return 1;
+    }
+    $sheetXml = simplexml_load_string($zip->getFromIndex($sheetIndex));
+
+    $rawStaff = [];
+    foreach ($sheetXml->sheetData->row as $row) {
+        $rIndex = (int)$row['r'];
+        if ($rIndex < 6) continue;
+
+        $cols = [];
+        foreach ($row->c as $c) {
+            $cellRef = (string)$c['r'];
+            $colLetter = preg_replace('/[0-9]/', '', $cellRef);
+            $type = (string)$c['t'];
+            $val = (string)$c->v;
+            if ($type === 's') $val = $sharedStrings[(int)$val] ?? $val;
+            $cols[$colLetter] = trim($val);
+        }
+
+        $stt = $cols['A'] ?? '';
+        $name = $cols['B'] ?? '';
+        $chucVu = $cols['C'] ?? '';
+        $dob = $cols['D'] ?? '';
+        $cccd = $cols['E'] ?? '';
+        $stk = $cols['F'] ?? '';
+        $bank = $cols['G'] ?? '';
+        $address = $cols['H'] ?? '';
+
+        if (!empty($name) && is_numeric($stt)) {
+            $rawStaff[] = [
+                'stt' => (int)$stt,
+                'name' => $name,
+                'position' => $chucVu,
+                'dob' => $dob,
+                'cccd' => $cccd,
+                'stk' => $stk,
+                'bank' => $bank,
+                'address' => $address,
+            ];
+        }
+    }
+    $zip->close();
+
+    $this->info("Đã trích xuất " . count($rawStaff) . " nhân viên từ file Excel.");
+
+    if ($this->option('wipe')) {
+        $admin = \App\Models\User::where('code', 'NV-ADMIN')->orWhere('email', 'admin@kbtech.com')->first();
+        $adminId = $admin ? $admin->id : 1;
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS = 0;');
+        \App\Models\User::where('id', '!=', $adminId)->delete();
+        \Illuminate\Support\Facades\DB::table('user_roles')->where('user_id', '!=', $adminId)->delete();
+        \Illuminate\Support\Facades\DB::table('user_role_permissions')->where('user_id', '!=', $adminId)->delete();
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS = 1;');
+        $this->info("✓ Đã dọn dẹp các tài khoản nhân viên cũ (giữ lại tài khoản Admin ID: {$adminId}).");
+    }
+
+    // Helper convert date
+    $parseDate = function ($dateVal) {
+        if (empty($dateVal)) return null;
+        if (str_contains($dateVal, '/')) {
+            $parts = explode('/', $dateVal);
+            if (count($parts) === 3) {
+                return sprintf('%04d-%02d-%02d', (int)$parts[2], (int)$parts[1], (int)$parts[0]);
+            }
+        }
+        if (is_numeric($dateVal)) {
+            $ts = ($dateVal - 25569) * 86400;
+            return gmdate('Y-m-d', $ts);
+        }
+        return null;
+    };
+
+    // Helper email
+    $makeEmail = function ($fullName) {
+        $translit = [
+            'à'=>'a','á'=>'a','ả'=>'a','ã'=>'a','ạ'=>'a',
+            'ă'=>'a','ằ'=>'a','ắ'=>'a','ẳ'=>'a','ẵ'=>'a','ặ'=>'a',
+            'â'=>'a','ầ'=>'a','ấ'=>'a','ẩ'=>'a','ẫ'=>'a','ậ'=>'a',
+            'đ'=>'d',
+            'è'=>'e','é'=>'e','ẻ'=>'e','ẽ'=>'e','ẹ'=>'e',
+            'ê'=>'e','ề'=>'e','ế'=>'e','ể'=>'e','ễ'=>'e','ệ'=>'e',
+            'ì'=>'i','í'=>'i','ỉ'=>'i','ĩ'=>'i','ị'=>'i',
+            'ò'=>'o','ó'=>'o','ỏ'=>'o','õ'=>'o','ọ'=>'o',
+            'ô'=>'o','ồ'=>'o','ố'=>'o','ổ'=>'o','ỗ'=>'o','ộ'=>'o',
+            'ơ'=>'o','ờ'=>'o','ớ'=>'o','ở'=>'o','ỡ'=>'o','ợ'=>'o',
+            'ù'=>'u','ú'=>'u','ủ'=>'u','ũ'=>'u','ụ'=>'u',
+            'ư'=>'u','ừ'=>'u','ứ'=>'u','ử'=>'u','ữ'=>'u','ự'=>'u',
+            'ỳ'=>'y','ý'=>'y','ỷ'=>'y','ỹ'=>'y','ỵ'=>'y'
+        ];
+        $clean = mb_strtolower(trim($fullName));
+        $clean = strtr($clean, $translit);
+        $clean = preg_replace('/[^a-z\s]/', '', $clean);
+        $words = array_values(array_filter(explode(' ', $clean)));
+        if (empty($words)) return 'staff.' . uniqid() . '@daison.vn';
+        $lastName = end($words);
+        $initials = '';
+        for ($i = 0; $i < count($words) - 1; $i++) {
+            $initials .= substr($words[$i], 0, 1);
+        }
+        return $lastName . ($initials ? '.' . $initials : '') . '@daison.vn';
+    };
+
+    $roles = \App\Models\Role::all()->keyBy('slug');
+    $brandHoaLinh = \App\Models\Brand::where('code', 'BR_HOALINH')->first();
+
+    $imported = 0;
+    foreach ($rawStaff as $s) {
+        $pos = mb_strtolower($s['position']);
+        $isBrand = str_contains($pos, 'hoa linh') || str_contains($pos, 'hãng');
+        $staffType = $isBrand ? 'brand' : 'company';
+
+        $department = 'Sales';
+        $roleSlug = 'Sales_Rep';
+        $assignedRoleSlugs = ['Sales_Rep'];
+
+        if (str_contains($pos, 'giám đốc')) {
+            $department = 'Executive';
+            $assignedRoleSlugs = ['Manager'];
+        } elseif (str_contains($pos, 'kế toán')) {
+            $department = 'Accounting';
+            $assignedRoleSlugs = ['Sales_Accountant', 'Finance_Accountant'];
+        } elseif (str_contains($pos, 'thủ quỹ')) {
+            $department = 'Accounting';
+            $assignedRoleSlugs = ['Finance_Accountant'];
+        } elseif (str_contains($pos, 'thủ kho') || str_contains($pos, 'kho')) {
+            $department = 'Warehouse';
+            $assignedRoleSlugs = ['Warehouse_Manager'];
+        } elseif (str_contains($pos, 'giao hàng') || str_contains($pos, 'lái xe')) {
+            $department = 'Logistics';
+            $assignedRoleSlugs = ['Driver'];
+        }
+
+        $code = sprintf('NV-%03d', $s['stt']);
+        if ($isBrand) {
+            $code = sprintf('NV-HL%02d', $s['stt'] - 8);
+        }
+
+        $email = $makeEmail($s['name']);
+        // Tránh trùng email
+        $existing = \App\Models\User::where('email', $email)->where('code', '!=', $code)->first();
+        if ($existing) {
+            $email = str_replace('@daison.vn', $s['stt'] . '@daison.vn', $email);
+        }
+
+        $user = \App\Models\User::updateOrCreate(
+            ['code' => $code],
+            [
+                'name' => $s['name'],
+                'email' => $email,
+                'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+                'department' => $department,
+                'staff_type' => $staffType,
+                'status' => 'Đang làm việc',
+                'dob' => $parseDate($s['dob']),
+                'citizen_id' => $s['cccd'] ?: null,
+                'bank_account' => $s['stk'] ?: null,
+                'bank_name' => $s['bank'] ?: null,
+                'address' => $s['address'] ?: null,
+                'branch' => 'Công ty chính (Nghệ An)',
+                'credit_limit' => 50000000.00,
+                'current_debt' => 0.00,
+                'annual_leave_days' => 12,
+                'remaining_leave_days' => 12.0,
+            ]
+        );
+
+        // Gán Roles
+        $roleIds = [];
+        foreach ($assignedRoleSlugs as $slug) {
+            if (isset($roles[$slug])) {
+                $roleIds[] = $roles[$slug]->id;
+            }
+        }
+        $user->roles()->sync($roleIds);
+
+        // Gán permissions chi tiết từ roles
+        \Illuminate\Support\Facades\DB::table('user_role_permissions')->where('user_id', $user->id)->delete();
+        $perms = \Illuminate\Support\Facades\DB::table('role_permissions')
+            ->whereIn('role_id', $roleIds)
+            ->get();
+        $userRolePermData = [];
+        foreach ($perms as $p) {
+            $userRolePermData[] = [
+                'user_id' => $user->id,
+                'role_id' => $p->role_id,
+                'permission_id' => $p->permission_id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+        if (!empty($userRolePermData)) {
+            \Illuminate\Support\Facades\DB::table('user_role_permissions')->insert($userRolePermData);
+        }
+
+        $roleNames = implode(', ', $assignedRoleSlugs);
+        $typeLabel = $isBrand ? '🏪 Hãng (Hoa Linh)' : '🏢 Công ty';
+        $this->line(" • [{$code}] {$s['name']} | {$typeLabel} | CV: {$s['position']} | Đăng nhập: {$email} (pass: password123)");
+        $imported++;
+    }
+
+    $this->info("🎉 Hoàn tất! Đã nhập thành công {$imported} nhân viên vào hệ thống.");
+    return 0;
+})->purpose('Nhập danh sách cán bộ nhân viên từ file Danh sách NV Đại Sơn.xlsx');
+
+
 
 
