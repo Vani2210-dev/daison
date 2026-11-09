@@ -57,6 +57,9 @@ Route::prefix('api')->group(function () {
     Route::get('/orders/pending-debts-and-borrows', [OrderController::class, 'getPendingDebtsAndBorrows'])->middleware('permission:orders.view,orders.create,orders.edit');
     Route::post('/orders/mark-merged', [OrderController::class, 'markOrdersMerged'])->middleware('permission:orders.edit,orders.create');
     Route::get('/orders/{id}/print-data', [OrderController::class, 'getOrderPrintData'])->middleware('permission:orders.view');
+    Route::get('/api/orders/{id}/print-data', [OrderController::class, 'getOrderPrintData'])->middleware('permission:orders.view');
+    Route::post('/orders/bulk-print-data', [OrderController::class, 'getBulkOrderPrintData'])->middleware('permission:orders.view');
+    Route::post('/api/orders/bulk-print-data', [OrderController::class, 'getBulkOrderPrintData'])->middleware('permission:orders.view');
     // Credit overrun approval workflow (láº­p Ä‘Æ¡n vÆ°á»£t háº¡n má»©c)
     Route::get('/dealers/{id}/credit-info', [OrderController::class, 'getDealerCreditInfo'])->middleware('permission:orders.view,dealers.view');
     Route::post('/orders/{id}/approve-credit-overrun', [OrderController::class, 'approveCreditOverrunAtCreation'])->middleware('permission:orders.approve,orders.edit,debt.approve');

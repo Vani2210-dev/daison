@@ -1927,17 +1927,56 @@ class OrderController extends Controller
     }
 
     /**
-     * API: Get detailed order data for Invoice Preview & Printing modal
+     * Helper: Build price tier resolver function
      */
-    public function getOrderPrintData($id)
+    private function buildTierCodeResolver()
     {
-        $order = Order::with(['items.product.category', 'dealer', 'creator', 'assignedDriver', 'warehouseStaff', 'salesRep'])
-            ->where('id', $id)
-            ->orWhere('order_code', $id)
-            ->first();
+        $priceTiers = \App\Models\PriceTier::where('status', 'Hoạt động')->orWhereNull('status')->get();
+        $tierCodeMap = [];
+        $tierFuzzyList = [];
+        foreach ($priceTiers as $pt) {
+            if (empty($pt->code)) continue;
+            $nameLower = mb_strtolower(trim($pt->name));
+            $codeLower = mb_strtolower(trim($pt->code));
+            $tierCodeMap[$nameLower] = $pt->code;
+            $tierCodeMap[$codeLower] = $pt->code;
+            $tierFuzzyList[] = ['name' => $nameLower, 'code' => $pt->code];
+        }
 
-        if (!$order) {
-            return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng!'], 404);
+        return function(string $rawInput) use ($tierCodeMap, $tierFuzzyList): string {
+            $clean = $rawInput;
+            if (preg_match('/\(([^)]+)\)/', $rawInput, $m)) {
+                $clean = trim($m[1]);
+            }
+            $sLower = mb_strtolower(trim($clean));
+            if (empty($sLower)) return '';
+
+            if (isset($tierCodeMap[$sLower])) return $tierCodeMap[$sLower];
+
+            foreach ($tierFuzzyList as $entry) {
+                if (str_contains($entry['name'], $sLower) || str_contains($sLower, $entry['name'])) {
+                    return $entry['code'];
+                }
+            }
+
+            if (str_contains($sLower, 'nguyên giá') || str_contains($sLower, 'nguyen gia') || $sLower === 'ng') return 'NG';
+            if (str_contains($sLower, 'bán lẻ') || str_contains($sLower, 'ban le') || $sLower === 'bl') return 'BL';
+            if (str_contains($sLower, 'khuyến mại') || str_contains($sLower, 'tặng') || $sLower === 'km') return 'KM';
+            if (str_contains($sLower, 'cấp 1') || str_contains($sLower, 'cap 1') || $sLower === 'bc1') return 'BC1';
+            if (str_contains($sLower, 'cấp 2') || str_contains($sLower, 'cap 2') || $sLower === 'bc2') return 'BC2';
+            if (str_contains($sLower, 'cấp 3') || str_contains($sLower, 'cap 3') || $sLower === 'bc3') return 'BC3';
+
+            return mb_strtoupper($clean);
+        };
+    }
+
+    /**
+     * Helper: Format single order print payload
+     */
+    private function formatSingleOrderPrintData($order, $resolveTierCode = null)
+    {
+        if (!$resolveTierCode) {
+            $resolveTierCode = $this->buildTierCodeResolver();
         }
 
         $dealer = $order->dealer;
@@ -1949,55 +1988,6 @@ class OrderController extends Controller
         $subtotal = 0;
         $totalDiscount = 0;
         $totalItemsAmount = 0;
-
-        $priceTiers = \App\Models\PriceTier::where('status', 'Hoạt động')->orWhereNull('status')->get();
-        // Map: lowercase(name) → code và lowercase(code) → code (exact match)
-        $tierCodeMap = [];
-        // Mảng để fuzzy match: [[keywords_from_name, code], ...]
-        $tierFuzzyList = [];
-        foreach ($priceTiers as $pt) {
-            if (empty($pt->code)) continue;
-            $nameLower = mb_strtolower(trim($pt->name));
-            $codeLower = mb_strtolower(trim($pt->code));
-            $tierCodeMap[$nameLower] = $pt->code;
-            $tierCodeMap[$codeLower] = $pt->code;
-            // Tách từ khóa từ tên để fuzzy match (bỏ stopword)
-            $tierFuzzyList[] = ['name' => $nameLower, 'code' => $pt->code];
-        }
-
-        /**
-         * Hàm nội bộ: tìm code của tier từ chuỗi input
-         */
-        $resolveTierCode = function(string $rawInput) use ($tierCodeMap, $tierFuzzyList): string {
-            $clean = $rawInput;
-            // Trích xuất nội dung trong ngoặc đơn nếu có: "Theo phiếu (Nguyên Giá)" → "Nguyên Giá"
-            if (preg_match('/\(([^)]+)\)/', $rawInput, $m)) {
-                $clean = trim($m[1]);
-            }
-            $sLower = mb_strtolower(trim($clean));
-            if (empty($sLower)) return '';
-
-            // 1. Exact match từ DB
-            if (isset($tierCodeMap[$sLower])) return $tierCodeMap[$sLower];
-
-            // 2. Fuzzy: kiểm tra xem $sLower có chứa trong name của tier DB không (hoặc ngược lại)
-            foreach ($tierFuzzyList as $entry) {
-                if (str_contains($entry['name'], $sLower) || str_contains($sLower, $entry['name'])) {
-                    return $entry['code'];
-                }
-            }
-
-            // 3. Hardcode fallback nếu DB không có cấu hình phù hợp
-            if (str_contains($sLower, 'nguyên giá') || str_contains($sLower, 'nguyen gia') || $sLower === 'ng') return 'NG';
-            if (str_contains($sLower, 'bán lẻ') || str_contains($sLower, 'ban le') || $sLower === 'bl') return 'BL';
-            if (str_contains($sLower, 'khuyến mại') || str_contains($sLower, 'tặng') || $sLower === 'km') return 'KM';
-            if (str_contains($sLower, 'cấp 1') || str_contains($sLower, 'cap 1') || $sLower === 'bc1') return 'BC1';
-            if (str_contains($sLower, 'cấp 2') || str_contains($sLower, 'cap 2') || $sLower === 'bc2') return 'BC2';
-            if (str_contains($sLower, 'cấp 3') || str_contains($sLower, 'cap 3') || $sLower === 'bc3') return 'BC3';
-
-            // 4. Trả về chính code viết hoa nếu không tìm được
-            return mb_strtoupper($clean);
-        };
 
         $items = [];
         $idx = 1;
@@ -2017,7 +2007,6 @@ class OrderController extends Controller
             $totalDiscount    += $itemDiscount;
             $totalItemsAmount += $itemActualAmount;
 
-            // Xác định tier thực tế: item override > dealer tier > fallback
             $rawTierInput = ($it->applied_tier_policy === 'Theo phiếu' || empty($it->applied_tier_policy))
                 ? ($dealer?->tier ?: 'Nguyên Giá')
                 : $it->applied_tier_policy;
@@ -2059,37 +2048,201 @@ class OrderController extends Controller
             ->first();
         $updaterName = $latestAudit?->performer_name ?: ($order->order_creator ?: ($order->creator?->name ?: ''));
 
+        return [
+            'id'                    => $order->id,
+            'dealer_tier'           => $dealer?->tier ?: 'Nguyên Giá',
+            'order_code'            => $order->order_code,
+            'created_date'          => $order->created_at ? $order->created_at->format('d/m/Y H:i') : date('d/m/Y H:i'),
+            'customer_code'         => $customerCode,
+            'customer_name'         => $customerName,
+            'customer_display'      => $customerName ?: $customerCode,
+            'customer_phone'        => $customerPhone,
+            'customer_address'      => $customerAddress,
+            'warehouse'             => $order->warehouse ?: '',
+            'notes'                 => $order->notes ?: '',
+            'status'                => $order->status,
+            'stamp_status'          => '',
+            'payment_method'        => $order->payment_method ?: '',
+            'payment_status'        => $order->payment_status ?: '',
+            'delivery_status'       => $order->status ?: '',
+            'delivery_driver'       => $order->assignedDriver?->name ?: '',
+            'delivery_vehicle'      => $order->assigned_vehicle_plate ?: '',
+            'delivery_date'         => $order->delivery_date ? \Carbon\Carbon::parse($order->delivery_date)->format('d/m/Y') : '',
+            'creator_name'          => $orderCreatorName,
+            'updater_name'          => $updaterName,
+            'subtotal'              => (float)($order->subtotal > 0 ? $order->subtotal : ($subtotal > 0 ? $subtotal : $totalItemsAmount)),
+            'total_discount'        => (float)($totalDiscount > 0 ? $totalDiscount : 0),
+            'total_items_amount'    => (float)($totalItemsAmount > 0 ? $totalItemsAmount : $order->subtotal),
+            'extra_discount'        => $extraDiscount,
+            'final_total'           => (float)($order->total_amount > 0 ? $order->total_amount : $finalTotal),
+            'final_total_words'     => self::convertNumberToVietnameseWords((float)($order->total_amount > 0 ? $order->total_amount : $finalTotal)),
+            'items'                 => $items,
+        ];
+    }
+
+    /**
+     * API: Get detailed order data for Invoice Preview & Printing modal
+     */
+    public function getOrderPrintData($id)
+    {
+        $order = Order::with(['items.product.category', 'dealer', 'creator', 'assignedDriver', 'warehouseStaff', 'salesRep'])
+            ->where('id', $id)
+            ->orWhere('order_code', $id)
+            ->first();
+
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng!'], 404);
+        }
+
+        $formatted = $this->formatSingleOrderPrintData($order);
+
         return response()->json([
             'success' => true,
-            'order' => [
-                'id'                    => $order->id,
-                'dealer_tier'           => $dealer?->tier ?: 'Nguyên Giá',
-                'order_code'            => $order->order_code,
-                'created_date'          => $order->created_at ? $order->created_at->format('d/m/Y H:i') : date('d/m/Y H:i'),
-                'customer_code'         => $customerCode,
-                'customer_name'         => $customerName,
-                'customer_display'      => $customerName ?: $customerCode,
-                'customer_phone'        => $customerPhone,
-                'customer_address'      => $customerAddress,
-                'warehouse'             => $order->warehouse ?: '',
-                'notes'                 => $order->notes ?: '',
-                'status'                => $order->status,
-                'stamp_status'          => '',
-                'payment_method'        => $order->payment_method ?: '',
-                'payment_status'        => $order->payment_status ?: '',
-                'delivery_status'       => $order->status ?: '',
-                'delivery_driver'       => $order->assignedDriver?->name ?: '',
-                'delivery_vehicle'      => $order->assigned_vehicle_plate ?: '',
-                'delivery_date'         => $order->delivery_date ? \Carbon\Carbon::parse($order->delivery_date)->format('d/m/Y') : '',
-                'creator_name'          => $orderCreatorName,
-                'updater_name'          => $updaterName,
-                'subtotal'              => (float)($order->subtotal > 0 ? $order->subtotal : ($subtotal > 0 ? $subtotal : $totalItemsAmount)),
-                'total_discount'        => (float)($totalDiscount > 0 ? $totalDiscount : 0),
-                'total_items_amount'    => (float)($totalItemsAmount > 0 ? $totalItemsAmount : $order->subtotal),
-                'extra_discount'        => $extraDiscount,
-                'final_total'           => (float)($order->total_amount > 0 ? $order->total_amount : $finalTotal),
-                'final_total_words'     => self::convertNumberToVietnameseWords((float)($order->total_amount > 0 ? $order->total_amount : $finalTotal)),
-                'items'                 => $items,
+            'order'   => $formatted,
+        ]);
+    }
+
+    /**
+     * API: Get bulk orders print data and consolidated product summary
+     */
+    public function getBulkOrderPrintData(Request $request)
+    {
+        $orderIds = $request->input('order_ids', []);
+        if (is_string($orderIds)) {
+            $orderIds = array_filter(array_map('trim', explode(',', $orderIds)));
+        }
+
+        if (empty($orderIds)) {
+            return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 đơn hàng!'], 400);
+        }
+
+        $orders = Order::with(['items.product.category', 'dealer', 'creator', 'assignedDriver', 'warehouseStaff', 'salesRep'])
+            ->whereIn('id', $orderIds)
+            ->orWhereIn('order_code', $orderIds)
+            ->get();
+
+        if ($orders->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy các đơn hàng đã chọn!'], 404);
+        }
+
+        $resolver = $this->buildTierCodeResolver();
+
+        $formattedOrders = [];
+        $orderListSummary = [];
+        $consolidatedProducts = [];
+        $totalQuantityAll = 0;
+        $totalSoldQtyAll = 0;
+        $totalGiftQtyAll = 0;
+        $totalAmountAll = 0;
+        $warehouses = [];
+
+        foreach ($orders as $order) {
+            $formatted = $this->formatSingleOrderPrintData($order, $resolver);
+            $formattedOrders[] = $formatted;
+
+            if (!empty($formatted['warehouse'])) {
+                $warehouses[$formatted['warehouse']] = true;
+            }
+
+            $orderListSummary[] = [
+                'id' => $formatted['id'],
+                'order_code' => $formatted['order_code'],
+                'created_date' => $formatted['created_date'],
+                'customer_code' => $formatted['customer_code'],
+                'customer_name' => $formatted['customer_name'],
+                'customer_phone' => $formatted['customer_phone'],
+                'customer_address' => $formatted['customer_address'],
+                'warehouse' => $formatted['warehouse'],
+                'items_count' => count($formatted['items']),
+                'total_quantity' => (float)array_sum(array_column($formatted['items'], 'quantity')),
+                'final_total' => (float)$formatted['final_total'],
+                'notes' => $formatted['notes'],
+                'driver' => $formatted['delivery_driver'],
+                'vehicle' => $formatted['delivery_vehicle'],
+            ];
+
+            $totalAmountAll += (float)$formatted['final_total'];
+
+            // Consolidate products across orders
+            foreach ($formatted['items'] as $item) {
+                $groupKey = !empty($item['sku']) ? $item['sku'] : $item['name'];
+                
+                $soldQty = (float)($item['sold_quantity'] ?? $item['quantity'] ?? 0);
+                $giftQty = (float)($item['gift_quantity'] ?? 0);
+                $totalQty = (float)($item['quantity'] ?? ($soldQty + $giftQty));
+                $amount = (float)($item['total'] ?? $item['amount'] ?? 0);
+
+                $totalQuantityAll += $totalQty;
+                $totalSoldQtyAll += $soldQty;
+                $totalGiftQtyAll += $giftQty;
+
+                if (!isset($consolidatedProducts[$groupKey])) {
+                    $consolidatedProducts[$groupKey] = [
+                        'sku' => $item['sku'] ?? '',
+                        'name' => $item['name'],
+                        'tax_name' => $item['tax_name'] ?? $item['name'],
+                        'unit' => $item['unit'] ?? 'Cây',
+                        'unit_price' => (float)($item['unit_price'] ?? 0),
+                        'sold_quantity' => 0,
+                        'gift_quantity' => 0,
+                        'total_quantity' => 0,
+                        'total_amount' => 0,
+                        'order_details' => [],
+                    ];
+                }
+
+                $consolidatedProducts[$groupKey]['sold_quantity'] += $soldQty;
+                $consolidatedProducts[$groupKey]['gift_quantity'] += $giftQty;
+                $consolidatedProducts[$groupKey]['total_quantity'] += $totalQty;
+                $consolidatedProducts[$groupKey]['total_amount'] += $amount;
+                $consolidatedProducts[$groupKey]['order_details'][] = [
+                    'order_code' => $formatted['order_code'],
+                    'customer_name' => $formatted['customer_name'],
+                    'sold_qty' => $soldQty,
+                    'gift_qty' => $giftQty,
+                    'total_qty' => $totalQty,
+                ];
+            }
+        }
+
+        // Sort products by name
+        uasort($consolidatedProducts, function($a, $b) {
+            return strcmp($a['name'], $b['name']);
+        });
+
+        $consolidatedList = [];
+        $idx = 1;
+        foreach ($consolidatedProducts as $cp) {
+            $cp['tt'] = $idx++;
+            $allocations = [];
+            foreach ($cp['order_details'] as $od) {
+                $allocations[] = $od['order_code'] . ' (' . (float)$od['total_qty'] . ')';
+            }
+            $cp['allocation_text'] = implode(', ', $allocations);
+            $consolidatedList[] = $cp;
+        }
+
+        $orderCodes = array_column($orderListSummary, 'order_code');
+
+        return response()->json([
+            'success' => true,
+            'orders' => $formattedOrders,
+            'consolidated' => [
+                'batch_code' => 'PG-' . date('ymd-His'),
+                'created_date' => date('d/m/Y H:i'),
+                'total_orders' => count($orders),
+                'order_codes' => $orderCodes,
+                'order_codes_display' => implode(', ', $orderCodes),
+                'warehouses' => array_keys($warehouses),
+                'warehouse_display' => count($warehouses) === 1 ? array_keys($warehouses)[0] : (count($warehouses) > 1 ? implode(', ', array_keys($warehouses)) : 'Toàn bộ kho'),
+                'total_products_count' => count($consolidatedList),
+                'total_quantity' => $totalQuantityAll,
+                'total_sold_quantity' => $totalSoldQtyAll,
+                'total_gift_quantity' => $totalGiftQtyAll,
+                'total_amount' => $totalAmountAll,
+                'total_amount_words' => self::convertNumberToVietnameseWords($totalAmountAll),
+                'order_list' => $orderListSummary,
+                'products' => $consolidatedList,
             ]
         ]);
     }

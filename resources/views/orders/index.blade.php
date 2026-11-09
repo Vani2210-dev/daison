@@ -782,13 +782,19 @@
                 <span>Đang xử lý...</span>
             </div>
 
-            <!-- 1. In phiếu đã chọn -->
-            <button type="button" @click="printSelected()" :disabled="isBulkProcessing" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-900 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50">
-                <i class="fa-solid fa-print text-sky-600"></i>
-                <span>In phiếu (<span x-text="selectedIds.length"></span>)</span>
+            <!-- 1. In phiếu gộp (Tổng hợp SP) -->
+            <button type="button" @click="openBulkPrintModal('consolidated')" :disabled="isBulkProcessing" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50" title="In phiếu gộp tổng hợp toàn bộ sản phẩm của các đơn đã chọn">
+                <i class="fa-solid fa-layer-group text-white"></i>
+                <span>In phiếu gộp (<span x-text="selectedIds.length"></span>)</span>
             </button>
 
-            <!-- 2. Bảng kê xuất hàng (Excel) -->
+            <!-- 2. In phiếu hàng loạt (Từng đơn riêng) -->
+            <button type="button" @click="openBulkPrintModal('batch')" :disabled="isBulkProcessing" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-900 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50" title="In hàng loạt từng đơn hàng riêng biệt">
+                <i class="fa-solid fa-print text-sky-600"></i>
+                <span>In hàng loạt</span>
+            </button>
+
+            <!-- 3. Bảng kê xuất hàng (Excel) -->
             <button type="button" @click="exportSelectedManifest()" :disabled="isBulkProcessing" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50">
                 <i class="fa-solid fa-file-excel"></i>
                 <span>Bảng kê Excel</span>
@@ -1557,6 +1563,350 @@
         </div>
     </div>
 
+    <!-- ============================================================== -->
+    <!-- MODAL: IN PHIẾU GỘP & IN HÀNG LOẠT (TỔNG HỢP SẢN PHẨM) -->
+    <!-- ============================================================== -->
+    <div x-show="showBulkPrintModal" x-cloak class="fixed inset-0 z-[10001] flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+        <div @click.outside="showBulkPrintModal = false" class="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-6xl my-auto overflow-hidden text-[12px] sm:text-[13px] text-slate-800 leading-normal font-sans">
+            
+            <!-- Modal Header: Deep Navy / Slate -->
+            <div class="bg-slate-900 px-4 py-3 text-white flex flex-wrap items-center justify-between gap-3 select-none border-b border-slate-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-sky-500 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm sm:text-base tracking-wide flex items-center gap-2">
+                            <span>In phiếu đơn hàng đã chọn</span>
+                            <span class="px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 text-xs font-semibold border border-sky-400/30">
+                                <span x-text="selectedIds.length"></span> đơn hàng
+                            </span>
+                        </h3>
+                        <p class="text-[11px] text-slate-400">Chọn in phiếu gộp tổng hợp sản phẩm hoặc in hàng loạt từng đơn</p>
+                    </div>
+                </div>
+
+                <!-- Tabs Center / Switcher -->
+                <div class="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700 text-xs font-bold">
+                    <button type="button" @click="bulkPrintTab = 'consolidated'" 
+                            :class="bulkPrintTab === 'consolidated' ? 'bg-sky-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'"
+                            class="px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-layer-group text-xs"></i>
+                        <span>1. Phiếu gộp (Tổng hợp SP)</span>
+                    </button>
+                    <button type="button" @click="bulkPrintTab = 'batch'" 
+                            :class="bulkPrintTab === 'batch' ? 'bg-sky-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'"
+                            class="px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-print text-xs"></i>
+                        <span>2. In hàng loạt (Từng đơn)</span>
+                    </button>
+                </div>
+
+                <!-- Close Button -->
+                <button type="button" @click="showBulkPrintModal = false" class="text-white/70 hover:text-white cursor-pointer text-xl font-bold leading-none p-1">
+                    ✕
+                </button>
+            </div>
+
+            <!-- Loading State -->
+            <div x-show="bulkPrintLoading" class="py-20 text-center text-slate-500 space-y-3">
+                <i class="fa-solid fa-circle-notch fa-spin text-3xl text-sky-600"></i>
+                <div class="font-semibold text-xs sm:text-sm text-slate-700">Đang tổng hợp dữ liệu sản phẩm từ các đơn hàng đã chọn...</div>
+                <div class="text-[11px] text-slate-400">Hệ thống đang đối soát SKU, giá bán và phân bổ đơn hàng</div>
+            </div>
+
+            <!-- Content Area -->
+            <div x-show="!bulkPrintLoading && bulkPrintData" class="p-3 sm:p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+                
+                <!-- ================= TAB 1: PHIẾU GỘP (TỔNG HỢP SẢN PHẨM) ================= -->
+                <div x-show="bulkPrintTab === 'consolidated'" class="space-y-4">
+                    
+                    <!-- KPI Cards Summary -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="bg-sky-50 border border-sky-200 rounded-xl p-3">
+                            <div class="text-[11px] text-sky-700 font-semibold uppercase tracking-wider">Số đơn gộp</div>
+                            <div class="text-xl sm:text-2xl font-black text-sky-900 mt-1">
+                                <span x-text="bulkPrintData?.consolidated?.total_orders"></span> <span class="text-xs font-normal text-sky-600">đơn</span>
+                            </div>
+                        </div>
+                        <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3">
+                            <div class="text-[11px] text-indigo-700 font-semibold uppercase tracking-wider">Mặt hàng cần xuất</div>
+                            <div class="text-xl sm:text-2xl font-black text-indigo-900 mt-1">
+                                <span x-text="bulkPrintData?.consolidated?.total_products_count"></span> <span class="text-xs font-normal text-indigo-600">loại SP</span>
+                            </div>
+                        </div>
+                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                            <div class="text-[11px] text-amber-700 font-semibold uppercase tracking-wider">Tổng số lượng xuất</div>
+                            <div class="text-xl sm:text-2xl font-black text-amber-900 mt-1">
+                                <span x-text="formatNumber(bulkPrintData?.consolidated?.total_quantity)"></span> <span class="text-xs font-normal text-amber-600">sp</span>
+                            </div>
+                        </div>
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                            <div class="text-[11px] text-emerald-700 font-semibold uppercase tracking-wider">Tổng tiền hàng</div>
+                            <div class="text-xl sm:text-2xl font-black text-emerald-900 mt-1">
+                                <span x-text="formatNumber(bulkPrintData?.consolidated?.total_amount)"></span> <span class="text-xs font-normal text-emerald-600">đ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Meta Information Box -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 space-y-1.5">
+                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-y-1.5 gap-x-4">
+                            <div class="sm:col-span-3">
+                                <span class="font-bold text-slate-900">Mã phiếu gộp:</span>
+                                <span class="font-mono font-bold text-sky-700" x-text="bulkPrintData?.consolidated?.batch_code"></span>
+                            </div>
+                            <div class="sm:col-span-3">
+                                <span class="font-bold text-slate-900">Kho xuất:</span>
+                                <span class="uppercase font-semibold text-slate-800" x-text="bulkPrintData?.consolidated?.warehouse_display"></span>
+                            </div>
+                            <div class="sm:col-span-6">
+                                <span class="font-bold text-slate-900">Ngày lập:</span>
+                                <span x-text="bulkPrintData?.consolidated?.created_date"></span>
+                            </div>
+                            <div class="sm:col-span-12">
+                                <span class="font-bold text-slate-900">Danh sách đơn gộp:</span>
+                                <span class="font-mono text-slate-700 font-semibold" x-text="bulkPrintData?.consolidated?.order_codes_display"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Consolidated Products Table Header -->
+                    <div class="flex items-center justify-between">
+                        <div class="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-sky-600"></span>
+                            <span>Bảng tổng hợp toàn bộ sản phẩm cần xuất</span>
+                        </div>
+                        <span class="text-xs text-slate-500 italic">* Đã gộp các sản phẩm trùng lặp và tính tổng số lượng</span>
+                    </div>
+
+                    <!-- Table of Consolidated Products -->
+                    <div class="overflow-x-auto border border-slate-300 rounded-lg">
+                        <table class="w-full border-collapse text-[11px] sm:text-xs">
+                            <thead>
+                                <tr class="bg-slate-100 font-bold text-slate-800 text-center border-b border-slate-300">
+                                    <th class="border border-slate-300 py-2 px-2 w-10 text-center">TT</th>
+                                    <th class="border border-slate-300 py-2 px-2 w-24 text-left">Mã SP</th>
+                                    <th class="border border-slate-300 py-2 px-2 text-left">Tên sản phẩm / Phân bổ đơn hàng</th>
+                                    <th class="border border-slate-300 py-2 px-2 w-16 text-center">ĐVT</th>
+                                    <th class="border border-slate-300 py-2 px-2 w-16 text-right">SL Bán</th>
+                                    <th class="border border-slate-300 py-2 px-2 w-16 text-right">SL Tặng</th>
+                                    <th class="border border-slate-300 py-2 px-2 w-20 text-right bg-amber-50/70 text-amber-900 font-black">Tổng Xuất</th>
+                                    <th class="border border-slate-300 py-2 px-2 w-24 text-right">Đơn giá</th>
+                                    <th class="border border-slate-300 py-2 px-2 w-28 text-right">Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="(p, idx) in (bulkPrintData?.consolidated?.products || [])" :key="p.sku || p.name || idx">
+                                    <tr class="bg-white hover:bg-slate-50 transition-colors border-b border-slate-300 text-slate-800">
+                                        <td class="border border-slate-300 py-1.5 px-2 text-center font-medium" x-text="p.tt || (idx + 1)"></td>
+                                        <td class="border border-slate-300 py-1.5 px-2 text-left font-mono text-slate-700 font-semibold" x-text="p.sku || ''"></td>
+                                        <td class="border border-slate-300 py-1.5 px-2 text-left">
+                                            <div class="font-bold text-slate-900" x-text="p.name"></div>
+                                            <div class="text-[11px] text-sky-700 font-medium" x-text="p.tax_name" x-show="p.tax_name && p.tax_name !== p.name"></div>
+                                            <div class="text-[11px] text-blue-700 font-normal mt-0.5" x-show="p.allocation_text">
+                                                <i class="fa-solid fa-arrow-turn-down-right text-[9px] mr-1"></i>
+                                                <span class="italic font-mono" x-text="'Đơn: ' + p.allocation_text"></span>
+                                            </div>
+                                        </td>
+                                        <td class="border border-slate-300 py-1.5 px-2 text-center" x-text="p.unit"></td>
+                                        <td class="border border-slate-300 py-1.5 px-2 text-right" x-text="formatNumber(p.sold_quantity)"></td>
+                                        <td class="border border-slate-300 py-1.5 px-2 text-right text-emerald-700 font-semibold" x-text="formatNumber(p.gift_quantity)"></td>
+                                        <td class="border border-slate-300 py-1.5 px-2 text-right font-black text-amber-900 bg-amber-50/50 text-xs sm:text-[13px]" x-text="formatNumber(p.total_quantity)"></td>
+                                        <td class="border border-slate-300 py-1.5 px-2 text-right" x-text="formatNumber(p.unit_price)"></td>
+                                        <td class="border border-slate-300 py-1.5 px-2 text-right font-bold text-slate-900" x-text="formatNumber(p.total_amount)"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                            <tfoot class="bg-slate-50 font-bold text-slate-900 border-t-2 border-slate-400">
+                                <tr>
+                                    <td colspan="4" class="border border-slate-300 py-2 px-2 text-right font-bold uppercase">Tổng cộng:</td>
+                                    <td class="border border-slate-300 py-2 px-2 text-right font-bold" x-text="formatNumber(bulkPrintData?.consolidated?.total_sold_quantity)"></td>
+                                    <td class="border border-slate-300 py-2 px-2 text-right font-bold text-emerald-700" x-text="formatNumber(bulkPrintData?.consolidated?.total_gift_quantity)"></td>
+                                    <td class="border border-slate-300 py-2 px-2 text-right font-black text-amber-900 bg-amber-100 text-sm" x-text="formatNumber(bulkPrintData?.consolidated?.total_quantity)"></td>
+                                    <td class="border border-slate-300 py-2 px-2"></td>
+                                    <td class="border border-slate-300 py-2 px-2 text-right font-black text-slate-900 text-sm" x-text="formatNumber(bulkPrintData?.consolidated?.total_amount)"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- Under table: Words -->
+                    <div class="text-xs text-slate-700">
+                        <span class="font-bold text-slate-900">Tổng tiền bằng chữ:</span>
+                        <em class="font-bold text-slate-900 uppercase ml-1" x-text="bulkPrintData?.consolidated?.total_amount_words"></em>
+                    </div>
+
+                    <!-- Collapsible Merged Orders List -->
+                    <div x-data="{ showOrderList: false }" class="border border-slate-200 rounded-xl overflow-hidden">
+                        <button type="button" @click="showOrderList = !showOrderList" class="w-full bg-slate-100 hover:bg-slate-200/80 px-4 py-2.5 flex items-center justify-between text-xs font-bold text-slate-800 transition-colors cursor-pointer">
+                            <span class="flex items-center gap-2">
+                                <i class="fa-solid fa-list-check text-sky-600"></i>
+                                <span>Xem danh sách <span x-text="bulkPrintData?.consolidated?.total_orders"></span> đơn hàng được gộp trong phiếu</span>
+                            </span>
+                            <i class="fa-solid fa-chevron-down text-slate-500 transition-transform duration-150" :class="showOrderList ? 'rotate-180' : ''"></i>
+                        </button>
+                        <div x-show="showOrderList" x-cloak class="p-3 border-t border-slate-200 bg-white overflow-x-auto">
+                            <table class="w-full border-collapse text-[11px]">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-700 border-b border-slate-200 font-bold text-center">
+                                        <th class="py-1.5 px-2 border border-slate-200 w-8">TT</th>
+                                        <th class="py-1.5 px-2 border border-slate-200 text-left w-24">Mã đơn</th>
+                                        <th class="py-1.5 px-2 border border-slate-200 text-left">Khách hàng</th>
+                                        <th class="py-1.5 px-2 border border-slate-200 text-left w-24">Điện thoại</th>
+                                        <th class="py-1.5 px-2 border border-slate-200 text-left">Địa chỉ giao hàng</th>
+                                        <th class="py-1.5 px-2 border border-slate-200 text-center w-20">Kho</th>
+                                        <th class="py-1.5 px-2 border border-slate-200 text-right w-16">SL SP</th>
+                                        <th class="py-1.5 px-2 border border-slate-200 text-right w-24">Thành tiền</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="(o, idx) in (bulkPrintData?.consolidated?.order_list || [])" :key="o.id || idx">
+                                        <tr class="hover:bg-slate-50 border-b border-slate-200">
+                                            <td class="py-1 px-2 border border-slate-200 text-center" x-text="idx + 1"></td>
+                                            <td class="py-1 px-2 border border-slate-200 font-mono font-bold text-sky-700" x-text="o.order_code"></td>
+                                            <td class="py-1 px-2 border border-slate-200 font-semibold" x-text="(o.customer_name || '').replace(/^[A-Za-z0-9_-]+\s*-\s*/, '')"></td>
+                                            <td class="py-1 px-2 border border-slate-200" x-text="o.customer_phone || ''"></td>
+                                            <td class="py-1 px-2 border border-slate-200 text-[10.5px]" x-text="o.customer_address || ''"></td>
+                                            <td class="py-1 px-2 border border-slate-200 text-center uppercase" x-text="o.warehouse || ''"></td>
+                                            <td class="py-1 px-2 border border-slate-200 text-right font-bold" x-text="formatNumber(o.total_quantity)"></td>
+                                            <td class="py-1 px-2 border border-slate-200 text-right font-bold text-slate-900" x-text="formatNumber(o.final_total)"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= TAB 2: IN HÀNG LOẠT (TỪNG ĐƠN RIÊNG) ================= -->
+                <div x-show="bulkPrintTab === 'batch'" class="space-y-4">
+                    <div class="bg-sky-50 border border-sky-200 rounded-xl p-3 text-sky-900 text-xs flex items-start gap-2.5">
+                        <i class="fa-solid fa-circle-info text-sky-600 text-sm mt-0.5 shrink-0"></i>
+                        <div>
+                            <div class="font-bold text-sm">Chế độ in hàng loạt (<span x-text="bulkPrintData?.orders?.length || 0"></span> đơn hàng)</div>
+                            <div class="mt-0.5 text-sky-800">Mỗi đơn hàng sẽ được tạo thành một phiếu xuất/bán hàng độc lập, tự động ngắt trang (A4) khi gửi lệnh in tới máy in.</div>
+                        </div>
+                    </div>
+
+                    <!-- List of Orders ready to batch print -->
+                    <div class="border border-slate-300 rounded-lg overflow-hidden">
+                        <table class="w-full border-collapse text-[11px] sm:text-xs">
+                            <thead>
+                                <tr class="bg-slate-100 font-bold text-slate-800 text-center border-b border-slate-300">
+                                    <th class="border border-slate-300 py-2 px-2 w-10 text-center">TT</th>
+                                    <th class="border border-slate-300 py-2 px-2 w-28 text-left">Mã đơn hàng</th>
+                                    <th class="border border-slate-300 py-2 px-2 text-left">Khách hàng</th>
+                                    <th class="border border-slate-300 py-2 px-2 w-28 text-left">Điện thoại</th>
+                                    <th class="border border-slate-300 py-2 px-2 text-left">Kho xuất</th>
+                                    <th class="border border-slate-300 py-2 px-2 w-20 text-right">Số SP</th>
+                                    <th class="border border-slate-300 py-2 px-2 w-28 text-right">Tổng tiền</th>
+                                    <th class="border border-slate-300 py-2 px-2 w-24 text-center">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="(o, idx) in (bulkPrintData?.orders || [])" :key="o.id || idx">
+                                    <tr class="bg-white hover:bg-slate-50 transition-colors border-b border-slate-300 text-slate-800">
+                                        <td class="border border-slate-300 py-1.5 px-2 text-center font-medium" x-text="idx + 1"></td>
+                                        <td class="border border-slate-300 py-1.5 px-2 text-left font-mono font-bold text-sky-700" x-text="o.order_code"></td>
+                                        <td class="border border-slate-300 py-1.5 px-2 text-left font-semibold">
+                                            <span x-text="(o.customer_name || '').replace(/^[A-Za-z0-9_-]+\s*-\s*/, '')"></span>
+                                        </td>
+                                        <td class="border border-slate-300 py-1.5 px-2 text-left" x-text="o.customer_phone || ''"></td>
+                                        <td class="border border-slate-300 py-1.5 px-2 text-left uppercase text-slate-700" x-text="o.warehouse || ''"></td>
+                                        <td class="border border-slate-300 py-1.5 px-2 text-right font-bold" x-text="o.items?.length || 0"></td>
+                                        <td class="border border-slate-300 py-1.5 px-2 text-right font-bold text-slate-900" x-text="formatNumber(o.final_total)"></td>
+                                        <td class="border border-slate-300 py-1.5 px-2 text-center">
+                                            <button type="button" @click="openPrintModal(o.id)" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[11px] font-bold transition-colors cursor-pointer" title="In riêng đơn này">
+                                                <i class="fa-solid fa-print mr-1"></i> In riêng
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer: Action Buttons -->
+            <div class="bg-[#f5f5f5] border-t border-slate-300 px-3 sm:px-4 py-3 flex flex-wrap items-center justify-between gap-2 select-none">
+                
+                <!-- If on Tab 1: Consolidated -->
+                <div x-show="bulkPrintTab === 'consolidated'" class="flex items-center gap-2">
+                    <button type="button" @click="exportConsolidatedExcel()"
+                            class="px-3 py-1.5 bg-[#1976d2] hover:bg-[#1565c0] text-white rounded font-semibold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-excel text-[11px]"></i>
+                        <span>Xuất Excel phiếu gộp</span>
+                    </button>
+                </div>
+
+                <div x-show="bulkPrintTab === 'consolidated'" class="flex items-center gap-1.5 sm:gap-2">
+                    <button type="button" @click="executePrintConsolidated('no_price')"
+                            class="px-3.5 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded font-semibold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                            title="In phiếu soạn kho không hiển thị giá">
+                        <i class="fa-solid fa-boxes-packing text-[11px]"></i>
+                        <span>In soạn kho (Không giá)</span>
+                    </button>
+                    <button type="button" @click="executePrintConsolidated('tax_name')"
+                            class="px-3.5 py-1.5 bg-[#1976d2] hover:bg-[#1565c0] text-white rounded font-semibold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                            title="In theo tên hóa đơn GTGT">
+                        <i class="fa-solid fa-print text-[11px]"></i>
+                        <span>In theo tên HĐ</span>
+                    </button>
+                    <button type="button" @click="executePrintConsolidated('standard')"
+                            class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold text-xs shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
+                            title="In phiếu gộp đầy đủ thông tin và giá">
+                        <i class="fa-solid fa-layer-group text-[11px]"></i>
+                        <span>In phiếu gộp chuẩn</span>
+                    </button>
+                </div>
+
+                <!-- If on Tab 2: Batch -->
+                <div x-show="bulkPrintTab === 'batch'" class="flex items-center gap-2">
+                    <span class="text-xs text-slate-500">In liên tiếp <strong class="text-slate-900" x-text="bulkPrintData?.orders?.length || 0"></strong> đơn hàng:</span>
+                </div>
+
+                <div x-show="bulkPrintTab === 'batch'" class="flex items-center gap-1.5 sm:gap-2">
+                    <button type="button" @click="executePrintBatch('no_price')"
+                            class="px-3 py-1.5 bg-[#1976d2] hover:bg-[#1565c0] text-white rounded font-semibold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                            title="In hàng loạt không tiêu đề công ty">
+                        <i class="fa-solid fa-print text-[11px]"></i>
+                        <span>In không TĐ</span>
+                    </button>
+                    <button type="button" @click="executePrintBatch('no_price_with_header')"
+                            class="px-3 py-1.5 bg-[#1976d2] hover:bg-[#1565c0] text-white rounded font-semibold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                            title="In hàng loạt không giá">
+                        <i class="fa-solid fa-print text-[11px]"></i>
+                        <span>In không giá</span>
+                    </button>
+                    <button type="button" @click="executePrintBatch('tax_name')"
+                            class="px-3 py-1.5 bg-[#1976d2] hover:bg-[#1565c0] text-white rounded font-semibold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                            title="In hàng loạt theo tên HĐ">
+                        <i class="fa-solid fa-print text-[11px]"></i>
+                        <span>In theo tên HĐ</span>
+                    </button>
+                    <button type="button" @click="executePrintBatch('standard')"
+                            class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold text-xs shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
+                            title="In hàng loạt chuẩn đầy đủ">
+                        <i class="fa-solid fa-print text-[11px]"></i>
+                        <span>In hàng loạt chuẩn</span>
+                    </button>
+                </div>
+
+                <!-- Right: Close Button -->
+                <div>
+                    <button type="button" @click="showBulkPrintModal = false"
+                            class="px-5 py-1.5 bg-[#eeeeee] hover:bg-slate-200 text-slate-700 border border-slate-300 rounded font-semibold text-xs transition-colors cursor-pointer">
+                        Đóng
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
     <!-- Modal: Chọn Ngày Soạn Hàng Khi Bấm Nút Soạn Hàng -->
     <div x-show="showPickingModal" x-cloak class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
         <div @click.outside="showPickingModal = false" class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
@@ -1773,6 +2123,12 @@ function ordersIndexApp() {
         printOrderData: null,
         printLoading: false,
 
+        // Modal states for Bulk & Consolidated Print
+        showBulkPrintModal: false,
+        bulkPrintTab: 'consolidated', // 'consolidated' or 'batch'
+        bulkPrintLoading: false,
+        bulkPrintData: null,
+
         // Modal states for Tracking, Payment & Picking
         showTrackingModal: false,
         activeTrackingOrder: null,
@@ -1979,7 +2335,47 @@ function ordersIndexApp() {
                 alert('Vui lòng tích chọn ít nhất một chứng từ cần in!');
                 return;
             }
-            this.openPrintModal(this.selectedIds[0]);
+            if (this.selectedIds.length === 1) {
+                this.openPrintModal(this.selectedIds[0]);
+            } else {
+                this.openBulkPrintModal('consolidated');
+            }
+        },
+
+        async openBulkPrintModal(tab = 'consolidated') {
+            if (!this.selectedIds || this.selectedIds.length === 0) {
+                alert('Vui lòng tích chọn ít nhất 1 đơn hàng để in!');
+                return;
+            }
+            this.bulkPrintTab = tab;
+            this.showBulkPrintModal = true;
+            this.bulkPrintLoading = true;
+            this.bulkPrintData = null;
+
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const res = await fetch('/orders/bulk-print-data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token || ''
+                    },
+                    body: JSON.stringify({ order_ids: this.selectedIds })
+                });
+                const json = await res.json();
+                if (json.success) {
+                    this.bulkPrintData = json;
+                } else {
+                    alert(json.message || 'Không thể tải dữ liệu in đơn hàng');
+                    this.showBulkPrintModal = false;
+                }
+            } catch (e) {
+                console.error('Error fetching bulk print data:', e);
+                alert('Lỗi kết nối khi tải dữ liệu in hàng loạt');
+                this.showBulkPrintModal = false;
+            } finally {
+                this.bulkPrintLoading = false;
+            }
         },
 
         exportSelectedManifest() {
@@ -2280,12 +2676,7 @@ function ordersIndexApp() {
             return '-';
         },
 
-        executePrintOrder(mode) {
-            if (!this.printOrderData) {
-                alert('Chưa có thông tin đơn hàng để in!');
-                return;
-            }
-            const o = this.printOrderData;
+        buildSingleOrderContentHtml(o, mode) {
             const isNoPrice = (mode === 'no_price' || mode === 'no_price_with_header');
             const isTaxName = (mode === 'tax_name');
             const hasCompanyHeader = (mode !== 'no_price');
@@ -2356,56 +2747,8 @@ function ordersIndexApp() {
                 `;
             }
 
-            const printHtml = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <title>${title} - ${o.order_code}</title>
-                    <style>
-                        @page { 
-                            size: A4 portrait; 
-                            margin: 10mm 12mm 10mm 12mm; 
-                        }
-                        * {
-                            box-sizing: border-box;
-                        }
-                        body { 
-                            font-family: 'Times New Roman', Times, serif; 
-                            font-size: 12.5px; 
-                            color: #000; 
-                            line-height: 1.35; 
-                            margin: 0; 
-                            padding: 0; 
-                            background: #fff;
-                        }
-                        table { 
-                            width: 100%; 
-                            border-collapse: collapse; 
-                        }
-                        .product-table th { 
-                            background-color: #f1f5f9; 
-                            border: 1px solid #111; 
-                            padding: 6px 4px; 
-                            font-weight: bold; 
-                            font-size: 11.5px; 
-                            text-transform: uppercase;
-                            text-align: center;
-                            -webkit-print-color-adjust: exact;
-                            print-color-adjust: exact;
-                        }
-                        .product-table td {
-                            border: 1px solid #111;
-                            padding: 5px 6px;
-                            font-size: 12px;
-                        }
-                        @media print {
-                            body { padding: 0; }
-                            .no-print { display: none !important; }
-                        }
-                    </style>
-                </head>
-                <body>
+            return `
+                <div class="order-page" style="page-break-inside: avoid; margin-bottom: 20px;">
                     <!-- Header Doanh Nghiệp (Ẩn khi in không TĐ - no_price) -->
                     ${hasCompanyHeader ? `
                     <table style="width: 100%; border: none; border-bottom: 2px solid #1b4a8c; padding-bottom: 6px; margin-bottom: 12px; border-collapse: collapse;">
@@ -2581,6 +2924,62 @@ function ordersIndexApp() {
                     <div style="margin-top: 15px; text-align: center; font-size: 11px; font-style: italic; color: #666;">
                         *(Quý khách vui lòng kiểm tra kỹ số lượng, quy cách và chất lượng hàng hóa trước khi ký nhận)*
                     </div>
+                </div>
+            `;
+        },
+
+        openPrintWindow(title, bodyContent) {
+            const printHtml = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>${title}</title>
+                    <style>
+                        @page { 
+                            size: A4 portrait; 
+                            margin: 10mm 12mm 10mm 12mm; 
+                        }
+                        * {
+                            box-sizing: border-box;
+                        }
+                        body { 
+                            font-family: 'Times New Roman', Times, serif; 
+                            font-size: 12.5px; 
+                            color: #000; 
+                            line-height: 1.35; 
+                            margin: 0; 
+                            padding: 0; 
+                            background: #fff;
+                        }
+                        table { 
+                            width: 100%; 
+                            border-collapse: collapse; 
+                        }
+                        .product-table th { 
+                            background-color: #f1f5f9; 
+                            border: 1px solid #111; 
+                            padding: 6px 4px; 
+                            font-weight: bold; 
+                            font-size: 11.5px; 
+                            text-transform: uppercase;
+                            text-align: center;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
+                        .product-table td {
+                            border: 1px solid #111;
+                            padding: 5px 6px;
+                            font-size: 12px;
+                        }
+                        @media print {
+                            body { padding: 0; }
+                            .no-print { display: none !important; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${bodyContent}
                 </body>
                 </html>
             `;
@@ -2597,6 +2996,323 @@ function ordersIndexApp() {
             setTimeout(() => {
                 printWin.print();
             }, 400);
+        },
+
+        executePrintOrder(mode) {
+            if (!this.printOrderData) {
+                alert('Chưa có thông tin đơn hàng để in!');
+                return;
+            }
+            const o = this.printOrderData;
+            const content = this.buildSingleOrderContentHtml(o, mode);
+            this.openPrintWindow(`Phiếu ${o.order_code}`, content);
+        },
+
+        executePrintBatch(mode) {
+            if (!this.bulkPrintData || !this.bulkPrintData.orders || this.bulkPrintData.orders.length === 0) {
+                alert('Chưa có danh sách đơn hàng để in!');
+                return;
+            }
+            const orders = this.bulkPrintData.orders;
+            const pages = orders.map((o, idx) => {
+                const pageHtml = this.buildSingleOrderContentHtml(o, mode);
+                const breakTag = (idx < orders.length - 1) ? '<div style="page-break-after: always; break-after: page; height: 0; margin: 0; padding: 0;"></div>' : '';
+                return pageHtml + breakTag;
+            }).join('\n');
+
+            this.openPrintWindow(`In hàng loạt ${orders.length} đơn hàng`, pages);
+        },
+
+        executePrintConsolidated(mode = 'standard') {
+            if (!this.bulkPrintData || !this.bulkPrintData.consolidated) {
+                alert('Chưa có dữ liệu phiếu gộp để in!');
+                return;
+            }
+            const c = this.bulkPrintData.consolidated;
+            const isNoPrice = (mode === 'no_price');
+            const isTaxName = (mode === 'tax_name');
+
+            let title = 'PHIẾU TỔNG HỢP XUẤT KHO KIÊM BẢNG KÊ';
+            let subTitle = `PHIẾU GỘP TỔNG HỢP SẢN PHẨM TỪ ${c.total_orders} ĐƠN HÀNG`;
+            if (isNoPrice) {
+                title = 'PHIẾU TỔNG HỢP SOẠN HÀNG XUẤT KHO';
+                subTitle = `DÀNH CHO BỘ PHẬN KHO & BỐC XẾP (${c.total_orders} ĐƠN HÀNG - KHÔNG HIỂN THỊ ĐƠN GIÁ)`;
+            } else if (isTaxName) {
+                title = 'BẢNG KÊ TỔNG HỢP XUẤT HÀNG THEO HÓA ĐƠN';
+                subTitle = `TỔNG HỢP SẢN PHẨM THEO TÊN HÓA ĐƠN GTGT (${c.total_orders} ĐƠN HÀNG)`;
+            }
+
+            let rowsHtml = '';
+            (c.products || []).forEach((p, idx) => {
+                const prodName = isTaxName ? (p.tax_name || p.name) : p.name;
+                const subName = (!isTaxName && p.tax_name && p.tax_name !== p.name) ? `<div style="font-size:10.5px;color:#555;font-style:italic;">${p.tax_name}</div>` : '';
+                const alloc = p.allocation_text ? `<div style="font-size:10px;color:#1e40af;margin-top:2px;"><em>Đơn: ${p.allocation_text}</em></div>` : '';
+
+                if (isNoPrice) {
+                    rowsHtml += `
+                        <tr>
+                            <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${idx + 1}</td>
+                            <td style="padding:5px 6px;border:1px solid #111;text-align:left;font-family:monospace;">${p.sku || ''}</td>
+                            <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">
+                                ${prodName}${subName}${alloc}
+                            </td>
+                            <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${p.unit || ''}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${this.formatNumber(p.sold_quantity)}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${this.formatNumber(p.gift_quantity)}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:13px;background-color:#f8fafc;">${this.formatNumber(p.total_quantity)}</td>
+                        </tr>
+                    `;
+                } else {
+                    rowsHtml += `
+                        <tr>
+                            <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${idx + 1}</td>
+                            <td style="padding:5px 6px;border:1px solid #111;text-align:left;font-family:monospace;">${p.sku || ''}</td>
+                            <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">
+                                ${prodName}${subName}${alloc}
+                            </td>
+                            <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${p.unit || ''}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${this.formatNumber(p.sold_quantity)}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${this.formatNumber(p.gift_quantity)}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:12.5px;">${this.formatNumber(p.total_quantity)}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${this.formatNumber(p.unit_price)}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;">${this.formatNumber(p.total_amount)}</td>
+                        </tr>
+                    `;
+                }
+            });
+
+            let summaryFoot = '';
+            if (isNoPrice) {
+                summaryFoot = `
+                    <tr>
+                        <td colspan="4" style="border:1px solid #111;padding:5px 6px;text-align:right;font-weight:bold;">Tổng cộng:</td>
+                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">${this.formatNumber(c.total_sold_quantity)}</td>
+                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">${this.formatNumber(c.total_gift_quantity)}</td>
+                        <td style="text-align:right;font-weight:black;padding:5px 6px;border:1px solid #111;font-size:13px;background-color:#f1f5f9;">${this.formatNumber(c.total_quantity)}</td>
+                    </tr>
+                `;
+            } else {
+                summaryFoot = `
+                    <tr>
+                        <td colspan="4" style="border:1px solid #111;padding:5px 6px;text-align:right;font-weight:bold;">Tổng cộng:</td>
+                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">${this.formatNumber(c.total_sold_quantity)}</td>
+                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">${this.formatNumber(c.total_gift_quantity)}</td>
+                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;">${this.formatNumber(c.total_quantity)}</td>
+                        <td style="border:1px solid #111;padding:5px 6px;"></td>
+                        <td style="text-align:right;font-weight:black;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(c.total_amount)}</td>
+                    </tr>
+                `;
+            }
+
+            let orderListRows = '';
+            (c.order_list || []).forEach((o, idx) => {
+                orderListRows += `
+                    <tr>
+                        <td style="text-align:center;padding:4px 5px;border:1px solid #ccc;">${idx + 1}</td>
+                        <td style="font-family:monospace;font-weight:bold;padding:4px 5px;border:1px solid #ccc;">${o.order_code}</td>
+                        <td style="padding:4px 5px;border:1px solid #ccc;font-weight:600;">${(o.customer_name || '').replace(/^[A-Za-z0-9_-]+\s*-\s*/, '')}</td>
+                        <td style="padding:4px 5px;border:1px solid #ccc;">${o.customer_phone || ''}</td>
+                        <td style="padding:4px 5px;border:1px solid #ccc;font-size:11px;">${o.customer_address || ''}</td>
+                        <td style="text-align:center;padding:4px 5px;border:1px solid #ccc;">${o.warehouse || ''}</td>
+                        <td style="text-align:right;padding:4px 5px;border:1px solid #ccc;font-weight:bold;">${this.formatNumber(o.total_quantity)}</td>
+                        ${!isNoPrice ? `<td style="text-align:right;padding:4px 5px;border:1px solid #ccc;font-weight:bold;">${this.formatNumber(o.final_total)}</td>` : ''}
+                        <td style="padding:4px 5px;border:1px solid #ccc;font-style:italic;font-size:10.5px;">${o.notes || ''}</td>
+                    </tr>
+                `;
+            });
+
+            const consolidatedContent = `
+                <div class="order-page">
+                    <!-- Header Doanh Nghiệp -->
+                    <table style="width: 100%; border: none; border-bottom: 2px solid #1b4a8c; padding-bottom: 6px; margin-bottom: 10px; border-collapse: collapse;">
+                        <tr>
+                            <td style="width: 65%; vertical-align: top; border: none; padding: 0; text-align: left;">
+                                <table style="border: none; border-collapse: collapse;">
+                                    <tr>
+                                        <td style="border: none; padding: 0 10px 0 0; vertical-align: middle;">
+                                            <img src="/images/logo.png" alt="Logo Đại Sơn" style="height: 48px; width: auto; display: block;" onerror="this.style.display='none'">
+                                        </td>
+                                        <td style="border: none; padding: 0; vertical-align: middle;">
+                                            <div style="font-size: 14px; font-weight: bold; color: #1b4a8c; text-transform: uppercase;">NHÀ PHÂN PHỐI MÁY LỌC NƯỚC ĐẠI SƠN</div>
+                                            <div style="font-size: 10.5px; color: #444; font-weight: bold; text-transform: uppercase;">CÔNG TY TNHH MÁY LỌC NƯỚC ĐẠI SƠN</div>
+                                            <div style="font-size: 11px; color: #333; margin-top: 2px;">Cụm CN Quất Động, Thường Tín, Hà Nội &nbsp;|&nbsp; Hotline: 0912.345.678</div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                            <td style="width: 35%; vertical-align: top; text-align: right; border: none; padding: 0;">
+                                <div style="font-size: 10.5px; font-weight: bold; text-transform: uppercase;">PHIẾU XUẤT KHO GỘP</div>
+                                <div style="display: inline-block; border: 1px solid #1b4a8c; background-color: #f0f7ff; padding: 3px 8px; border-radius: 4px; font-size: 11.5px; font-weight: bold; color: #1b4a8c; margin-top: 3px;">
+                                    ${c.batch_code}
+                                </div>
+                                <div style="font-size: 10.5px; color: #555; margin-top: 2px;">Ngày in: ${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Tiêu Đề Phiếu -->
+                    <div style="text-align: center; margin-bottom: 12px;">
+                        <h2 style="margin: 0 0 3px 0; font-size: 18px; font-weight: 900; text-transform: uppercase; color: #111;">${title}</h2>
+                        <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #475569;">${subTitle}</div>
+                        <div style="font-size: 11.5px; font-style: italic; color: #333; margin-top: 2px;">Ngày lập phiếu: <strong>${c.created_date}</strong></div>
+                    </div>
+
+                    <!-- Khối Thông Tin Gộp -->
+                    <table style="width: 100%; border: 1px solid #cbd5e1; background-color: #f8fafc; padding: 6px 10px; margin-bottom: 10px; border-collapse: collapse; font-size: 12px;">
+                        <tr>
+                            <td style="padding: 4px 8px; border: none; width: 50%;">
+                                <div><strong>Kho xuất hàng:</strong> <span style="text-transform: uppercase; font-weight: bold; color: #0f172a;">${c.warehouse_display}</span></div>
+                                <div style="margin-top: 2px;"><strong>Tổng số đơn hàng gộp:</strong> <strong style="color: #0284c7;">${c.total_orders} đơn</strong></div>
+                            </td>
+                            <td style="padding: 4px 8px; border: none; width: 50%;">
+                                <div><strong>Tổng số loại sản phẩm:</strong> <strong>${c.total_products_count} loại</strong></div>
+                                <div style="margin-top: 2px;"><strong>Tổng số lượng xuất:</strong> <strong style="color: #b91c1c; font-size: 13px;">${this.formatNumber(c.total_quantity)}</strong> sản phẩm</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" style="padding: 4px 8px; border-top: 1px dashed #cbd5e1;">
+                                <strong>Mã các đơn hàng gộp:</strong> 
+                                <span style="font-family: monospace; font-size: 11.5px; font-weight: 600; color: #334155;">${c.order_codes_display}</span>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- BẢNG TỔNG HỢP SẢN PHẨM -->
+                    <div style="margin-bottom: 4px; font-weight: bold; font-size: 12px; text-transform: uppercase; color: #0f172a;">
+                        I. BẢNG TỔNG HỢP TOÀN BỘ SẢN PHẨM CẦN XUẤT:
+                    </div>
+                    <table class="product-table">
+                        <thead>
+                            ${isNoPrice ? `
+                                <tr>
+                                    <th style="width: 32px;">TT</th>
+                                    <th style="width: 90px; text-align: left; padding-left: 6px;">Mã SP</th>
+                                    <th style="text-align: left; padding-left: 6px;">Tên sản phẩm / Phân bổ đơn hàng</th>
+                                    <th style="width: 50px;">ĐVT</th>
+                                    <th style="width: 60px;">SL Bán</th>
+                                    <th style="width: 60px;">SL Tặng</th>
+                                    <th style="width: 80px;">Tổng Xuất</th>
+                                </tr>
+                            ` : `
+                                <tr>
+                                    <th style="width: 32px;">TT</th>
+                                    <th style="width: 85px; text-align: left; padding-left: 6px;">Mã SP</th>
+                                    <th style="text-align: left; padding-left: 6px;">Tên sản phẩm / Phân bổ đơn hàng</th>
+                                    <th style="width: 45px;">ĐVT</th>
+                                    <th style="width: 55px;">SL Bán</th>
+                                    <th style="width: 55px;">SL Tặng</th>
+                                    <th style="width: 65px;">Tổng Xuất</th>
+                                    <th style="width: 80px;">Đơn giá</th>
+                                    <th style="width: 95px;">Thành tiền</th>
+                                </tr>
+                            `}
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                            ${summaryFoot}
+                        </tbody>
+                    </table>
+
+                    ${!isNoPrice ? `
+                        <div style="margin-top: 6px; font-size: 12px;">
+                            <strong>Tổng tiền bằng chữ:</strong> <em style="font-weight: bold; text-transform: capitalize;">${c.total_amount_words}</em>
+                        </div>
+                    ` : ''}
+
+                    <!-- BẢNG DANH SÁCH CÁC ĐƠN HÀNG ĐƯỢC GỘP -->
+                    <div style="margin-top: 14px; margin-bottom: 4px; font-weight: bold; font-size: 11.5px; text-transform: uppercase; color: #0f172a;">
+                        II. DANH SÁCH CHI TIẾT CÁC ĐƠN HÀNG ĐƯỢC GỘP (${c.total_orders} ĐƠN):
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                        <thead>
+                            <tr style="background-color: #f1f5f9;">
+                                <th style="border: 1px solid #ccc; padding: 4px; width: 30px; text-align: center;">TT</th>
+                                <th style="border: 1px solid #ccc; padding: 4px; width: 85px; text-align: left;">Mã đơn</th>
+                                <th style="border: 1px solid #ccc; padding: 4px; text-align: left;">Khách hàng</th>
+                                <th style="border: 1px solid #ccc; padding: 4px; width: 85px;">Điện thoại</th>
+                                <th style="border: 1px solid #ccc; padding: 4px; text-align: left;">Địa chỉ giao</th>
+                                <th style="border: 1px solid #ccc; padding: 4px; width: 65px; text-align: center;">Kho</th>
+                                <th style="border: 1px solid #ccc; padding: 4px; width: 50px; text-align: right;">SL SP</th>
+                                ${!isNoPrice ? `<th style="border: 1px solid #ccc; padding: 4px; width: 85px; text-align: right;">Tiền hàng</th>` : ''}
+                                <th style="border: 1px solid #ccc; padding: 4px; text-align: left;">Ghi chú</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${orderListRows}
+                        </tbody>
+                    </table>
+
+                    <!-- Dòng Ngày Tháng & Chữ Ký 4 Bên -->
+                    <div style="margin-top: 12px; text-align: right; font-size: 11.5px; font-style: italic;">
+                        Ngày ..... tháng ..... năm 202...
+                    </div>
+                    <table style="width: 100%; border: none; margin-top: 6px; border-collapse: collapse; page-break-inside: avoid;">
+                        <tr>
+                            <td style="width: 25%; text-align: center; vertical-align: top; border: none; padding: 0 4px;">
+                                <div style="font-weight: bold; font-size: 12px; text-transform: uppercase;">Người lập phiếu</div>
+                                <div style="font-style: italic; font-size: 10.5px; color: #555; margin-top: 1px;">(Ký, ghi rõ họ tên)</div>
+                                <div style="height: 55px;"></div>
+                            </td>
+                            <td style="width: 25%; text-align: center; vertical-align: top; border: none; padding: 0 4px;">
+                                <div style="font-weight: bold; font-size: 12px; text-transform: uppercase;">Thủ kho xuất</div>
+                                <div style="font-style: italic; font-size: 10.5px; color: #555; margin-top: 1px;">(Ký, ghi rõ họ tên)</div>
+                                <div style="height: 55px;"></div>
+                            </td>
+                            <td style="width: 25%; text-align: center; vertical-align: top; border: none; padding: 0 4px;">
+                                <div style="font-weight: bold; font-size: 12px; text-transform: uppercase;">Người giao hàng</div>
+                                <div style="font-style: italic; font-size: 10.5px; color: #555; margin-top: 1px;">(Ký, ghi rõ họ tên)</div>
+                                <div style="height: 55px;"></div>
+                            </td>
+                            <td style="width: 25%; text-align: center; vertical-align: top; border: none; padding: 0 4px;">
+                                <div style="font-weight: bold; font-size: 12px; text-transform: uppercase;">Kế toán duyệt</div>
+                                <div style="font-style: italic; font-size: 10.5px; color: #555; margin-top: 1px;">(Ký, ghi rõ họ tên)</div>
+                                <div style="height: 55px;"></div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            `;
+
+            this.openPrintWindow(`Phiếu gộp ${c.batch_code}`, consolidatedContent);
+        },
+
+        exportConsolidatedExcel() {
+            if (!this.bulkPrintData || !this.bulkPrintData.consolidated) {
+                alert('Chưa có dữ liệu phiếu gộp để xuất Excel!');
+                return;
+            }
+            const c = this.bulkPrintData.consolidated;
+            let csv = "\uFEFF"; // UTF-8 BOM
+            csv += "PHIẾU GỘP TỔNG HỢP SẢN PHẨM\n";
+            csv += `Mã phiếu gộp,"${c.batch_code}"\n`;
+            csv += `Thời gian xuất,"${c.created_date}"\n`;
+            csv += `Kho xuất,"${(c.warehouse_display || '').replace(/"/g, '""')}"\n`;
+            csv += `Tổng số đơn gộp,${c.total_orders}\n`;
+            csv += `Mã các đơn,"${(c.order_codes_display || '').replace(/"/g, '""')}"\n\n`;
+
+            csv += "I. BẢNG TỔNG HỢP SẢN PHẨM\n";
+            csv += "STT,Mã sản phẩm,Tên sản phẩm,Tên theo HĐ,ĐVT,SL Bán,SL Tặng,Tổng SL Xuất,Đơn giá (đ),Thành tiền (đ),Chi tiết phân bổ theo đơn hàng\n";
+
+            (c.products || []).forEach((p, idx) => {
+                csv += `${idx + 1},"${p.sku || ''}","${(p.name || '').replace(/"/g, '""')}","${(p.tax_name || '').replace(/"/g, '""')}","${p.unit || ''}",${p.sold_quantity},${p.gift_quantity},${p.total_quantity},${p.unit_price},${p.total_amount},"${(p.allocation_text || '').replace(/"/g, '""')}"\n`;
+            });
+
+            csv += `Tổng cộng,,,,${c.total_sold_quantity},${c.total_gift_quantity},${c.total_quantity},,${c.total_amount},\n`;
+            csv += `Bằng chữ,"${(c.total_amount_words || '').replace(/"/g, '""')}"\n\n`;
+
+            csv += "II. DANH SÁCH CÁC ĐƠN HÀNG ĐƯỢC GỘP\n";
+            csv += "STT,Mã đơn hàng,Ngày lập,Khách hàng,Số điện thoại,Địa chỉ nhận hàng,Kho xuất,Số lượng SP,Thành tiền (đ),Ghi chú\n";
+            (c.order_list || []).forEach((o, idx) => {
+                csv += `${idx + 1},"${o.order_code}","${o.created_date}","${(o.customer_name || '').replace(/"/g, '""')}","${o.customer_phone || ''}","${(o.customer_address || '').replace(/"/g, '""')}","${(o.warehouse || '').replace(/"/g, '""')}",${o.total_quantity},${o.final_total},"${(o.notes || '').replace(/"/g, '""')}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Phieu_gop_tong_hop_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         },
 
         getPriceTierCode(val, defaultTier = '') {
