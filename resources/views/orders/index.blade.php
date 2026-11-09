@@ -700,11 +700,8 @@
                 <label class="font-bold text-slate-500 text-[11px]">Loại đơn hàng</label>
                 <select name="order_type" class="w-full p-2 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:outline-none focus:border-sky-500 bg-white cursor-pointer">
                     <option value="">Tất cả loại đơn</option>
-                    <option value="normal" {{ request('order_type') === 'normal' ? 'selected' : '' }}>🛒 Đơn bình thường</option>
                     <option value="normal" {{ request('order_type') === 'normal' ? 'selected' : '' }}>🛒 Đơn thường</option>
                     <option value="consignment" {{ request('order_type') === 'consignment' ? 'selected' : '' }}>📦 Đơn gửi</option>
-                    <option value="project" {{ request('order_type') === 'project' ? 'selected' : '' }}>🏗️ Đơn dự án</option>
-                    <option value="backorder" {{ request('order_type') === 'backorder' ? 'selected' : '' }}>📋 Đơn giao sau (nợ hàng)</option>
                 </select>
             </div>
 
@@ -953,7 +950,6 @@
                                     </div>
                                 @else
                                     <span class="px-2.5 py-1 rounded-md bg-sky-50 text-sky-800 font-extrabold text-[11px] border border-sky-200 shrink-0 inline-flex items-center gap-1">
-                                        <span>🛒 Đơn bình thường</span>
                                         <span>🛒 Đơn thường</span>
                                     </span>
                                 @endif

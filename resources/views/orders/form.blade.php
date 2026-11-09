@@ -590,7 +590,6 @@
                         <label class="text-[10px] sm:text-[11px] font-bold text-slate-500 tracking-wide uppercase truncate">LOẠI ĐƠN HÀNG</label>
                     </div>
                     <select x-model="formData.order_type" @change="handleOrderTypeChange()" class="w-full px-2 py-1.5 sm:px-3 sm:py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer">
-                        <option value="normal">🛒 Đơn bình thường</option>
                         <option value="normal">🛒 Đơn thường</option>
                         <option value="consignment">📦 Đơn gửi</option>
                         <template x-if="formData.order_type && !['normal', 'consignment'].includes(formData.order_type)">
