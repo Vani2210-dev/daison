@@ -553,6 +553,153 @@ Artisan::command('db:import-staff {file=Danh sách NV Đại Sơn.xlsx : Đườ
     return 0;
 })->purpose('Nhập danh sách cán bộ nhân viên từ file Danh sách NV Đại Sơn.xlsx');
 
+Artisan::command('db:import-customers {file=khachhang1.xlsx : Đường dẫn file Excel} {--wipe : Xóa sạch danh sách khách hàng cũ}', function ($file) {
+    if ($this->option('wipe')) {
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS = 0;');
+        \App\Models\Dealer::truncate();
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS = 1;');
+        $this->info("✓ Đã xóa sạch danh sách khách hàng cũ.");
+    }
+
+    $filePath = base_path($file);
+    if (!file_exists($filePath)) {
+        $this->error("Không tìm thấy file: {$filePath}");
+        return 1;
+    }
+
+    $this->info("Đang đọc file Excel: {$filePath}...");
+
+    $zip = new \ZipArchive();
+    if ($zip->open($filePath) !== true) {
+        $this->error("Không thể mở file Excel định dạng .xlsx");
+        return 1;
+    }
+
+    // 1. Đọc sharedStrings
+    $sharedStrings = [];
+    if (($idx = $zip->locateName('xl/sharedStrings.xml')) !== false) {
+        $xml = simplexml_load_string($zip->getFromIndex($idx));
+        foreach ($xml->si as $si) {
+            $t = '';
+            if (isset($si->t)) $t = (string)$si->t;
+            elseif (isset($si->r)) {
+                foreach ($si->r as $r) $t .= (string)$r->t;
+            }
+            $sharedStrings[] = $t;
+        }
+    }
+
+    // 2. Đọc sheet1
+    $sheetIdx = $zip->locateName('xl/worksheets/sheet1.xml');
+    if ($sheetIdx === false) {
+        $this->error("Không tìm thấy dữ liệu Sheet1 trong file Excel");
+        $zip->close();
+        return 1;
+    }
+    $sheetXml = simplexml_load_string($zip->getFromIndex($sheetIdx));
+
+    // Cache sales reps
+    $users = \App\Models\User::all();
+    $usersByName = [];
+    foreach ($users as $u) {
+        $usersByName[mb_strtolower(trim($u->name))] = $u->id;
+    }
+
+    $imported = 0;
+    foreach ($sheetXml->sheetData->row as $row) {
+        $rIndex = (int)$row['r'];
+        if ($rIndex === 1) continue; // Skip header
+
+        $cells = [];
+        foreach ($row->c as $c) {
+            $ref = (string)$c['r'];
+            $colLetter = preg_replace('/[0-9]/', '', $ref);
+            $val = '';
+            if (isset($c->v)) {
+                $raw = (string)$c->v;
+                $val = ((string)$c['t'] === 's') ? ($sharedStrings[(int)$raw] ?? '') : $raw;
+            } elseif (isset($c->is->t)) {
+                $val = (string)$c->is->t;
+            }
+            $cells[$colLetter] = trim($val);
+        }
+
+        $code = $cells['B'] ?? '';
+        $name = $cells['C'] ?? '';
+        if (!$code || !$name) continue;
+
+        $phone = $cells['E'] ?? ($cells['F'] ?? '');
+        $owner = $cells['K'] ?: $name;
+        $taxCode = $cells['G'] ?: null;
+        $referrer = $cells['Y'] ?: null;
+        $address = $cells['Z'] ?: ($cells['AI'] ?? '');
+        $district = $cells['AD'] ?: ($cells['AC'] ?? '');
+        $city = 'Nghệ An';
+
+        $classification = $cells['AN'] ?? ($cells['AL'] ?? '');
+        $tier = 'Đại lý Cấp 2';
+        if (str_contains($classification, 'Sỉ')) {
+            $tier = 'Đại lý Cấp 1';
+        } elseif (str_contains($classification, 'Lẻ nhỏ')) {
+            $tier = 'Bán lẻ';
+        } elseif (str_contains($classification, 'Lẻ lớn')) {
+            $tier = 'Đại lý Cấp 2';
+        }
+
+        $lat = (isset($cells['AF']) && is_numeric($cells['AF'])) ? (float)$cells['AF'] : null;
+        $lng = (isset($cells['AG']) && is_numeric($cells['AG'])) ? (float)$cells['AG'] : null;
+        $creditLimit = (isset($cells['R']) && is_numeric($cells['R']) && (float)$cells['R'] > 0) ? (float)$cells['R'] : 50000000;
+        $paymentTermDays = (isset($cells['T']) && is_numeric($cells['T']) && (int)$cells['T'] > 0) ? (int)$cells['T'] : 30;
+
+        $repName = mb_strtolower(trim($cells['AY'] ?? ''));
+        $salesRepId = $usersByName[$repName] ?? null;
+
+        $notes = [];
+        if (!empty($cells['AI'])) $notes[] = "Mô tả: " . $cells['AI'];
+        if (!empty($cells['AN'])) $notes[] = "Phân loại: " . $cells['AN'];
+        if (!empty($cells['AH'])) $notes[] = "ĐC tọa độ: " . $cells['AH'];
+        if (!empty($cells['AY'])) $notes[] = "NV phụ trách: " . $cells['AY'] . (!empty($cells['AX']) ? " ({$cells['AX']})" : '');
+        $expansionNotes = implode(' | ', $notes);
+
+        \App\Models\Dealer::updateOrCreate(
+            ['code' => $code],
+            [
+                'name' => $name,
+                'owner_name' => $owner,
+                'phone' => $phone,
+                'tax_code' => $taxCode,
+                'referrer' => $referrer,
+                'address' => $address,
+                'district' => $district,
+                'city' => $city,
+                'old_ward' => $district,
+                'old_district' => $district,
+                'old_city' => $city,
+                'new_ward' => $district,
+                'new_district' => $district,
+                'new_city' => $city,
+                'tier' => $tier,
+                'lat' => $lat,
+                'lng' => $lng,
+                'credit_limit' => $creditLimit,
+                'initial_debt' => 0,
+                'current_debt' => 0,
+                'payment_term_days' => $paymentTermDays,
+                'overdue_days' => 0,
+                'sales_rep_id' => $salesRepId,
+                'status' => 'Hoạt động',
+                'truck_accessible' => true,
+                'expansion_notes' => $expansionNotes,
+            ]
+        );
+        $imported++;
+    }
+
+    $zip->close();
+    $this->info("🎉 Hoàn tất! Đã cập nhật thành công {$imported} khách hàng vào hệ thống.");
+    return 0;
+})->purpose('Nhập danh sách khách hàng từ file khachhang1.xlsx');
+
 
 
 
