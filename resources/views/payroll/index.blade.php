@@ -39,15 +39,15 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse($payroll as $pr)
                         <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="py-3 px-4 font-bold text-slate-900">{{ $pr->employee_name ?? 'Nhân viên' }}</td>
-                            <td class="py-3 px-4 font-mono text-slate-600">{{ $pr->employee_code ?? 'NV-01' }}</td>
-                            <td class="py-3 px-4 text-center font-bold text-slate-700">{{ $pr->working_days ?? 26 }} ngày</td>
-                            <td class="py-3 px-4 text-right font-semibold text-slate-800">{{ number_format($pr->base_salary ?? 8000000, 0, ',', '.') }} đ</td>
-                            <td class="py-3 px-4 text-right font-semibold text-emerald-600">+{{ number_format($pr->bonus_amount ?? 1500000, 0, ',', '.') }} đ</td>
-                            <td class="py-3 px-4 text-right font-black text-emerald-700 text-sm">{{ number_format($pr->net_salary ?? 9500000, 0, ',', '.') }} đ</td>
+                            <td class="py-3 px-4 font-bold text-slate-900">{{ $pr->employee_name ?? ($pr->user?->name ?? '---') }}</td>
+                            <td class="py-3 px-4 font-mono text-slate-600">{{ $pr->employee_code ?? ($pr->user?->username ?? '---') }}</td>
+                            <td class="py-3 px-4 text-center font-bold text-slate-700">{{ $pr->working_days ?? 0 }} ngày</td>
+                            <td class="py-3 px-4 text-right font-semibold text-slate-800">{{ number_format($pr->base_salary ?? 0, 0, ',', '.') }} đ</td>
+                            <td class="py-3 px-4 text-right font-semibold text-emerald-600">+{{ number_format($pr->bonus_amount ?? 0, 0, ',', '.') }} đ</td>
+                            <td class="py-3 px-4 text-right font-black text-emerald-700 text-sm">{{ number_format($pr->net_salary ?? 0, 0, ',', '.') }} đ</td>
                             <td class="py-3 px-4 text-center">
                                 <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    {{ $pr->status ?? 'Đã chốt lương' }}
+                                    {{ $pr->status ?? 'Chưa chốt' }}
                                 </span>
                             </td>
                         </tr>

@@ -20,12 +20,12 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block font-bold text-slate-700 mb-1">Họ tên khách hàng</label>
-                        <input type="text" x-model="machineEditForm.customer_name" placeholder="Nguyễn Văn A"
+                        <input type="text" x-model="machineEditForm.customer_name" placeholder="Nhập họ và tên..."
                                class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white font-medium">
                     </div>
                     <div>
                         <label class="block font-bold text-slate-700 mb-1">Số điện thoại</label>
-                        <input type="tel" x-model="machineEditForm.customer_phone" placeholder="0912 xxx xxx"
+                        <input type="tel" x-model="machineEditForm.customer_phone" placeholder="Nhập số điện thoại..."
                                class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white font-medium">
                     </div>
                 </div>

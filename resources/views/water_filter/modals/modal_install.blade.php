@@ -14,11 +14,11 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block font-bold text-slate-700 mb-1">Họ tên khách hàng / Đại lý <span class="text-rose-500">*</span></label>
-                        <input type="text" x-model="installForm.customer_name" required placeholder="Nguyễn Văn A" class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                        <input type="text" x-model="installForm.customer_name" required placeholder="Nhập họ và tên..." class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-none">
                     </div>
                     <div>
                         <label class="block font-bold text-slate-700 mb-1">Số điện thoại <span class="text-rose-500">*</span></label>
-                        <input type="text" x-model="installForm.customer_phone" required placeholder="0912..." class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                        <input type="text" x-model="installForm.customer_phone" required placeholder="Nhập số điện thoại..." class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-none">
                     </div>
                 </div>
                 <div>

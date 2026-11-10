@@ -148,7 +148,7 @@
                         <i class="fa-solid fa-user-tie"></i>
                     </span>
                     <span class="text-slate-400">Lái xe:</span>
-                    <strong class="text-white font-bold" x-text="selectedVehicle?.driver?.name || 'Bùi Văn Thành'"></strong>
+                    <strong class="text-white font-bold" x-text="selectedVehicle?.driver?.name || '---'"></strong>
                     <template x-if="selectedVehicle?.driver?.phone">
                         <a :href="'tel:' + selectedVehicle.driver.phone"
                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] sm:text-[11px] font-mono font-bold text-purple-300 bg-purple-950/60 border border-purple-700/50 hover:bg-purple-800/60 transition-colors"

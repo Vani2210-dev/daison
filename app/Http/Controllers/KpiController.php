@@ -38,15 +38,11 @@ class KpiController extends Controller
                 'staffName'    => $kpi->user?->name ?? 'Nhân viên',
                 'department'   => $kpi->user?->department ?? 'Sales',
                 'role'         => $kpi->user?->roles->first()?->slug ?? 'Sales_Rep',
-                'month'        => $kpi->month ? (str_contains($kpi->month, 'Tháng') ? $kpi->month : 'Tháng ' . date('m/Y', strtotime($kpi->month . '-01'))) : 'Tháng 09/2026',
+                'month'        => $kpi->month ? (str_contains($kpi->month, 'Tháng') ? $kpi->month : 'Tháng ' . date('m/Y', strtotime($kpi->month . '-01'))) : ('Tháng ' . date('m/Y')),
                 'scorePercent' => (float) $kpi->score_percent,
-                'grade'        => $kpi->grade ? (str_contains($kpi->grade, '(') ? $kpi->grade : "{$kpi->grade} (Đạt tiêu chuẩn)") : 'A+ (Xuất sắc)',
+                'grade'        => $kpi->grade ? (str_contains($kpi->grade, '(') ? $kpi->grade : "{$kpi->grade} (Đạt tiêu chuẩn)") : ($kpi->grade ?? '---'),
                 'notes'        => $kpi->notes ?? '',
-                'details'      => $kpi->metrics_breakdown ?? [
-                    ['metricName' => 'Phát triển Đại lý mới', 'target' => '8 đại lý', 'achieved' => '9 đại lý', 'scorePercent' => 112],
-                    ['metricName' => 'Chăm sóc GPS', 'target' => '45 lượt', 'achieved' => '46 lượt', 'scorePercent' => 102],
-                    ['metricName' => 'Doanh số cá nhân', 'target' => '1.2 tỷ', 'achieved' => '1.18 tỷ', 'scorePercent' => 98],
-                ],
+                'details'      => $kpi->metrics_breakdown ?? [],
             ];
         });
     }

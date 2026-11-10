@@ -1002,10 +1002,10 @@ class DeliveryController extends Controller
                 'assignedDate'  => $asg->assigned_date ? $asg->assigned_date->format('Y-m-d') : date('Y-m-d'),
                 'effectiveFrom' => $asg->effective_from ? $asg->effective_from->format('Y-m-d') : date('Y-m-d'),
                 'effectiveTo'   => $asg->effective_to ?? 'Không thời hạn',
-                'assignedBy'    => $asg->assigned_by ?? 'Hoàng Văn Khoa (Trưởng đội xe)',
+                'assignedBy'    => $asg->assigned_by ?? '',
                 'shift'         => $asg->shift ?? 'Toàn thời gian (07:30 - 17:30)',
-                'routeId'       => (string) ($asg->route_id ?? '1'),
-                'routeZone'     => $asg->route_zone ?? 'Tuyến vận tải Mê Linh',
+                'routeId'       => (string) ($asg->route_id ?? ''),
+                'routeZone'     => $asg->route_zone ?? '',
                 'status'        => $asg->status ?? 'Đang áp dụng',
                 'notes'         => $asg->notes ?? '',
             ];
@@ -1043,7 +1043,7 @@ class DeliveryController extends Controller
         $assignedDate = $request->input('assignedDate', date('Y-m-d'));
         $effectiveFrom = $request->input('effectiveFrom', date('Y-m-d'));
         $effectiveTo = $request->input('effectiveTo', 'Không thời hạn');
-        $assignedBy = $request->input('assignedBy') ?: 'Hoàng Văn Khoa (Trưởng đội xe)';
+        $assignedBy = $request->input('assignedBy') ?: (auth()->user()?->name ?? 'Hệ thống');
         $shift = $request->input('shift') ?: 'Toàn thời gian (07:30 - 17:30)';
         $routeId = $request->input('routeId');
         $routeZone = $request->input('routeZone');
@@ -1137,10 +1137,10 @@ class DeliveryController extends Controller
                 'assignedDate'  => $asg->assigned_date ? $asg->assigned_date->format('Y-m-d') : date('Y-m-d'),
                 'effectiveFrom' => $asg->effective_from ? $asg->effective_from->format('Y-m-d') : date('Y-m-d'),
                 'effectiveTo'   => $asg->effective_to ?? 'Không thời hạn',
-                'assignedBy'    => $asg->assigned_by ?? 'Hoàng Văn Khoa (Trưởng đội xe)',
+                'assignedBy'    => $asg->assigned_by ?? '',
                 'shift'         => $asg->shift ?? 'Toàn thời gian (07:30 - 17:30)',
-                'routeId'       => (string) ($asg->route_id ?? '1'),
-                'routeZone'     => $asg->route_zone ?? 'Tuyến vận tải Mê Linh',
+                'routeId'       => (string) ($asg->route_id ?? ''),
+                'routeZone'     => $asg->route_zone ?? '',
                 'status'        => $asg->status ?? 'Đang áp dụng',
                 'notes'         => $asg->notes ?? '',
             ],

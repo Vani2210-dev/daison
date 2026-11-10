@@ -42,7 +42,7 @@
             <div>
                 <h2 class="font-black text-base uppercase tracking-wider text-slate-900">CÔNG TY TNHH MÁY LỌC NƯỚC ĐẠI SƠN</h2>
                 <p class="text-xs text-slate-600 mt-1">Chuyên sản xuất & phân phối máy lọc nước RO, lõi lọc, linh phụ kiện lọc nước</p>
-                <p class="text-xs text-slate-600">Địa chỉ: {{ $transaction->warehouse?->address ?? 'Hà Nội' }} | Hotline: 0988 123 456</p>
+                <p class="text-xs text-slate-600">Địa chỉ: {{ $transaction->warehouse?->address ?? '' }}</p>
             </div>
             <div class="text-right">
                 <div class="font-bold text-xs text-slate-500">Mẫu số: 01-VT</div>

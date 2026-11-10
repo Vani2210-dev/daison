@@ -153,7 +153,7 @@
                             <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
                                 <i class="fa-solid fa-user text-xs"></i>
                             </span>
-                            <input type="text" x-model="form.customer_name" required placeholder="Ví dụ: Nguyễn Văn An"
+                            <input type="text" x-model="form.customer_name" required placeholder="Nhập họ và tên khách hàng..."
                                    class="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 font-medium">
                         </div>
                     </div>
@@ -166,7 +166,7 @@
                             <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
                                 <i class="fa-solid fa-phone text-xs"></i>
                             </span>
-                            <input type="tel" x-model="form.customer_phone" required placeholder="0912 xxx xxx"
+                            <input type="tel" x-model="form.customer_phone" required placeholder="Nhập số điện thoại..."
                                    class="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 font-medium">
                         </div>
                     </div>

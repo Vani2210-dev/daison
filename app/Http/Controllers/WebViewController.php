@@ -2395,14 +2395,18 @@ class WebViewController extends Controller
     {
         $salesRevenue = Order::whereNotIn('status', ['Hủy', 'Đã hủy', 'Báo giá'])->sum('total_amount');
         $totalOrdersCount = Order::whereNotIn('status', ['Hủy', 'Đã hủy'])->count();
+        $totalReturnedOrders = Order::where('status', 'like', '%trả%')->count();
         $totalProducts = Product::count();
         $totalThu = \App\Models\Transaction::where('type', 'Thu')->sum('amount');
         $totalChi = \App\Models\Transaction::where('type', 'Chi')->sum('amount');
         $totalDebt = Dealer::sum('current_debt');
+        $totalInventoryValue = \App\Models\Product::sum(\Illuminate\Support\Facades\DB::raw('stock * COALESCE(cost_price, base_price, 0)'));
+        $lowStockCount = \App\Models\Product::where('stock', '<=', 10)->count();
+        $brands = \App\Models\Brand::all();
 
         return view('reports.index', compact(
-            'salesRevenue', 'totalOrdersCount', 'totalProducts',
-            'totalThu', 'totalChi', 'totalDebt', 'type'
+            'salesRevenue', 'totalOrdersCount', 'totalReturnedOrders', 'totalProducts',
+            'totalThu', 'totalChi', 'totalDebt', 'totalInventoryValue', 'lowStockCount', 'brands', 'type'
         ));
     }
 

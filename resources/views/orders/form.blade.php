@@ -1879,6 +1879,7 @@ for (let i = 0; i < _rawProductsCatalog.length; i++) {
 
 function orderFormApp() {
     return {
+        companySetting: @json(\App\Models\CompanySetting::getSettings()),
         isReadonly: {{ (request('readonly') == '1' || request('mode') === 'readonly') ? 'true' : 'false' }},
         saving: false,
         errorMessage: '',
@@ -4738,11 +4739,11 @@ function orderFormApp() {
                     <table style="width: 100%; border: none; border-bottom: 2px solid #1b4a8c; padding-bottom: 6px; margin-bottom: 12px; border-collapse: collapse;">
                         <tr>
                             <td style="width: 65%; vertical-align: top; border: none; padding: 0; text-align: left;">
-                                <div style="font-size: 14.5px; font-weight: bold; color: #1b4a8c; text-transform: uppercase; letter-spacing: 0.5px;">NHÀ PHÂN PHỐI MÁY LỌC NƯỚC ĐẠI SƠN</div>
-                                <div style="font-size: 11px; color: #444; font-weight: bold; text-transform: uppercase; margin-top: 1px;">CÔNG TY TNHH MÁY LỌC NƯỚC ĐẠI SƠN</div>
+                                <div style="font-size: 14.5px; font-weight: bold; color: #1b4a8c; text-transform: uppercase; letter-spacing: 0.5px;">${this.companySetting?.company_name || 'HỆ THỐNG PHÂN PHỐI ĐẠI SƠN'}</div>
+                                <div style="font-size: 11px; color: #444; font-weight: bold; text-transform: uppercase; margin-top: 1px;">${this.companySetting?.tax_name || this.companySetting?.company_name || ''}</div>
                                 <div style="font-size: 11.5px; color: #333; margin-top: 3px; line-height: 1.4;">
-                                    <div><strong>Địa chỉ:</strong> Cụm Công Nghiệp Quất Động, Huyện Thường Tín, TP. Hà Nội</div>
-                                    <div><strong>Hotline / Zalo:</strong> 0912.345.678 - 0987.654.321 &nbsp;|&nbsp; <strong>Email:</strong> kd@daison.vn</div>
+                                    ${this.companySetting?.address ? `<div><strong>Địa chỉ:</strong> ${this.companySetting.address}</div>` : ''}
+                                    ${(this.companySetting?.hotline || this.companySetting?.phone) ? `<div><strong>Hotline / Zalo:</strong> ${this.companySetting.hotline || this.companySetting.phone} ${this.companySetting?.email ? `&nbsp;|&nbsp; <strong>Email:</strong> ${this.companySetting.email}` : ''}</div>` : ''}
                                 </div>
                             </td>
                             <td style="width: 35%; vertical-align: top; text-align: right; border: none; padding: 0;">

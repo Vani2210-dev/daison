@@ -507,11 +507,11 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
                     <label class="block font-bold text-slate-700 mb-1">Tên khách hàng / Đại lý lẻ <span class="text-rose-500">*</span></label>
-                    <input type="text" x-model="retailForm.customer_name" placeholder="Nguyễn Văn A..." class="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold outline-none focus:border-emerald-500">
+                    <input type="text" x-model="retailForm.customer_name" placeholder="Nhập tên khách hàng..." class="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold outline-none focus:border-emerald-500">
                 </div>
                 <div>
                     <label class="block font-bold text-slate-700 mb-1">Số điện thoại</label>
-                    <input type="text" x-model="retailForm.customer_phone" placeholder="0987..." class="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold outline-none focus:border-emerald-500">
+                    <input type="text" x-model="retailForm.customer_phone" placeholder="Nhập số điện thoại..." class="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold outline-none focus:border-emerald-500">
                 </div>
                 <div class="sm:col-span-2">
                     <label class="block font-bold text-slate-700 mb-1">Địa chỉ giao hàng</label>

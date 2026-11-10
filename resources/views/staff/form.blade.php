@@ -64,7 +64,7 @@
                         Họ và Tên Nhân Viên <span class="text-rose-500">*</span>
                     </label>
                     <input type="text" x-model="formData.name" required
-                           placeholder="VD: Nguyễn Văn An"
+                           placeholder="Nhập họ và tên..."
                            class="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-sky-500 transition-all">
                 </div>
 
@@ -489,10 +489,10 @@ function staffFormApp() {
             staff_type: '{{ in_array($user->staff_type ?? '', ['brand', 'brand_staff', 'dealer_sales', 'hang']) ? 'brand' : 'company' }}',
             supplier_id: {{ $user->supplier_id ?: 'null' }},
             dealer_id: {{ $user->dealer_id ?: 'null' }},
-            credit_limit: {{ (float)($user->credit_limit ?? 50000000) }},
+            credit_limit: {{ (float)($user->credit_limit ?? 0) }},
             role: '{{ $user->roles->first()?->slug ?? 'Sales_Rep' }}',
             branch_id: {{ $user->branch_id ?: ($branches->first()?->id ?: 'null') }},
-            base_salary: {{ (float)($user->base_salary ?? 12000000) }},
+            base_salary: {{ (float)($user->base_salary ?? 0) }},
             annual_leave_days: {{ (int)($user->annual_leave_days ?? 12) }},
             remaining_leave_days: {{ (float)($user->remaining_leave_days ?? 12) }},
             status: '{{ addslashes($user->status ?? 'Đang làm việc') }}',

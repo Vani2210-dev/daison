@@ -260,7 +260,7 @@
                             x-model="form.customer_phone" 
                             @input="onInputCustomerPhone()" 
                             required 
-                            placeholder="0912 345 678..." 
+                            placeholder="Nhập số điện thoại..." 
                             class="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500 focus:outline-none font-bold text-slate-800 text-xs"
                         >
                     </div>

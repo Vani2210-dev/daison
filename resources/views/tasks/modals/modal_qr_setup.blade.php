@@ -204,7 +204,7 @@
                                             <input type="text" 
                                                    x-model="form.customer_phone" 
                                                    required 
-                                                   placeholder="vd: 0988123456..." 
+                                                   placeholder="Nhập số điện thoại..." 
                                                    class="w-full pl-8 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white font-mono font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 min-h-[40px]">
                                         </div>
                                     </div>

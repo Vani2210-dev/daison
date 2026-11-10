@@ -46,9 +46,9 @@
                                 </span>
                             </td>
                             <td class="py-3 px-4 text-slate-600 font-mono text-[11px]">
-                                {{ $a->latitude && $a->longitude ? ($a->latitude . ', ' . $a->longitude) : 'Tọa độ văn phòng' }}
+                                {{ $a->latitude && $a->longitude ? ($a->latitude . ', ' . $a->longitude) : '---' }}
                             </td>
-                            <td class="py-3 px-4 text-slate-700 font-medium">{{ $a->location_name ?? $a->branch ?? 'Trụ sở Mê Linh' }}</td>
+                            <td class="py-3 px-4 text-slate-700 font-medium">{{ $a->location_name ?? $a->branch ?? '---' }}</td>
                             <td class="py-3 px-4 text-center">
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                     Hợp lệ GPS

@@ -892,10 +892,10 @@
                             <i class="fa-solid fa-shield-halved text-sky-400 text-[11px]"></i>
                             <span class="font-semibold uppercase text-[10px] tracking-wider text-sky-300">Người Phụ Trách Quản Lý</span>
                         </div>
-                        <p class="text-sm font-extrabold text-white" x-text="asgForm.manager_name || 'Hoàng Văn Khoa'"></p>
+                        <p class="text-sm font-extrabold text-white" x-text="asgForm.manager_name || 'Chưa chỉ định'"></p>
                         <p class="text-xs font-mono text-slate-300 flex items-center gap-1">
                             <i class="fa-solid fa-phone text-slate-400 text-[10px]"></i>
-                            <span x-text="asgForm.manager_phone || '0988 222 111'"></span>
+                            <span x-text="asgForm.manager_phone || '---'"></span>
                         </p>
                         <p class="text-[11px] text-slate-400 italic">Chịu trách nhiệm bảo quản & điều động</p>
                     </div>
@@ -977,11 +977,11 @@
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
                                     <div>
                                         <label class="block text-[11px] text-slate-600 font-bold mb-1">Họ & Tên Lái Xe *</label>
-                                        <input type="text" required placeholder="VD: Bùi Văn Thành..." x-model="asgForm.driver_name" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+                                        <input type="text" required placeholder="Nhập họ tên lái xe..." x-model="asgForm.driver_name" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
                                     </div>
                                     <div>
                                         <label class="block text-[11px] text-slate-600 font-bold mb-1">Số Điện Thoại</label>
-                                        <input type="text" placeholder="0966 334 455..." x-model="asgForm.driver_phone" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+                                        <input type="text" placeholder="Nhập số điện thoại..." x-model="asgForm.driver_phone" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
                                     </div>
                                 </div>
                             </div>
@@ -1011,11 +1011,11 @@
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
                                     <div>
                                         <label class="block text-[11px] text-slate-600 font-bold mb-1">Họ & Tên Phụ Xe</label>
-                                        <input type="text" placeholder="VD: Lê Văn Nam..." x-model="asgForm.copilot_name" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500">
+                                        <input type="text" placeholder="Nhập họ tên phụ xe..." x-model="asgForm.copilot_name" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500">
                                     </div>
                                     <div>
                                         <label class="block text-[11px] text-slate-600 font-bold mb-1">Số Điện Thoại</label>
-                                        <input type="text" placeholder="0978 222 333..." x-model="asgForm.copilot_phone" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-medium text-slate-900 focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500">
+                                        <input type="text" placeholder="Nhập số điện thoại..." x-model="asgForm.copilot_phone" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-medium text-slate-900 focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500">
                                     </div>
                                 </div>
                             </div>
@@ -1725,7 +1725,7 @@
                         <div class="grid grid-cols-3 gap-3">
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Số Điện Thoại</label>
-                                <input type="text" x-model="formData.phone" placeholder="VD: 0988 123 456" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs font-mono">
+                                <input type="text" x-model="formData.phone" placeholder="Nhập số điện thoại..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs font-mono">
                             </div>
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Email</label>
@@ -1740,7 +1740,7 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Người Liên Hệ / Đại Diện</label>
-                                <input type="text" x-model="formData.contact_name" placeholder="VD: Nguyễn Văn A (TP Kinh doanh)" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
+                                <input type="text" x-model="formData.contact_name" placeholder="Nhập tên người liên hệ..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
                             </div>
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Trạng Thái Hoạt Động</label>
@@ -2319,33 +2319,9 @@ function categoryManager() {
         asgStatusFilter: 'all',
         isSavingAsg: false,
 
-        asgPresetDrivers: [
-            { name: 'Bùi Văn Thành', phone: '0966 334 455', license: 'Bằng B2', experience: '3 năm kinh nghiệm' },
-            { name: 'Vũ Quốc Nam', phone: '0933 111 222', license: 'Bằng C', experience: '5 năm kinh nghiệm' },
-            { name: 'Nguyễn Văn Định', phone: '0981 222 333', license: 'Bằng C', experience: '7 năm kinh nghiệm' },
-            { name: 'Trần Văn Mạnh', phone: '0915 444 555', license: 'Bằng C', experience: '4 năm kinh nghiệm' },
-            { name: 'Phạm Văn Hùng', phone: '0966 777 888', license: 'Bằng FC (Container)', experience: '8 năm kinh nghiệm' },
-            { name: 'Bùi Hoàng Long', phone: '0944 333 777', license: 'Bằng C', experience: '6 năm kinh nghiệm' },
-            { name: 'Vũ Đình Trọng', phone: '0975 555 666', license: 'Bằng C', experience: '4 năm kinh nghiệm' },
-            { name: 'Hoàng Văn Cường', phone: '0977 777 888', license: 'Bằng C', experience: '4 năm kinh nghiệm' },
-            { name: 'Nguyễn Văn Hùng', phone: '0988 123 456', license: 'Bằng C', experience: '5 năm kinh nghiệm' },
-        ],
-        asgPresetCopilots: [
-            { name: 'Lê Văn Nam', phone: '0971 111 222', role: 'Phụ xe chuyên tuyến' },
-            { name: 'Nguyễn Tiến Đạt', phone: '0978 222 333', role: 'Phụ xe chuyên tuyến' },
-            { name: 'Trần Văn Bình', phone: '0983 456 789', role: 'Phụ xe chuyên tuyến' },
-            { name: 'Lê Văn Kiên', phone: '0912 345 678', role: 'Phụ xe & bốc dỡ' },
-            { name: 'Hoàng Văn Thái', phone: '0989 555 444', role: 'Phụ xe đường dài' },
-            { name: 'Nguyễn Văn Huy', phone: '0904 111 888', role: 'Phụ xe kho tổng' },
-            { name: 'Vũ Đình Trọng', phone: '0973 888 999', role: 'Phụ xe & giao nhận' },
-            { name: 'Phạm Quốc Hùng', phone: '0973 333 444', role: 'Phụ xe giao nhận' },
-        ],
-        asgPresetManagers: [
-            { name: 'Hoàng Văn Khoa', phone: '0988 222 111', title: 'Trưởng đội xe & Điều vận Logistics' },
-            { name: 'Lê Hoàng Khoa', phone: '0977 654 321', title: 'Quản lý Kho Tổng & Đội xe' },
-            { name: 'Bùi Văn Thành', phone: '0966 334 455', title: 'Tổ trưởng Tổ lái xe' },
-            { name: 'Nguyễn Văn Hùng', phone: '0988 123 456', title: 'Giám đốc Vận hành' },
-        ],
+        asgPresetDrivers: [],
+        asgPresetCopilots: [],
+        asgPresetManagers: [],
 
         asgForm: {
             driver_select: 'CUSTOM',
@@ -2354,20 +2330,25 @@ function categoryManager() {
             copilot_select: 'CUSTOM',
             copilot_name: '',
             copilot_phone: '',
-            manager_select: 'Hoàng Văn Khoa',
-            manager_name: 'Hoàng Văn Khoa',
-            manager_phone: '0988 222 111',
+            manager_select: 'CUSTOM',
+            manager_name: '',
+            manager_phone: '',
             effective_from: new Date().toISOString().split('T')[0],
             effective_to: '',
             is_indefinite: true,
             route_id: '',
             route_zone: '',
             shift: 'Toàn thời gian (07:30 - 17:30)',
-            assigned_by: 'Hoàng Văn Khoa (Trưởng đội xe)',
+            assigned_by: '',
             notes: '',
         },
 
         initData() {
+            if (this.users && this.users.length) {
+                this.asgPresetDrivers = this.users.map(u => ({ name: u.name, phone: u.phone || '', license: 'Lái xe', experience: '' }));
+                this.asgPresetCopilots = this.users.map(u => ({ name: u.name, phone: u.phone || '', role: 'Phụ xe' }));
+                this.asgPresetManagers = this.users.map(u => ({ name: u.name, phone: u.phone || '', title: u.role || 'Quản lý' }));
+            }
             // Keep active tab state synced with URL parameter if passed
             const urlParams = new URLSearchParams(window.location.search);
             const tabParam = urlParams.get('tab');
@@ -3174,21 +3155,21 @@ function categoryManager() {
 
             this.asgForm = {
                 driver_select: matchedDrv ? matchedDrv.name : (driverName ? 'CUSTOM' : (this.asgPresetDrivers[0]?.name || 'CUSTOM')),
-                driver_name: driverName || (this.asgPresetDrivers[0]?.name || 'Bùi Văn Thành'),
-                driver_phone: driverPhone || (this.asgPresetDrivers[0]?.phone || '0966 334 455'),
+                driver_name: driverName || (this.asgPresetDrivers[0]?.name || ''),
+                driver_phone: driverPhone || (this.asgPresetDrivers[0]?.phone || ''),
                 copilot_select: matchedCop ? matchedCop.name : (copilotName ? 'CUSTOM' : 'CUSTOM'),
-                copilot_name: copilotName,
+                copilot_name: copilotName || '',
                 copilot_phone: activeAss?.copilotPhone || '',
-                manager_select: activeAss?.managerName || 'Hoàng Văn Khoa',
-                manager_name: activeAss?.managerName || 'Hoàng Văn Khoa',
-                manager_phone: activeAss?.managerPhone || '0988 222 111',
+                manager_select: activeAss?.managerName || (this.asgPresetManagers[0]?.name || 'CUSTOM'),
+                manager_name: activeAss?.managerName || (this.asgPresetManagers[0]?.name || ''),
+                manager_phone: activeAss?.managerPhone || (this.asgPresetManagers[0]?.phone || ''),
                 effective_from: today,
                 effective_to: '',
                 is_indefinite: true,
                 route_id: matchedRouteId,
                 route_zone: matchedRouteZone,
                 shift: activeAss?.shift || 'Toàn thời gian (07:30 - 17:30)',
-                assigned_by: activeAss?.assignedBy || 'Hoàng Văn Khoa (Trưởng đội xe)',
+                assigned_by: activeAss?.assignedBy || '',
                 notes: ''
             };
 
@@ -3258,12 +3239,12 @@ function categoryManager() {
                 driverPhone: this.asgForm.driver_phone.trim(),
                 copilotName: this.asgForm.copilot_name.trim() || 'Không có phụ xe',
                 copilotPhone: this.asgForm.copilot_phone.trim(),
-                managerName: this.asgForm.manager_name.trim() || 'Hoàng Văn Khoa',
-                managerPhone: this.asgForm.manager_phone.trim() || '0988 222 111',
+                managerName: this.asgForm.manager_name.trim() || '',
+                managerPhone: this.asgForm.manager_phone.trim() || '',
                 assignedDate: new Date().toISOString().split('T')[0],
                 effectiveFrom: this.asgForm.effective_from,
                 effectiveTo: this.asgForm.is_indefinite ? 'Không thời hạn' : (this.asgForm.effective_to || 'Không thời hạn'),
-                assignedBy: this.asgForm.assigned_by.trim() || 'Hoàng Văn Khoa (Trưởng đội xe)',
+                assignedBy: this.asgForm.assigned_by.trim() || '',
                 shift: this.asgForm.shift,
                 routeId: this.asgForm.route_id || null,
                 routeZone: routeZoneName,

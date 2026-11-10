@@ -2102,6 +2102,7 @@
 <script>
 function ordersIndexApp() {
     return {
+        companySetting: @json(\App\Models\CompanySetting::getSettings()),
         showMobileFilter: false,
         isAdvancedOpen: false,
         selectedIds: [],
@@ -2785,11 +2786,11 @@ function ordersIndexApp() {
                                             <img src="/images/logo.png" alt="Logo Đại Sơn" style="height: 52px; width: auto; display: block; -webkit-print-color-adjust: exact; print-color-adjust: exact;" onerror="this.style.display='none'">
                                         </td>
                                         <td style="border: none; padding: 0; vertical-align: middle;">
-                                            <div style="font-size: 14.5px; font-weight: bold; color: #1b4a8c; text-transform: uppercase; letter-spacing: 0.5px;">NHÀ PHÂN PHỐI MÁY LỌC NƯỚC ĐẠI SƠN</div>
-                                            <div style="font-size: 11px; color: #444; font-weight: bold; text-transform: uppercase; margin-top: 1px;">CÔNG TY TNHH MÁY LỌC NƯỚC ĐẠI SƠN</div>
+                                            <div style="font-size: 14.5px; font-weight: bold; color: #1b4a8c; text-transform: uppercase; letter-spacing: 0.5px;">${this.companySetting?.company_name || 'HỆ THỐNG PHÂN PHỐI ĐẠI SƠN'}</div>
+                                            <div style="font-size: 11px; color: #444; font-weight: bold; text-transform: uppercase; margin-top: 1px;">${this.companySetting?.tax_name || this.companySetting?.company_name || ''}</div>
                                             <div style="font-size: 11.5px; color: #333; margin-top: 3px; line-height: 1.4;">
-                                                <div><strong>Địa chỉ:</strong> Cụm Công Nghiệp Quất Động, Huyện Thường Tín, TP. Hà Nội</div>
-                                                <div><strong>Hotline / Zalo:</strong> 0912.345.678 - 0987.654.321 &nbsp;|&nbsp; <strong>Email:</strong> kd@daison.vn</div>
+                                                ${this.companySetting?.address ? `<div><strong>Địa chỉ:</strong> ${this.companySetting.address}</div>` : ''}
+                                                ${(this.companySetting?.hotline || this.companySetting?.phone) ? `<div><strong>Hotline / Zalo:</strong> ${this.companySetting.hotline || this.companySetting.phone} ${this.companySetting?.email ? `&nbsp;|&nbsp; <strong>Email:</strong> ${this.companySetting.email}` : ''}</div>` : ''}
                                             </div>
                                         </td>
                                     </tr>
@@ -3157,9 +3158,9 @@ function ordersIndexApp() {
                                             <img src="/images/logo.png" alt="Logo Đại Sơn" style="height: 48px; width: auto; display: block;" onerror="this.style.display='none'">
                                         </td>
                                         <td style="border: none; padding: 0; vertical-align: middle;">
-                                            <div style="font-size: 14px; font-weight: bold; color: #1b4a8c; text-transform: uppercase;">NHÀ PHÂN PHỐI MÁY LỌC NƯỚC ĐẠI SƠN</div>
-                                            <div style="font-size: 10.5px; color: #444; font-weight: bold; text-transform: uppercase;">CÔNG TY TNHH MÁY LỌC NƯỚC ĐẠI SƠN</div>
-                                            <div style="font-size: 11px; color: #333; margin-top: 2px;">Cụm CN Quất Động, Thường Tín, Hà Nội &nbsp;|&nbsp; Hotline: 0912.345.678</div>
+                                            <div style="font-size: 14px; font-weight: bold; color: #1b4a8c; text-transform: uppercase;">${this.companySetting?.company_name || 'HỆ THỐNG PHÂN PHỐI ĐẠI SƠN'}</div>
+                                            <div style="font-size: 10.5px; color: #444; font-weight: bold; text-transform: uppercase;">${this.companySetting?.tax_name || this.companySetting?.company_name || ''}</div>
+                                            <div style="font-size: 11px; color: #333; margin-top: 2px;">${this.companySetting?.address || ''}${(this.companySetting?.hotline || this.companySetting?.phone) ? ` &nbsp;|&nbsp; Hotline: ${this.companySetting.hotline || this.companySetting.phone}` : ''}</div>
                                         </td>
                                     </tr>
                                 </table>
@@ -3315,10 +3316,10 @@ function ordersIndexApp() {
             csv += `Mã các đơn,"${(c.order_codes_display || '').replace(/"/g, '""')}"\n\n`;
 
             csv += "I. BẢNG TỔNG HỢP SẢN PHẨM\n";
-            csv += "STT,Mã sản phẩm,Tên sản phẩm,Tên theo HĐ,ĐVT,SL Bán,SL Tặng,Tổng SL Xuất,Đơn giá (đ),Thành tiền (đ)\n";
+            csv += "STT,Mã sản phẩm,Tên sản phẩm,Tên theo HĐ,ĐVT,SL Bán,SL Tặng,Tổng SL Xuất,Đơn giá (đ),Thành tiền (đ),Chi tiết phân bổ theo đơn hàng\n";
 
             (c.products || []).forEach((p, idx) => {
-                csv += `${idx + 1},"${p.sku || ''}","${(p.name || '').replace(/"/g, '""')}","${(p.tax_name || '').replace(/"/g, '""')}","${p.unit || ''}",${p.sold_quantity},${p.gift_quantity},${p.total_quantity},${p.unit_price},${p.total_amount}\n`;
+                csv += `${idx + 1},"${p.sku || ''}","${(p.name || '').replace(/"/g, '""')}","${(p.tax_name || '').replace(/"/g, '""')}","${p.unit || ''}",${p.sold_quantity},${p.gift_quantity},${p.total_quantity},${p.unit_price},${p.total_amount},"${(p.allocation_text || '').replace(/"/g, '""')}"\n`;
             });
 
             csv += `Tổng cộng,,,,${c.total_sold_quantity},${c.total_gift_quantity},${c.total_quantity},,${c.total_amount},\n`;

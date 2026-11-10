@@ -116,7 +116,7 @@
                         <div class="relative">
                             <i class="fa-solid fa-phone absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                             <input type="text" x-model="formData.phone" required
-                                   placeholder="0983 999 444"
+                                   placeholder="Nhập số điện thoại..."
                                    class="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-800 outline-none focus:border-purple-500 shadow-2xs transition-all placeholder:text-slate-400">
                         </div>
                     </div>

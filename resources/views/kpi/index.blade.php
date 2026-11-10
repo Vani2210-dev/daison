@@ -51,8 +51,8 @@
                                 <p class="text-[11px] text-slate-500">{{ $kpi->department ?? 'Phòng Kinh Doanh' }}</p>
                             </div>
                         </div>
-                        <span class="px-2 py-0.5 rounded text-[10px] font-black {{ ($kpi->score ?? 85) >= 90 ? 'bg-emerald-100 text-emerald-800' : (($kpi->score ?? 85) >= 80 ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800') }}">
-                            Hạng {{ ($kpi->grade ?? 'A') }} ({{ $kpi->score ?? 85 }}/100)
+                        <span class="px-2 py-0.5 rounded text-[10px] font-black {{ ($kpi->score ?? 0) >= 90 ? 'bg-emerald-100 text-emerald-800' : (($kpi->score ?? 0) >= 80 ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800') }}">
+                            Hạng {{ ($kpi->grade ?? '---') }} ({{ $kpi->score ?? 0 }}/100)
                         </span>
                     </div>
 
@@ -61,10 +61,10 @@
                         <div>
                             <div class="flex justify-between text-[11px] font-semibold mb-1">
                                 <span>Doanh số bán ra:</span>
-                                <span class="font-bold text-slate-900">{{ number_format($kpi->sales_actual ?? 125000000) }} đ / {{ number_format($kpi->sales_target ?? 150000000) }} đ</span>
+                                <span class="font-bold text-slate-900">{{ number_format($kpi->sales_actual ?? 0) }} đ / {{ number_format($kpi->sales_target ?? 0) }} đ</span>
                             </div>
                             <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                <div class="bg-sky-600 h-full rounded-full" style="width: {{ min(100, round((($kpi->sales_actual ?? 125) / ($kpi->sales_target ?? 150)) * 100)) }}%"></div>
+                                <div class="bg-sky-600 h-full rounded-full" style="width: {{ ($kpi->sales_target ?? 0) > 0 ? min(100, round((($kpi->sales_actual ?? 0) / $kpi->sales_target) * 100)) : 0 }}%"></div>
                             </div>
                         </div>
 
@@ -72,10 +72,10 @@
                         <div>
                             <div class="flex justify-between text-[11px] font-semibold mb-1">
                                 <span>Chăm sóc đại lý GPS:</span>
-                                <span class="font-bold text-slate-900">{{ $kpi->checkin_count ?? 18 }} / {{ $kpi->checkin_target ?? 20 }} lượt</span>
+                                <span class="font-bold text-slate-900">{{ $kpi->checkin_count ?? 0 }} / {{ $kpi->checkin_target ?? 0 }} lượt</span>
                             </div>
                             <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                <div class="bg-emerald-500 h-full rounded-full" style="width: 90%"></div>
+                                <div class="bg-emerald-500 h-full rounded-full" style="width: {{ ($kpi->checkin_target ?? 0) > 0 ? min(100, round((($kpi->checkin_count ?? 0) / $kpi->checkin_target) * 100)) : 0 }}%"></div>
                             </div>
                         </div>
 
@@ -83,17 +83,17 @@
                         <div>
                             <div class="flex justify-between text-[11px] font-semibold mb-1">
                                 <span>Tỷ lệ thu hồi nợ:</span>
-                                <span class="font-bold text-slate-900">95% (Đạt)</span>
+                                <span class="font-bold text-slate-900">{{ $kpi->debt_recovery_rate ?? 0 }}%</span>
                             </div>
                             <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                <div class="bg-purple-500 h-full rounded-full" style="width: 95%"></div>
+                                <div class="bg-purple-500 h-full rounded-full" style="width: {{ min(100, (float)($kpi->debt_recovery_rate ?? 0)) }}%"></div>
                             </div>
                         </div>
                     </div>
 
                     <div class="pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
                         <span>Kỳ đánh giá: Tháng {{ now()->format('m/Y') }}</span>
-                        <span class="font-bold text-emerald-600">Thưởng KPI: +{{ number_format($kpi->bonus ?? 2500000) }} đ</span>
+                        <span class="font-bold text-emerald-600">Thưởng KPI: +{{ number_format($kpi->bonus ?? 0) }} đ</span>
                     </div>
                 </div>
             @empty
@@ -114,50 +114,34 @@
     <!-- TAB 2: KPI PHÒNG BAN -->
     <div x-show="activeTab === 'department'" class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-4">
-                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <h3 class="font-bold text-xs text-slate-900 flex items-center gap-2">
-                        <i class="fa-solid fa-shop text-blue-600"></i>
-                        <span>Khối Bán Hàng & Kinh Doanh</span>
-                    </h3>
-                    <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">Đạt 94%</span>
+            @forelse($deptKpi as $dk)
+                <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <h3 class="font-bold text-xs text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-users-viewfinder text-blue-600"></i>
+                            <span>{{ $dk->department_name ?: $dk->department }}</span>
+                        </h3>
+                        <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">Đạt {{ (float)$dk->overall_target_percent }}%</span>
+                    </div>
+                    <div class="py-3 space-y-2 text-xs text-slate-600">
+                        @if(!empty($dk->metrics) && is_array($dk->metrics))
+                            @foreach($dk->metrics as $m)
+                                <div class="flex justify-between">
+                                    <span>{{ $m['name'] ?? 'Chỉ tiêu' }}:</span>
+                                    <strong class="text-slate-900">{{ $m['actual'] ?? $m['achieved'] ?? '---' }} / {{ $m['target'] ?? '---' }}</strong>
+                                </div>
+                            @endforeach
+                        @else
+                            <div class="text-slate-400 italic">Đang cập nhật chỉ tiêu kỳ này.</div>
+                        @endif
+                    </div>
                 </div>
-                <div class="py-3 space-y-2 text-xs text-slate-600">
-                    <div class="flex justify-between"><span>Doanh thu tháng:</span><strong class="text-slate-900">1.85 Tỷ / 2.0 Tỷ</strong></div>
-                    <div class="flex justify-between"><span>Số đơn chốt mới:</span><strong class="text-slate-900">420 đơn</strong></div>
-                    <div class="flex justify-between"><span>Đại lý phát triển:</span><strong class="text-slate-900">+14 Đại lý cấp 2</strong></div>
+            @empty
+                <div class="col-span-full bg-white rounded-xl p-8 text-center text-slate-400 border border-slate-200">
+                    <i class="fa-solid fa-chart-line text-3xl mb-2 text-slate-300"></i>
+                    <p class="text-xs">Chưa có dữ liệu KPI phòng ban.</p>
                 </div>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-4">
-                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <h3 class="font-bold text-xs text-slate-900 flex items-center gap-2">
-                        <i class="fa-solid fa-boxes-stacked text-amber-600"></i>
-                        <span>Khối Kho Bãi & Giao Nhận</span>
-                    </h3>
-                    <span class="px-2 py-0.5 rounded bg-sky-100 text-sky-800 text-[10px] font-bold">Đạt 98%</span>
-                </div>
-                <div class="py-3 space-y-2 text-xs text-slate-600">
-                    <div class="flex justify-between"><span>Thời gian soạn hàng TB:</span><strong class="text-slate-900">18 phút / đơn</strong></div>
-                    <div class="flex justify-between"><span>Tỷ lệ giao đúng giờ:</span><strong class="text-slate-900">97.6%</strong></div>
-                    <div class="flex justify-between"><span>Tỷ lệ sai sót / trả hàng:</span><strong class="text-emerald-600 font-bold">&lt; 0.4%</strong></div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-4">
-                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <h3 class="font-bold text-xs text-slate-900 flex items-center gap-2">
-                        <i class="fa-solid fa-calculator text-emerald-600"></i>
-                        <span>Khối Kế Toán & Quản Trị</span>
-                    </h3>
-                    <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">Đạt 99%</span>
-                </div>
-                <div class="py-3 space-y-2 text-xs text-slate-600">
-                    <div class="flex justify-between"><span>Đối soát công nợ:</span><strong class="text-slate-900">100% đúng hạn</strong></div>
-                    <div class="flex justify-between"><span>Quyết toán quỹ COD lái xe:</span><strong class="text-slate-900">Hoàn tất trong ngày</strong></div>
-                    <div class="flex justify-between"><span>Khóa sổ định kỳ:</span><strong class="text-slate-900">Chuẩn xác</strong></div>
-                </div>
-            </div>
+            @endforelse
         </div>
     </div>
 </div>

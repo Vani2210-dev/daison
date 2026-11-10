@@ -65,26 +65,26 @@
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div class="p-4 bg-white rounded-xl shadow-xs border border-slate-200">
                 <span class="text-xs text-slate-500 font-medium">Tổng Doanh Số Bán</span>
-                <p class="text-xl font-black text-slate-900 mt-1">{{ number_format($salesRevenue ?? 2840000000, 0, ',', '.') }} đ</p>
+                <p class="text-xl font-black text-slate-900 mt-1">{{ number_format($salesRevenue ?? 0, 0, ',', '.') }} đ</p>
                 <div class="mt-2 text-[11px] text-emerald-600 font-bold flex items-center gap-1">
-                    <i class="fa-solid fa-arrow-trend-up"></i>
-                    <span>Tăng 14.8% so với kỳ trước</span>
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Doanh số thực tế ghi nhận</span>
                 </div>
             </div>
             <div class="p-4 bg-white rounded-xl shadow-xs border border-slate-200">
                 <span class="text-xs text-slate-500 font-medium">Tổng Số Đơn Hoàn Tất</span>
-                <p class="text-xl font-black text-sky-700 mt-1">{{ $totalOrdersCount ?? 142 }} Đơn</p>
-                <div class="mt-2 text-[11px] text-slate-500 font-medium">Trung bình: {{ number_format(round(($salesRevenue ?? 2840000000) / max(1, $totalOrdersCount ?? 142)), 0, ',', '.') }} đ/đơn</div>
+                <p class="text-xl font-black text-sky-700 mt-1">{{ $totalOrdersCount ?? 0 }} Đơn</p>
+                <div class="mt-2 text-[11px] text-slate-500 font-medium">Trung bình: {{ number_format(round(($salesRevenue ?? 0) / max(1, $totalOrdersCount ?? 1)), 0, ',', '.') }} đ/đơn</div>
             </div>
             <div class="p-4 bg-white rounded-xl shadow-xs border border-slate-200">
                 <span class="text-xs text-slate-500 font-medium">Ước Tính Lợi Nhuận Gộp</span>
-                <p class="text-xl font-black text-emerald-600 mt-1">{{ number_format(($salesRevenue ?? 2840000000) * 0.185, 0, ',', '.') }} đ</p>
-                <div class="mt-2 text-[11px] text-emerald-600 font-bold">Biên độ LN: ~18.5%</div>
+                <p class="text-xl font-black text-emerald-600 mt-1">{{ number_format(($salesRevenue ?? 0) * 0.185, 0, ',', '.') }} đ</p>
+                <div class="mt-2 text-[11px] text-emerald-600 font-bold">Biên độ LN ước tính</div>
             </div>
             <div class="p-4 bg-white rounded-xl shadow-xs border border-slate-200">
                 <span class="text-xs text-slate-500 font-medium">Đơn Khách Trả Hàng</span>
-                <p class="text-xl font-black text-rose-600 mt-1">3 Đơn (0.2%)</p>
-                <div class="mt-2 text-[11px] text-emerald-600 font-bold">Nằm trong ngưỡng an toàn</div>
+                <p class="text-xl font-black text-rose-600 mt-1">{{ $totalReturnedOrders ?? 0 }} Đơn</p>
+                <div class="mt-2 text-[11px] text-slate-500 font-medium">Theo đơn hàng ghi nhận</div>
             </div>
         </div>
 
@@ -107,36 +107,22 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
-                    <tr class="hover:bg-sky-50/50">
-                        <td class="py-2.5 px-3 font-bold text-slate-900 flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-                            <span>Ống Nhựa Tiền Phong (Chủ lực)</span>
-                        </td>
-                        <td class="py-2.5 px-3 text-center">1,240 SP</td>
-                        <td class="py-2.5 px-3 text-right font-bold text-slate-900">1,980,000,000 đ</td>
-                        <td class="py-2.5 px-3 text-right font-bold text-sky-700">69.7 %</td>
-                        <td class="py-2.5 px-3 text-center text-emerald-600 font-bold"><i class="fa-solid fa-arrow-up mr-1"></i> Tăng trưởng mạnh</td>
-                    </tr>
-                    <tr class="hover:bg-sky-50/50">
-                        <td class="py-2.5 px-3 font-bold text-slate-900 flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                            <span>Ống & Phụ Tùng Hoa Sen</span>
-                        </td>
-                        <td class="py-2.5 px-3 text-center">420 SP</td>
-                        <td class="py-2.5 px-3 text-right font-bold text-slate-900">450,000,000 đ</td>
-                        <td class="py-2.5 px-3 text-right font-bold text-sky-700">15.8 %</td>
-                        <td class="py-2.5 px-3 text-center text-slate-600 font-medium">Ổn định</td>
-                    </tr>
-                    <tr class="hover:bg-sky-50/50">
-                        <td class="py-2.5 px-3 font-bold text-slate-900 flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                            <span>Thiết Bị Điện Sino & Panasonic</span>
-                        </td>
-                        <td class="py-2.5 px-3 text-center">560 SP</td>
-                        <td class="py-2.5 px-3 text-right font-bold text-slate-900">410,000,000 đ</td>
-                        <td class="py-2.5 px-3 text-right font-bold text-sky-700">14.5 %</td>
-                        <td class="py-2.5 px-3 text-center text-emerald-600 font-bold"><i class="fa-solid fa-arrow-up mr-1"></i> Mở rộng</td>
-                    </tr>
+                    @forelse($brands ?? [] as $b)
+                        <tr class="hover:bg-sky-50/50">
+                            <td class="py-2.5 px-3 font-bold text-slate-900 flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                                <span>{{ $b->name }}</span>
+                            </td>
+                            <td class="py-2.5 px-3 text-center">---</td>
+                            <td class="py-2.5 px-3 text-right font-bold text-slate-900">0 đ</td>
+                            <td class="py-2.5 px-3 text-right font-bold text-sky-700">0 %</td>
+                            <td class="py-2.5 px-3 text-center text-slate-500">Ổn định</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="py-6 text-center text-slate-400 italic">Chưa có dữ liệu thương hiệu phát sinh trong kỳ</td>
+                        </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
@@ -158,19 +144,19 @@
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
                 <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
                     <span class="text-[11px] text-slate-500">Tổng Mã Mặt Hàng</span>
-                    <p class="text-lg font-bold text-slate-900 mt-1">{{ $totalProducts ?? 340 }} SKU</p>
+                    <p class="text-lg font-bold text-slate-900 mt-1">{{ $totalProducts ?? 0 }} SKU</p>
                 </div>
                 <div class="p-3 bg-sky-50 rounded-xl border border-sky-200">
                     <span class="text-[11px] text-sky-800">Tổng Giá Trị Tồn Kho</span>
-                    <p class="text-lg font-bold text-sky-900 mt-1">~ 4.62 Tỷ đ</p>
+                    <p class="text-lg font-bold text-sky-900 mt-1">{{ number_format($totalInventoryValue ?? 0, 0, ',', '.') }} đ</p>
                 </div>
                 <div class="p-3 bg-amber-50 rounded-xl border border-amber-200">
                     <span class="text-[11px] text-amber-800">Cảnh Báo Sắp Hết Hàng</span>
-                    <p class="text-lg font-bold text-amber-900 mt-1">8 Mặt hàng</p>
+                    <p class="text-lg font-bold text-amber-900 mt-1">{{ $lowStockCount ?? 0 }} Mặt hàng</p>
                 </div>
                 <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-                    <span class="text-[11px] text-emerald-800">Vòng Quay Tồn Kho</span>
-                    <p class="text-lg font-bold text-emerald-900 mt-1">18 Ngày / Vòng</p>
+                    <span class="text-[11px] text-emerald-800">Tình Trạng Kho</span>
+                    <p class="text-lg font-bold text-emerald-900 mt-1">Hoạt động</p>
                 </div>
             </div>
         </div>
@@ -192,15 +178,15 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 my-4">
                 <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
                     <span class="text-[11px] text-emerald-800">Tổng Thu Tiền Mặt & Ngân Hàng</span>
-                    <p class="text-xl font-bold text-emerald-900 mt-1">{{ number_format($totalThu ?? 3120000000, 0, ',', '.') }} đ</p>
+                    <p class="text-xl font-bold text-emerald-900 mt-1">{{ number_format($totalThu ?? 0, 0, ',', '.') }} đ</p>
                 </div>
                 <div class="p-3 bg-rose-50 rounded-xl border border-rose-200">
                     <span class="text-[11px] text-rose-800">Tổng Chi Nhập Hàng & Vận Hành</span>
-                    <p class="text-xl font-bold text-rose-900 mt-1">{{ number_format($totalChi ?? 2280000000, 0, ',', '.') }} đ</p>
+                    <p class="text-xl font-bold text-rose-900 mt-1">{{ number_format($totalChi ?? 0, 0, ',', '.') }} đ</p>
                 </div>
                 <div class="p-3 bg-sky-50 rounded-xl border border-sky-200">
                     <span class="text-[11px] text-sky-800">Dòng Tiền Thuần (Net Cash Flow)</span>
-                    <p class="text-xl font-bold text-sky-900 mt-1">+{{ number_format(($totalThu ?? 3120000000) - ($totalChi ?? 2280000000), 0, ',', '.') }} đ</p>
+                    <p class="text-xl font-bold text-sky-900 mt-1">{{ number_format(($totalThu ?? 0) - ($totalChi ?? 0), 0, ',', '.') }} đ</p>
                 </div>
             </div>
         </div>
@@ -222,15 +208,15 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 my-4">
                 <div class="p-3 bg-rose-50 rounded-xl border border-rose-200">
                     <span class="text-[11px] text-rose-800">Tổng Dư Nợ Toàn Hệ Thống</span>
-                    <p class="text-xl font-bold text-rose-900 mt-1">{{ number_format($totalDebt ?? 1450000000, 0, ',', '.') }} đ</p>
+                    <p class="text-xl font-bold text-rose-900 mt-1">{{ number_format($totalDebt ?? 0, 0, ',', '.') }} đ</p>
                 </div>
                 <div class="p-3 bg-amber-50 rounded-xl border border-amber-200">
-                    <span class="text-[11px] text-amber-800">Nợ Đến Hạn Trong Tuần</span>
-                    <p class="text-xl font-bold text-amber-900 mt-1">{{ number_format(320000000, 0, ',', '.') }} đ</p>
+                    <span class="text-[11px] text-amber-800">Tình Trạng Hạn Mức</span>
+                    <p class="text-xl font-bold text-amber-900 mt-1">Trong hạn mức</p>
                 </div>
                 <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-                    <span class="text-[11px] text-emerald-800">Tỷ Lệ Thu Hồi Đúng Hạn</span>
-                    <p class="text-xl font-bold text-emerald-900 mt-1">94.2 %</p>
+                    <span class="text-[11px] text-emerald-800">Trạng Thái Công Nợ</span>
+                    <p class="text-xl font-bold text-emerald-900 mt-1">Theo dõi thường xuyên</p>
                 </div>
             </div>
         </div>

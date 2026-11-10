@@ -446,7 +446,7 @@
 
                                         <!-- Sales Rep info -->
                                         <div class="text-[11px] text-slate-500 mt-1 flex items-center gap-3">
-                                            <span>NV Bán hàng: <strong class="text-slate-700" x-text="ord.creator_name || ord.order_creator || 'Nguyễn Văn Nam'"></strong></span>
+                                            <span>NV Bán hàng: <strong class="text-slate-700" x-text="ord.creator_name || ord.order_creator || '---'"></strong></span>
                                             <template x-if="ord.customer_phone">
                                                 <span>• SĐT: <span class="font-mono font-medium text-slate-700" x-text="ord.customer_phone"></span></span>
                                             </template>

@@ -145,7 +145,7 @@ class InventoryController extends Controller
                 'address' => $w->address ?? '',
                 'manager' => $w->manager_name ?? '',
                 'managerName' => $w->manager_name ?? '',
-                'phone' => $w->branch?->phone ?? '0988 123 456',
+                'phone' => $w->branch?->phone ?? '',
                 'status' => $w->is_active ? 'Hoạt động' : 'Tạm ngưng',
             ];
         });
@@ -574,7 +574,7 @@ class InventoryController extends Controller
                 'address'     => $wh->address ?? '',
                 'manager'     => $wh->manager_name ?? '',
                 'managerName' => $wh->manager_name ?? '',
-                'phone'       => $wh->branch?->phone ?? '0988 123 456',
+                'phone'       => $wh->branch?->phone ?? '',
                 'status'      => $wh->is_active ? 'Hoạt động' : 'Tạm ngưng',
             ]
         ]);
