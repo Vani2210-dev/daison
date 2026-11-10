@@ -1,124 +1,129 @@
     <!-- ========================================================================= -->
-    <!-- 3. 5 THẺ KPI TIẾN ĐỘ & TÀI CHÍNH (Exact 5 cards from Screenshot 1)        -->
+    <!-- 3. 5 THẺ KPI TIẾN ĐỘ & TÀI CHÍNH (Đã tối ưu lưới 2 cột siêu gọn cho Mobile) -->
     <!-- ========================================================================= -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 text-xs">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3.5 text-xs">
         
-        <!-- 1. Tiến độ giao hàng -->
-        <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2 flex flex-col justify-between">
-            <div class="flex items-center justify-between text-slate-500 font-bold">
-                <span>Tiến độ giao hàng</span>
-                <i class="fa-solid fa-box text-purple-600 text-sm"></i>
+        <!-- 1. Tiến độ giao hàng (Mobile: Dải tiến độ Full-width siêu gọn; Desktop: 1 cột chuẩn) -->
+        <div class="col-span-2 lg:col-span-1 bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-4 border border-slate-200 shadow-2xs flex flex-col justify-between gap-1.5 sm:space-y-2">
+            <div class="flex items-center justify-between text-slate-600 font-bold">
+                <span class="flex items-center gap-1.5 text-xs">
+                    <i class="fa-solid fa-box text-purple-600 text-xs"></i>
+                    <span>Tiến độ giao hàng</span>
+                </span>
+                <span class="font-mono font-black text-purple-700 text-xs sm:hidden" x-text="progressPercent + '%'"></span>
             </div>
             <div>
-                <div class="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight"
-                     x-text="completedOrdersCount + '/' + orders.length + ' đơn'">
-                </div>
-                <div class="flex items-center justify-between text-[11px] text-slate-500 font-semibold mt-1">
-                    <span>Đã hoàn thành</span>
-                    <span class="font-mono font-bold text-purple-700" x-text="progressPercent + '%'"></span>
+                <div class="flex items-baseline justify-between sm:block">
+                    <div class="text-base sm:text-2xl font-black text-slate-900 font-mono tracking-tight"
+                         x-text="completedOrdersCount + '/' + orders.length + ' đơn'">
+                    </div>
+                    <div class="hidden sm:flex items-center justify-between text-[11px] text-slate-500 font-semibold mt-1">
+                        <span>Đã hoàn thành</span>
+                        <span class="font-mono font-bold text-purple-700" x-text="progressPercent + '%'"></span>
+                    </div>
                 </div>
                 <!-- Progress bar -->
-                <div class="w-full bg-slate-100 rounded-full h-1.5 mt-1.5 overflow-hidden">
+                <div class="w-full bg-slate-100 rounded-full h-1.5 mt-1 sm:mt-1.5 overflow-hidden">
                     <div class="bg-purple-600 h-1.5 rounded-full transition-all duration-500" :style="'width: ' + progressPercent + '%'"></div>
                 </div>
             </div>
         </div>
 
         <!-- 2. Tiền mặt Lái xe đang cầm -->
-        <div class="bg-amber-50/60 rounded-2xl p-4 border border-amber-200 shadow-2xs space-y-2 flex flex-col justify-between">
-            <div class="flex items-center justify-between text-amber-800 font-bold">
-                <span>Tiền mặt Lái xe đang cầm</span>
-                <i class="fa-solid fa-sack-dollar text-amber-600 text-base"></i>
-            </div>
+        <div class="col-span-1 bg-amber-50/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 border border-amber-200/90 shadow-2xs flex flex-col justify-between gap-1.5 sm:space-y-2">
             <div>
-                <div class="text-xl sm:text-2xl font-black text-amber-950 font-mono tracking-tight"
+                <div class="flex items-center justify-between text-amber-900 font-bold text-[11px] sm:text-xs">
+                    <span class="truncate">Tiền mặt cầm</span>
+                    <i class="fa-solid fa-sack-dollar text-amber-600 text-xs sm:text-base shrink-0"></i>
+                </div>
+                <div class="text-sm sm:text-2xl font-black text-amber-950 font-mono tracking-tight mt-1 truncate"
                      x-text="formatNumber(cashInHand) + ' đ'">
                 </div>
-                <div class="text-[11px] text-amber-800/80 font-medium mt-1 flex items-center gap-1">
-                    <i class="fa-regular fa-clock text-[10px]"></i>
-                    <span>Nộp về thủ quỹ cuối ca</span>
+                <div class="text-[10px] sm:text-[11px] text-amber-800/80 font-medium mt-0.5 flex items-center gap-1 truncate">
+                    <i class="fa-regular fa-clock text-[9px]"></i>
+                    <span class="truncate">Nộp cuối ca</span>
                 </div>
             </div>
             <button type="button" @click="openHandoverModal()"
-                    class="w-full py-1.5 px-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl text-[11px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs">
-                <i class="fa-solid fa-money-check-dollar"></i>
-                <span x-text="hasPendingCodSubmission ? 'Đã gửi nộp COD (Gửi lại) →' : 'Nộp tiền COD cho Kế toán →'"></span>
+                    class="w-full py-1 sm:py-1.5 px-1.5 sm:px-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-lg sm:rounded-xl text-[10.5px] sm:text-[11px] transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-xs truncate">
+                <i class="fa-solid fa-money-check-dollar text-[10px]"></i>
+                <span class="truncate" x-text="hasPendingCodSubmission ? 'Đã gửi COD →' : 'Nộp COD →'"></span>
             </button>
         </div>
 
         <!-- 3. Đã thanh toán VietQR -->
-        <div class="bg-emerald-50/60 rounded-2xl p-4 border border-emerald-200 shadow-2xs space-y-2 flex flex-col justify-between">
-            <div class="flex items-center justify-between text-emerald-800 font-bold">
-                <span>Đã thanh toán VietQR</span>
-                <i class="fa-solid fa-qrcode text-emerald-600 text-base"></i>
-            </div>
+        <div class="col-span-1 bg-emerald-50/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 border border-emerald-200/90 shadow-2xs flex flex-col justify-between gap-1.5 sm:space-y-2">
             <div>
-                <div class="text-xl sm:text-2xl font-black text-emerald-950 font-mono tracking-tight"
+                <div class="flex items-center justify-between text-emerald-900 font-bold text-[11px] sm:text-xs">
+                    <span class="truncate">Thu VietQR</span>
+                    <i class="fa-solid fa-qrcode text-emerald-600 text-xs sm:text-base shrink-0"></i>
+                </div>
+                <div class="text-sm sm:text-2xl font-black text-emerald-950 font-mono tracking-tight mt-1 truncate"
                      x-text="formatNumber(vietQrAmount) + ' đ'">
                 </div>
-                <div class="text-[11px] text-emerald-800/80 font-medium mt-1 flex items-center gap-1">
-                    <i class="fa-regular fa-circle-check text-[10px] text-emerald-600"></i>
-                    <span>Đã vào TK Ngân hàng</span>
+                <div class="text-[10px] sm:text-[11px] text-emerald-800/80 font-medium mt-0.5 flex items-center gap-1 truncate">
+                    <i class="fa-regular fa-circle-check text-[9px] text-emerald-600"></i>
+                    <span class="truncate">Vào TK Ngân hàng</span>
                 </div>
+            </div>
+            <div class="text-[10px] text-emerald-700 font-bold bg-emerald-100/70 py-1 px-1.5 rounded-lg text-center truncate">
+                <i class="fa-solid fa-bolt text-[9px]"></i> Tự động đối soát
             </div>
         </div>
 
         <!-- 4. Ký Ghi nợ đại lý -->
-        <div class="bg-purple-50/60 rounded-2xl p-4 border border-purple-200 shadow-2xs space-y-2 flex flex-col justify-between">
-            <div class="flex items-center justify-between text-purple-800 font-bold">
-                <span>Ký Ghi nợ đại lý</span>
-                <i class="fa-solid fa-file-invoice text-purple-600 text-base"></i>
-            </div>
+        <div class="col-span-1 bg-purple-50/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 border border-purple-200/90 shadow-2xs flex flex-col justify-between gap-1.5 sm:space-y-2">
             <div>
-                <div class="text-xl sm:text-2xl font-black text-purple-950 font-mono tracking-tight"
+                <div class="flex items-center justify-between text-purple-900 font-bold text-[11px] sm:text-xs">
+                    <span class="truncate">Ghi nợ đại lý</span>
+                    <i class="fa-solid fa-file-invoice text-purple-600 text-xs sm:text-base shrink-0"></i>
+                </div>
+                <div class="text-sm sm:text-2xl font-black text-purple-950 font-mono tracking-tight mt-1 truncate"
                      x-text="formatNumber(debtAmount) + ' đ'">
                 </div>
-                <div class="text-[11px] text-purple-800/80 font-medium mt-1 flex items-center justify-between">
-                    <span class="flex items-center gap-1">
-                        <i class="fa-solid fa-scale-balanced text-[10px] text-purple-600"></i>
-                        <span>Đối soát nợ</span>
-                    </span>
-                    <span class="font-bold text-purple-700 font-mono" x-text="candidateDebtOrders.length + ' đơn nợ'"></span>
+                <div class="text-[10px] sm:text-[11px] text-purple-800/80 font-medium mt-0.5 flex items-center justify-between">
+                    <span class="truncate">Đơn nợ</span>
+                    <span class="font-bold text-purple-700 font-mono" x-text="candidateDebtOrders.length + ' đơn'"></span>
                 </div>
             </div>
             <button type="button" @click="openDebtHandoverModal()"
-                    class="w-full py-1.5 px-2 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-extrabold rounded-xl text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95">
-                <i class="fa-solid fa-share-from-square"></i>
-                <span>Bàn giao nợ cho Sale →</span>
+                    class="w-full py-1 sm:py-1.5 px-1.5 sm:px-2 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-extrabold rounded-lg sm:rounded-xl text-[10.5px] sm:text-[11px] transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs active:scale-95 truncate">
+                <i class="fa-solid fa-share-from-square text-[10px]"></i>
+                <span class="truncate">Giao nợ Sale →</span>
             </button>
         </div>
 
         <!-- 5. Hàng hoàn trả trên xe -->
-        <div class="bg-rose-50/60 rounded-2xl p-4 border border-rose-200 shadow-2xs space-y-2 flex flex-col justify-between">
-            <div class="flex items-center justify-between text-rose-800 font-bold">
-                <span>Hàng hoàn trả trên xe</span>
-                <i class="fa-solid fa-rotate-left text-rose-600 text-base"></i>
-            </div>
+        <div class="col-span-1 bg-rose-50/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 border border-rose-200/90 shadow-2xs flex flex-col justify-between gap-1.5 sm:space-y-2">
             <div>
-                <div class="flex items-baseline justify-between">
-                    <span class="text-xl sm:text-2xl font-black text-rose-950 font-mono tracking-tight"
+                <div class="flex items-center justify-between text-rose-900 font-bold text-[11px] sm:text-xs">
+                    <span class="truncate">Hàng hoàn trả</span>
+                    <i class="fa-solid fa-rotate-left text-rose-600 text-xs sm:text-base shrink-0 cursor-pointer" @click="showReturnsModal = true"></i>
+                </div>
+                <div class="flex items-baseline justify-between mt-1 gap-1">
+                    <span class="text-sm sm:text-2xl font-black text-rose-950 font-mono tracking-tight truncate"
                           x-text="pendingReturnsList.length + ' phiếu'"></span>
-                    <span class="text-xs font-mono font-bold text-rose-700"
+                    <span class="text-[10px] sm:text-xs font-mono font-bold text-rose-700 truncate"
                           x-text="formatNumber(pendingReturnsTotalAmount) + ' đ'"></span>
                 </div>
-                <div class="text-[11px] text-rose-700/80 font-medium mt-1 cursor-pointer hover:underline" @click="showReturnsModal = true">
-                    Bấm xem danh sách hàng trả →
+                <div class="text-[10px] sm:text-[11px] text-rose-700/90 font-medium mt-0.5 cursor-pointer hover:underline truncate" @click="showReturnsModal = true">
+                    Xem danh sách →
                 </div>
             </div>
-            <div class="grid grid-cols-2 gap-1.5 pt-1">
+            <div class="grid grid-cols-2 gap-1 pt-0.5">
                 <button type="button" @click="showIntakeWarehouseModal = true"
                         :disabled="pendingReturnsList.length === 0"
-                        class="py-1.5 px-2 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl text-[11px] transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-xs disabled:opacity-50"
-                        title="Bàn giao hàng hoàn trả cho thủ kho kiểm đếm duyệt nhập">
-                    <i class="fa-solid fa-warehouse text-[10px]"></i>
-                    <span>Hoàn kho</span>
+                        class="py-1 px-1 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] transition-colors flex items-center justify-center gap-0.5 cursor-pointer shadow-xs disabled:opacity-40 truncate"
+                        title="Bàn giao hàng hoàn trả cho thủ kho">
+                    <i class="fa-solid fa-warehouse text-[9px]"></i>
+                    <span class="truncate">Hoàn kho</span>
                 </button>
                 <button type="button" @click="openAcceptHoldingModal()"
                         :disabled="pendingReturnsList.length === 0"
-                        class="py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black rounded-xl text-[11px] transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs disabled:opacity-50"
-                        title="Lái xe tự nhận ôm hàng hoàn trả này vào Kho nhân sự để bán lưu động">
-                    <i class="fa-solid fa-box-archive text-[10px]"></i>
-                    <span>Tự ôm hàng</span>
+                        class="py-1 px-1 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] transition-all flex items-center justify-center gap-0.5 cursor-pointer shadow-xs disabled:opacity-40 truncate"
+                        title="Lái xe tự nhận ôm hàng vào kho nhân sự">
+                    <i class="fa-solid fa-box-archive text-[9px]"></i>
+                    <span class="truncate">Tự ôm</span>
                 </button>
             </div>
         </div>
