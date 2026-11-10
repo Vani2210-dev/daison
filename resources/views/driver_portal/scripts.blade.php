@@ -2026,23 +2026,6 @@ function deliveryExecutionApp() {
                     this.showToast('✅ Đã gửi phản ánh tới người bốc hàng thành công!');
                     this.discrepancyTab = 'history';
 
-                    // Kích hoạt thông báo nổi
-                    if (typeof window.showFloatingNotification === 'function') {
-                        window.showFloatingNotification({
-                            title: '⚖️ Đã gửi phản ánh lệch hàng',
-                            message: `Xe ${payload.vehicle_plate || ''}: ${payload.product_name} (Lệch ${payload.difference_qty}) đã gửi tới Người bốc hàng.`,
-                            type: 'delivery_discrepancy',
-                            data: {
-                                vehicle_plate: payload.vehicle_plate,
-                                order_code: payload.order_code,
-                                product_name: payload.product_name,
-                                diff_qty: payload.difference_qty,
-                                unit: payload.unit,
-                                checker_name: payload.checker_name
-                            }
-                        });
-                    }
-
                     if (typeof BroadcastChannel !== 'undefined') {
                         try {
                             const dc = new BroadcastChannel('erp_discrepancy_sync');

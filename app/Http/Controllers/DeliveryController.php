@@ -4354,6 +4354,11 @@ class DeliveryController extends Controller
             })->pluck('id')->all();
             $targetUserIds = array_unique(array_filter(array_merge($targetUserIds, $warehouseAndAdminUsers)));
 
+            // Tuyệt đối không gửi thông báo lại cho chính lái xe/người đang gửi phản ánh
+            if ($driverId) {
+                $targetUserIds = array_values(array_diff($targetUserIds, [(int)$driverId]));
+            }
+
             foreach ($targetUserIds as $uId) {
                 \App\Models\SystemNotification::send(
                     (int)$uId,
@@ -4485,6 +4490,11 @@ class DeliveryController extends Controller
                   ->orWhere('id', 1);
             })->pluck('id')->all();
             $targetDriverIds = array_unique(array_filter(array_merge($targetDriverIds, $adminAndStaffIds)));
+
+            // Không gửi thông báo lại cho chính người vừa phản hồi
+            if ($user?->id) {
+                $targetDriverIds = array_values(array_diff($targetDriverIds, [(int)$user->id]));
+            }
 
             foreach ($targetDriverIds as $uId) {
                 \App\Models\SystemNotification::send(

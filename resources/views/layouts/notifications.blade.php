@@ -188,7 +188,7 @@
                                    'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30': ['completed', 'supplier_order_approved', 'order_return_approved'].includes(item.type),
                                    'bg-slate-800 hover:bg-slate-900': !['installation_assigned', 'repair_assigned', 'warehouse_intake', 'completed', 'supplier_order_approval', 'supplier_order_approved', 'order_return_approved'].includes(item.type)
                                }">
-                                <span x-text="item.type === 'supplier_order_approval' ? 'Xem & Duyệt Đơn' : (item.type === 'supplier_order_approved' ? 'Xem Đơn' : (item.type === 'warehouse_intake' ? 'Duyệt Nhập Kho' : 'Xem & Nhận đơn'))"></span>
+                                <span x-text="item.type === 'delivery_discrepancy' ? 'Xử Lý Lệch Hàng' : (item.type === 'delivery_discrepancy_response' ? 'Xem Chi Tiết' : (item.type === 'supplier_order_approval' ? 'Xem & Duyệt Đơn' : (item.type === 'supplier_order_approved' ? 'Xem Đơn' : (item.type === 'warehouse_intake' ? 'Duyệt Nhập Kho' : 'Xem & Nhận đơn'))))"></span>
                                 <i class="fa-solid fa-arrow-right text-[10px]"></i>
                             </a>
                         </template>
@@ -321,7 +321,13 @@ document.addEventListener('alpine:init', () => {
             // Tránh trùng lặp toast cùng id
             if (this.toasts.some(t => t.id === item.id)) return;
 
-            const duration = 12000; // 12 giây tự động tắt
+            // Giới hạn tối đa 1 toast tại một thời điểm trên màn hình để không che khuất thao tác
+            while (this.toasts.length >= 1) {
+                const old = this.toasts.pop();
+                if (old && old.intervalId) clearInterval(old.intervalId);
+            }
+
+            const duration = 7000; // 7 giây tự động tắt
             const startTime = Date.now();
             const toastItem = {
                 ...item,
