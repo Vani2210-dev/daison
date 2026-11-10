@@ -5,16 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Hệ Thống Quản Trị ERP Đại Sơn')</title>
-    <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}?v=2">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}?v=2">
 
     <!-- PWA Web App Manifest & Mobile Meta -->
-    <link rel="manifest" href="{{ asset('manifest.json') }}">
+    <link rel="manifest" href="{{ asset('manifest.json') }}?v=2">
     <meta name="theme-color" content="#1a3a68">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Đại Sơn ERP">
-    <link rel="apple-touch-icon" href="{{ asset('images/logo.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/icon-192.png') }}">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -342,7 +343,7 @@
                     </div>
                     <div class="flex flex-col">
                         <span class="font-extrabold text-white tracking-wide text-xs sm:text-sm flex items-center gap-1.5 leading-tight">
-                            ĐẠI ĐẠI SƠN ERP
+                            ĐẠI SƠN ERP
                         </span>
                         <span class="hidden sm:block text-[10px] text-slate-300 font-medium tracking-tight">
                             Phân Hệ Phân Phối Hàng Tiêu Dùng
@@ -1687,7 +1688,7 @@
 
     <!-- FOOTER -->
     <footer class="bg-white border-t border-slate-200 py-3 text-center text-xs text-slate-400">
-        <span>© 2026 CÔNG TY TNHH ĐẠI ĐẠI SƠN &bull; Phân Hệ Phân Phối Hàng Tiêu Dùng & Dịch Vụ Máy Lọc Nước</span>
+        <span>© 2026 NHÀ PHÂN PHỐI ĐẠI SƠN &bull; Phân Hệ Phân Phối Hàng Tiêu Dùng & Dịch Vụ Máy Lọc Nước</span>
     </footer>
 
     <!-- Global Table Click-and-Drag Horizontal Scroll -->
