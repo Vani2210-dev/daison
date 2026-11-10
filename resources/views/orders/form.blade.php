@@ -1730,16 +1730,16 @@
             <div class="space-y-3 text-xs">
                 <div>
                     <label class="block text-slate-600 font-semibold mb-1">Tên khách hàng / Đại lý <span class="text-rose-500">*</span></label>
-                    <input type="text" x-model="newDealer.name" placeholder="Ví dụ: Đại Lý Điện Nước Hoàng Gia" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none">
+                    <input type="text" x-model="newDealer.name" placeholder="Nhập tên đại lý / khách hàng..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none">
                 </div>
                 <div>
                     <label class="block text-slate-600 font-semibold mb-1">Số điện thoại</label>
-                    <input type="text" x-model="newDealer.phone" placeholder="09xxxx..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none">
+                    <input type="text" x-model="newDealer.phone" placeholder="Nhập số điện thoại..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none">
                 </div>
                 <div>
                     <div>
                     <label class="block text-slate-600 font-semibold mb-1">Mã số thuế (MST)</label>
-                    <input type="text" x-model="newDealer.tax_code" placeholder="Ví dụ: 0101234567..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none">
+                    <input type="text" x-model="newDealer.tax_code" placeholder="Nhập mã số thuế..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none">
                 </div>
                 <div>
                     <label class="block text-slate-600 font-semibold mb-1">Cấp đại lý / Bảng giá</label>

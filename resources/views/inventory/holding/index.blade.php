@@ -590,7 +590,7 @@
 
                     <div>
                         <label class="block font-bold text-slate-700 mb-1">Phương Tiện / Biển Số Xe (Tùy chọn):</label>
-                        <input type="text" x-model="vanSaleForm.vehicle_plate" placeholder="VD: 29C-123.45 hoặc Xe cá nhân..." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-medium text-slate-800 focus:outline-none focus:border-emerald-600">
+                        <input type="text" x-model="vanSaleForm.vehicle_plate" placeholder="Nhập biển số xe hoặc phương tiện..." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-medium text-slate-800 focus:outline-none focus:border-emerald-600">
                     </div>
                 </div>
 
@@ -1060,16 +1060,19 @@ function employeeHoldingApp() {
                     </style>
                 </head>
                 <body>
+                    @php
+                        $holdingComp = \App\Models\CompanySetting::getSettings();
+                    @endphp
                     <div style="text-align: center; border-bottom: 1px solid #000; padding-bottom: 8px;">
-                        <h3 style="margin: 0; text-transform: uppercase;">CÔNG TY TNHH MÁY LỌC NƯỚC ĐẠI SƠN</h3>
-                        <p style="margin: 2px 0; font-size: 10px;">Địa chỉ: KCN Quang Minh, Mê Linh, Hà Nội | Hotline: 098.888.8888</p>
+                        <h3 style="margin: 0; text-transform: uppercase;">{{ $holdingComp->company_name ?? 'CÔNG TY TNHH MÁY LỌC NƯỚC ĐẠI SƠN' }}</h3>
+                        <p style="margin: 2px 0; font-size: 10px;">{{ $holdingComp->address ? 'Địa chỉ: ' . $holdingComp->address : '' }}{{ ($holdingComp->hotline || $holdingComp->phone) ? ' | Hotline: ' . ($holdingComp->hotline ?: $holdingComp->phone) : '' }}</p>
                         <h1>PHIẾU XUẤT KHO HÀNG ÔM CHO NHÂN VIÊN (PXK-OM)</h1>
                         <p style="margin: 0; font-style: italic;">Mã phiếu: <strong>${disp.code}</strong> - Ngày xuất: ${disp.dispatch_date ? new Date(disp.dispatch_date).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN')}</p>
                     </div>
 
                     <div class="info-grid">
                         <div>
-                            <div><strong>Kho xuất nguồn:</strong> ${disp.warehouse_name || 'Kho Tổng Mê Linh'}</div>
+                            <div><strong>Kho xuất nguồn:</strong> ${disp.warehouse_name || '---'}</div>
                             <div><strong>Phương tiện / Biển số:</strong> ${disp.vehicle_plate || '---'}</div>
                         </div>
                         <div>

@@ -84,7 +84,7 @@
                         Số Điện Thoại Liên Hệ
                     </label>
                     <input type="text" x-model="formData.phone"
-                           placeholder="VD: 0988.888.999"
+                           placeholder="Nhập số điện thoại..."
                            class="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-800 outline-none focus:border-sky-500 transition-all">
                 </div>
 
@@ -197,7 +197,7 @@
                 <div>
                     <label class="block font-bold text-slate-700 mb-1.5">Số CCCD / Định Danh</label>
                     <input type="text" x-model="formData.citizen_id"
-                           placeholder="VD: 038095001234"
+                           placeholder="Nhập số CCCD..."
                            class="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl font-mono text-slate-800 outline-none focus:border-sky-500 transition-all">
                 </div>
 

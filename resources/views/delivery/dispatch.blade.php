@@ -1019,13 +1019,13 @@ function dispatchApp() {
             ]
         },
 
-        selectedVehiclePlate: '29C-888.99',
+        selectedVehiclePlate: (Array.isArray(@json($vehicles ?? [])) && @json($vehicles ?? []).length > 0) ? @json($vehicles ?? [])[0].plate_number : '',
         searchQuery: '',
         selectedRouteFilter: '',
         deliveryDateFilter: '',
         onlyMatchingRoute: false,
         selectedOrderIds: [],
-        expandedVehiclePlates: ['29C-888.99'],
+        expandedVehiclePlates: (Array.isArray(@json($vehicles ?? [])) && @json($vehicles ?? []).length > 0) ? [@json($vehicles ?? [])[0].plate_number] : [],
 
         showDepartureModal: false,
         departingVehicle: null,

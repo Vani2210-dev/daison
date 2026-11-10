@@ -427,12 +427,15 @@ function deliveryExecutionApp() {
         activeOrder: null,
         inspectOrder: null,
 
-        // Thông tin tài khoản ngân hàng MBBank để sinh mã VietQR
+        @php 
+            $portalBank = \App\Models\CompanyBankAccount::default()->first() ?? \App\Models\CompanyBankAccount::first(); 
+        @endphp
+        // Thông tin tài khoản ngân hàng để sinh mã VietQR
         bankInfo: {
-            bankId: 'MB',
-            bankName: 'MBBank (Ngân hàng TMCP Quân Đội)',
-            accountNo: '0903888999',
-            accountName: 'CONG TY TNHH MANH QUAN'
+            bankId: '{{ $portalBank?->bank_code ?? "MB" }}',
+            bankName: '{{ $portalBank?->bank_name ?? "" }}',
+            accountNo: '{{ $portalBank?->account_number ?? "" }}',
+            accountName: '{{ $portalBank?->account_holder ?? "" }}'
         },
 
         // Form state for delivery confirmation
@@ -815,7 +818,10 @@ function deliveryExecutionApp() {
         get vietQrUrl() {
             const amount = Number(this.confirmForm.collectedAmount || this.confirmForm.finalAmount || 0);
             const memo = encodeURIComponent(this.qrTransferMemo);
-            return `https://img.vietqr.io/image/MB-0903888999-compact2.png?amount=${amount}&addInfo=${memo}&accountName=CONG%20TY%20TNHH%20MANH%20QUAN`;
+            const bankId = this.bankInfo?.bankId || 'MB';
+            const acc = (this.bankInfo?.accountNo || '').replace(/[^0-9]/g, '');
+            const accName = encodeURIComponent(this.bankInfo?.accountName || '');
+            return `https://img.vietqr.io/image/${bankId}-${acc}-compact2.png?amount=${amount}&addInfo=${memo}&accountName=${accName}`;
         },
 
         get isExactAmount() {

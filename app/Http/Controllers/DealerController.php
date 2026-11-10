@@ -126,7 +126,7 @@ class DealerController extends Controller
             'new_district'      => $request->input('newDistrict') ?? ($raw['newDistrict'] ?? null),
             'new_city'          => $request->input('newCity') ?? ($raw['newCity'] ?? null),
             'tier'              => $request->input('tier') ?? ($raw['tier'] ?? 'Đại lý Cấp 2'),
-            'credit_limit'      => (float) ($request->input('creditLimit') ?? ($raw['creditLimit'] ?? 100000000)),
+            'credit_limit'      => (float) ($request->input('creditLimit') ?? ($raw['creditLimit'] ?? 0)),
             'initial_debt'      => $initialDebt,
             'payment_term_days' => (int) ($request->input('paymentTermDays') ?? ($raw['paymentTermDays'] ?? 30)),
             'status'            => 'Hoạt động',

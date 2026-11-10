@@ -663,14 +663,14 @@
                             <div x-show="Number(confirmForm.combinedBank) > 0" class="p-2.5 bg-sky-50/70 rounded-xl border border-sky-200 space-y-2">
                                 <div class="flex items-center justify-between gap-1 text-[11px]">
                                     <span class="font-bold text-sky-900 truncate">VietQR: <strong class="font-mono text-emerald-600 font-black" x-text="formatNumber(confirmForm.combinedBank) + ' đ'"></strong></span>
-                                    <span class="text-[10px] text-sky-700 font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-sky-200 whitespace-nowrap shrink-0">MB Bank: 0903888999</span>
+                                    <span class="text-[10px] text-sky-700 font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-sky-200 whitespace-nowrap shrink-0" x-text="(bankName || 'Ngân hàng') + ': ' + (bankAccount || '---')"></span>
                                 </div>
                                 <div class="flex flex-col sm:flex-row items-center gap-2.5 bg-white p-2.5 rounded-xl border border-sky-100">
                                     <img :src="combinedVietQrUrl" alt="VietQR" class="w-32 h-32 sm:w-28 sm:h-28 object-contain rounded-lg border border-slate-100 shrink-0">
                                     <div class="min-w-0 w-full space-y-1.5 text-[11px]">
                                         <div class="flex items-center justify-between bg-sky-50 px-2 py-1 rounded-lg">
                                             <span class="text-slate-500 font-bold text-[10px]">Chủ TK:</span>
-                                            <span class="font-bold text-slate-800 truncate">CONG TY TNHH MANH QUAN</span>
+                                            <span class="font-bold text-slate-800 truncate" x-text="bankHolder || '---'"></span>
                                         </div>
                                         <div class="flex items-center justify-between bg-purple-50 px-2 py-1 rounded-lg">
                                             <span class="text-slate-500 font-bold text-[10px]">Nội dung:</span>
@@ -793,11 +793,11 @@
                         <div class="space-y-2 pt-1">
                             <div class="flex items-center justify-between py-1 bg-white p-2.5 rounded-xl border border-slate-200">
                                 <div>
-                                    <span class="text-[10px] text-slate-500 font-bold block uppercase">Ngân hàng MB Bank:</span>
-                                    <span class="font-mono font-black text-slate-900 text-xs sm:text-sm">0903888999</span>
-                                    <span class="text-[10px] text-slate-500 block">CONG TY TNHH MANH QUAN</span>
+                                    <span class="text-[10px] text-slate-500 font-bold block uppercase" x-text="'Ngân hàng ' + (bankName || '') + ':'"></span>
+                                    <span class="font-mono font-black text-slate-900 text-xs sm:text-sm" x-text="bankAccount || '---'"></span>
+                                    <span class="text-[10px] text-slate-500 block" x-text="bankHolder || '---'"></span>
                                 </div>
-                                <button type="button" @click="copyToClipboard('0903888999', 'stk')"
+                                <button type="button" @click="copyToClipboard(bankAccount, 'stk')"
                                         class="px-2.5 py-1.5 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-800 font-bold text-xs cursor-pointer transition-colors flex items-center gap-1">
                                     <i class="fa-regular fa-copy"></i>
                                     <span x-text="copiedField === 'stk' ? 'Đã chép' : 'Chép STK'"></span>
@@ -1588,7 +1588,14 @@
 
 <script>
 function deliveryConfirmPage() {
+    @php
+        $defaultBank = \App\Models\CompanyBankAccount::default()->first() ?? \App\Models\CompanyBankAccount::first();
+    @endphp
     return {
+        bankCode: '{{ $defaultBank?->bank_code ?? "" }}',
+        bankName: '{{ $defaultBank?->bank_name ?? "" }}',
+        bankAccount: '{{ $defaultBank?->account_number ?? "" }}',
+        bankHolder: '{{ $defaultBank?->account_holder ?? "" }}',
         orderId: {{ $order->id }},
         orderCode: '{{ $order->order_code }}',
         customerCode: '{{ $custCode }}',
@@ -1661,7 +1668,10 @@ function deliveryConfirmPage() {
         get combinedVietQrUrl() {
             const amt = Math.round(Number(this.confirmForm.combinedBank) || 0);
             const memo = encodeURIComponent(this.qrTransferMemo);
-            return `https://img.vietqr.io/image/MB-0903888999-compact2.png?amount=${amt}&addInfo=${memo}&accountName=CONG%20TY%20TNHH%20MANH%20QUAN`;
+            const bank = this.bankCode || 'MB';
+            const acc = (this.bankAccount || '').replace(/[^0-9]/g, '');
+            const holder = encodeURIComponent(this.bankHolder || '');
+            return `https://img.vietqr.io/image/${bank}-${acc}-compact2.png?amount=${amt}&addInfo=${memo}&accountName=${holder}`;
         },
 
         fillCombinedRemaining(target) {
@@ -1751,7 +1761,10 @@ function deliveryConfirmPage() {
         get splitVietQrUrl() {
             const amt = Math.round(this.splitCollectAmountActual);
             const memo = encodeURIComponent(this.qrTransferMemo + ' THU');
-            return `https://img.vietqr.io/image/MB-0903888999-compact2.png?amount=${amt}&addInfo=${memo}&accountName=CONG%20TY%20TNHH%20MANH%20QUAN`;
+            const bank = this.bankCode || 'MB';
+            const acc = (this.bankAccount || '').replace(/[^0-9]/g, '');
+            const holder = encodeURIComponent(this.bankHolder || '');
+            return `https://img.vietqr.io/image/${bank}-${acc}-compact2.png?amount=${amt}&addInfo=${memo}&accountName=${holder}`;
         },
 
         // Computed: button submit bị block?
@@ -2091,7 +2104,10 @@ function deliveryConfirmPage() {
         get vietQrUrl() {
             const amt = Math.round(Number(this.confirmForm.collectedAmount || this.confirmForm.finalAmount || 0));
             const memo = encodeURIComponent(this.qrTransferMemo);
-            return `https://img.vietqr.io/image/MB-0903888999-compact2.png?amount=${amt}&addInfo=${memo}&accountName=CONG%20TY%20TNHH%20MANH%20QUAN`;
+            const bank = this.bankCode || 'MB';
+            const acc = (this.bankAccount || '').replace(/[^0-9]/g, '');
+            const holder = encodeURIComponent(this.bankHolder || '');
+            return `https://img.vietqr.io/image/${bank}-${acc}-compact2.png?amount=${amt}&addInfo=${memo}&accountName=${holder}`;
         },
 
         formatNumber(val) {

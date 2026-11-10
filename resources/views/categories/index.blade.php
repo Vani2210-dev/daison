@@ -1562,7 +1562,7 @@
                             </div>
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Hotline / Điện Thoại</label>
-                                <input type="text" x-model="formData.phone" placeholder="VD: 0238.3888.999" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
+                                <input type="text" x-model="formData.phone" placeholder="Nhập số điện thoại..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
                             </div>
                         </div>
 
@@ -1608,7 +1608,7 @@
                             </div>
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Số Tài Khoản Ngân Hàng</label>
-                                <input type="text" x-model="formData.account_number" placeholder="VD: 0101000889988 hoặc Quỹ nội bộ" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 font-mono text-xs">
+                                <input type="text" x-model="formData.account_number" placeholder="Nhập số tài khoản hoặc quỹ..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 font-mono text-xs">
                             </div>
                         </div>
 
@@ -1733,7 +1733,7 @@
                             </div>
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Mã Số Thuế</label>
-                                <input type="text" x-model="formData.tax_code" placeholder="0101234567" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs font-mono">
+                                <input type="text" x-model="formData.tax_code" placeholder="Nhập mã số thuế..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs font-mono">
                             </div>
                         </div>
 
@@ -1763,7 +1763,7 @@
                             </div>
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Số Tài Khoản</label>
-                                <input type="text" x-model="formData.bank_account" placeholder="VD: 0011001234567" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 font-mono text-xs">
+                                <input type="text" x-model="formData.bank_account" placeholder="Nhập số tài khoản..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 font-mono text-xs">
                             </div>
                         </div>
 
@@ -1969,7 +1969,7 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Biển Kiểm Soát Xe <span class="text-rose-500">*</span></label>
-                                <input type="text" x-model="formData.plate_number" required placeholder="VD: 37C-289.88" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 font-mono font-bold text-xs uppercase">
+                                <input type="text" x-model="formData.plate_number" required placeholder="Nhập biển kiểm soát xe..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 font-mono font-bold text-xs uppercase">
                             </div>
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Loại Xe / Thùng Xe <span class="text-rose-500">*</span></label>

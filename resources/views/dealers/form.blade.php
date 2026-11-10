@@ -91,7 +91,7 @@
                             <span>Mã Số Thuế (MST)</span>
                         </label>
                         <input type="text" x-model="formData.tax_code"
-                               placeholder="VD: 0101234567..."
+                               placeholder="Nhập mã số thuế..."
                                class="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-800 outline-none focus:border-purple-500 shadow-2xs transition-all placeholder:text-slate-400">
                     </div>
                 </div>

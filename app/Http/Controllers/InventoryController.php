@@ -202,9 +202,9 @@ class InventoryController extends Controller
                     'customer' => $t->supplier_name ?? '',
                     'totalAmount' => (float) $t->total_amount,
                     'paymentMethod' => 'Chuyển khoản',
-                    'creator' => $t->createdBy?->name ?? 'Admin KBTech',
+                    'creator' => $t->createdBy?->name ?? ($t->staff_name ?? '---'),
                     'bookDate' => $t->created_at ? $t->created_at->format('H:i d/m/Y') : date('H:i d/m/Y'),
-                    'booker' => $t->createdBy?->name ?? 'Admin KBTech',
+                    'booker' => $t->createdBy?->name ?? ($t->staff_name ?? '---'),
                     'status' => $t->status,
                     'sku' => $product?->sku ?? '',
                     'name' => $displayName,
@@ -212,7 +212,7 @@ class InventoryController extends Controller
                     'unit' => $product?->unit ?? 'cái',
                     'unitPrice' => (float) ($firstItem?->import_price ?? 0),
                     'notes' => $t->notes ?? '',
-                    'vehicle' => str_contains($t->supplier_name ?? '', '29C') ? $t->supplier_name : '29C-888.99',
+                    'vehicle' => $t->supplier_name ?? '',
                     'items' => $lineItems,
                 ];
             });

@@ -1173,7 +1173,7 @@ class OrderController extends Controller
                     'order_code'            => $order->order_code,
                     'dealer_id'             => $order->dealer_id,
                     'dealer_name'           => $order->customer_name ?? $order->dealer?->name ?? 'Đại lý',
-                    'vehicle_plate'         => $order->assigned_vehicle_plate ?? '29C-888.99',
+                    'vehicle_plate'         => $order->assigned_vehicle_plate ?? '',
                     'driver_id'             => $order->assigned_driver_id,
                     'driver_name'           => $order->assignedDriver?->name ?? 'Lái xe',
                     'copilot_name'          => $data['copilotName'] ?? null,

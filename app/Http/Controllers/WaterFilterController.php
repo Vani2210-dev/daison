@@ -2276,7 +2276,7 @@ class WaterFilterController extends Controller
                 'unit'      => 'Lõi',
                 'stock_qty' => $loi1?->stock_qty,
                 'in_stock'  => $loi1 ? ($loi1->stock_qty > 0) : true,
-                'price'     => $loi1?->out_price ?? 60000,
+                'price'     => (float)($loi1?->out_price ?? 0),
                 'note'      => 'Định kỳ 3-6 tháng',
             ];
             $parts[] = [
@@ -2287,7 +2287,7 @@ class WaterFilterController extends Controller
                 'unit'      => 'Lõi',
                 'stock_qty' => $loi2?->stock_qty,
                 'in_stock'  => $loi2 ? ($loi2->stock_qty > 0) : true,
-                'price'     => $loi2?->out_price ?? 90000,
+                'price'     => (float)($loi2?->out_price ?? 0),
                 'note'      => 'Định kỳ 6-9 tháng',
             ];
             $parts[] = [
@@ -2298,7 +2298,7 @@ class WaterFilterController extends Controller
                 'unit'      => 'Lõi',
                 'stock_qty' => $loi3?->stock_qty,
                 'in_stock'  => $loi3 ? ($loi3->stock_qty > 0) : true,
-                'price'     => $loi3?->out_price ?? 90000,
+                'price'     => (float)($loi3?->out_price ?? 0),
                 'note'      => 'Định kỳ 9-12 tháng',
             ];
 
@@ -2314,7 +2314,7 @@ class WaterFilterController extends Controller
                     'unit'      => 'Lõi',
                     'stock_qty' => $loiT33?->stock_qty,
                     'in_stock'  => $loiT33 ? ($loiT33->stock_qty > 0) : true,
-                    'price'     => $loiT33?->out_price ?? 150000,
+                    'price'     => (float)($loiT33?->out_price ?? 0),
                     'note'      => 'Khuyến nghị > 12 tháng',
                 ];
             }

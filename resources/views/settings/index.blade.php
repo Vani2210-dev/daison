@@ -86,7 +86,7 @@
                             <div class="relative">
                                 <i class="fa-solid fa-receipt absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
                                 <input type="text" name="tax_code" x-model="companyForm.tax_code"
-                                       placeholder="VD: 0109888999" 
+                                       placeholder="Nhập mã số thuế..." 
                                        class="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-300 font-mono font-bold text-slate-900 bg-white focus:border-sky-500 outline-none">
                             </div>
                         </div>
@@ -97,7 +97,7 @@
                             <div class="relative">
                                 <i class="fa-solid fa-headset absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
                                 <input type="text" name="hotline" x-model="companyForm.hotline"
-                                       placeholder="VD: 1900 8899 hoặc 0903.888.999" 
+                                       placeholder="Nhập số hotline..." 
                                        class="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-900 bg-white focus:border-sky-500 outline-none">
                             </div>
                         </div>
@@ -108,7 +108,7 @@
                             <div class="relative">
                                 <i class="fa-solid fa-phone absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
                                 <input type="text" name="phone" x-model="companyForm.phone"
-                                       placeholder="VD: 024 3888 9999" 
+                                       placeholder="Nhập số điện thoại..." 
                                        class="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-900 bg-white focus:border-sky-500 outline-none">
                             </div>
                         </div>

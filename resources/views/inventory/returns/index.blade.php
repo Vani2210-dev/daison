@@ -469,9 +469,12 @@
             }
         </style>
         <div id="print-return-slip-content" class="p-8 text-black font-sans bg-white text-xs max-w-3xl mx-auto">
+            @php
+                $returnComp = \App\Models\CompanySetting::getSettings();
+            @endphp
             <div class="text-center pb-4 border-b border-black space-y-1">
-                <h2 class="text-lg font-bold uppercase">CÔNG TY TNHH MÁY LỌC NƯỚC ĐẠI SƠN</h2>
-                <p class="text-[11px]">Địa chỉ: Lô 15, KCN Quang Minh, Mê Linh, Hà Nội | Hotline: 098.888.8888</p>
+                <h2 class="text-lg font-bold uppercase">{{ $returnComp->company_name ?? 'CÔNG TY TNHH MÁY LỌC NƯỚC ĐẠI SƠN' }}</h2>
+                <p class="text-[11px]">{{ $returnComp->address ? 'Địa chỉ: ' . $returnComp->address : '' }}{{ ($returnComp->hotline || $returnComp->phone) ? ' | Hotline: ' . ($returnComp->hotline ?: $returnComp->phone) : '' }}</p>
                 <h1 class="text-xl font-black uppercase tracking-wider pt-2">BIÊN BẢN NHẬP KHO HÀNG HOÀN TRẢ</h1>
                 <p class="font-mono italic">Mã phiếu: <span id="p-slip-code" class="font-bold"></span></p>
             </div>

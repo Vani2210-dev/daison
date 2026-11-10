@@ -754,7 +754,7 @@ class WebViewController extends Controller
             return back()->withInput()->with('error', 'Tên đại lý là bắt buộc');
         }
 
-        $creditLimit = (float) str_replace(['.', ',', ' '], '', (string)($data['credit_limit'] ?? ($data['creditLimit'] ?? 100000000)));
+        $creditLimit = (float) str_replace(['.', ',', ' '], '', (string)($data['credit_limit'] ?? ($data['creditLimit'] ?? 0)));
         $initialDebt = (float) str_replace(['.', ',', ' '], '', (string)($data['initial_debt'] ?? ($data['initialDebt'] ?? 0)));
         $salesRepId = !empty($data['sales_rep_id']) ? (int)$data['sales_rep_id'] : (!empty($data['salesRepId']) ? (int)$data['salesRepId'] : null);
 

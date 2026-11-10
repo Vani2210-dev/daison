@@ -107,12 +107,12 @@
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-[11px] font-bold text-slate-600 mb-1">Tên khách / Đơn vị mua (*):</label>
-                                <input type="text" x-model="saleForm.customer_name" placeholder="VD: Anh Tuấn (Công trình X)"
+                                <input type="text" x-model="saleForm.customer_name" placeholder="Nhập tên khách hàng..."
                                        class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-600">
                             </div>
                             <div>
                                 <label class="block text-[11px] font-bold text-slate-600 mb-1">Số điện thoại:</label>
-                                <input type="text" x-model="saleForm.customer_phone" placeholder="VD: 0912..."
+                                <input type="text" x-model="saleForm.customer_phone" placeholder="Nhập số điện thoại..."
                                        class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-blue-600">
                             </div>
                             <div>
