@@ -87,67 +87,159 @@
             </div>
         @endif
 
-        <!-- Action Buttons Toolbar: 3 Cột trên Mobile (2 hàng gọn gàng), Flex wrap trên Desktop -->
-        <div class="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 pt-0.5">
-            <!-- Button 0: Hàng Kho Nhân Sự (Kho Ôm / Xe) -->
-            <button type="button" @click="showHoldingStockModal = true"
-                    class="px-1.5 sm:px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-200 hover:text-white text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 shadow-sm active:scale-95 cursor-pointer"
-                    title="Xem hàng tồn kho của nhân sự quản lý xe">
-                <i class="fa-solid fa-boxes-stacked text-emerald-400 text-xs shrink-0"></i>
-                <span class="sm:hidden truncate">Kho Ôm</span>
-                <span class="hidden sm:inline truncate">Kho Nhân Sự</span>
-                <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px] font-black bg-emerald-500/30 text-emerald-200 border border-emerald-500/40 shrink-0"
-                      x-text="holdingStocks.length">0</span>
+        <!-- Tiện Ích & Nghiệp Vụ Chuyến Xe: Gom gọn 7 nút vào 1 Nút Menu Tinh Gọn -->
+        <div class="relative flex items-center justify-between sm:justify-start gap-2 pt-0.5" x-data="{ menuOpen: false }" @click.outside="menuOpen = false">
+            <button type="button" 
+                    @click="menuOpen = !menuOpen"
+                    class="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-900/60 via-slate-800 to-indigo-900/60 hover:from-purple-800/80 hover:to-indigo-800/80 border border-purple-500/40 hover:border-purple-400 text-white font-bold text-xs shadow-lg shadow-purple-950/40 flex items-center justify-between sm:justify-start gap-2.5 transition-all active:scale-[0.98] cursor-pointer">
+                <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-lg bg-purple-500/25 text-purple-300 border border-purple-500/40 flex items-center justify-center text-xs shadow-xs">
+                        <i class="fa-solid fa-bars-staggered"></i>
+                    </span>
+                    <span class="text-slate-100 font-extrabold text-xs tracking-tight">Menu Nghiệp Vụ Chuyến Xe</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <template x-if="(returnsList?.length || 0) + (discrepancies?.length || 0) + (holdingStocks?.length || 0) > 0">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white font-mono shadow-xs"
+                              x-text="((returnsList?.length || 0) + (discrepancies?.length || 0) + (holdingStocks?.length || 0))"></span>
+                    </template>
+                    <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200"
+                       :class="menuOpen ? 'rotate-180 text-purple-300' : ''"></i>
+                </div>
             </button>
 
-            <!-- Button 1: Hàng Trả Về -->
-            <button type="button" @click="showReturnsModal = true"
-                    class="px-1.5 sm:px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-200 hover:text-white text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 shadow-sm active:scale-95 cursor-pointer">
-                <i class="fa-solid fa-rotate-left text-rose-400 text-xs shrink-0"></i>
-                <span class="sm:hidden truncate">Trả Về</span>
-                <span class="hidden sm:inline truncate">Hàng Trả Về</span>
-                <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px] font-black bg-rose-500/30 text-rose-200 border border-rose-500/40 shrink-0" x-text="returnsList.length">0</span>
-            </button>
+            <!-- Dropdown Menu Nghiệp Vụ (7 Nghiệp Vụ Chuyến Xe) -->
+            <div x-show="menuOpen"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 -translate-y-2 scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                 x-transition:leave-end="opacity-0 -translate-y-2 scale-95"
+                 class="absolute left-0 sm:left-auto right-0 sm:right-auto top-full mt-2 w-full sm:w-84 bg-slate-900/98 backdrop-blur-xl border border-slate-700/90 rounded-2xl shadow-2xl p-2 z-[9999] space-y-1 select-none max-h-[82vh] overflow-y-auto"
+                 style="display: none;">
+                
+                <div class="px-2.5 py-1 text-[10px] uppercase font-black tracking-wider text-slate-400 flex items-center justify-between">
+                    <span>Hàng Hóa & Đổi Trả</span>
+                    <span class="text-[9px] font-mono text-slate-500">4 mục</span>
+                </div>
 
-            <!-- Button 2: Hoàn Hàng Vào Kho -->
-            <button type="button" @click="showIntakeWarehouseModal = true"
-                    class="px-1.5 sm:px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 text-slate-200 hover:text-white text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 shadow-sm active:scale-95 cursor-pointer">
-                <i class="fa-solid fa-warehouse text-amber-400 text-xs shrink-0"></i>
-                <span class="truncate">Hoàn kho</span>
-            </button>
+                <!-- 1. Hàng Kho Nhân Sự (Kho Ôm / Xe) -->
+                <button type="button" @click="showHoldingStockModal = true; menuOpen = false"
+                        class="w-full px-3 py-2 rounded-xl hover:bg-emerald-500/15 border border-transparent hover:border-emerald-500/30 text-slate-200 hover:text-white transition flex items-center justify-between gap-2.5 cursor-pointer group">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-boxes-stacked"></i>
+                        </span>
+                        <div class="text-left min-w-0">
+                            <div class="text-xs font-bold text-white truncate">Kho Ôm (Kho Nhân Sự)</div>
+                            <div class="text-[10.5px] text-slate-400 truncate">Hàng tồn của nhân sự quản lý xe</div>
+                        </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full font-mono text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0"
+                          x-text="holdingStocks.length">0</span>
+                </button>
 
-            <!-- Button 3: Kiểm Đếm & Duyệt COD -->
-            <button type="button" @click="showCodApprovalModal = true"
-                    class="px-1.5 sm:px-3 py-1.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-200 hover:text-white text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 shadow-sm active:scale-95 cursor-pointer">
-                <i class="fa-solid fa-money-bill-transfer text-indigo-400 text-xs shrink-0"></i>
-                <span class="truncate">Duyệt COD</span>
-            </button>
+                <!-- 2. Hàng Trả Về -->
+                <button type="button" @click="showReturnsModal = true; menuOpen = false"
+                        class="w-full px-3 py-2 rounded-xl hover:bg-rose-500/15 border border-transparent hover:border-rose-500/30 text-slate-200 hover:text-white transition flex items-center justify-between gap-2.5 cursor-pointer group">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </span>
+                        <div class="text-left min-w-0">
+                            <div class="text-xs font-bold text-white truncate">Hàng Khách Trả Về</div>
+                            <div class="text-[10.5px] text-slate-400 truncate">Danh sách đơn từ chối hoặc đổi trả</div>
+                        </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full font-mono text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/30 shrink-0"
+                          x-text="returnsList.length">0</span>
+                </button>
 
-            <!-- Button 4: Quyết Toán Quỹ -->
-            <button type="button" @click="openHandoverModal()"
-                    class="px-1.5 sm:px-3 py-1.5 rounded-xl bg-fuchsia-500/15 hover:bg-fuchsia-500/25 border border-fuchsia-500/30 text-fuchsia-200 hover:text-white text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 shadow-sm active:scale-95 cursor-pointer">
-                <i class="fa-solid fa-wallet text-fuchsia-400 text-xs shrink-0"></i>
-                <span class="truncate">Quyết toán</span>
-            </button>
+                <!-- 3. Hoàn Hàng Vào Kho -->
+                <button type="button" @click="showIntakeWarehouseModal = true; menuOpen = false"
+                        class="w-full px-3 py-2 rounded-xl hover:bg-amber-500/15 border border-transparent hover:border-amber-500/30 text-slate-200 hover:text-white transition flex items-center justify-between gap-2.5 cursor-pointer group">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-warehouse"></i>
+                        </span>
+                        <div class="text-left min-w-0">
+                            <div class="text-xs font-bold text-white truncate">Hoàn Hàng Vào Kho</div>
+                            <div class="text-[10.5px] text-slate-400 truncate">Nhập hàng trả về lại kho công ty</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-[10px] text-slate-500 group-hover:text-amber-300"></i>
+                </button>
 
-            <!-- Button 5: Bàn Giao Nợ Cho Sale -->
-            <button type="button" @click="openDebtHandoverModal()"
-                    class="px-1.5 sm:px-3 py-1.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-200 hover:text-white text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 shadow-sm active:scale-95 cursor-pointer">
-                <i class="fa-solid fa-share-from-square text-purple-400 text-xs shrink-0"></i>
-                <span class="sm:hidden truncate">Nợ Sale</span>
-                <span class="hidden sm:inline truncate">Bàn giao nợ Sale</span>
-            </button>
+                <!-- 4. Phản Ánh Thừa/Thiếu Hàng (Lệch Hàng) -->
+                <button type="button" @click="openDiscrepancyModal(); menuOpen = false"
+                        class="w-full px-3 py-2 rounded-xl hover:bg-amber-500/20 border border-transparent hover:border-amber-500/40 text-slate-200 hover:text-white transition flex items-center justify-between gap-2.5 cursor-pointer group">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-8 h-8 rounded-lg bg-amber-500/25 text-amber-300 border border-amber-500/40 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-scale-unbalanced"></i>
+                        </span>
+                        <div class="text-left min-w-0">
+                            <div class="text-xs font-bold text-amber-200 truncate">Lệch Hàng (Thừa / Thiếu)</div>
+                            <div class="text-[10.5px] text-slate-400 truncate">Báo lệch xe tới Người bốc hàng</div>
+                        </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full font-mono text-[10px] font-black bg-amber-500/30 text-amber-200 border border-amber-400/50 shrink-0"
+                          x-text="discrepancies.length">0</span>
+                </button>
 
-            <!-- Button 6: Phản Ánh Thừa/Thiếu Hàng (Lệch Kiểm) -->
-            <button type="button" @click="openDiscrepancyModal()"
-                    class="px-1.5 sm:px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 hover:text-white text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 shadow-sm active:scale-95 cursor-pointer"
-                    title="Báo thừa / thiếu hàng sau khi xe xuất bến tới người kiểm hàng">
-                <i class="fa-solid fa-scale-unbalanced text-amber-400 text-xs shrink-0"></i>
-                <span class="sm:hidden truncate">Lệch hàng</span>
-                <span class="hidden sm:inline truncate">Lệch Hàng</span>
-                <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px] font-black bg-amber-500/40 text-amber-100 border border-amber-400/50 shrink-0"
-                      x-text="discrepancies.length">0</span>
-            </button>
+                <div class="border-t border-slate-800/90 my-1 pt-1">
+                    <div class="px-2.5 py-1 text-[10px] uppercase font-black tracking-wider text-slate-400 flex items-center justify-between">
+                        <span>Tài Chính & Quyết Toán</span>
+                        <span class="text-[9px] font-mono text-slate-500">3 mục</span>
+                    </div>
+                </div>
+
+                <!-- 5. Kiểm Đếm & Duyệt COD -->
+                <button type="button" @click="showCodApprovalModal = true; menuOpen = false"
+                        class="w-full px-3 py-2 rounded-xl hover:bg-indigo-500/15 border border-transparent hover:border-indigo-500/30 text-slate-200 hover:text-white transition flex items-center justify-between gap-2.5 cursor-pointer group">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-money-bill-transfer"></i>
+                        </span>
+                        <div class="text-left min-w-0">
+                            <div class="text-xs font-bold text-white truncate">Kiểm Đếm & Duyệt COD</div>
+                            <div class="text-[10.5px] text-slate-400 truncate">Xác nhận thu tiền mặt & chuyển khoản</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-[10px] text-slate-500 group-hover:text-indigo-300"></i>
+                </button>
+
+                <!-- 6. Quyết Toán Quỹ -->
+                <button type="button" @click="openHandoverModal(); menuOpen = false"
+                        class="w-full px-3 py-2 rounded-xl hover:bg-fuchsia-500/15 border border-transparent hover:border-fuchsia-500/30 text-slate-200 hover:text-white transition flex items-center justify-between gap-2.5 cursor-pointer group">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-8 h-8 rounded-lg bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-wallet"></i>
+                        </span>
+                        <div class="text-left min-w-0">
+                            <div class="text-xs font-bold text-white truncate">Quyết Toán Quỹ Tiền Mặt</div>
+                            <div class="text-[10.5px] text-slate-400 truncate">Nộp tiền cho thủ quỹ / kế toán</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-[10px] text-slate-500 group-hover:text-fuchsia-300"></i>
+                </button>
+
+                <!-- 7. Bàn Giao Nợ Cho Sale -->
+                <button type="button" @click="openDebtHandoverModal(); menuOpen = false"
+                        class="w-full px-3 py-2 rounded-xl hover:bg-purple-500/15 border border-transparent hover:border-purple-500/30 text-slate-200 hover:text-white transition flex items-center justify-between gap-2.5 cursor-pointer group">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-share-from-square"></i>
+                        </span>
+                        <div class="text-left min-w-0">
+                            <div class="text-xs font-bold text-white truncate">Bàn Giao Nợ Cho Sale</div>
+                            <div class="text-[10.5px] text-slate-400 truncate">Chuyển nợ bảo lãnh cho NVKD</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-[10px] text-slate-500 group-hover:text-purple-300"></i>
+                </button>
+
+            </div>
         </div>
 
         <!-- Bottom Row: Thông tin Nhân Sự & Lộ Trình Phương Tiện (Dark Glass Ribbon) -->
