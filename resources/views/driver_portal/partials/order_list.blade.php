@@ -136,13 +136,19 @@
                             </div>
                         </template>
 
-                        <!-- 5. Khi xe đã xuất bến và đang đi giao: Nút Giao Đơn Này nổi bật lớn -->
+                        <!-- 5. Khi xe đã xuất bến và đang đi giao: Nút Giao Đơn Này nổi bật lớn + Nút Báo lệch -->
                         <template x-if="!isOrderCompleted(order) && isDeparted && order.status !== 'Không thành công' && order.status !== 'Đã hoàn kho' && order.status !== 'Chờ thủ kho duyệt hoàn'">
                             <div class="flex items-center gap-2">
                                 <button type="button" @click="openViewOrderModal(order)"
                                         class="py-2 px-3 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0">
                                     <i class="fa-regular fa-eye text-slate-500 text-xs"></i>
                                     <span>Xem</span>
+                                </button>
+                                <button type="button" @click="openDiscrepancyModal(order)"
+                                        class="py-2 px-2.5 sm:px-3 rounded-xl text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0"
+                                        title="Báo thừa/thiếu hàng phát hiện trên xe tới người kiểm hàng">
+                                    <i class="fa-solid fa-scale-unbalanced text-amber-600 text-xs"></i>
+                                    <span>Báo lệch</span>
                                 </button>
                                 <a :href="'/delivery/orders/' + order.id + '/confirm'"
                                    class="flex-1 py-2 px-4 rounded-xl font-black text-xs text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-800 shadow-md shadow-purple-600/25 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98">

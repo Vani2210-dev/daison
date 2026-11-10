@@ -1089,6 +1089,11 @@ class PickingSyncController extends Controller
             ];
         })->values()->toArray();
 
+        $discrepancies = \App\Models\DeliveryDiscrepancy::with(['order', 'product'])
+            ->whereDate('created_at', '>=', now()->subDays(3))
+            ->latest('id')
+            ->get();
+
         return view('inventory.picking', compact(
             'orders', 
             'warehouses', 
@@ -1102,7 +1107,8 @@ class PickingSyncController extends Controller
             'userGroups',
             'userGroupsData',
             'groupStaff',
-            'categoryStaffMap'
+            'categoryStaffMap',
+            'discrepancies'
         ));
     }
 

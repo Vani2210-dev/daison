@@ -54,6 +54,7 @@
     @include('driver_portal.modals.driver_holding_return')
     @include('driver_portal.modals.debt_handover')
     @include('driver_portal.modals.order_return_warehouse')
+    @include('driver_portal.modals.discrepancy_report')
 
 </div>
 

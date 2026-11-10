@@ -373,6 +373,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/delivery/warehouse-approve-order-return', [DeliveryController::class, 'approveOrderReturnByWarehouse']);
     Route::post('/api/delivery/warehouse-approve-order-return', [DeliveryController::class, 'approveOrderReturnByWarehouse']);
     Route::post('/delivery/redeliver-order', [DeliveryController::class, 'redeliverOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,orders.edit');
+
+    // Delivery Discrepancies (Phản ánh thừa/thiếu hàng sau khi xuất bến giữa người giao hàng và người kiểm hàng)
+    Route::post('/delivery/discrepancies/report', [DeliveryController::class, 'reportDiscrepancy']);
+    Route::post('/api/delivery/discrepancies/report', [DeliveryController::class, 'reportDiscrepancy']);
+    Route::get('/delivery/discrepancies', [DeliveryController::class, 'getDiscrepancies']);
+    Route::get('/api/delivery/discrepancies', [DeliveryController::class, 'getDiscrepancies']);
+    Route::post('/delivery/discrepancies/{id}/respond', [DeliveryController::class, 'respondDiscrepancy']);
+    Route::post('/api/delivery/discrepancies/{id}/respond', [DeliveryController::class, 'respondDiscrepancy']);
+
     Route::post('/delivery/orders/{id}/request-credit-override', [DeliveryController::class, 'requestCreditOverride']);
     Route::post('/delivery/orders/{id}/approve-credit-override', [DeliveryController::class, 'approveCreditOverride']);
     Route::get('/delivery/orders/{id}/credit-override-status', [DeliveryController::class, 'getCreditOverrideStatus']);

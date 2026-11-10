@@ -2934,6 +2934,18 @@ class DeliveryController extends Controller
         $totalVanSaleDebt = (float)$driverVanDispatches->sum('total_amount');
         $dealers = \App\Models\Dealer::where('status', '!=', 'Đã ngừng')->select('id', 'name', 'code', 'phone', 'address')->orderBy('name')->get();
 
+        $discrepancies = \App\Models\DeliveryDiscrepancy::where(function($q) use ($selectedVehicle, $orders) {
+                if ($selectedVehicle) {
+                    $q->where('vehicle_plate', $selectedVehicle->plate_number);
+                }
+                if (!empty($orders) && count($orders) > 0) {
+                    $q->orWhereIn('order_id', collect($orders)->pluck('id'));
+                }
+            })
+            ->whereDate('created_at', '>=', now()->subDays(3))
+            ->latest('id')
+            ->get();
+
         return view('driver_portal.index', compact(
             'vehicles',
             'selectedVehicle',
@@ -2957,7 +2969,8 @@ class DeliveryController extends Controller
             'vehicleManagerName',
             'vehicleManagerId',
             'dealers',
-            'salesStaff'
+            'salesStaff',
+            'discrepancies'
         ));
     }
 
@@ -4197,6 +4210,232 @@ class DeliveryController extends Controller
                 'orderCode' => $order->order_code,
                 'status'    => $order->status,
             ]
+        ]);
+    }
+
+    /**
+     * Phản ánh thừa / thiếu hàng sau khi xe xuất bến giữa người giao hàng và người kiểm hàng
+     */
+    public function reportDiscrepancy(Request $request)
+    {
+        $user = auth()->user();
+        $orderId = $request->input('order_id');
+        $order = $orderId ? Order::with(['items', 'warehouseStaff'])->find($orderId) : null;
+
+        $orderCode = $order ? $order->order_code : $request->input('order_code');
+        $vehiclePlate = $request->input('vehicle_plate') ?? ($order ? $order->assigned_vehicle_plate : null);
+
+        $driverId = $user?->id;
+        $driverName = $user?->name ?? 'Người giao hàng';
+
+        // Tự động tìm người kiểm hàng của đơn hàng
+        $checkerId = null;
+        $checkerName = null;
+        if ($order) {
+            $checkedItem = $order->items->first(fn($it) => !empty($it->checked_by));
+            if ($checkedItem && !empty($checkedItem->checked_by)) {
+                $checkerName = $checkedItem->checked_by;
+                $checkerUser = User::where('name', $checkerName)->first();
+                $checkerId = $checkerUser?->id;
+            } else {
+                $checkerName = $order->warehouseStaff?->name ?? 'Người kiểm hàng';
+                $checkerId = $order->warehouse_staff_id;
+            }
+        }
+        if (!$checkerName && $request->filled('checker_name')) {
+            $checkerName = $request->input('checker_name');
+        }
+
+        $expectedQty = (float)$request->input('expected_qty', 0);
+        $actualQty = (float)$request->input('actual_qty', 0);
+        $diffQty = (float)$request->input('difference_qty', $actualQty - $expectedQty);
+        $type = $request->input('discrepancy_type', ($diffQty < 0 ? 'shortage' : 'excess'));
+
+        // Xử lý upload ảnh nếu có
+        $uploadedImages = [];
+        $uploadDir = public_path('uploads/discrepancies');
+        if (!\Illuminate\Support\Facades\File::exists($uploadDir)) {
+            \Illuminate\Support\Facades\File::makeDirectory($uploadDir, 0755, true);
+        }
+
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $file) {
+                if ($file && $file->isValid()) {
+                    $ext = $file->getClientOriginalExtension() ?: 'jpg';
+                    $fname = 'disc_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                    $file->move($uploadDir, $fname);
+                    $uploadedImages[] = '/uploads/discrepancies/' . $fname;
+                }
+            }
+        } elseif ($request->hasFile('image')) {
+            $file = $request->file('image');
+            if ($file && $file->isValid()) {
+                $ext = $file->getClientOriginalExtension() ?: 'jpg';
+                $fname = 'disc_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                $file->move($uploadDir, $fname);
+                $uploadedImages[] = '/uploads/discrepancies/' . $fname;
+            }
+        }
+
+        // Hỗ trợ base64 strings nếu gửi qua JSON
+        $base64Images = $request->input('base64_images', []);
+        if (is_array($base64Images)) {
+            foreach ($base64Images as $idx => $b64) {
+                if (is_string($b64) && preg_match('/^data:image\/(\w+);base64,/', $b64, $m)) {
+                    $data = base64_decode(substr($b64, strpos($b64, ',') + 1));
+                    $ext = strtolower($m[1]) === 'jpeg' ? 'jpg' : strtolower($m[1]);
+                    $fname = 'disc_b64_' . date('Ymd_His') . '_' . $idx . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                    file_put_contents($uploadDir . DIRECTORY_SEPARATOR . $fname, $data);
+                    $uploadedImages[] = '/uploads/discrepancies/' . $fname;
+                } elseif (is_string($b64) && str_starts_with($b64, '/uploads/')) {
+                    $uploadedImages[] = $b64;
+                }
+            }
+        }
+
+        $discrepancy = \App\Models\DeliveryDiscrepancy::create([
+            'order_id'         => $order?->id,
+            'order_code'       => $orderCode,
+            'vehicle_plate'    => $vehiclePlate,
+            'driver_id'        => $driverId,
+            'driver_name'      => $driverName,
+            'checker_id'       => $checkerId,
+            'checker_name'     => $checkerName ?: 'Bộ phận kiểm hàng',
+            'product_id'       => $request->input('product_id'),
+            'sku'              => $request->input('sku'),
+            'product_name'     => $request->input('product_name') ?: 'Sản phẩm',
+            'unit'             => $request->input('unit', 'Cái'),
+            'expected_qty'     => $expectedQty,
+            'actual_qty'       => $actualQty,
+            'difference_qty'   => $diffQty,
+            'discrepancy_type' => $type,
+            'driver_note'      => $request->input('driver_note'),
+            'images'           => $uploadedImages,
+            'status'           => 'pending',
+        ]);
+
+        if ($order) {
+            $typeName = match($type) {
+                'shortage'   => 'Thiếu hàng',
+                'excess'     => 'Thừa hàng',
+                'damaged'    => 'Hư hỏng bể vỡ',
+                'wrong_item' => 'Sai quy cách/mặt hàng',
+                default      => 'Lệch kiểm hàng'
+            };
+            $order->logOperation(
+                'Phản Ánh Lệch Hàng Trên Xe',
+                "Lái xe {$driverName} (Xe {$vehiclePlate}) phản ánh {$typeName}: {$discrepancy->product_name} (Theo phiếu: {$expectedQty}, Thực tế: {$actualQty}, Lệch: {$diffQty} {$discrepancy->unit}). Người kiểm hàng: {$checkerName}. Ghi chú: {$discrepancy->driver_note}",
+                $driverName
+            );
+        }
+
+        try {
+            \App\Models\PickingSyncEvent::create([
+                'order_id'       => (string) ($order?->id ?? '0'),
+                'event_type'     => 'DELIVERY_DISCREPANCY_REPORTED',
+                'performer_name' => $driverName,
+                'order_status'   => $order?->status ?? 'Đang giao hàng',
+                'extra_data'     => [
+                    'discrepancy_id'   => $discrepancy->id,
+                    'order_code'       => $orderCode,
+                    'vehicle_plate'    => $vehiclePlate,
+                    'product_name'     => $discrepancy->product_name,
+                    'type'             => $type,
+                    'diff_qty'         => $diffQty,
+                    'checker_name'     => $checkerName,
+                    'driver_note'      => $discrepancy->driver_note,
+                    'created_at'       => now()->format('H:i d/m/Y'),
+                ],
+                'created_at'     => now(),
+            ]);
+        } catch (\Throwable $e) {}
+
+        return response()->json([
+            'success'     => true,
+            'message'     => 'Đã gửi phản ánh lệch hàng thành công tới người kiểm hàng!',
+            'discrepancy' => $discrepancy,
+        ]);
+    }
+
+    /**
+     * Danh sách phản ánh thừa / thiếu hàng
+     */
+    public function getDiscrepancies(Request $request)
+    {
+        $query = \App\Models\DeliveryDiscrepancy::with(['order', 'product']);
+
+        if ($plate = $request->query('vehicle_plate')) {
+            $query->where('vehicle_plate', $plate);
+        }
+        if ($orderId = $request->query('order_id')) {
+            $query->where('order_id', $orderId);
+        }
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+
+        $discrepancies = $query->latest('id')->limit(100)->get();
+
+        return response()->json([
+            'success'       => true,
+            'discrepancies' => $discrepancies,
+        ]);
+    }
+
+    /**
+     * Người kiểm hàng (hoặc Quản lý) phản hồi ý kiến cho người giao hàng
+     */
+    public function respondDiscrepancy(Request $request, $id)
+    {
+        $user = auth()->user();
+        $discrepancy = \App\Models\DeliveryDiscrepancy::findOrFail($id);
+
+        $feedback = $request->input('checker_feedback');
+        $status = $request->input('status', 'confirmed'); // confirmed, rejected, resolved
+        $resolutionNote = $request->input('resolution_note');
+
+        $discrepancy->checker_feedback = $feedback;
+        $discrepancy->checker_feedback_at = now();
+        $discrepancy->checker_feedback_by = $user?->name ?? 'Người kiểm hàng';
+        $discrepancy->status = $status;
+        if (!empty($resolutionNote)) {
+            $discrepancy->resolution_note = $resolutionNote;
+        }
+        if ($status === 'resolved') {
+            $discrepancy->resolved_by = $user?->name ?? 'Người kiểm hàng';
+            $discrepancy->resolved_at = now();
+        }
+        $discrepancy->save();
+
+        if ($discrepancy->order) {
+            $discrepancy->order->logOperation(
+                'Người Kiểm Hàng Phản Hồi Lệch Hàng',
+                "Người kiểm hàng {$discrepancy->checker_feedback_by} phản hồi lái xe {$discrepancy->driver_name} về SP {$discrepancy->product_name} (Trạng thái: {$status}): {$feedback}" . ($resolutionNote ? " | Phương án: {$resolutionNote}" : ""),
+                $discrepancy->checker_feedback_by
+            );
+        }
+
+        try {
+            \App\Models\PickingSyncEvent::create([
+                'order_id'       => (string) ($discrepancy->order_id ?? '0'),
+                'event_type'     => 'DELIVERY_DISCREPANCY_RESPONDED',
+                'performer_name' => $discrepancy->checker_feedback_by,
+                'extra_data'     => [
+                    'discrepancy_id'   => $discrepancy->id,
+                    'vehicle_plate'    => $discrepancy->vehicle_plate,
+                    'order_code'       => $discrepancy->order_code,
+                    'checker_feedback' => $feedback,
+                    'status'           => $status,
+                    'responded_at'     => now()->format('H:i d/m/Y'),
+                ],
+                'created_at'     => now(),
+            ]);
+        } catch (\Throwable $e) {}
+
+        return response()->json([
+            'success'     => true,
+            'message'     => 'Đã gửi phản hồi tới người giao hàng thành công!',
+            'discrepancy' => $discrepancy,
         ]);
     }
 }

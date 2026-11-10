@@ -19,7 +19,8 @@
     "dealers": @json($dealers ?? []),
     "driverVanDispatches": @json($driverVanDispatches ?? []),
     "totalVanSaleDebt": {{ (float)($totalVanSaleDebt ?? 0) }},
-    "salesStaff": @json($salesStaff ?? [])
+    "salesStaff": @json($salesStaff ?? []),
+    "discrepancies": @json($discrepancies ?? [])
 }
 </script>
 
@@ -30,6 +31,43 @@ function deliveryExecutionApp() {
     return {
         selectedVehicle: rawData.selectedVehicle || null,
         showOrderReturnWarehouseModal: false,
+        showDiscrepancyModal: false,
+        discrepancyTab: 'create',
+        discrepancies: (rawData.discrepancies || []),
+        discrepancyForm: {
+            order_id: '',
+            order_code: '',
+            product_id: '',
+            sku: '',
+            product_name: '',
+            unit: 'Thùng',
+            expected_qty: 0,
+            actual_qty: 0,
+            difference_qty: 0,
+            discrepancy_type: 'shortage',
+            driver_note: '',
+            base64_images: [],
+            isSubmitting: false
+        },
+
+        get discrepancySelectedOrder() {
+            if (!this.discrepancyForm.order_id) return null;
+            return (this.orders || []).find(o => String(o.id) === String(this.discrepancyForm.order_id)) || null;
+        },
+
+        get discrepancyOrderItems() {
+            const ord = this.discrepancySelectedOrder;
+            if (!ord || !ord.items) return [];
+            return ord.items;
+        },
+
+        get discrepancyCheckerName() {
+            const ord = this.discrepancySelectedOrder;
+            if (!ord) return '';
+            const checkedItem = (ord.items || []).find(it => it.checked_by);
+            if (checkedItem && checkedItem.checked_by) return checkedItem.checked_by;
+            return ord.warehouseStaff?.name || ord.warehouse_staff_name || 'Bộ phận QC / Kiểm hàng';
+        },
 
         async safeFetchJson(url, options = {}) {
             const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -501,6 +539,14 @@ function deliveryExecutionApp() {
                 bc.onmessage = (ev) => {
                     if (ev.data && (ev.data.type === 'QC_ALL_CHECKED' || ev.data.type === 'ORDER_STATUS_CHANGED' || ev.data.orderId)) {
                         window.location.reload();
+                    }
+                };
+
+                const dc = new BroadcastChannel('erp_discrepancy_sync');
+                dc.onmessage = (ev) => {
+                    if (ev.data && ev.data.type === 'DISCREPANCY_RESPONDED') {
+                        this.refreshDiscrepancies();
+                        this.showToast('💬 Người kiểm hàng vừa phản hồi về hàng lệch trên xe!');
                     }
                 };
             }
@@ -1684,6 +1730,157 @@ function deliveryExecutionApp() {
             } finally {
                 this.isReturningVehicle = false;
             }
+        },
+
+        // ─── Discrepancy Reporting (Thừa / Thiếu hàng trên xe) ────────────────
+        openDiscrepancyModal(order = null) {
+            this.showDiscrepancyModal = true;
+            this.discrepancyTab = 'create';
+            this.discrepancyForm = {
+                order_id: order ? String(order.id) : '',
+                order_code: order ? order.order_code : '',
+                product_id: '',
+                sku: '',
+                product_name: '',
+                unit: 'Thùng',
+                expected_qty: 0,
+                actual_qty: 0,
+                difference_qty: 0,
+                discrepancy_type: 'shortage',
+                driver_note: '',
+                base64_images: [],
+                isSubmitting: false
+            };
+            if (order && order.items && order.items.length > 0) {
+                const first = order.items[0];
+                this.onDiscrepancyItemSelect(first.sku || first.product_id);
+            }
+        },
+
+        onDiscrepancyOrderChange(orderId) {
+            const ord = (this.orders || []).find(o => String(o.id) === String(orderId));
+            this.discrepancyForm.order_code = ord ? ord.order_code : '';
+            this.discrepancyForm.product_id = '';
+            this.discrepancyForm.sku = '';
+            this.discrepancyForm.product_name = '';
+            this.discrepancyForm.unit = '';
+            this.discrepancyForm.expected_qty = 0;
+            this.discrepancyForm.actual_qty = 0;
+            this.discrepancyForm.difference_qty = 0;
+            if (ord && ord.items && ord.items.length > 0) {
+                const first = ord.items[0];
+                this.onDiscrepancyItemSelect(first.sku || first.product_id);
+            }
+        },
+
+        onDiscrepancyItemSelect(key) {
+            if (!key) return;
+            const items = this.discrepancyOrderItems;
+            const item = items.find(it => String(it.sku) === String(key) || String(it.product_id) === String(key));
+            if (item) {
+                this.discrepancyForm.product_id = item.product_id || '';
+                this.discrepancyForm.sku = item.sku || '';
+                this.discrepancyForm.product_name = item.name || '';
+                this.discrepancyForm.unit = item.unit || 'ĐVT';
+                this.discrepancyForm.expected_qty = Number(item.quantity || 0);
+                if (this.discrepancyForm.discrepancy_type === 'shortage') {
+                    this.discrepancyForm.actual_qty = Math.max(0, this.discrepancyForm.expected_qty - 1);
+                } else if (this.discrepancyForm.discrepancy_type === 'excess') {
+                    this.discrepancyForm.actual_qty = this.discrepancyForm.expected_qty + 1;
+                } else {
+                    this.discrepancyForm.actual_qty = this.discrepancyForm.expected_qty;
+                }
+                this.calcDiscrepancyDiff();
+            }
+        },
+
+        calcDiscrepancyDiff() {
+            const exp = Number(this.discrepancyForm.expected_qty || 0);
+            const act = Number(this.discrepancyForm.actual_qty || 0);
+            this.discrepancyForm.difference_qty = act - exp;
+        },
+
+        handleDiscrepancyImages(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+            const remaining = 4 - (this.discrepancyForm.base64_images.length);
+            const count = Math.min(files.length, remaining);
+
+            for (let i = 0; i < count; i++) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.discrepancyForm.base64_images.push(e.target.result);
+                };
+                reader.readAsDataURL(files[i]);
+            }
+        },
+
+        removeDiscrepancyImage(idx) {
+            this.discrepancyForm.base64_images.splice(idx, 1);
+        },
+
+        async submitDiscrepancyReport() {
+            if (!this.discrepancyForm.product_name) {
+                alert('Vui lòng nhập hoặc chọn sản phẩm bị lệch!');
+                return;
+            }
+            if (!this.discrepancyForm.driver_note || !this.discrepancyForm.driver_note.trim()) {
+                alert('Vui lòng nhập ghi chú phản ánh cụ thể để người kiểm hàng nắm rõ!');
+                return;
+            }
+
+            this.discrepancyForm.isSubmitting = true;
+            try {
+                const payload = {
+                    order_id: this.discrepancyForm.order_id || null,
+                    order_code: this.discrepancyForm.order_code || null,
+                    vehicle_plate: this.selectedVehicle?.plate_number || null,
+                    checker_name: this.discrepancyCheckerName,
+                    product_id: this.discrepancyForm.product_id || null,
+                    sku: this.discrepancyForm.sku || null,
+                    product_name: this.discrepancyForm.product_name,
+                    unit: this.discrepancyForm.unit || 'ĐVT',
+                    expected_qty: Number(this.discrepancyForm.expected_qty || 0),
+                    actual_qty: Number(this.discrepancyForm.actual_qty || 0),
+                    difference_qty: Number(this.discrepancyForm.difference_qty || 0),
+                    discrepancy_type: this.discrepancyForm.discrepancy_type,
+                    driver_note: this.discrepancyForm.driver_note,
+                    base64_images: this.discrepancyForm.base64_images
+                };
+
+                const { ok, data } = await this.safeFetchJson('/delivery/discrepancies/report', {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+
+                if (ok && data?.success) {
+                    this.discrepancies.unshift(data.discrepancy);
+                    this.showToast('✅ Đã gửi phản ánh tới người kiểm hàng thành công!');
+                    this.discrepancyTab = 'history';
+                    if (typeof BroadcastChannel !== 'undefined') {
+                        try {
+                            const dc = new BroadcastChannel('erp_discrepancy_sync');
+                            dc.postMessage({ type: 'DISCREPANCY_REPORTED', id: data.discrepancy?.id });
+                        } catch (_) {}
+                    }
+                } else {
+                    alert('Lỗi: ' + (data?.message || 'Không thể gửi phản ánh'));
+                }
+            } catch (e) {
+                alert('Lỗi: ' + e.message);
+            } finally {
+                this.discrepancyForm.isSubmitting = false;
+            }
+        },
+
+        async refreshDiscrepancies() {
+            if (!this.selectedVehicle) return;
+            try {
+                const { ok, data } = await this.safeFetchJson('/delivery/discrepancies?vehicle_plate=' + encodeURIComponent(this.selectedVehicle.plate_number));
+                if (ok && data?.success && data.discrepancies) {
+                    this.discrepancies = data.discrepancies;
+                }
+            } catch (_) {}
         },
 
         // ─── Quick Views & Prints ──────────────────────────────────

@@ -213,6 +213,19 @@
                   :class="activeTab === 'qc' ? 'bg-black/20 text-white' : 'bg-emerald-100 text-emerald-800'"
                   x-text="countReadyQc"></span>
         </button>
+
+        <!-- Tab 3: Phản Ánh Lệch Hàng Từ Xe Xuất Bến (QC ⇄ Lái Xe) -->
+        <button type="button" @click="openDiscrepanciesModal()"
+                class="flex-1 sm:flex-initial px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs border relative"
+                :class="pendingDiscrepanciesCount > 0 
+                    ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300 ring-2 ring-rose-500/20' 
+                    : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'">
+            <i class="fa-solid fa-truck-ramp-box" :class="pendingDiscrepanciesCount > 0 ? 'text-rose-600 animate-bounce' : 'text-slate-500'"></i>
+            <span>3. Lệch Hàng Từ Xe</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black transition-all"
+                  :class="pendingDiscrepanciesCount > 0 ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-100 text-slate-600'"
+                  x-text="pendingDiscrepanciesCount > 0 ? (pendingDiscrepanciesCount + ' cần phản hồi') : (discrepanciesList.length + ' tin')"></span>
+        </button>
     </div>
 
     <!-- 3. Sub-toolbar: Chế độ soạn / kiểm kho & Mã đơn đang xem -->
@@ -2235,6 +2248,9 @@
         </div>
     </div>
 
+    <!-- MODAL PHẢN ÁNH LỆCH HÀNG TỪ XE XUẤT BẾN (QC ⇄ LÁI XE) -->
+    @include('inventory.modals.discrepancies_checker')
+
 <script>
 function pickingApp() {
     return {
@@ -2271,6 +2287,38 @@ function pickingApp() {
             saving: false
         },
         selectedAggregatedSkus: [],
+
+        // Discrepancy (Lệch Hàng Từ Xe) State
+        discrepanciesList: @json($discrepancies ?? []),
+        showDiscrepanciesModal: false,
+        discrepancyFilterStatus: 'all',
+        discrepancySearch: '',
+        activeRespondingId: null,
+        isSubmittingResponse: false,
+        isPollingDiscrepancies: false,
+        discrepancyImageLightbox: { show: false, src: '' },
+
+        get pendingDiscrepanciesCount() {
+            return (this.discrepanciesList || []).filter(d => d.status === 'pending').length;
+        },
+
+        get filteredDiscrepancies() {
+            let list = this.discrepanciesList || [];
+            if (this.discrepancyFilterStatus !== 'all') {
+                list = list.filter(d => d.status === this.discrepancyFilterStatus);
+            }
+            if (this.discrepancySearch && this.discrepancySearch.trim()) {
+                const q = this.discrepancySearch.trim().toLowerCase();
+                list = list.filter(d => 
+                    (d.vehicle_plate && d.vehicle_plate.toLowerCase().includes(q)) ||
+                    (d.driver_name && d.driver_name.toLowerCase().includes(q)) ||
+                    (d.order_code && d.order_code.toLowerCase().includes(q)) ||
+                    (d.product_name && d.product_name.toLowerCase().includes(q)) ||
+                    (d.sku && d.sku.toLowerCase().includes(q))
+                );
+            }
+            return list;
+        },
 
         // Data injected from Blade
         orders: @json($orders),
@@ -4521,6 +4569,22 @@ function pickingApp() {
                         });
                     } catch(e) {}
                 }
+            } else if (ev.eventType === 'DELIVERY_DISCREPANCY_REPORTED') {
+                const extra = ev.extraData || {};
+                this.playAlertSound();
+                const msg = '🚨 LÁI XE BÁO LỆCH HÀNG: Xe ' + (extra.vehicle_plate || '') + ' - Đơn ' + (extra.order_code || '') + ': ' + (extra.product_name || '') + ' (lệch ' + (extra.diff_qty || '') + ')';
+                this.showToast(msg, 'error');
+                this.fetchDiscrepancies();
+                if (window.Notification && Notification.permission === 'granted') {
+                    try {
+                        new Notification('ERP Đại Sơn - Xe ' + (extra.vehicle_plate || '') + ' báo lệch hàng', {
+                            body: 'Đơn: ' + (extra.order_code || '') + '\n' + (extra.product_name || '') + '\n' + (extra.driver_note || ''),
+                            icon: '/favicon.ico'
+                        });
+                    } catch(e) {}
+                }
+            } else if (ev.eventType === 'DELIVERY_DISCREPANCY_RESPONDED') {
+                this.fetchDiscrepancies();
             }
         },
 
@@ -4534,6 +4598,127 @@ function pickingApp() {
             }
             if (this.realtimeAlert && ord && (this.realtimeAlert.orderCode === ord.order_code || Number(this.realtimeAlert.orderId) === Number(ord.id))) {
                 this.realtimeAlert = null;
+            }
+        },
+
+        // ─── PHẢN ÁNH LỆCH HÀNG TỪ XE (QC & LÁI XE) ───────────────────
+        openDiscrepanciesModal() {
+            this.showDiscrepanciesModal = true;
+            this.fetchDiscrepancies();
+        },
+
+        openImageLightbox(src) {
+            this.discrepancyImageLightbox = { show: true, src: src };
+        },
+
+        formatDiscrepancyTime(dtStr) {
+            if (!dtStr) return '';
+            try {
+                const d = new Date(dtStr);
+                if (isNaN(d.getTime())) return dtStr;
+                const hh = String(d.getHours()).padStart(2, '0');
+                const mm = String(d.getMinutes()).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                const MM = String(d.getMonth() + 1).padStart(2, '0');
+                const yyyy = d.getFullYear();
+                return `${hh}:${mm} ${dd}/${MM}/${yyyy}`;
+            } catch (_) {
+                return dtStr;
+            }
+        },
+
+        getDiscrepancyTypeLabel(type) {
+            switch(type) {
+                case 'shortage': return 'Thiếu hàng khi giao';
+                case 'excess': return 'Thừa hàng trên xe';
+                case 'damaged': return 'Hàng bị hư hỏng/vỡ';
+                case 'wrong_item': return 'Sai quy cách/mã';
+                default: return type || 'Lệch hàng';
+            }
+        },
+
+        focusOrderInPicking(orderCode) {
+            if (!orderCode) return;
+            this.showDiscrepanciesModal = false;
+            this.filterPickingDate = '';
+            this.filterOrderType = 'all';
+            this.searchQuery = orderCode;
+            const ord = this.orders.find(o => o.order_code === orderCode);
+            if (ord) {
+                this.activeOrderId = ord.id;
+                this.activeTab = 'picking';
+                this.mobileView = 'detail';
+            }
+            this.showToast('Đang hiển thị đơn hàng: ' + orderCode);
+        },
+
+        async fetchDiscrepancies() {
+            this.isPollingDiscrepancies = true;
+            try {
+                const res = await fetch('/api/delivery/discrepancies');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && Array.isArray(data.discrepancies)) {
+                        this.discrepanciesList = data.discrepancies;
+                    }
+                }
+            } catch (e) {
+                console.error('Lỗi khi tải danh sách lệch hàng:', e);
+            } finally {
+                this.isPollingDiscrepancies = false;
+            }
+        },
+
+        async sendCheckerResponse(id, status, feedback, resolution, onStart, onEnd) {
+            if (!feedback || !feedback.trim()) {
+                alert('Vui lòng nhập nội dung giải thích / phản hồi cho lái xe!');
+                return;
+            }
+            if (onStart) onStart();
+            this.isSubmittingResponse = true;
+
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const res = await fetch(`/api/delivery/discrepancies/${id}/respond`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token || ''
+                    },
+                    body: JSON.stringify({
+                        status: status,
+                        checker_feedback: feedback.trim(),
+                        resolution_note: resolution ? resolution.trim() : null,
+                        checker_feedback_by: this.currentUserName
+                    })
+                });
+
+                const data = await res.json();
+                if (data && data.success) {
+                    this.showToast('✅ Đã gửi phản hồi thành công tới lái xe!');
+                    if (data.discrepancy) {
+                        this.discrepanciesList = this.discrepanciesList.map(item => 
+                            item.id === id ? data.discrepancy : item
+                        );
+                    } else {
+                        await this.fetchDiscrepancies();
+                    }
+                    if (typeof BroadcastChannel !== 'undefined') {
+                        try {
+                            const dc = new BroadcastChannel('erp_discrepancy_sync');
+                            dc.postMessage({ type: 'DISCREPANCY_RESPONDED', id: id });
+                        } catch (_) {}
+                    }
+                } else {
+                    alert('Lỗi: ' + (data?.message || 'Không thể gửi phản hồi'));
+                }
+            } catch (err) {
+                console.error('Lỗi gửi phản hồi cho lái xe:', err);
+                alert('Lỗi kết nối: ' + err.message);
+            } finally {
+                this.isSubmittingResponse = false;
+                if (onEnd) onEnd();
             }
         },
 

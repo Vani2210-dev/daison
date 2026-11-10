@@ -137,6 +137,17 @@
                 <span class="sm:hidden truncate">Nợ Sale</span>
                 <span class="hidden sm:inline truncate">Bàn giao nợ Sale</span>
             </button>
+
+            <!-- Button 6: Phản Ánh Thừa/Thiếu Hàng (Lệch Kiểm) -->
+            <button type="button" @click="openDiscrepancyModal()"
+                    class="px-1.5 sm:px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 hover:text-white text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                    title="Báo thừa / thiếu hàng sau khi xe xuất bến tới người kiểm hàng">
+                <i class="fa-solid fa-scale-unbalanced text-amber-400 text-xs shrink-0"></i>
+                <span class="sm:hidden truncate">Lệch hàng</span>
+                <span class="hidden sm:inline truncate">Lệch Hàng</span>
+                <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px] font-black bg-amber-500/40 text-amber-100 border border-amber-400/50 shrink-0"
+                      x-text="discrepancies.length">0</span>
+            </button>
         </div>
 
         <!-- Bottom Row: Thông tin Nhân Sự & Lộ Trình Phương Tiện (Dark Glass Ribbon) -->
