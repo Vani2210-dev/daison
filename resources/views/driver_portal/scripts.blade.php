@@ -625,12 +625,17 @@ function deliveryExecutionApp() {
 
                 const dc = new BroadcastChannel('erp_discrepancy_sync');
                 dc.onmessage = (ev) => {
-                    if (ev.data && ev.data.type === 'DISCREPANCY_RESPONDED') {
+                    if (ev.data && (ev.data.type === 'DISCREPANCY_RESPONDED' || ev.data.type === 'DELIVERY_DISCREPANCY_RESPONDED')) {
                         this.refreshDiscrepancies();
                         this.showToast('💬 Người bốc hàng vừa phản hồi về hàng lệch trên xe!');
                     }
                 };
             }
+
+            window.addEventListener('erp:delivery-discrepancy-responded', () => {
+                this.refreshDiscrepancies();
+                this.showToast('💬 Người bốc hàng vừa phản hồi về hàng lệch trên xe!');
+            });
 
             // Kiểm tra xem xe này có biên bản nộp tiền đang chờ duyệt không
             const pendingHandover = (this.cashHandovers || []).find(h => 
@@ -2020,10 +2025,31 @@ function deliveryExecutionApp() {
                     this.discrepancies.unshift(data.discrepancy);
                     this.showToast('✅ Đã gửi phản ánh tới người bốc hàng thành công!');
                     this.discrepancyTab = 'history';
+
+                    // Kích hoạt thông báo nổi
+                    if (typeof window.showFloatingNotification === 'function') {
+                        window.showFloatingNotification({
+                            title: '⚖️ Đã gửi phản ánh lệch hàng',
+                            message: `Xe ${payload.vehicle_plate || ''}: ${payload.product_name} (Lệch ${payload.difference_qty}) đã gửi tới Người bốc hàng.`,
+                            type: 'delivery_discrepancy',
+                            data: {
+                                vehicle_plate: payload.vehicle_plate,
+                                order_code: payload.order_code,
+                                product_name: payload.product_name,
+                                diff_qty: payload.difference_qty,
+                                unit: payload.unit,
+                                checker_name: payload.checker_name
+                            }
+                        });
+                    }
+
                     if (typeof BroadcastChannel !== 'undefined') {
                         try {
                             const dc = new BroadcastChannel('erp_discrepancy_sync');
                             dc.postMessage({ type: 'DISCREPANCY_REPORTED', id: data.discrepancy?.id });
+
+                            const oc = new BroadcastChannel('erp_order_sync');
+                            oc.postMessage({ type: 'DELIVERY_DISCREPANCY_REPORTED', id: data.discrepancy?.id });
                         } catch (_) {}
                     }
                 } else {

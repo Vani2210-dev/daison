@@ -1886,9 +1886,130 @@
         }
 
         /* ─── Core: Hiển thị toast ───────────────────────────────────── */
-        function showToast({ type = 'shortage', orderCode, supervisor, reporter, changes, shortageItems, orderId, orderCreator, customerName, driverName, overrunAmount, reason }) {
+        function showToast({ type = 'shortage', orderCode, supervisor, reporter, changes, shortageItems, orderId, orderCreator, customerName, driverName, overrunAmount, reason, vehiclePlate, productName, diffQty, checkerName, driverNote, discType, feedback, responder }) {
             const container = document.getElementById('erp-notif-container');
             if (!container) return;
+
+            // Xử lý loại thông báo Lệch hàng từ xe (Thừa / Thiếu) gửi tới Người bốc hàng
+            if (type === 'delivery_discrepancy') {
+                const gradFrom   = '#7c2d12'; // orange-900
+                const gradTo     = '#991b1b'; // red-800
+                const borderClr  = '#fdba74'; // orange-300
+                const badgeText  = '⚖️ LÁI XE BÁO LỆCH HÀNG';
+                const badgeBg    = 'rgba(255,255,255,.18)';
+                const badgeColor = '#fef08a'; // yellow-200
+
+                const wrap = document.createElement('div');
+                wrap.style.cssText = `pointer-events:auto;background:linear-gradient(135deg,${gradFrom},${gradTo});color:#fff;padding:14px 16px;border-radius:18px;box-shadow:0 8px 32px rgba(0,0,0,.5);border:1.5px solid ${borderClr};display:flex;flex-direction:column;gap:10px;animation:erpSlideIn .3s ease;`;
+                wrap.setAttribute('data-erp-toast', '1');
+
+                const diffFormatted = (Number(diffQty) > 0 ? '+' : '') + (diffQty !== undefined ? diffQty : '');
+
+                wrap.innerHTML = `
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+                        <div style="display:flex;align-items:flex-start;gap:10px;min-width:0;">
+                            <div style="width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">⚖️</div>
+                            <div style="min-width:0;">
+                                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:3px;">
+                                    <span style="padding:2px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:9.5px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;">${badgeText}</span>
+                                    <strong style="font-family:monospace;font-size:13px;color:#fff;">${vehiclePlate ? 'Xe ' + vehiclePlate : ''}</strong>
+                                    ${orderCode ? `<span style="font-size:11px;opacity:.9;background:rgba(0,0,0,.25);padding:1px 6px;border-radius:6px;">#${orderCode}</span>` : ''}
+                                </div>
+                                <div style="font-size:11.5px;opacity:.95;line-height:1.4;">
+                                    Người bốc nhận: <strong style="color:#fef08a;">${checkerName || 'Người bốc hàng'}</strong>
+                                </div>
+                                <div style="font-size:11px;opacity:.85;margin-top:1px;">
+                                    Lái xe gửi: <strong>${driverName || reporter || 'Lái xe'}</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="this.closest('[data-erp-toast]').remove()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:18px;font-weight:900;cursor:pointer;padding:0;line-height:1;flex-shrink:0;">&times;</button>
+                    </div>
+
+                    <div style="background:rgba(0,0,0,.3);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#ffedd5;line-height:1.5;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+                            <span style="font-weight:700;color:#fff;" class="truncate">${productName || 'Sản phẩm'}</span>
+                            <strong style="font-size:13px;color:${Number(diffQty) < 0 ? '#fca5a5' : '#93c5fd'};font-family:monospace;white-space:nowrap;">${diffFormatted}</strong>
+                        </div>
+                        ${driverNote ? `<div style="margin-top:4px;font-size:10.5px;color:#fed7aa;font-style:italic;border-top:1px dashed rgba(255,255,255,.15);padding-top:4px;">Ghi chú: "${driverNote}"</div>` : ''}
+                    </div>
+
+                    <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;padding-top:2px;">
+                        <a href="/inventory/picking?tab=discrepancies"
+                           style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;background:#f97316;color:#fff;font-size:11px;font-weight:700;border-radius:8px;text-decoration:none;border:none;box-shadow:0 2px 8px rgba(249,115,22,.4);transition:background .2s;"
+                           onmouseover="this.style.background='#ea580c'" onmouseout="this.style.background='#f97316'">
+                           📦 Mở xử lý lệch hàng
+                        </a>
+                        <button onclick="this.closest('[data-erp-toast]').remove();window.erpClearBadge&&window.erpClearBadge();"
+                                style="padding:5px 10px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);font-size:11px;font-weight:600;border-radius:8px;border:1px solid rgba(255,255,255,.15);cursor:pointer;">
+                            Đã xem
+                        </button>
+                    </div>
+                `;
+
+                container.appendChild(wrap);
+                bumpBadge();
+
+                setTimeout(() => { if (wrap.parentElement) wrap.remove(); }, 30000);
+                return;
+            }
+
+            // Xử lý loại thông báo Người bốc hàng phản hồi lệch hàng về Lái xe
+            if (type === 'delivery_discrepancy_response') {
+                const gradFrom   = '#064e3b'; // emerald-900
+                const gradTo     = '#0f766e'; // teal-700
+                const borderClr  = '#5eead4'; // teal-300
+                const badgeText  = '💬 PHẢN HỒI LỆCH HÀNG';
+                const badgeBg    = 'rgba(255,255,255,.18)';
+                const badgeColor = '#a7f3d0';
+
+                const wrap = document.createElement('div');
+                wrap.style.cssText = `pointer-events:auto;background:linear-gradient(135deg,${gradFrom},${gradTo});color:#fff;padding:14px 16px;border-radius:18px;box-shadow:0 8px 32px rgba(0,0,0,.5);border:1.5px solid ${borderClr};display:flex;flex-direction:column;gap:10px;animation:erpSlideIn .3s ease;`;
+                wrap.setAttribute('data-erp-toast', '1');
+
+                wrap.innerHTML = `
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+                        <div style="display:flex;align-items:flex-start;gap:10px;min-width:0;">
+                            <div style="width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">💬</div>
+                            <div style="min-width:0;">
+                                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:3px;">
+                                    <span style="padding:2px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:9.5px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;">${badgeText}</span>
+                                    <strong style="font-family:monospace;font-size:13px;color:#fff;">${vehiclePlate ? 'Xe ' + vehiclePlate : ''}</strong>
+                                    ${orderCode ? `<span style="font-size:11px;opacity:.9;background:rgba(0,0,0,.25);padding:1px 6px;border-radius:6px;">#${orderCode}</span>` : ''}
+                                </div>
+                                <div style="font-size:11.5px;opacity:.95;line-height:1.4;">
+                                    Người bốc phản hồi: <strong style="color:#a7f3d0;">${responder || 'Người bốc hàng'}</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="this.closest('[data-erp-toast]').remove()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:18px;font-weight:900;cursor:pointer;padding:0;line-height:1;flex-shrink:0;">&times;</button>
+                    </div>
+
+                    ${feedback ? `
+                    <div style="background:rgba(0,0,0,.3);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#ccfbf1;line-height:1.5;">
+                        <div style="font-size:10.5px;opacity:.8;">Nội dung phản hồi:</div>
+                        <div style="font-weight:700;color:#fff;margin-top:2px;">"${feedback}"</div>
+                    </div>` : ''}
+
+                    <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;padding-top:2px;">
+                        <a href="/delivery/execution?plate=${encodeURIComponent(vehiclePlate || '')}"
+                           style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;background:#0d9488;color:#fff;font-size:11px;font-weight:700;border-radius:8px;text-decoration:none;border:none;box-shadow:0 2px 8px rgba(13,148,136,.4);transition:background .2s;"
+                           onmouseover="this.style.background='#0f766e'" onmouseout="this.style.background='#0d9488'">
+                           🚚 Xem chi tiết xe
+                        </a>
+                        <button onclick="this.closest('[data-erp-toast]').remove();window.erpClearBadge&&window.erpClearBadge();"
+                                style="padding:5px 10px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);font-size:11px;font-weight:600;border-radius:8px;border:1px solid rgba(255,255,255,.15);cursor:pointer;">
+                            Đã xem
+                        </button>
+                    </div>
+                `;
+
+                container.appendChild(wrap);
+                bumpBadge();
+
+                setTimeout(() => { if (wrap.parentElement) wrap.remove(); }, 30000);
+                return;
+            }
 
             // Xử lý riêng loại thông báo Yêu cầu duyệt bảo lãnh nợ vượt hạn mức (Gửi về tài khoản lên đơn)
             if (type === 'credit_overrun') {
@@ -2146,6 +2267,26 @@
             if (typeof assigned === 'string' && assigned.includes(CURRENT_USER)) return true;
             if (Array.isArray(assigned) && assigned.some(p => p && p.includes(CURRENT_USER))) return true;
 
+            // Sự kiện phản ánh lệch hàng từ xe (Thừa / Thiếu)
+            if (ev.eventType === 'DELIVERY_DISCREPANCY_REPORTED') {
+                const reporter = ev.performerName || extra.driver_name || '';
+                const isSelf = reporter && CURRENT_USER && reporter.includes(CURRENT_USER);
+                // Nếu là lái xe tự gửi thì không cần báo lại chính mình trừ phi là Admin test
+                if (isSelf && !IS_ADMIN_OR_ACCOUNTANT) return false;
+                const checker = extra.checker_name || '';
+                if (checker && (checker.includes(CURRENT_USER) || CURRENT_USER.includes(checker))) return true;
+                if (IS_ADMIN_OR_ACCOUNTANT) return true;
+                // Người bốc hàng hoặc kho
+                return true;
+            }
+
+            if (ev.eventType === 'DELIVERY_DISCREPANCY_RESPONDED') {
+                const responder = ev.performerName || extra.checker_name || '';
+                const isSelf = responder && CURRENT_USER && responder.includes(CURRENT_USER);
+                if (isSelf && !IS_ADMIN_OR_ACCOUNTANT) return false;
+                return true;
+            }
+
             // Reporter chính là mình (tự báo) → không cần nhận thêm
             const reporter = extra.reporter || ev.performerName || '';
             if (reporter && reporter.includes(CURRENT_USER) && ev.eventType === 'SHORTAGE_REPORTED') return false;
@@ -2251,6 +2392,65 @@
                     );
                 }
                 window.dispatchEvent(new CustomEvent('erp:order-modified', { detail: ev }));
+
+            } else if (ev.eventType === 'DELIVERY_DISCREPANCY_REPORTED') {
+                const extra = ev.extraData || {};
+                const reporter = ev.performerName || extra.driver_name || 'Lái xe';
+
+                if (isRelevantToMe(ev)) {
+                    showToast({
+                        type: 'delivery_discrepancy',
+                        orderCode: extra.order_code || ('Đơn #' + (ev.orderId || '')),
+                        vehiclePlate: extra.vehicle_plate || '',
+                        productName: extra.product_name || 'Sản phẩm',
+                        diffQty: extra.diff_qty,
+                        checkerName: extra.checker_name || 'Người bốc hàng',
+                        driverName: reporter,
+                        driverNote: extra.driver_note || '',
+                        discType: extra.type || 'shortage',
+                        orderId: ev.orderId
+                    });
+                    playBeep('warning');
+                    desktopNotif(
+                        '⚖️ Lái xe báo lệch hàng (Xe ' + (extra.vehicle_plate || '') + ')',
+                        'Sản phẩm: ' + (extra.product_name || '') + ' (Lệch ' + (extra.diff_qty || 0) + ')\nNgười bốc: ' + (extra.checker_name || 'Người bốc') + '\nLái xe: ' + reporter
+                    );
+
+                    // Làm mới chuông thông báo nếu có Alpine store
+                    try {
+                        if (window.Alpine && window.Alpine.store('notifications')) {
+                            window.Alpine.store('notifications').poll();
+                        }
+                    } catch (_) {}
+                }
+                window.dispatchEvent(new CustomEvent('erp:delivery-discrepancy-reported', { detail: ev }));
+
+            } else if (ev.eventType === 'DELIVERY_DISCREPANCY_RESPONDED') {
+                const extra = ev.extraData || {};
+                const responder = ev.performerName || extra.checker_name || 'Người bốc hàng';
+
+                if (isRelevantToMe(ev)) {
+                    showToast({
+                        type: 'delivery_discrepancy_response',
+                        orderCode: extra.order_code || ('Đơn #' + (ev.orderId || '')),
+                        vehiclePlate: extra.vehicle_plate || '',
+                        feedback: extra.checker_feedback || '',
+                        responder: responder,
+                        orderId: ev.orderId
+                    });
+                    playBeep('info');
+                    desktopNotif(
+                        '💬 Người bốc đã phản hồi lệch hàng (Xe ' + (extra.vehicle_plate || '') + ')',
+                        'Đơn: ' + (extra.order_code || '') + '\nNội dung: ' + (extra.checker_feedback || '')
+                    );
+
+                    try {
+                        if (window.Alpine && window.Alpine.store('notifications')) {
+                            window.Alpine.store('notifications').poll();
+                        }
+                    } catch (_) {}
+                }
+                window.dispatchEvent(new CustomEvent('erp:delivery-discrepancy-responded', { detail: ev }));
             }
         }
 
@@ -2290,9 +2490,14 @@
                     poll();
                 } else if (d.type === 'SHORTAGE_REPORTED' || d.type === 'CREDIT_OVERRUN_DECIDED') {
                     poll();
-                } else if (d.type === 'ORDER_SAVED' || d.type === 'ORDER_MODIFIED') {
+                } else if (d.type === 'ORDER_SAVED' || d.type === 'ORDER_MODIFIED' || d.type === 'DELIVERY_DISCREPANCY_REPORTED' || d.type === 'DELIVERY_DISCREPANCY_RESPONDED' || d.type === 'DISCREPANCY_REPORTED' || d.type === 'DISCREPANCY_RESPONDED') {
                     poll();
                 }
+            };
+
+            const bcDisc = new BroadcastChannel('erp_discrepancy_sync');
+            bcDisc.onmessage = function (e) {
+                poll();
             };
         } catch (e) {}
 

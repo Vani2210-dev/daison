@@ -7,12 +7,14 @@
     <template x-for="item in $store.notifications.toasts" :key="item.id">
         <div class="pointer-events-auto bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border-2 transition-all duration-300 overflow-hidden transform"
              :class="{
+                 'border-amber-500 ring-4 ring-amber-500/25 shadow-amber-500/20': item.type === 'delivery_discrepancy',
+                 'border-teal-500 ring-4 ring-teal-500/25 shadow-teal-500/20': item.type === 'delivery_discrepancy_response',
                  'border-purple-500 ring-4 ring-purple-500/20 shadow-purple-500/10': ['supplier_order_approval', 'debt_handover_pending_sale'].includes(item.type),
                  'border-emerald-500 ring-4 ring-emerald-500/20 shadow-emerald-500/10': ['completed', 'supplier_order_approved', 'debt_handover_confirmed'].includes(item.type),
                  'border-rose-500 ring-4 ring-rose-500/20 shadow-rose-500/10': item.type === 'debt_handover_rejected',
                  'border-sky-500 ring-4 ring-sky-500/20 shadow-sky-500/10': item.type === 'installation_assigned',
                  'border-amber-500 ring-4 ring-amber-500/20 shadow-amber-500/10': ['repair_assigned', 'warehouse_intake', 'debt_handover_pending_accountant'].includes(item.type),
-                 'border-indigo-500 ring-4 ring-indigo-500/20 shadow-indigo-500/10': !['installation_assigned', 'repair_assigned', 'warehouse_intake', 'completed', 'supplier_order_approval', 'supplier_order_approved', 'debt_handover_pending_accountant', 'debt_handover_pending_sale', 'debt_handover_confirmed', 'debt_handover_rejected'].includes(item.type)
+                 'border-indigo-500 ring-4 ring-indigo-500/20 shadow-indigo-500/10': !['delivery_discrepancy', 'delivery_discrepancy_response', 'installation_assigned', 'repair_assigned', 'warehouse_intake', 'completed', 'supplier_order_approval', 'supplier_order_approved', 'debt_handover_pending_accountant', 'debt_handover_pending_sale', 'debt_handover_confirmed', 'debt_handover_rejected'].includes(item.type)
              }"
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="opacity-0 translate-y-8 scale-90"
@@ -24,12 +26,14 @@
             <!-- Toast Header -->
             <div class="px-4 py-3 flex items-center justify-between border-b"
                  :class="{
+                     'bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 text-white border-amber-600': item.type === 'delivery_discrepancy',
+                     'bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 text-white border-teal-600': item.type === 'delivery_discrepancy_response',
                      'bg-gradient-to-r from-purple-600 to-indigo-700 text-white border-purple-600': ['supplier_order_approval', 'debt_handover_pending_sale'].includes(item.type),
                      'bg-gradient-to-r from-emerald-600 to-teal-700 text-white border-emerald-600': ['completed', 'supplier_order_approved', 'debt_handover_confirmed'].includes(item.type),
                      'bg-gradient-to-r from-rose-600 to-red-700 text-white border-rose-600': item.type === 'debt_handover_rejected',
                      'bg-gradient-to-r from-sky-600 to-blue-700 text-white border-sky-600': item.type === 'installation_assigned',
                      'bg-gradient-to-r from-amber-600 to-orange-700 text-white border-amber-600': ['repair_assigned', 'warehouse_intake', 'debt_handover_pending_accountant'].includes(item.type),
-                     'bg-gradient-to-r from-indigo-600 to-purple-700 text-white border-indigo-600': !['installation_assigned', 'repair_assigned', 'warehouse_intake', 'completed', 'supplier_order_approval', 'supplier_order_approved', 'debt_handover_pending_accountant', 'debt_handover_pending_sale', 'debt_handover_confirmed', 'debt_handover_rejected'].includes(item.type)
+                     'bg-gradient-to-r from-indigo-600 to-purple-700 text-white border-indigo-600': !['delivery_discrepancy', 'delivery_discrepancy_response', 'installation_assigned', 'repair_assigned', 'warehouse_intake', 'completed', 'supplier_order_approval', 'supplier_order_approved', 'debt_handover_pending_accountant', 'debt_handover_pending_sale', 'debt_handover_confirmed', 'debt_handover_rejected'].includes(item.type)
                  }">
                 <div class="flex items-center gap-2">
                     <span class="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center text-xs shadow-xs animate-bounce">
@@ -49,6 +53,40 @@
                 <!-- Thông tin thẻ nhanh KTV hoặc Đơn NCC nếu có data -->
                 <template x-if="item.data">
                     <div class="bg-slate-50/90 rounded-xl p-2.5 border border-slate-200/80 space-y-1.5 text-[11px]">
+                        <!-- Phản ánh lệch hàng từ xe (Thừa / Thiếu) -->
+                        <template x-if="item.type === 'delivery_discrepancy' || item.type === 'delivery_discrepancy_response' || (item.data && item.data.discrepancy_id)">
+                            <div class="space-y-1.5 bg-amber-50/70 p-2 rounded-lg border border-amber-200/70">
+                                <div class="flex items-center justify-between gap-1 text-slate-800">
+                                    <span class="flex items-center gap-1.5 font-bold text-amber-900">
+                                        <i class="fa-solid fa-truck text-amber-600"></i>
+                                        <span x-text="item.data.vehicle_plate || 'Xe giao hàng'"></span>
+                                    </span>
+                                    <template x-if="item.data.order_code">
+                                        <span class="font-mono font-black text-slate-800 bg-white px-1.5 py-0.5 rounded border border-amber-300" x-text="'#' + item.data.order_code"></span>
+                                    </template>
+                                </div>
+                                <template x-if="item.data.product_name">
+                                    <div class="flex items-center justify-between text-slate-700 font-semibold gap-2">
+                                        <span class="truncate flex-1" x-text="item.data.product_name"></span>
+                                        <template x-if="item.data.diff_qty !== undefined">
+                                            <span :class="Number(item.data.diff_qty) < 0 ? 'text-rose-600 font-black' : 'text-blue-600 font-black'"
+                                                  x-text="(Number(item.data.diff_qty) > 0 ? '+' : '') + item.data.diff_qty + ' ' + (item.data.unit || '')"></span>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template x-if="item.data.checker_name">
+                                    <div class="text-[10.5px] text-slate-600">
+                                        <span>Người bốc: </span><strong class="text-amber-800" x-text="item.data.checker_name"></strong>
+                                    </div>
+                                </template>
+                                <template x-if="item.data.feedback">
+                                    <div class="text-teal-900 bg-teal-50 p-1.5 rounded border border-teal-200 text-[11px]">
+                                        <span class="font-bold">Phản hồi: </span><span x-text="item.data.feedback"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
                         <!-- Biên bản bàn giao công nợ -->
                         <template x-if="item.data && item.data.handover_code">
                             <div class="space-y-1">
@@ -366,6 +404,8 @@ document.addEventListener('alpine:init', () => {
 
         getIconClass(type) {
             switch (type) {
+                case 'delivery_discrepancy': return 'fa-solid fa-scale-unbalanced text-amber-300';
+                case 'delivery_discrepancy_response': return 'fa-solid fa-comments text-teal-300';
                 case 'supplier_order_approval': return 'fa-solid fa-cart-shopping';
                 case 'supplier_order_approved': return 'fa-solid fa-check-double';
                 case 'installation_assigned': return 'fa-solid fa-screwdriver-wrench';
@@ -384,6 +424,8 @@ document.addEventListener('alpine:init', () => {
 
         getTypeBadge(type) {
             switch (type) {
+                case 'delivery_discrepancy': return { text: 'Lệch hàng từ xe', class: 'bg-amber-100 text-amber-900 border border-amber-300' };
+                case 'delivery_discrepancy_response': return { text: 'Phản hồi lệch hàng', class: 'bg-teal-100 text-teal-900 border border-teal-300' };
                 case 'supplier_order_approval': return { text: 'Duyệt đặt NCC', class: 'bg-purple-100 text-purple-800' };
                 case 'supplier_order_approved': return { text: 'Đã duyệt NCC', class: 'bg-emerald-100 text-emerald-800' };
                 case 'installation_assigned': return { text: 'Lắp đặt', class: 'bg-sky-100 text-sky-800' };

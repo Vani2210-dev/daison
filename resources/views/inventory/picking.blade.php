@@ -4740,6 +4740,9 @@ function pickingApp() {
                         try {
                             const dc = new BroadcastChannel('erp_discrepancy_sync');
                             dc.postMessage({ type: 'DISCREPANCY_RESPONDED', id: id });
+
+                            const oc = new BroadcastChannel('erp_order_sync');
+                            oc.postMessage({ type: 'DELIVERY_DISCREPANCY_RESPONDED', id: id });
                         } catch (_) {}
                     }
                 } else {

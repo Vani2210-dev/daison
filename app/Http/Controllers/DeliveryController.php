@@ -4337,27 +4337,48 @@ class DeliveryController extends Controller
             );
         }
 
-        // Tạo thông báo SystemNotification tới Người bốc hàng
+        // Gửi thông báo SystemNotification tới:
+        // 1. Người bốc hàng phụ trách (nếu tìm thấy ID)
+        // 2. Tất cả nhân sự Kho (Warehouse)
+        // 3. Ban Giám Đốc / Admin (Executive / ID 1) để luôn nhận được cảnh báo realtime
+        $targetUserIds = [];
         if ($pickerId) {
-            try {
+            $targetUserIds[] = (int)$pickerId;
+        }
+
+        try {
+            $warehouseAndAdminUsers = User::where(function($q) {
+                $q->where('department', 'Warehouse')
+                  ->orWhere('department', 'Executive')
+                  ->orWhere('id', 1);
+            })->pluck('id')->all();
+            $targetUserIds = array_unique(array_filter(array_merge($targetUserIds, $warehouseAndAdminUsers)));
+
+            foreach ($targetUserIds as $uId) {
                 \App\Models\SystemNotification::send(
-                    (int)$pickerId,
+                    (int)$uId,
                     "🚨 Lái xe báo lệch hàng: Xe {$vehiclePlate} - Đơn #{$orderCode}",
-                    "Lái xe {$driverName} phản ánh {$typeName}: {$discrepancy->product_name} (Phiếu: {$expectedQty}, Thực trên xe: {$actualQty}, Lệch: {$diffQty} {$discrepancy->unit}). Ghi chú: {$discrepancy->driver_note}",
+                    "Lái xe {$driverName} phản ánh {$typeName}: {$discrepancy->product_name} (Phiếu: {$expectedQty}, Thực trên xe: {$actualQty}, Lệch: {$diffQty} {$discrepancy->unit}). Người bốc: " . ($pickerName ?: 'Người bốc hàng') . ". Ghi chú: {$discrepancy->driver_note}",
                     "/inventory/picking?order_id=" . ($order?->id ?? '') . "&tab=discrepancies",
                     'delivery_discrepancy',
                     $discrepancy,
                     [
                         'discrepancy_id' => $discrepancy->id,
+                        'order_id'       => $order?->id,
                         'order_code'     => $orderCode,
                         'vehicle_plate'  => $vehiclePlate,
                         'product_name'   => $discrepancy->product_name,
+                        'expected_qty'   => $expectedQty,
+                        'actual_qty'     => $actualQty,
                         'diff_qty'       => $diffQty,
+                        'unit'           => $discrepancy->unit,
                         'driver_name'    => $driverName,
+                        'checker_name'   => $pickerName ?: 'Người bốc hàng',
+                        'type'           => $type,
                     ]
                 );
-            } catch (\Throwable $e) {}
-        }
+            }
+        } catch (\Throwable $e) {}
 
         try {
             \App\Models\PickingSyncEvent::create([
@@ -4452,11 +4473,22 @@ class DeliveryController extends Controller
             );
         }
 
-        // Tạo thông báo SystemNotification gửi tới Lái xe
+        // Tạo thông báo SystemNotification gửi tới Lái xe và Admin
+        $targetDriverIds = [];
         if ($discrepancy->driver_id) {
-            try {
+            $targetDriverIds[] = (int)$discrepancy->driver_id;
+        }
+
+        try {
+            $adminAndStaffIds = User::where(function($q) {
+                $q->where('department', 'Executive')
+                  ->orWhere('id', 1);
+            })->pluck('id')->all();
+            $targetDriverIds = array_unique(array_filter(array_merge($targetDriverIds, $adminAndStaffIds)));
+
+            foreach ($targetDriverIds as $uId) {
                 \App\Models\SystemNotification::send(
-                    (int)$discrepancy->driver_id,
+                    (int)$uId,
                     "💬 Người bốc hàng phản hồi: Đơn #{$discrepancy->order_code} (Xe {$discrepancy->vehicle_plate})",
                     "Người bốc hàng {$discrepancy->checker_feedback_by} phản hồi [{$statusLabel}]: {$feedback}" . (!empty($resolutionNote) ? " - Hướng xử lý: {$resolutionNote}" : ""),
                     "/delivery/execution?plate=" . urlencode($discrepancy->vehicle_plate),
@@ -4468,10 +4500,12 @@ class DeliveryController extends Controller
                         'vehicle_plate'  => $discrepancy->vehicle_plate,
                         'feedback'       => $feedback,
                         'status'         => $status,
+                        'status_label'   => $statusLabel,
+                        'product_name'   => $discrepancy->product_name,
                     ]
                 );
-            } catch (\Throwable $e) {}
-        }
+            }
+        } catch (\Throwable $e) {}
 
         try {
             \App\Models\PickingSyncEvent::create([
