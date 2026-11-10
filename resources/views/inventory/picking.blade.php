@@ -38,19 +38,25 @@
                     </div>
                     <div>
                         <div class="flex items-center gap-1.5 flex-wrap">
-                            <span class="px-2 py-0.5 rounded-full bg-black/25 font-black text-[10px] uppercase tracking-wider text-amber-200 border border-amber-300/30">
-                                Cập nhật đơn hàng
+                            <span class="px-2 py-0.5 rounded-full bg-black/25 font-black text-[10px] uppercase tracking-wider text-amber-200 border border-amber-300/30"
+                                  x-text="realtimeAlert && realtimeAlert.isDiscrepancy ? 'LỆCH HÀNG TỪ XE' : 'Cập nhật đơn hàng'">
                             </span>
                             <span class="text-sm font-bold text-white">
-                                Đơn <strong class="font-mono font-black text-amber-200 underline" x-text="realtimeAlert ? realtimeAlert.orderCode : ''"></strong> vừa có cập nhật mới!
+                                <span x-show="realtimeAlert && realtimeAlert.isDiscrepancy">
+                                    Xe <strong class="font-mono font-black text-amber-200" x-text="realtimeAlert ? realtimeAlert.vehiclePlate : ''"></strong> báo lệch đơn <strong class="font-mono font-black text-amber-200 underline" x-text="realtimeAlert ? realtimeAlert.orderCode : ''"></strong>!
+                                </span>
+                                <span x-show="!realtimeAlert || !realtimeAlert.isDiscrepancy">
+                                    Đơn <strong class="font-mono font-black text-amber-200 underline" x-text="realtimeAlert ? realtimeAlert.orderCode : ''"></strong> vừa có cập nhật mới!
+                                </span>
                             </span>
                         </div>
                         <div class="text-xs text-white/90 flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
                             <span x-show="realtimeAlert && realtimeAlert.time">Lúc: <strong class="font-mono text-amber-100" x-text="realtimeAlert ? realtimeAlert.time : ''"></strong></span>
                             <span x-show="realtimeAlert && realtimeAlert.performer">Bởi: <strong class="text-amber-100" x-text="realtimeAlert ? realtimeAlert.performer : ''"></strong></span>
+                            <span x-show="realtimeAlert && realtimeAlert.summary" class="w-full text-amber-100 font-bold mt-0.5" x-text="realtimeAlert ? realtimeAlert.summary : ''"></span>
                         </div>
                         <div class="text-[11px] text-amber-100 mt-0.5" x-show="realtimeAlert && realtimeAlert.supervisor">
-                            Phụ trách đơn: <strong class="text-white underline font-bold" x-text="realtimeAlert ? realtimeAlert.supervisor : ''"></strong>
+                            <strong class="text-white underline font-bold" x-text="realtimeAlert ? realtimeAlert.supervisor : ''"></strong>
                         </div>
                     </div>
                 </div>
@@ -58,11 +64,20 @@
             </div>
 
             <div class="flex items-center justify-end gap-2 pt-1 border-t border-white/20">
-                <button type="button" @click="goToAlertOrder(realtimeAlert)"
-                        class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-rose-700 font-black text-xs shadow transition-all flex items-center gap-1.5 cursor-pointer">
-                    <i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>
-                    <span>Xem ngay đơn này</span>
-                </button>
+                <template x-if="realtimeAlert && realtimeAlert.isDiscrepancy">
+                    <button type="button" @click="openDiscrepanciesModal(); realtimeAlert = null"
+                            class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-rose-700 font-black text-xs shadow transition-all flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-truck-ramp-box text-xs"></i>
+                        <span>Xem & phản hồi cho lái xe</span>
+                    </button>
+                </template>
+                <template x-if="!realtimeAlert || !realtimeAlert.isDiscrepancy">
+                    <button type="button" @click="goToAlertOrder(realtimeAlert)"
+                            class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-rose-700 font-black text-xs shadow transition-all flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>
+                        <span>Xem ngay đơn này</span>
+                    </button>
+                </template>
                 <button type="button" @click="realtimeAlert = null"
                         class="px-3 py-1.5 rounded-xl bg-black/30 hover:bg-black/50 text-white font-bold text-xs transition-all cursor-pointer">
                     <span>Đã nhận TT &times;</span>
@@ -214,7 +229,7 @@
                   x-text="countReadyQc"></span>
         </button>
 
-        <!-- Tab 3: Phản Ánh Lệch Hàng Từ Xe Xuất Bến (QC ⇄ Lái Xe) -->
+        <!-- Tab 3: Phản Ánh Lệch Hàng Từ Xe Xuất Bến (Người bốc ⇄ Lái Xe) -->
         <button type="button" @click="openDiscrepanciesModal()"
                 class="flex-1 sm:flex-initial px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs border relative"
                 :class="pendingDiscrepanciesCount > 0 
@@ -224,7 +239,7 @@
             <span>3. Lệch Hàng Từ Xe</span>
             <span class="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black transition-all"
                   :class="pendingDiscrepanciesCount > 0 ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-100 text-slate-600'"
-                  x-text="pendingDiscrepanciesCount > 0 ? (pendingDiscrepanciesCount + ' cần phản hồi') : (discrepanciesList.length + ' tin')"></span>
+                  x-text="pendingDiscrepanciesCount > 0 ? (pendingDiscrepanciesCount + ' tin báo người bốc') : (discrepanciesList.length + ' tin')"></span>
         </button>
     </div>
 
@@ -4572,13 +4587,30 @@ function pickingApp() {
             } else if (ev.eventType === 'DELIVERY_DISCREPANCY_REPORTED') {
                 const extra = ev.extraData || {};
                 this.playAlertSound();
-                const msg = '🚨 LÁI XE BÁO LỆCH HÀNG: Xe ' + (extra.vehicle_plate || '') + ' - Đơn ' + (extra.order_code || '') + ': ' + (extra.product_name || '') + ' (lệch ' + (extra.diff_qty || '') + ')';
+
+                // Kích hoạt banner thông báo nổi góc trên màn hình cho Người bốc hàng
+                this.realtimeAlert = {
+                    isDiscrepancy: true,
+                    orderId: ev.orderId,
+                    orderCode: extra.order_code || ('Đơn ' + ev.orderId),
+                    vehiclePlate: extra.vehicle_plate || '',
+                    time: extra.created_at || new Date().toLocaleTimeString('vi-VN'),
+                    performer: 'Lái xe ' + (ev.performerName || 'giao hàng'),
+                    supervisor: 'Người bốc phụ trách: ' + (extra.checker_name || 'Người bốc'),
+                    summary: `${extra.product_name || 'Sản phẩm'} (Lệch: ${extra.diff_qty || ''})` + (extra.driver_note ? ' - ' + extra.driver_note : '')
+                };
+                if (this.alertDismissTimer) clearTimeout(this.alertDismissTimer);
+                this.alertDismissTimer = setTimeout(() => {
+                    this.realtimeAlert = null;
+                }, 15000);
+
+                const msg = '🚨 LÁI XE BÁO LỆCH HÀNG: Xe ' + (extra.vehicle_plate || '') + ' - Đơn ' + (extra.order_code || '') + ': ' + (extra.product_name || '') + ' (lệch ' + (extra.diff_qty || '') + ') - Báo người bốc: ' + (extra.checker_name || '');
                 this.showToast(msg, 'error');
                 this.fetchDiscrepancies();
                 if (window.Notification && Notification.permission === 'granted') {
                     try {
-                        new Notification('ERP Đại Sơn - Xe ' + (extra.vehicle_plate || '') + ' báo lệch hàng', {
-                            body: 'Đơn: ' + (extra.order_code || '') + '\n' + (extra.product_name || '') + '\n' + (extra.driver_note || ''),
+                        new Notification('ERP Đại Sơn - Lái xe báo lệch hàng tới Người bốc (Xe ' + (extra.vehicle_plate || '') + ')', {
+                            body: 'Đơn: ' + (extra.order_code || '') + ' | ' + (extra.product_name || '') + ' (Lệch ' + (extra.diff_qty || '') + ')\n' + (extra.driver_note || ''),
                             icon: '/favicon.ico'
                         });
                     } catch(e) {}

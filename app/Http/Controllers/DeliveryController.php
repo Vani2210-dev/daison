@@ -4228,22 +4228,29 @@ class DeliveryController extends Controller
         $driverId = $user?->id;
         $driverName = $user?->name ?? 'Người giao hàng';
 
-        // Tự động tìm người kiểm hàng của đơn hàng
-        $checkerId = null;
-        $checkerName = null;
+        // Tự động tìm người bốc hàng của đơn hàng / sản phẩm
+        $pickerId = null;
+        $pickerName = null;
         if ($order) {
-            $checkedItem = $order->items->first(fn($it) => !empty($it->checked_by));
-            if ($checkedItem && !empty($checkedItem->checked_by)) {
-                $checkerName = $checkedItem->checked_by;
-                $checkerUser = User::where('name', $checkerName)->first();
-                $checkerId = $checkerUser?->id;
+            $sku = $request->input('sku');
+            $prodId = $request->input('product_id');
+            // Ưu tiên tìm đúng mặt hàng bị lệch để lấy người bốc phụ trách
+            $targetItem = $order->items->first(function($it) use ($sku, $prodId) {
+                return (!empty($sku) && $it->sku === $sku) || (!empty($prodId) && $it->product_id == $prodId);
+            });
+            if ($targetItem && !empty($targetItem->assigned_staff)) {
+                $pickerName = $targetItem->assigned_staff;
             } else {
-                $checkerName = $order->warehouseStaff?->name ?? 'Người kiểm hàng';
-                $checkerId = $order->warehouse_staff_id;
+                $pickedItem = $order->items->first(fn($it) => !empty($it->assigned_staff));
+                $pickerName = $pickedItem?->assigned_staff ?? $order->warehouseStaff?->name ?? 'Người bốc hàng';
+            }
+            if ($pickerName) {
+                $pickerUser = User::where('name', $pickerName)->first();
+                $pickerId = $pickerUser?->id ?? $order->warehouse_staff_id;
             }
         }
-        if (!$checkerName && $request->filled('checker_name')) {
-            $checkerName = $request->input('checker_name');
+        if (!$pickerName && $request->filled('checker_name')) {
+            $pickerName = $request->input('checker_name');
         }
 
         $expectedQty = (float)$request->input('expected_qty', 0);
@@ -4299,8 +4306,8 @@ class DeliveryController extends Controller
             'vehicle_plate'    => $vehiclePlate,
             'driver_id'        => $driverId,
             'driver_name'      => $driverName,
-            'checker_id'       => $checkerId,
-            'checker_name'     => $checkerName ?: 'Bộ phận kiểm hàng',
+            'checker_id'       => $pickerId,
+            'checker_name'     => $pickerName ?: 'Người bốc hàng',
             'product_id'       => $request->input('product_id'),
             'sku'              => $request->input('sku'),
             'product_name'     => $request->input('product_name') ?: 'Sản phẩm',
@@ -4314,19 +4321,42 @@ class DeliveryController extends Controller
             'status'           => 'pending',
         ]);
 
+        $typeName = match($type) {
+            'shortage'   => 'Thiếu hàng',
+            'excess'     => 'Thừa hàng',
+            'damaged'    => 'Hư hỏng bể vỡ',
+            'wrong_item' => 'Sai quy cách/mặt hàng',
+            default      => 'Lệch kiểm hàng'
+        };
+
         if ($order) {
-            $typeName = match($type) {
-                'shortage'   => 'Thiếu hàng',
-                'excess'     => 'Thừa hàng',
-                'damaged'    => 'Hư hỏng bể vỡ',
-                'wrong_item' => 'Sai quy cách/mặt hàng',
-                default      => 'Lệch kiểm hàng'
-            };
             $order->logOperation(
-                'Phản Ánh Lệch Hàng Trên Xe',
-                "Lái xe {$driverName} (Xe {$vehiclePlate}) phản ánh {$typeName}: {$discrepancy->product_name} (Theo phiếu: {$expectedQty}, Thực tế: {$actualQty}, Lệch: {$diffQty} {$discrepancy->unit}). Người kiểm hàng: {$checkerName}. Ghi chú: {$discrepancy->driver_note}",
+                'Phản Ánh Lệch Hàng Tới Người Bốc',
+                "Lái xe {$driverName} (Xe {$vehiclePlate}) phản ánh {$typeName}: {$discrepancy->product_name} (Theo phiếu: {$expectedQty}, Thực tế: {$actualQty}, Lệch: {$diffQty} {$discrepancy->unit}). Người bốc hàng: {$pickerName}. Ghi chú: {$discrepancy->driver_note}",
                 $driverName
             );
+        }
+
+        // Tạo thông báo SystemNotification tới Người bốc hàng
+        if ($pickerId) {
+            try {
+                \App\Models\SystemNotification::send(
+                    (int)$pickerId,
+                    "🚨 Lái xe báo lệch hàng: Xe {$vehiclePlate} - Đơn #{$orderCode}",
+                    "Lái xe {$driverName} phản ánh {$typeName}: {$discrepancy->product_name} (Phiếu: {$expectedQty}, Thực trên xe: {$actualQty}, Lệch: {$diffQty} {$discrepancy->unit}). Ghi chú: {$discrepancy->driver_note}",
+                    "/inventory/picking?order_id=" . ($order?->id ?? '') . "&tab=discrepancies",
+                    'delivery_discrepancy',
+                    $discrepancy,
+                    [
+                        'discrepancy_id' => $discrepancy->id,
+                        'order_code'     => $orderCode,
+                        'vehicle_plate'  => $vehiclePlate,
+                        'product_name'   => $discrepancy->product_name,
+                        'diff_qty'       => $diffQty,
+                        'driver_name'    => $driverName,
+                    ]
+                );
+            } catch (\Throwable $e) {}
         }
 
         try {
@@ -4342,7 +4372,7 @@ class DeliveryController extends Controller
                     'product_name'     => $discrepancy->product_name,
                     'type'             => $type,
                     'diff_qty'         => $diffQty,
-                    'checker_name'     => $checkerName,
+                    'checker_name'     => $pickerName ?: 'Người bốc hàng',
                     'driver_note'      => $discrepancy->driver_note,
                     'created_at'       => now()->format('H:i d/m/Y'),
                 ],
@@ -4352,7 +4382,7 @@ class DeliveryController extends Controller
 
         return response()->json([
             'success'     => true,
-            'message'     => 'Đã gửi phản ánh lệch hàng thành công tới người kiểm hàng!',
+            'message'     => 'Đã gửi phản ánh lệch hàng thành công tới người bốc hàng!',
             'discrepancy' => $discrepancy,
         ]);
     }
@@ -4383,7 +4413,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Người kiểm hàng (hoặc Quản lý) phản hồi ý kiến cho người giao hàng
+     * Người bốc hàng (hoặc Quản lý) phản hồi ý kiến cho người giao hàng
      */
     public function respondDiscrepancy(Request $request, $id)
     {
@@ -4396,23 +4426,51 @@ class DeliveryController extends Controller
 
         $discrepancy->checker_feedback = $feedback;
         $discrepancy->checker_feedback_at = now();
-        $discrepancy->checker_feedback_by = $user?->name ?? 'Người kiểm hàng';
+        $discrepancy->checker_feedback_by = $user?->name ?? 'Người bốc hàng';
         $discrepancy->status = $status;
         if (!empty($resolutionNote)) {
             $discrepancy->resolution_note = $resolutionNote;
         }
         if ($status === 'resolved') {
-            $discrepancy->resolved_by = $user?->name ?? 'Người kiểm hàng';
+            $discrepancy->resolved_by = $user?->name ?? 'Người bốc hàng';
             $discrepancy->resolved_at = now();
         }
         $discrepancy->save();
 
+        $statusLabel = match($status) {
+            'confirmed' => 'Xác nhận kho lệch',
+            'rejected'  => 'Bác bỏ phản ánh',
+            'resolved'  => 'Đã giải quyết',
+            default     => $status,
+        };
+
         if ($discrepancy->order) {
             $discrepancy->order->logOperation(
-                'Người Kiểm Hàng Phản Hồi Lệch Hàng',
-                "Người kiểm hàng {$discrepancy->checker_feedback_by} phản hồi lái xe {$discrepancy->driver_name} về SP {$discrepancy->product_name} (Trạng thái: {$status}): {$feedback}" . ($resolutionNote ? " | Phương án: {$resolutionNote}" : ""),
+                'Người Bốc Hàng Phản Hồi Lệch Hàng',
+                "Người bốc hàng {$discrepancy->checker_feedback_by} phản hồi lái xe {$discrepancy->driver_name} về SP {$discrepancy->product_name} (Trạng thái: {$statusLabel}): {$feedback}" . ($resolutionNote ? " | Phương án: {$resolutionNote}" : ""),
                 $discrepancy->checker_feedback_by
             );
+        }
+
+        // Tạo thông báo SystemNotification gửi tới Lái xe
+        if ($discrepancy->driver_id) {
+            try {
+                \App\Models\SystemNotification::send(
+                    (int)$discrepancy->driver_id,
+                    "💬 Người bốc hàng phản hồi: Đơn #{$discrepancy->order_code} (Xe {$discrepancy->vehicle_plate})",
+                    "Người bốc hàng {$discrepancy->checker_feedback_by} phản hồi [{$statusLabel}]: {$feedback}" . (!empty($resolutionNote) ? " - Hướng xử lý: {$resolutionNote}" : ""),
+                    "/delivery/execution?plate=" . urlencode($discrepancy->vehicle_plate),
+                    'delivery_discrepancy_response',
+                    $discrepancy,
+                    [
+                        'discrepancy_id' => $discrepancy->id,
+                        'order_code'     => $discrepancy->order_code,
+                        'vehicle_plate'  => $discrepancy->vehicle_plate,
+                        'feedback'       => $feedback,
+                        'status'         => $status,
+                    ]
+                );
+            } catch (\Throwable $e) {}
         }
 
         try {

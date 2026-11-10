@@ -18,7 +18,7 @@
                 <div>
                     <div class="flex items-center gap-2 flex-wrap">
                         <h3 class="text-base font-black tracking-tight">Lệch Hàng Từ Xe Xuất Bến</h3>
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white border border-white/30">Lái xe ⇄ QC Kiểm hàng</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white border border-white/30">Lái xe ⇄ Người bốc hàng</span>
                         <template x-if="pendingDiscrepanciesCount > 0">
                             <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse"
                                   x-text="pendingDiscrepanciesCount + ' cần phản hồi'"></span>
@@ -52,7 +52,7 @@
                         class="px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1"
                         :class="discrepancyFilterStatus === 'pending' ? 'bg-amber-600 text-white shadow-2xs' : 'bg-white text-amber-700 hover:bg-amber-50 border border-amber-200'">
                     <i class="fa-solid fa-clock"></i>
-                    <span>Chờ QC phản hồi</span>
+                    <span>Chờ người bốc phản hồi</span>
                     <span class="ml-1 px-1.5 py-0.2 rounded-full text-[10px]"
                           :class="discrepancyFilterStatus === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'"
                           x-text="discrepanciesList.filter(d => d.status === 'pending').length"></span>
@@ -207,7 +207,7 @@
                                 <div class="text-[11px] text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
                                     <span>ĐVT: <strong class="text-slate-700 uppercase" x-text="d.unit || 'ĐVT'"></strong></span>
                                     <span>•</span>
-                                    <span>QC phụ trách đơn: <strong class="text-indigo-700" x-text="d.checker_name || 'Bộ phận QC / Kho'"></strong></span>
+                                    <span>Người bốc phụ trách: <strong class="text-indigo-700" x-text="d.checker_name || 'Người bốc hàng'"></strong></span>
                                 </div>
                             </div>
 
@@ -272,9 +272,9 @@
                                 <div class="p-3.5 bg-indigo-50/80 rounded-xl border border-indigo-200/90 text-indigo-950 mb-3 space-y-1.5">
                                     <div class="flex items-center justify-between gap-2 flex-wrap">
                                         <div class="flex items-center gap-2">
-                                            <i class="fa-solid fa-user-shield text-indigo-600"></i>
-                                            <span class="font-black text-indigo-900 text-xs">Phản hồi từ QC:</span>
-                                            <strong class="text-indigo-800" x-text="d.checker_feedback_by || 'QC Kiểm hàng'"></strong>
+                                            <i class="fa-solid fa-box-open text-indigo-600"></i>
+                                            <span class="font-black text-indigo-900 text-xs">Phản hồi từ Người bốc:</span>
+                                            <strong class="text-indigo-800" x-text="d.checker_feedback_by || 'Người bốc hàng'"></strong>
                                         </div>
                                         <span class="text-[11px] text-indigo-500 font-medium" x-text="d.checker_feedback_at ? formatDiscrepancyTime(d.checker_feedback_at) : ''"></span>
                                     </div>
@@ -289,7 +289,7 @@
                                 </div>
                             </template>
 
-                            <!-- Nút hoặc Form gửi phản hồi cho QC -->
+                            <!-- Nút hoặc Form gửi phản hồi cho Người bốc hàng -->
                             <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3"
                                  x-data="{ 
                                      showForm: d.status === 'pending' || activeRespondingId === d.id,
@@ -313,12 +313,12 @@
                                 <div x-show="showForm" class="space-y-2.5 pt-1">
                                     <!-- Chọn hành động kết luận -->
                                     <div>
-                                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Kết luận kiểm tra của QC:</label>
+                                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Kết luận của Người bốc hàng:</label>
                                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                             <label class="flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all text-xs"
                                                    :class="status === 'confirmed' ? 'bg-rose-50 border-rose-300 text-rose-900 font-bold' : 'bg-white border-slate-200 text-slate-700'">
                                                 <input type="radio" value="confirmed" x-model="status" class="text-rose-600">
-                                                <span>Xác nhận kho lệch</span>
+                                                <span>Xác nhận bốc thiếu/thừa</span>
                                             </label>
 
                                             <label class="flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all text-xs"
@@ -339,7 +339,7 @@
                                     <div>
                                         <label class="block text-[11px] font-bold text-slate-600 mb-1">Nội dung giải thích / Chỉ dẫn cho tài xế:</label>
                                         <textarea x-model="feedback" rows="2" 
-                                                  placeholder="Ví dụ: Kho đã check camera xác nhận thiếu 2 thùng do bốc nhầm pallet. Lái xe giao đủ số lượng thực tế trên xe, kế toán sẽ trừ công nợ khách..."
+                                                  placeholder="Ví dụ: Người bốc đã kiểm tra lại pallet ở kho, xác nhận bốc thiếu 2 thùng. Lái xe giao đủ số lượng thực tế trên xe, kế toán sẽ trừ công nợ khách..."
                                                   class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-indigo-500"></textarea>
                                     </div>
 

@@ -24,7 +24,7 @@
                         Phản Ánh Lệch Hàng Trên Xe
                     </h3>
                     <p class="text-[10px] sm:text-[11px] text-amber-100/90 truncate mt-0.5">
-                        Lái xe ⇄ QC Kiểm hàng sau xuất bến
+                        Lái xe ⇄ Người bốc hàng sau xuất bến
                     </p>
                 </div>
             </div>
@@ -84,15 +84,15 @@
                         </template>
                     </select>
 
-                    <!-- QC phụ trách hiển thị dạng pill gọn gàng ngay dưới select -->
+                    <!-- Người bốc hàng phụ trách hiển thị dạng pill gọn gàng ngay dưới select -->
                     <template x-if="discrepancySelectedOrder">
                         <div class="mt-1.5 px-2.5 py-1 bg-amber-50/90 border border-amber-200/90 rounded-lg flex items-center justify-between text-[11px] text-amber-950">
                             <span class="flex items-center gap-1.5 truncate">
                                 <i class="fa-solid fa-clipboard-user text-amber-600"></i>
-                                <span>QC đơn: <strong class="text-slate-900" x-text="discrepancyCheckerName || 'Bộ phận QC / Kho xuất'"></strong></span>
+                                <span>Người bốc: <strong class="text-slate-900" x-text="discrepancyCheckerName || 'Người bốc hàng'"></strong></span>
                             </span>
                             <span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-200 text-amber-900 shrink-0">
-                                Kho xuất
+                                Bốc kho
                             </span>
                         </div>
                     </template>
@@ -446,13 +446,13 @@
                             </template>
                         </div>
 
-                        <!-- KHUNG PHẢN HỒI TỪ NGƯỜI KIỂM HÀNG (2-WAY COMMUNICATION) -->
+                        <!-- KHUNG PHẢN HỒI TỪ NGƯỜI BỐC HÀNG (2-WAY COMMUNICATION) -->
                         <div class="rounded-xl p-2.5 border text-[11px] space-y-1"
                              :class="item.checker_feedback ? 'bg-gradient-to-r from-emerald-50 via-teal-50 to-white border-emerald-300 text-emerald-950' : 'bg-slate-50 border-dashed border-slate-300 text-slate-500'">
                             <div class="flex items-center justify-between font-bold">
                                 <div class="flex items-center gap-1.5 text-[10.5px]">
                                     <i class="fa-solid" :class="item.checker_feedback ? 'fa-circle-check text-emerald-600' : 'fa-hourglass-half text-amber-500'"></i>
-                                    <span>Ý kiến QC (<span x-text="item.checker_feedback_by || item.checker_name || 'Người kiểm kho'"></span>):</span>
+                                    <span>Ý kiến Người Bốc (<span x-text="item.checker_feedback_by || item.checker_name || 'Người bốc hàng'"></span>):</span>
                                 </div>
                                 <template x-if="item.checker_feedback_at">
                                     <span class="text-[9.5px] text-slate-400 font-mono font-normal" x-text="formatDate(item.checker_feedback_at)"></span>
@@ -473,7 +473,7 @@
 
                             <template x-if="!item.checker_feedback">
                                 <div class="italic text-slate-400 text-center py-0.5 text-[10px]">
-                                    QC đang kiểm tra và sẽ gửi phản hồi xuống xe...
+                                    Người bốc đang kiểm tra lại kho và sẽ gửi phản hồi xuống xe...
                                 </div>
                             </template>
                         </div>
@@ -503,7 +503,7 @@
                     <template x-if="!discrepancyForm.isSubmitting">
                         <i class="fa-solid fa-paper-plane text-xs"></i>
                     </template>
-                    <span x-text="discrepancyForm.isSubmitting ? 'Đang gửi...' : 'Gửi Phản Ánh Cho QC'"></span>
+                    <span x-text="discrepancyForm.isSubmitting ? 'Đang gửi...' : 'Gửi Phản Ánh Cho Người Bốc'"></span>
                 </button>
             </template>
 

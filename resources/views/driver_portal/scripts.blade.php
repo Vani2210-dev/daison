@@ -140,9 +140,14 @@ function deliveryExecutionApp() {
         get discrepancyCheckerName() {
             const ord = this.discrepancySelectedOrder;
             if (!ord) return '';
-            const checkedItem = (ord.items || []).find(it => it.checked_by);
-            if (checkedItem && checkedItem.checked_by) return checkedItem.checked_by;
-            return ord.warehouseStaff?.name || ord.warehouse_staff_name || 'Bộ phận QC / Kiểm hàng';
+            // Ưu tiên tìm người bốc hàng phụ trách sản phẩm đang chọn
+            if (this.discrepancyForm.sku && ord.items) {
+                const target = ord.items.find(it => it.sku === this.discrepancyForm.sku || it.product_id == this.discrepancyForm.product_id);
+                if (target && target.assigned_staff) return target.assigned_staff;
+            }
+            const assignedItem = (ord.items || []).find(it => it.assigned_staff);
+            if (assignedItem && assignedItem.assigned_staff) return assignedItem.assigned_staff;
+            return ord.warehouseStaff?.name || 'Người bốc hàng';
         },
 
         async safeFetchJson(url, options = {}) {
@@ -622,7 +627,7 @@ function deliveryExecutionApp() {
                 dc.onmessage = (ev) => {
                     if (ev.data && ev.data.type === 'DISCREPANCY_RESPONDED') {
                         this.refreshDiscrepancies();
-                        this.showToast('💬 Người kiểm hàng vừa phản hồi về hàng lệch trên xe!');
+                        this.showToast('💬 Người bốc hàng vừa phản hồi về hàng lệch trên xe!');
                     }
                 };
             }
@@ -1983,7 +1988,7 @@ function deliveryExecutionApp() {
                 return;
             }
             if (!this.discrepancyForm.driver_note || !this.discrepancyForm.driver_note.trim()) {
-                alert('Vui lòng nhập ghi chú phản ánh cụ thể để người kiểm hàng nắm rõ!');
+                alert('Vui lòng nhập ghi chú phản ánh cụ thể để người bốc hàng nắm rõ!');
                 return;
             }
 
@@ -2013,7 +2018,7 @@ function deliveryExecutionApp() {
 
                 if (ok && data?.success) {
                     this.discrepancies.unshift(data.discrepancy);
-                    this.showToast('✅ Đã gửi phản ánh tới người kiểm hàng thành công!');
+                    this.showToast('✅ Đã gửi phản ánh tới người bốc hàng thành công!');
                     this.discrepancyTab = 'history';
                     if (typeof BroadcastChannel !== 'undefined') {
                         try {
