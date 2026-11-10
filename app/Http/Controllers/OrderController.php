@@ -2013,6 +2013,8 @@ class OrderController extends Controller
 
             $tierCode = $resolveTierCode($rawTierInput);
 
+            $actualUnitPrice = (float)($it->unit_price > 0 ? $it->unit_price : ($origPrice > 0 ? $origPrice : 0));
+
             $items[] = [
                 'tt'               => $idx++,
                 'id'               => $it->id,
@@ -2020,8 +2022,8 @@ class OrderController extends Controller
                 'name'             => $it->name,
                 'tax_name'         => $it->product?->tax_name ?: ($it->name),
                 'unit'             => $it->unit ?: 'Cây',
-                'unit_price'       => $origPrice > 0 ? $origPrice : $unitPrice,
-                'sale_price'       => $unitPrice,
+                'unit_price'       => $actualUnitPrice,
+                'sale_price'       => $actualUnitPrice,
                 'quantity'         => $totalQty,
                 'sold_quantity'    => $qty,
                 'gift_quantity'    => $giftQty,
@@ -2029,7 +2031,7 @@ class OrderController extends Controller
                 'discount'         => $itemDiscount,
                 'discount_percent' => ($itemSubtotal > 0 && $itemDiscount > 0 ? round(($itemDiscount / $itemSubtotal) * 100, 1) : 0),
                 'total'            => $itemActualAmount,
-                'customer_price'   => $origPrice > 0 ? $origPrice : $unitPrice,
+                'customer_price'   => $actualUnitPrice,
                 'price_tier_code'  => $tierCode,
                 'price_type'       => ($it->applied_tier_policy === 'Theo phiếu' || empty($it->applied_tier_policy))
                     ? ('Theo phiếu (' . ($dealer?->tier ?: 'Nguyên Giá') . ')')

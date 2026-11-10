@@ -1687,7 +1687,7 @@
                                 <tr class="bg-slate-100 font-bold text-slate-800 text-center border-b border-slate-300">
                                     <th class="border border-slate-300 py-2 px-2 w-10 text-center">TT</th>
                                     <th class="border border-slate-300 py-2 px-2 w-24 text-left">Mã SP</th>
-                                    <th class="border border-slate-300 py-2 px-2 text-left">Tên sản phẩm / Phân bổ đơn hàng</th>
+                                    <th class="border border-slate-300 py-2 px-2 text-left">Tên sản phẩm</th>
                                     <th class="border border-slate-300 py-2 px-2 w-16 text-center">ĐVT</th>
                                     <th class="border border-slate-300 py-2 px-2 w-16 text-right">SL Bán</th>
                                     <th class="border border-slate-300 py-2 px-2 w-16 text-right">SL Tặng</th>
@@ -1704,10 +1704,6 @@
                                         <td class="border border-slate-300 py-1.5 px-2 text-left">
                                             <div class="font-bold text-slate-900" x-text="p.name"></div>
                                             <div class="text-[11px] text-sky-700 font-medium" x-text="p.tax_name" x-show="p.tax_name && p.tax_name !== p.name"></div>
-                                            <div class="text-[11px] text-blue-700 font-normal mt-0.5" x-show="p.allocation_text">
-                                                <i class="fa-solid fa-arrow-turn-down-right text-[9px] mr-1"></i>
-                                                <span class="italic font-mono" x-text="'Đơn: ' + p.allocation_text"></span>
-                                            </div>
                                         </td>
                                         <td class="border border-slate-300 py-1.5 px-2 text-center" x-text="p.unit"></td>
                                         <td class="border border-slate-300 py-1.5 px-2 text-right" x-text="formatNumber(p.sold_quantity)"></td>
@@ -3075,7 +3071,6 @@ function ordersIndexApp() {
             (c.products || []).forEach((p, idx) => {
                 const prodName = isTaxName ? (p.tax_name || p.name) : p.name;
                 const subName = (!isTaxName && p.tax_name && p.tax_name !== p.name) ? `<div style="font-size:10.5px;color:#555;font-style:italic;">${p.tax_name}</div>` : '';
-                const alloc = p.allocation_text ? `<div style="font-size:10px;color:#1e40af;margin-top:2px;"><em>Đơn: ${p.allocation_text}</em></div>` : '';
 
                 if (isNoPrice) {
                     rowsHtml += `
@@ -3083,7 +3078,7 @@ function ordersIndexApp() {
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${idx + 1}</td>
                             <td style="padding:5px 6px;border:1px solid #111;text-align:left;font-family:monospace;">${p.sku || ''}</td>
                             <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">
-                                ${prodName}${subName}${alloc}
+                                ${prodName}${subName}
                             </td>
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${p.unit || ''}</td>
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${this.formatNumber(p.sold_quantity)}</td>
@@ -3097,7 +3092,7 @@ function ordersIndexApp() {
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${idx + 1}</td>
                             <td style="padding:5px 6px;border:1px solid #111;text-align:left;font-family:monospace;">${p.sku || ''}</td>
                             <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">
-                                ${prodName}${subName}${alloc}
+                                ${prodName}${subName}
                             </td>
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${p.unit || ''}</td>
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${this.formatNumber(p.sold_quantity)}</td>
@@ -3216,7 +3211,7 @@ function ordersIndexApp() {
                                 <tr>
                                     <th style="width: 32px;">TT</th>
                                     <th style="width: 90px; text-align: left; padding-left: 6px;">Mã SP</th>
-                                    <th style="text-align: left; padding-left: 6px;">Tên sản phẩm / Phân bổ đơn hàng</th>
+                                    <th style="text-align: left; padding-left: 6px;">Tên sản phẩm</th>
                                     <th style="width: 50px;">ĐVT</th>
                                     <th style="width: 60px;">SL Bán</th>
                                     <th style="width: 60px;">SL Tặng</th>
@@ -3226,7 +3221,7 @@ function ordersIndexApp() {
                                 <tr>
                                     <th style="width: 32px;">TT</th>
                                     <th style="width: 85px; text-align: left; padding-left: 6px;">Mã SP</th>
-                                    <th style="text-align: left; padding-left: 6px;">Tên sản phẩm / Phân bổ đơn hàng</th>
+                                    <th style="text-align: left; padding-left: 6px;">Tên sản phẩm</th>
                                     <th style="width: 45px;">ĐVT</th>
                                     <th style="width: 55px;">SL Bán</th>
                                     <th style="width: 55px;">SL Tặng</th>
@@ -3320,10 +3315,10 @@ function ordersIndexApp() {
             csv += `Mã các đơn,"${(c.order_codes_display || '').replace(/"/g, '""')}"\n\n`;
 
             csv += "I. BẢNG TỔNG HỢP SẢN PHẨM\n";
-            csv += "STT,Mã sản phẩm,Tên sản phẩm,Tên theo HĐ,ĐVT,SL Bán,SL Tặng,Tổng SL Xuất,Đơn giá (đ),Thành tiền (đ),Chi tiết phân bổ theo đơn hàng\n";
+            csv += "STT,Mã sản phẩm,Tên sản phẩm,Tên theo HĐ,ĐVT,SL Bán,SL Tặng,Tổng SL Xuất,Đơn giá (đ),Thành tiền (đ)\n";
 
             (c.products || []).forEach((p, idx) => {
-                csv += `${idx + 1},"${p.sku || ''}","${(p.name || '').replace(/"/g, '""')}","${(p.tax_name || '').replace(/"/g, '""')}","${p.unit || ''}",${p.sold_quantity},${p.gift_quantity},${p.total_quantity},${p.unit_price},${p.total_amount},"${(p.allocation_text || '').replace(/"/g, '""')}"\n`;
+                csv += `${idx + 1},"${p.sku || ''}","${(p.name || '').replace(/"/g, '""')}","${(p.tax_name || '').replace(/"/g, '""')}","${p.unit || ''}",${p.sold_quantity},${p.gift_quantity},${p.total_quantity},${p.unit_price},${p.total_amount}\n`;
             });
 
             csv += `Tổng cộng,,,,${c.total_sold_quantity},${c.total_gift_quantity},${c.total_quantity},,${c.total_amount},\n`;
