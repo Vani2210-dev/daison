@@ -367,7 +367,7 @@
 
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1">Số điện thoại liên hệ <span class="text-red-500">*</span></label>
-                    <input type="tel" x-model="serviceForm.customer_phone" required placeholder="0912 xxx xxx"
+                    <input type="tel" x-model="serviceForm.customer_phone" required placeholder="Nhập số điện thoại liên hệ..."
                            class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 font-medium">
                 </div>
 

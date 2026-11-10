@@ -1496,11 +1496,11 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Mã Kho <span class="text-rose-500">*</span></label>
-                                <input type="text" x-model="formData.code" required placeholder="VD: KHO-01" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 font-mono text-xs">
+                                <input type="text" x-model="formData.code" required placeholder="Nhập mã kho..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 font-mono text-xs">
                             </div>
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Tên Kho Bãi <span class="text-rose-500">*</span></label>
-                                <input type="text" x-model="formData.name" required placeholder="VD: Kho Tổng Nghi Phú, Vinh" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
+                                <input type="text" x-model="formData.name" required placeholder="Nhập tên kho bãi..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
                             </div>
                         </div>
 
@@ -1516,13 +1516,13 @@
                             </div>
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Loại Kho Hàng</label>
-                                <input type="text" x-model="formData.type" placeholder="VD: Kho tổng trữ ống nhựa PVC" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
+                                <input type="text" x-model="formData.type" placeholder="Nhập loại kho hàng..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
                             </div>
                         </div>
 
                         <div>
                             <label class="block font-semibold text-slate-700 mb-1">Địa Chỉ Chi Tiết</label>
-                            <input type="text" x-model="formData.address" placeholder="VD: Lô B4-12 KCN VSIP Nghệ An, Hưng Nguyên" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
+                            <input type="text" x-model="formData.address" placeholder="Nhập địa chỉ kho bãi..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
                         </div>
 
                         <div class="grid grid-cols-2 gap-3">
@@ -1547,18 +1547,18 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Mã Chi Nhánh <span class="text-rose-500">*</span></label>
-                                <input type="text" x-model="formData.code" required placeholder="VD: CN-NA, CN-HT" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 font-mono text-xs">
+                                <input type="text" x-model="formData.code" required placeholder="Nhập mã chi nhánh..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 font-mono text-xs">
                             </div>
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Tên Chi Nhánh <span class="text-rose-500">*</span></label>
-                                <input type="text" x-model="formData.name" required placeholder="VD: Chi Nhánh Nghệ An" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
+                                <input type="text" x-model="formData.name" required placeholder="Nhập tên chi nhánh..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
                             </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Loại Hình Chi Nhánh</label>
-                                <input type="text" x-model="formData.type" placeholder="VD: Chi nhánh trung tâm, Đại lý cấp tỉnh" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
+                                <input type="text" x-model="formData.type" placeholder="Nhập loại hình chi nhánh..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
                             </div>
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Hotline / Điện Thoại</label>
@@ -1568,7 +1568,7 @@
 
                         <div>
                             <label class="block font-semibold text-slate-700 mb-1">Địa Chỉ Trụ Sở</label>
-                            <input type="text" x-model="formData.address" placeholder="VD: Số 45 Mai Hắc Đế, TP. Vinh, Nghệ An" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
+                            <input type="text" x-model="formData.address" placeholder="Nhập địa chỉ trụ sở..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
                         </div>
 
                         <div class="grid grid-cols-2 gap-3">
@@ -1597,7 +1597,7 @@
                             </div>
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Tên Quỹ / Tài Khoản <span class="text-rose-500">*</span></label>
-                                <input type="text" x-model="formData.name" required placeholder="VD: Quỹ Tiền Mặt Tại Két, Vietcombank Nghệ An" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
+                                <input type="text" x-model="formData.name" required placeholder="Nhập tên quỹ / tài khoản..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
                             </div>
                         </div>
 
@@ -1714,11 +1714,11 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Mã Nhà Cung Cấp <span class="text-rose-500">*</span></label>
-                                <input type="text" x-model="formData.code" required placeholder="VD: NCC-HL, NCC-001" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 font-mono text-xs">
+                                <input type="text" x-model="formData.code" required placeholder="Nhập mã nhà cung cấp..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 font-mono text-xs">
                             </div>
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Tên Nhà Cung Cấp / Hãng <span class="text-rose-500">*</span></label>
-                                <input type="text" x-model="formData.name" required placeholder="VD: Công ty TNHH Dược phẩm Hoa Linh" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
+                                <input type="text" x-model="formData.name" required placeholder="Nhập tên nhà cung cấp..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs">
                             </div>
                         </div>
 
@@ -1790,7 +1790,7 @@
                                 </button>
                             </div>
                             <input type="text" x-model="formData.name" required
-                                   placeholder="VD: Tuyến 01: Kho Mê Linh - Giải Phóng - Trường Chinh - Nguyễn Trãi"
+                                   placeholder="Nhập tên tuyến giao nhận hàng..."
                                    class="w-full px-3.5 py-2.5 bg-white border border-slate-200 focus:border-purple-500 rounded-xl font-bold text-slate-900 text-xs outline-none shadow-2xs transition-all">
                         </div>
 
@@ -2546,13 +2546,13 @@ function categoryManager() {
         },
 
         suggestRouteName() {
-            const prefix = this.formData.departure_warehouse || 'Kho Mê Linh';
+            const prefix = this.formData.departure_warehouse || (this.warehouses && this.warehouses[0]?.name) || 'Kho xuất';
             if (this.routeStops.length === 0) {
-                this.formData.name = `Tuyến 01: ${prefix} - Toàn Địa Bàn`;
+                this.formData.name = `Tuyến: ${prefix} - Toàn Địa Bàn`;
                 return;
             }
             const sampleStops = this.routeStops.slice(0, 4).join(' - ');
-            this.formData.name = `Tuyến 01: ${prefix} - ${sampleStops}`;
+            this.formData.name = `Tuyến: ${prefix} - ${sampleStops}`;
         },
 
         updateRouteTollFee(val) {
@@ -2869,12 +2869,12 @@ function categoryManager() {
             };
 
             if (type === 'routes') {
-                this.routeStops = ['Thanh Xuân', 'Giải Phóng', 'Trường Chinh', 'Nguyễn Trãi', 'Hà Đông'];
-                this.formData.distance_km = 38;
-                this.formData.toll_fee = 250000;
-                this.formData.toll_fee_display = '250.000';
-                this.formData.departure_warehouse = 'Kho Mê Linh';
-                this.formData.name = 'Tuyến 01: Kho Mê Linh - Giải Phóng - Trường Chinh - Nguyễn Trãi';
+                this.routeStops = [];
+                this.formData.distance_km = 0;
+                this.formData.toll_fee = 0;
+                this.formData.toll_fee_display = '';
+                this.formData.departure_warehouse = (this.warehouses && this.warehouses[0]?.name) || '';
+                this.formData.name = '';
                 this.initRouteGeo();
             }
 

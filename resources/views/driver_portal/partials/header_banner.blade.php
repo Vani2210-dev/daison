@@ -174,11 +174,11 @@
                 </div>
                 <div class="hidden sm:flex items-center gap-1">
                     <span>•</span>
-                    <span>Kho xuất: <strong class="text-slate-200">Kho Mê Linh (Tổng MQ)</strong></span>
+                    <span>Kho xuất: <strong class="text-slate-200" x-text="selectedVehicle?.warehouse?.name || '---'"></strong></span>
                 </div>
                 <div class="hidden sm:flex items-center gap-1">
                     <span>•</span>
-                    <span>Tải trọng: <strong class="text-slate-200 font-mono" x-text="formatNumber(selectedVehicle?.capacity_kg || 2500) + ' kg'"></strong></span>
+                    <span>Tải trọng: <strong class="text-slate-200 font-mono" x-text="selectedVehicle?.capacity_kg ? (formatNumber(selectedVehicle.capacity_kg) + ' kg') : '---'"></strong></span>
                 </div>
             </div>
         </div>

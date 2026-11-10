@@ -80,7 +80,7 @@
                             Tên Đại Lý / Cửa Hàng <span class="text-rose-500">*</span>
                         </label>
                         <input type="text" x-model="formData.name" required
-                               placeholder="VD: Cửa Hàng Vật Tư Ống Nhựa Thành Công"
+                               placeholder="Nhập tên đại lý / cửa hàng..."
                                class="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-purple-500 shadow-2xs transition-all placeholder:text-slate-400">
                     </div>
 
@@ -104,7 +104,7 @@
                             Chủ Đại Lý / Người Đại Diện
                         </label>
                         <input type="text" x-model="formData.owner_name"
-                               placeholder="Nguyễn Thành Công"
+                               placeholder="Nhập họ và tên..."
                                class="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-purple-500 shadow-2xs transition-all placeholder:text-slate-400">
                     </div>
 
@@ -189,7 +189,7 @@
                         Địa Chỉ Chi Tiết (Số nhà, tên tòa nhà, ngõ/ngách, đường phố)
                     </label>
                     <input type="text" x-model="formData.address"
-                           placeholder="89 Đường Hoàng Quốc Việt"
+                           placeholder="Nhập số nhà, tên đường, phố..."
                            class="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-purple-500 shadow-2xs transition-all placeholder:text-slate-400">
                 </div>
 
