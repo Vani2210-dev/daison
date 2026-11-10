@@ -1624,7 +1624,7 @@ function deliveryExecutionApp() {
             const intakeStaffName = staffObj ? staffObj.name : '';
 
             const whObj = (this.warehouses || []).find(w => String(w.id) === String(this.orderReturnForm.warehouseId));
-            const warehouseName = whObj ? whObj.name : 'Kho Tổng Mê Linh (MQ)';
+            const warehouseName = whObj ? whObj.name : 'Kho Tổng';
 
             this.orderReturnForm.isSubmitting = true;
             try {

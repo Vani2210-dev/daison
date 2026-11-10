@@ -18,7 +18,7 @@
                         <span>{{ $isEdit ? 'Chỉnh Sửa Đại Lý: ' . $dealer->name : 'Thêm Mới Khách Hàng / Đại Lý' }}</span>
                     </h1>
                     <span class="text-[11px] font-mono font-black px-2.5 py-0.5 rounded-lg bg-purple-50 text-purple-800 border border-purple-200 shadow-2xs">
-                        {{ $isEdit ? $dealer->code : ($nextCode ?? 'DL-HN-001') }}
+                        {{ $isEdit ? $dealer->code : ($nextCode ?? 'DL-0001') }}
                     </span>
                 </div>
                 <p class="text-xs text-slate-500 mt-0.5">
@@ -71,7 +71,7 @@
                         </label>
                         <input type="text" x-model="formData.code"
                                class="w-full px-3.5 py-2.5 bg-purple-50/60 focus:bg-white border border-purple-200 rounded-xl font-mono text-xs font-black text-purple-800 outline-none focus:border-purple-500 shadow-2xs uppercase transition-all"
-                               placeholder="DL-HN-001">
+                               placeholder="DL-0001">
                     </div>
 
                     <!-- Tên Đại Lý / Cửa Hàng * -->
@@ -547,7 +547,7 @@ function dealerFormApp() {
 
         formData: {
             id: '{{ $dealer ? $dealer->id : "" }}',
-            code: '{{ $dealer ? $dealer->code : ($nextCode ?? "DL-HN-001") }}',
+            code: '{{ $dealer ? $dealer->code : ($nextCode ?? "DL-0001") }}',
             name: '{{ $dealer ? addslashes($dealer->name) : "" }}',
             owner_name: '{{ $dealer ? addslashes($dealer->owner_name) : "" }}',
             phone: '{{ $dealer ? $dealer->phone : "" }}',
@@ -560,7 +560,7 @@ function dealerFormApp() {
             old_city: '{{ $dealer ? addslashes($dealer->old_city ?? $dealer->city) : "" }}',
             old_district: '{{ $dealer ? addslashes($dealer->old_district ?? $dealer->district) : "" }}',
             old_ward: '{{ $dealer ? addslashes($dealer->old_ward) : "" }}',
-            credit_limit: {{ $dealer ? (float)$dealer->credit_limit : 250000000 }},
+            credit_limit: {{ $dealer ? (float)$dealer->credit_limit : 0 }},
             initial_debt: {{ $dealer ? (float)($dealer->initial_debt ?? 0) : 0 }},
             payment_term_days: {{ $dealer ? (int)$dealer->payment_term_days : 30 }},
             sales_rep_id: '{{ $dealer ? ($dealer->sales_rep_id ?: "") : ($salesReps->first()?->id ?? "") }}',

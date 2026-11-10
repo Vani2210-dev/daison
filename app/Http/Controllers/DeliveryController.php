@@ -29,8 +29,8 @@ class DeliveryController extends Controller
             'id'                     => (string) $d->id,
             'tripCode'               => $d->code,
             'routeName'              => $d->route_summary ?? 'Tuyến giao hàng',
-            'departureWarehouseId'   => 'wh-001',
-            'departureWarehouseName' => 'Kho Tổng Mê Linh (MQ)',
+            'departureWarehouseId'   => (string)(\App\Models\Warehouse::first()?->id ?? '1'),
+            'departureWarehouseName' => \App\Models\Warehouse::first()?->name ?? 'Kho xuất',
             'vehicleId'              => $d->vehicle_id ? (string) $d->vehicle_id : null,
             'vehiclePlate'           => $d->vehicle?->plate_number ?? null,
             'vehicleType'            => $d->vehicle?->vehicle_type ?? null,
@@ -1268,8 +1268,8 @@ class DeliveryController extends Controller
             foreach ($data['items'] as $it) {
                 \App\Models\DeliveryReturnItem::create([
                     'delivery_return_id' => $returnSlip->id,
-                    'sku'                => $it['sku'] ?? 'SKU-PVC',
-                    'name'               => $it['name'] ?? 'Vật tư',
+                    'sku'                => $it['sku'] ?? '',
+                    'name'               => $it['name'] ?? 'Sản phẩm',
                     'unit'               => $it['unit'] ?? 'cái',
                     'returned_qty'       => (float) ($it['returnedQty'] ?? ($it['returned_qty'] ?? 1)),
                     'unit_price'         => (float) ($it['unitPrice'] ?? ($it['unit_price'] ?? 0)),
@@ -1355,7 +1355,7 @@ class DeliveryController extends Controller
             $warehouse = \App\Models\Warehouse::first();
         }
         $warehouseId = $warehouse?->id;
-        $warehouseName = $warehouse?->name ?? 'Kho Tổng Mê Linh (MQ)';
+        $warehouseName = $warehouse?->name ?? 'Kho Tổng';
 
         $query = \App\Models\DeliveryReturn::with('items');
         if (!empty($slipIds) && is_array($slipIds)) {
@@ -2105,8 +2105,10 @@ class DeliveryController extends Controller
 
         $orderId = $data['orderId'] ?? ($data['order_id'] ?? null);
         $orderCode = $data['orderCode'] ?? ($data['order_code'] ?? null);
-        $warehouseName = $data['warehouseName'] ?? ($data['warehouse_name'] ?? 'Kho Tổng Mê Linh (MQ)');
-        $warehouseId = $data['warehouseId'] ?? ($data['warehouse_id'] ?? 1);
+        $warehouseId = $data['warehouseId'] ?? ($data['warehouse_id'] ?? null);
+        $warehouse = $warehouseId ? \App\Models\Warehouse::find($warehouseId) : \App\Models\Warehouse::first();
+        $warehouseId = $warehouse?->id;
+        $warehouseName = $data['warehouseName'] ?? ($data['warehouse_name'] ?? ($warehouse?->name ?? 'Kho xuất'));
         $reason = $data['reason'] ?? 'Không giao được hàng, hoàn nhập lại kho';
         $performerName = auth()->user()?->name ?? 'Lái xe / Điều phối';
         $performerId = auth()->id();
@@ -2297,7 +2299,7 @@ class DeliveryController extends Controller
         if (!$warehouse && $order->warehouse_staff_id) {
             $warehouse = \App\Models\Warehouse::first();
         }
-        $warehouseName = $warehouse?->name ?? 'Kho Tổng Mê Linh (MQ)';
+        $warehouseName = $warehouse?->name ?? 'Kho Tổng';
         $warehouseId = $warehouse?->id ?? 1;
 
         // 1. Hoàn lại số lượng tồn kho (cộng lại tồn kho)

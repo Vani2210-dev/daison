@@ -627,7 +627,7 @@ function posApp() {
         stockFilter: 'all',
         sortBy: 'name_asc',
         viewMode: 'grid', // 'grid' | 'list'
-        selectedWarehouse: 'Kho Tổng Mê Linh (MQ)',
+        selectedWarehouse: '{{ \App\Models\Warehouse::first()?->name ?? "Kho Tổng" }}',
         selectedDealerId: '',
         isCartOpen: false,
 

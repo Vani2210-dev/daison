@@ -52,6 +52,43 @@ class Dealer extends Model
         'last_visited_at' => 'datetime',
     ];
 
+    public function getTierAttribute($value)
+    {
+        if (!$value) {
+            return $value;
+        }
+        $map = [
+            'GT - Khách hàng L? l?n' => 'GT - Khách hàng Lẻ lớn',
+            'GT - Khách hàng L? nh?' => 'GT - Khách hàng Lẻ nhỏ',
+            'GT - Khách hàng S?' => 'GT - Khách hàng Sỉ',
+        ];
+        if (isset($map[$value])) {
+            return $map[$value];
+        }
+        return str_replace(
+            ['Khách hàng L? l?n', 'Khách hàng L? nh?', 'Khách hàng S?'],
+            ['Khách hàng Lẻ lớn', 'Khách hàng Lẻ nhỏ', 'Khách hàng Sỉ'],
+            $value
+        );
+    }
+
+    public function setTierAttribute($value)
+    {
+        if ($value) {
+            $map = [
+                'GT - Khách hàng L? l?n' => 'GT - Khách hàng Lẻ lớn',
+                'GT - Khách hàng L? nh?' => 'GT - Khách hàng Lẻ nhỏ',
+                'GT - Khách hàng S?' => 'GT - Khách hàng Sỉ',
+            ];
+            $value = $map[$value] ?? str_replace(
+                ['Khách hàng L? l?n', 'Khách hàng L? nh?', 'Khách hàng S?'],
+                ['Khách hàng Lẻ lớn', 'Khách hàng Lẻ nhỏ', 'Khách hàng Sỉ'],
+                $value
+            );
+        }
+        $this->attributes['tier'] = $value;
+    }
+
     public function salesRep()
     {
         return $this->belongsTo(User::class, 'sales_rep_id');

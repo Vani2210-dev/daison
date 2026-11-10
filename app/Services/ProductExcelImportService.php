@@ -396,7 +396,7 @@ class ProductExcelImportService
                     'min_stock_alert' => $minStock,
                     'max_stock_alert' => $maxStock,
                     'price_tiers' => $priceTiers,
-                    'location' => 'Kho Tổng Mê Linh',
+                    'location' => 'Kho Tổng',
                     'is_active' => true,
                 ];
 

@@ -829,9 +829,9 @@ class DebtHandoverController extends Controller
         $notes = $data['notes'] ?? 'Xuất hàng ôm cho nhân viên đi thị trường';
 
         // Tìm kho nguồn & kho hàng ôm nhân viên trong bảng warehouses
-        $sourceWarehouse = Warehouse::find($warehouseId) ?: Warehouse::where('code', 'KHO-MQ-01')->first();
+        $sourceWarehouse = Warehouse::find($warehouseId) ?: Warehouse::first();
         $sourceWhId = $sourceWarehouse?->id ?: 1;
-        $sourceWhName = $sourceWarehouse?->name ?: 'Kho Tổng Mê Linh';
+        $sourceWhName = $sourceWarehouse?->name ?: 'Kho Tổng';
 
         // Tìm hoặc tạo kho hàng ôm tương ứng trong bảng warehouses
         $targetWh = Warehouse::where('code', 'KHO-OM-' . $driver->id)->first();

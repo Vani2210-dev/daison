@@ -362,7 +362,7 @@
                                     </span>
                                     <div>
                                         <div class="font-bold text-slate-900">{{ $cOrd->staff_name }}</div>
-                                        <div class="text-[11px] text-slate-500">Từ: {{ $cOrd->warehouse_name ?: 'Kho Tổng Mê Linh' }}</div>
+                                        <div class="text-[11px] text-slate-500">Từ: {{ $cOrd->warehouse_name ?: 'Kho Tổng' }}</div>
                                     </div>
                                 </div>
                             </td>
@@ -485,7 +485,7 @@
                                     </span>
                                     <div>
                                         <div class="font-bold text-slate-900">{{ $disp->driver_name }}</div>
-                                        <div class="text-[11px] text-slate-500">Từ: {{ $disp->warehouse_name ?: 'Kho Tổng Mê Linh' }}</div>
+                                        <div class="text-[11px] text-slate-500">Từ: {{ $disp->warehouse_name ?: 'Kho Tổng' }}</div>
                                     </div>
                                 </div>
                             </td>
@@ -768,7 +768,7 @@
                     </div>
                     <div>
                         <span class="text-slate-400 block text-[10px] font-bold">KHO XUẤT NGUỒN</span>
-                        <span class="font-bold text-slate-900" x-text="activeDispatch?.warehouse_name || 'Kho Tổng Mê Linh'"></span>
+                        <span class="font-bold text-slate-900" x-text="activeDispatch?.warehouse_name || 'Kho Tổng'"></span>
                     </div>
                     <div>
                         <span class="text-slate-400 block text-[10px] font-bold">TỔNG GIÁ TRỊ HÀNG ÔM</span>

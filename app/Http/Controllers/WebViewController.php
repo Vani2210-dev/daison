@@ -118,7 +118,7 @@ class WebViewController extends Controller
         $brands = Brand::orderBy('name')->get();
         $subcategories = Subcategory::where('is_active', true)->orderBy('name')->get();
         $warehouses = Warehouse::where('is_active', true)
-            ->orderByRaw("CASE WHEN name LIKE '%Mê Linh%' THEN 0 WHEN name LIKE '%Ôm%' THEN 2 ELSE 1 END")
+            ->orderByRaw("CASE WHEN name LIKE '%Tổng%' THEN 0 WHEN name LIKE '%Ôm%' THEN 2 ELSE 1 END")
             ->orderBy('name')
             ->get();
         $priceTiers = PriceTier::where('status', 'Hoạt động')->orderBy('order_num')->orderBy('id')->get();
@@ -142,7 +142,7 @@ class WebViewController extends Controller
         $brands = Brand::orderBy('name')->get();
         $subcategories = Subcategory::where('is_active', true)->orderBy('name')->get();
         $warehouses = Warehouse::where('is_active', true)
-            ->orderByRaw("CASE WHEN name LIKE '%Mê Linh%' THEN 0 WHEN name LIKE '%Ôm%' THEN 2 ELSE 1 END")
+            ->orderByRaw("CASE WHEN name LIKE '%Tổng%' THEN 0 WHEN name LIKE '%Ôm%' THEN 2 ELSE 1 END")
             ->orderBy('name')
             ->get();
         $priceTiers = PriceTier::where('status', 'Hoạt động')->orderBy('order_num')->orderBy('id')->get();
@@ -229,7 +229,7 @@ class WebViewController extends Controller
             'stock_quantity' => (float)$request->input('stock_quantity', 0),
             'min_stock_alert' => (float)$request->input('min_stock_alert', 10),
             'max_stock_alert' => $request->filled('max_stock_alert') ? (float)$request->input('max_stock_alert') : null,
-            'location' => trim($request->input('location', 'Kho Tổng Mê Linh')),
+            'location' => trim($request->input('location', 'Kho Tổng')),
             'is_active' => $request->boolean('is_active', true),
         ];
 
@@ -257,7 +257,7 @@ class WebViewController extends Controller
             }
         }
         if (!$targetWh) {
-            $targetWh = Warehouse::where('name', 'like', '%Mê Linh%')->first() ?: Warehouse::first();
+            $targetWh = Warehouse::first();
         }
 
         if ($targetWh) {
@@ -537,7 +537,7 @@ class WebViewController extends Controller
         // Chỉ gồm kho công ty + kho hàng ôm nhân viên (chỉ có kho ôm nhân viên và kho công ty)
         $warehouses = $companyWarehouses->concat($employeeHoldingWarehouses);
 
-        $mainCompanyWarehouse = $companyWarehouses->first()?->name ?? 'Kho Tổng Mê Linh (MQ)';
+        $mainCompanyWarehouse = $companyWarehouses->first()?->name ?? (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng');
         $employeeWarehouse = $employeeHoldingWarehouses->first()?->name 
             ?? ($user ? 'Kho Hàng Ôm - ' . $user->name : $mainCompanyWarehouse);
 
@@ -682,7 +682,16 @@ class WebViewController extends Controller
         }
 
         if ($tier = $request->input('tier')) {
-            $query->where('tier', $tier);
+            $query->where(function ($q) use ($tier) {
+                $q->where('tier', $tier);
+                if ($tier === 'GT - Khách hàng Lẻ lớn') {
+                    $q->orWhere('tier', 'GT - Khách hàng L? l?n');
+                } elseif ($tier === 'GT - Khách hàng Lẻ nhỏ') {
+                    $q->orWhere('tier', 'GT - Khách hàng L? nh?');
+                } elseif ($tier === 'GT - Khách hàng Sỉ') {
+                    $q->orWhere('tier', 'GT - Khách hàng S?');
+                }
+            });
         }
 
         $dealers = $query->orderBy('name')->paginate(18)->withQueryString();
@@ -700,10 +709,10 @@ class WebViewController extends Controller
         $priceTiers = PriceTier::where('status', 'Hoạt động')->orderBy('order_num')->get();
 
         $dealersCount = Dealer::count() + 1;
-        $nextCode = 'DL-HN-' . str_pad((string)$dealersCount, 3, '0', STR_PAD_LEFT);
+        $nextCode = 'DL-' . str_pad((string)$dealersCount, 4, '0', STR_PAD_LEFT);
         while (Dealer::where('code', $nextCode)->exists()) {
             $dealersCount++;
-            $nextCode = 'DL-HN-' . str_pad((string)$dealersCount, 3, '0', STR_PAD_LEFT);
+            $nextCode = 'DL-' . str_pad((string)$dealersCount, 4, '0', STR_PAD_LEFT);
         }
 
         return view('dealers.form', [
@@ -815,10 +824,10 @@ class WebViewController extends Controller
             $code = $data['code'] ?? null;
             if (!$code) {
                 $count = Dealer::count() + 1;
-                $code = 'DL-HN-' . str_pad((string)$count, 3, '0', STR_PAD_LEFT);
+                $code = 'DL-' . str_pad((string)$count, 4, '0', STR_PAD_LEFT);
                 while (Dealer::where('code', $code)->exists()) {
                     $count++;
-                    $code = 'DL-HN-' . str_pad((string)$count, 3, '0', STR_PAD_LEFT);
+                    $code = 'DL-' . str_pad((string)$count, 4, '0', STR_PAD_LEFT);
                 }
             }
             $dealerData['code'] = $code;
@@ -2035,7 +2044,16 @@ class WebViewController extends Controller
             });
         }
         if ($tier = $request->input('tier')) {
-            $query->where('tier', $tier);
+            $query->where(function ($q) use ($tier) {
+                $q->where('tier', $tier);
+                if ($tier === 'GT - Khách hàng Lẻ lớn') {
+                    $q->orWhere('tier', 'GT - Khách hàng L? l?n');
+                } elseif ($tier === 'GT - Khách hàng Lẻ nhỏ') {
+                    $q->orWhere('tier', 'GT - Khách hàng L? nh?');
+                } elseif ($tier === 'GT - Khách hàng Sỉ') {
+                    $q->orWhere('tier', 'GT - Khách hàng S?');
+                }
+            });
         }
         if ($debtFilter = $request->input('debt_status')) {
             if ($debtFilter === 'has_debt') {

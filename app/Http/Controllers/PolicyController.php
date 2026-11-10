@@ -59,7 +59,7 @@ class PolicyController extends Controller
             'start_date'           => $request->input('startDate', date('Y-m-d')),
             'end_date'             => $request->input('endDate', date('Y-m-d', strtotime('+30 days'))),
             'status'               => $request->input('status', 'Còn hiệu lực'),
-            'created_by_name'      => $request->input('createdByName', auth()->user()?->name ?? 'Admin KBTech'),
+            'created_by_name'      => $request->input('createdByName', auth()->user()?->name ?? 'Quản trị viên'),
             'notes'                => $request->input('notes', ''),
         ];
 

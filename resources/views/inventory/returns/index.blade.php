@@ -488,7 +488,7 @@
                 <div>
                     <div><strong>Lái xe:</strong> <span id="p-driver-name"></span></div>
                     <div><strong>Thời gian lập:</strong> <span id="p-date"></span></div>
-                    <div><strong>Kho nhập:</strong> <span id="p-warehouse">Kho Tổng Mê Linh (MQ)</span></div>
+                    <div><strong>Kho nhập:</strong> <span id="p-warehouse">Kho Tổng</span></div>
                 </div>
             </div>
 

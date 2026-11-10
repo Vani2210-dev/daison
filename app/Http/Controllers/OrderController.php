@@ -199,7 +199,7 @@ class OrderController extends Controller
                         'oldStatus'    => $oldStatus,
                         'newStatus'    => $status,
                         'customerName' => 'Hàng Ôm - ' . ($consignmentOrder->staff_name ?: 'NVKD'),
-                        'warehouse'    => $consignmentOrder->warehouse_name ?: 'Kho Tổng Mê Linh',
+                        'warehouse'    => $consignmentOrder->warehouse_name ?: (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng'),
                         'performer'    => $performerName,
                         'modifiedAt'   => now()->format('H:i:s d/m/Y'),
                     ],
@@ -242,7 +242,7 @@ class OrderController extends Controller
                     ];
                 })->toArray();
 
-                $targetWh = $order->warehouse ?: 'Kho Tổng Mê Linh (MQ)';
+                $targetWh = $order->warehouse ?: (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng');
                 $check = \App\Services\InventoryAvailabilityService::checkItemsAvailability($targetWh, $itemsData, $order->id);
 
                 if (!$check['is_valid']) {
@@ -624,7 +624,7 @@ class OrderController extends Controller
             : (!empty($data['assigned_vehicle_plate']) ? (string)$data['assigned_vehicle_plate'] : ($order?->assigned_vehicle_plate ?? null));
 
         // Bỏ cơ chế bắt buộc lái xe chỉ xuất kho nhân viên: tôn trọng kho người dùng chọn trong form
-        $warehouseName = $data['warehouse'] ?? ($data['warehouse_name'] ?? ($order?->warehouse ?? 'Kho Tổng Mê Linh (MQ)'));
+        $warehouseName = $data['warehouse'] ?? ($data['warehouse_name'] ?? ($order?->warehouse ?? (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng')));
         $orderTypeInput = $data['orderType'] ?? ($data['order_type'] ?? '');
         $isHoldingStockSale = !empty($data['is_holding_stock']) 
             || !empty($data['is_holding_stock_sale']) 
@@ -686,7 +686,7 @@ class OrderController extends Controller
             'customer_name'          => $data['dealerName'] ?? ($data['customer_name'] ?? ($order?->customer_name ?? 'Khách lẻ')),
             'customer_phone'         => $data['customerPhone'] ?? ($data['customer_phone'] ?? ($order?->customer_phone ?? '')),
             'customer_address'       => $data['address'] ?? ($data['customer_address'] ?? ($order?->customer_address ?? '')),
-            'warehouse'              => $data['warehouse'] ?? ($data['warehouse_name'] ?? ($order?->warehouse ?? 'Kho Tổng Mê Linh (MQ)')),
+            'warehouse'              => $data['warehouse'] ?? ($data['warehouse_name'] ?? ($order?->warehouse ?? (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng'))),
             'delivery_date'          => array_key_exists('deliveryDate', $data) 
                 ? ($data['deliveryDate'] ?: null) 
                 : (array_key_exists('delivery_date', $data) 
@@ -864,7 +864,7 @@ class OrderController extends Controller
             }
 
             if (!empty($itemsToCheck)) {
-                $targetWh = $orderAttributes['warehouse'] ?: 'Kho Tổng Mê Linh (MQ)';
+                $targetWh = $orderAttributes['warehouse'] ?: (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng');
                 $check = \App\Services\InventoryAvailabilityService::checkItemsAvailability($targetWh, $itemsToCheck, $order?->id);
                 if (!$check['is_valid']) {
                     $isBackorder = ($orderAttributes['order_type'] ?? '') === 'backorder' 
@@ -1082,7 +1082,7 @@ class OrderController extends Controller
                 \App\Models\PickingSyncEvent::create([
                     'order_id'            => (string) $order->id,
                     'event_type'          => 'ORDER_ITEMS_MODIFIED',
-                    'performer_name'      => $creatorName ?: 'Admin KBTech',
+                    'performer_name'      => $creatorName ?: 'Quản trị viên',
                     'assigned_staff'      => implode(', ', $assignedPickers),
                     'assigned_staff_list' => $assignedPickers,
                     'order_status'        => $order->status,
@@ -1098,7 +1098,7 @@ class OrderController extends Controller
                         'assignedPickers'    => $assignedPickers,
                         'orderCreator'       => $order->order_creator,
                         'supervisor'         => $supervisor,
-                        'performer'          => $creatorName ?: 'Admin KBTech',
+                        'performer'          => $creatorName ?: 'Quản trị viên',
                         'modifiedAt'         => now()->format('H:i:s d/m/Y'),
                     ],
                     'created_at'          => now(),
@@ -1107,7 +1107,7 @@ class OrderController extends Controller
                 \App\Models\PickingSyncEvent::create([
                     'order_id'            => (string) $order->id,
                     'event_type'          => 'ORDER_UPDATED',
-                    'performer_name'      => $creatorName ?: 'Admin KBTech',
+                    'performer_name'      => $creatorName ?: 'Quản trị viên',
                     'assigned_staff'      => implode(', ', $assignedPickers),
                     'assigned_staff_list' => $assignedPickers,
                     'order_status'        => $order->status,
@@ -1126,7 +1126,7 @@ class OrderController extends Controller
                         'assignedPickers'    => $assignedPickers,
                         'orderCreator'       => $order->order_creator,
                         'supervisor'         => $supervisor,
-                        'performer'          => $creatorName ?: 'Admin KBTech',
+                        'performer'          => $creatorName ?: 'Quản trị viên',
                         'modifiedAt'         => now()->format('H:i:s d/m/Y'),
                     ],
                     'created_at'          => now(),
@@ -1135,7 +1135,7 @@ class OrderController extends Controller
                 \App\Models\PickingSyncEvent::create([
                     'order_id'            => (string) $order->id,
                     'event_type'          => 'ORDER_CREATED',
-                    'performer_name'      => $creatorName ?: 'Admin KBTech',
+                    'performer_name'      => $creatorName ?: 'Quản trị viên',
                     'assigned_staff'      => implode(', ', $assignedPickers),
                     'assigned_staff_list' => $assignedPickers,
                     'order_status'        => $order->status,
@@ -1223,7 +1223,7 @@ class OrderController extends Controller
         }
 
         // Tự động ghi nhận Nhật Ký Truy Vết & Tiến Trình (audit_logs) vào Cơ Sở Dữ Liệu
-        $performer = auth()->user()?->name ?? $data['performerName'] ?? $creatorName ?? 'Admin KBTech';
+        $performer = auth()->user()?->name ?? $data['performerName'] ?? $creatorName ?? 'Quản trị viên';
         $perfId = auth()->id() ?? $creatorId ?? null;
 
         try {
@@ -1557,8 +1557,7 @@ class OrderController extends Controller
                 ->first();
         }
         if (!$targetWarehouse) {
-            $targetWarehouse = \App\Models\Warehouse::where('name', 'like', '%Mê Linh%')->first()
-                ?: \App\Models\Warehouse::first();
+            $targetWarehouse = \App\Models\Warehouse::first();
         }
 
         $order->loadMissing('items');
@@ -1666,8 +1665,7 @@ class OrderController extends Controller
                 ->first();
         }
         if (!$targetWarehouse) {
-            $targetWarehouse = \App\Models\Warehouse::where('name', 'like', '%Mê Linh%')->first()
-                ?: \App\Models\Warehouse::first();
+            $targetWarehouse = \App\Models\Warehouse::first();
         }
 
         $order->loadMissing('items');

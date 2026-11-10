@@ -582,11 +582,11 @@ class PickingSyncController extends Controller
             ?: ($order->dealer?->staff_in_charge 
             ?: ($order->staff_name
             ?: ($order->staff?->name
-            ?: ($order->creator?->name ?: 'Admin KBTech')))));
+            ?: ($order->creator?->name ?: 'Hệ thống')))));
 
         $orderCode = $order->order_code ?? ($order->code ?? ('OM-' . $order->id));
         $customerName = $order->customer_name ?? ('Hàng Ôm - ' . ($order->staff_name ?? 'NVKD'));
-        $warehouseName = $order->warehouse ?? ($order->warehouse_name ?? 'Kho Tổng Mê Linh');
+        $warehouseName = $order->warehouse ?? ($order->warehouse_name ?? (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng'));
 
         // Tạo sự kiện đồng bộ Realtime PickingSyncEvent gửi tới Người phụ trách đơn hàng
         $event = PickingSyncEvent::create([
@@ -796,7 +796,7 @@ class PickingSyncController extends Controller
                             'gift_quantity' => (float)($it->gift_quantity ?? 0),
                             'unit'          => $it->unit,
                         ])->toArray();
-                        $targetWh = $orderToPick->warehouse ?: 'Kho Tổng Mê Linh (MQ)';
+                        $targetWh = $orderToPick->warehouse ?: (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng');
                         $check = \App\Services\InventoryAvailabilityService::checkItemsAvailability($targetWh, $itemsData, $orderToPick->id);
 
                         if ($check['is_valid']) {
@@ -851,14 +851,14 @@ class PickingSyncController extends Controller
             $co->customer_phone = $co->staff?->phone ?? '---';
             $co->customer_address = $co->warehouse_name ?: 'Kho xuất công ty';
             
-            $whName = $co->warehouse_name ?: ($co->warehouse?->name ?: 'Kho Tổng Mê Linh');
+            $whName = $co->warehouse_name ?: ($co->warehouse?->name ?: (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng'));
             $co->unsetRelation('warehouse');
             $co->warehouse = $whName;
 
             $co->is_consignment = true;
             $co->order_type = 'Hàng ôm';
-            $co->order_creator = $co->staff_name ?: ($co->staff?->name ?: 'Admin KBTech');
-            $co->supervisor = $co->staff_name ?: ($co->staff?->name ?: 'Admin KBTech');
+            $co->order_creator = $co->staff_name ?: ($co->staff?->name ?: 'Hệ thống');
+            $co->supervisor = $co->staff_name ?: ($co->staff?->name ?: 'Hệ thống');
             $co->picking_date = $co->picking_date ?: ($co->created_at ? $co->created_at->format('Y-m-d') : now()->format('Y-m-d'));
             $co->delivery_date = $co->delivery_date ?: ($co->created_at ? $co->created_at->format('Y-m-d') : now()->format('Y-m-d'));
 
@@ -900,7 +900,7 @@ class PickingSyncController extends Controller
             $ord->supervisor = $ord->order_creator 
                 ?: ($ord->salesRep?->name 
                 ?: ($ord->dealer?->staff_in_charge 
-                ?: ($ord->creator?->name ?: 'Admin KBTech')));
+                ?: ($ord->creator?->name ?: 'Hệ thống')));
 
             // Đánh giá tiến độ từng nhóm bốc hàng trên TOÀN BỘ mặt hàng của đơn
             $evalProgress = self::evaluateOrderGroupProgress($ord, $allActiveGroups, $allCategories);

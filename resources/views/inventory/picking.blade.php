@@ -410,7 +410,7 @@
 
                                     <!-- Row 3: Warehouse & Date -->
                                     <div class="text-[11px] text-slate-500 flex items-center justify-between">
-                                        <span class="truncate max-w-[150px]" x-text="typeof ord.warehouse === 'string' ? ord.warehouse : (ord.warehouse?.name || 'Kho Tổng Mê Linh (MQ)')"></span>
+                                        <span class="truncate max-w-[150px]" x-text="typeof ord.warehouse === 'string' ? ord.warehouse : (ord.warehouse?.name || 'Kho Tổng')"></span>
                                         <div class="text-right shrink-0">
                                             <template x-if="ord.delivery_date">
                                                 <span class="font-mono text-[10px] text-emerald-700 font-bold block" x-text="'Giao: ' + formatDate(ord.delivery_date)"></span>
@@ -548,7 +548,7 @@
                                     <span x-text="activeOrder.customer_name" class="font-bold"></span>
                                 </h3>
                                 <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500 mt-1">
-                                    <span>Kho: <strong class="text-slate-700" x-text="activeOrder.warehouse || 'Kho Tổng Mê Linh (MQ)'"></strong></span>
+                                    <span>Kho: <strong class="text-slate-700" x-text="activeOrder.warehouse || 'Kho Tổng'"></strong></span>
                                     <span>·</span>
                                     <span>Lên đơn: <strong class="text-slate-700 font-mono" x-text="formatDate(activeOrder.created_at)"></strong></span>
                                     <template x-if="activeOrder.delivery_date">
@@ -637,7 +637,7 @@
                                         </div>
                                         <div class="text-xs text-slate-700 font-medium">
                                             <span>Đơn hàng: <strong class="font-mono text-slate-900 font-black" x-text="activeOrder.order_code"></strong> (<span x-text="activeOrder.customer_name"></span>)</span>
-                                            <span> • Kho xuất: <strong class="text-slate-800 font-bold" x-text="activeOrder.warehouse || 'Kho Tổng Mê Linh (MQ)'"></strong></span>
+                                            <span> • Kho xuất: <strong class="text-slate-800 font-bold" x-text="activeOrder.warehouse || 'Kho Tổng'"></strong></span>
                                             <span> • Người phụ trách đơn: <strong class="text-sky-700 underline font-black" x-text="getOrderSupervisor(activeOrder)"></strong></span>
                                         </div>
                                     </div>
@@ -858,7 +858,7 @@
 
                                                 <!-- Kho Xuất -->
                                                 <td class="py-3.5 px-3 text-slate-600 text-[11px] font-semibold">
-                                                    <span class="px-2 py-1 bg-white/80 rounded-md border border-slate-200 text-slate-700 font-semibold" x-text="activeOrder.warehouse || 'Kho Tổng Mê Linh (MQ)'"></span>
+                                                    <span class="px-2 py-1 bg-white/80 rounded-md border border-slate-200 text-slate-700 font-semibold" x-text="activeOrder.warehouse || 'Kho Tổng'"></span>
                                                 </td>
 
                                                 <!-- Người Soạn Hàng (Trưởng nhóm phân công hoặc Thành viên tự nhận) -->
@@ -1099,7 +1099,7 @@
                                         <div class="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
                                             <div class="text-[11px] text-slate-500 flex items-center gap-1 truncate">
                                                 <i class="fa-solid fa-warehouse text-slate-400 text-[10px]"></i>
-                                                <span class="truncate" x-text="activeOrder.warehouse || 'Kho Tổng Mê Linh (MQ)'"></span>
+                                                <span class="truncate" x-text="activeOrder.warehouse || 'Kho Tổng'"></span>
                                             </div>
 
                                             <!-- Người soạn -->
@@ -1251,7 +1251,7 @@
                                     </span>
                                 </h3>
                                 <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500 mt-1">
-                                    <span>Kho: <strong class="text-slate-700" x-text="activeOrder.warehouse || 'Kho Tổng Mê Linh (MQ)'"></strong></span>
+                                    <span>Kho: <strong class="text-slate-700" x-text="activeOrder.warehouse || 'Kho Tổng'"></strong></span>
                                     <span>·</span>
                                     <span>Tiến độ: <strong class="text-emerald-700 font-bold font-mono" x-text="getProgressRatio(activeOrder)"></strong></span>
                                     <template x-if="activeOrder.delivery_date">
@@ -2898,7 +2898,7 @@ function pickingApp() {
                             sku: it.sku || '',
                             name: it.name || '',
                             unit: it.unit || 'CÂY',
-                            warehouse: o.warehouse || 'Kho Tổng Mê Linh (MQ)',
+                            warehouse: o.warehouse || 'Kho Tổng',
                             category_id: it.category_id || 0,
                             category_name: it.category_name || '',
                             totalSold: 0,
@@ -3805,8 +3805,8 @@ function pickingApp() {
         },
 
         getOrderSupervisor(ord) {
-            if (!ord) return 'Admin Kho';
-            return ord.supervisor || ord.order_creator || (ord.dealer && ord.dealer.staff_in_charge) || 'Admin KBTech';
+            if (!ord) return 'Quản trị viên';
+            return ord.supervisor || ord.order_creator || (ord.dealer && ord.dealer.staff_in_charge) || 'Quản lý';
         },
 
         isItemShort(it) {
@@ -4376,7 +4376,7 @@ function pickingApp() {
                         id: orderId,
                         order_code: extra.orderCode || ('DH-' + orderId),
                         customer_name: extra.customerName || 'Khách hàng',
-                        warehouse: extra.warehouse || 'Kho Tổng Mê Linh (MQ)',
+                        warehouse: extra.warehouse || 'Kho Tổng',
                         status: extra.status || 'Soạn hàng',
                         picking_date: extra.pickingDate || '{{ date("Y-m-d") }}',
                         items: (extra.items || []).map(it => {

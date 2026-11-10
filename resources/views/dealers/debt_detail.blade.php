@@ -161,8 +161,8 @@
                             
                             <!-- Kho xuất -->
                             <td class="py-2.5 px-3 text-slate-700">
-                                <div class="truncate max-w-[140px]" title="{{ $o->warehouse ?? 'Kho Tổng Mê Linh' }}">
-                                    {{ $o->warehouse ?? 'Kho Tổng Mê Linh' }}
+                                <div class="truncate max-w-[140px]" title="{{ $o->warehouse ?: 'Kho Tổng' }}">
+                                    {{ $o->warehouse ?: 'Kho Tổng' }}
                                 </div>
                             </td>
                             

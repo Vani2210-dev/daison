@@ -38,7 +38,7 @@ class InventoryAvailabilityService
             $whNameToId[mb_strtolower(trim($wh->code))] = $wh->id;
         }
 
-        $defaultWh = Warehouse::where('name', 'like', '%Mê Linh%')->first() ?: $warehouses->first();
+        $defaultWh = $warehouses->first();
         $defaultWhId = $defaultWh?->id ?? 1;
 
         $products = Product::all(['id', 'sku', 'unit', 'conversion_unit', 'conversion_rate'])->keyBy('id');
@@ -218,7 +218,7 @@ class InventoryAvailabilityService
             $exOrder = Order::with('items')->find($excludeOrderId);
             if ($exOrder && $exOrder->stock_deducted) {
                 $targetWh = Warehouse::where('name', $exOrder->warehouse)->orWhere('code', $exOrder->warehouse)->first()
-                    ?: Warehouse::where('name', 'like', '%Mê Linh%')->first();
+                    ?: Warehouse::first();
                 $targetWhId = $targetWh?->id;
 
                 foreach ($exOrder->items as $it) {

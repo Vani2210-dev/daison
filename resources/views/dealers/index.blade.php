@@ -70,7 +70,23 @@
                 <select name="tier" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all cursor-pointer">
                     <option value="">-- Tất cả cấp bậc --</option>
                     @php
-                        $customTiers = \App\Models\Dealer::whereNotNull('tier')->where('tier', '!=', '')->distinct()->orderBy('tier')->pluck('tier')->toArray();
+                        $fixTierMap = [
+                            'GT - Khách hàng L? l?n' => 'GT - Khách hàng Lẻ lớn',
+                            'GT - Khách hàng L? nh?' => 'GT - Khách hàng Lẻ nhỏ',
+                            'GT - Khách hàng S?' => 'GT - Khách hàng Sỉ',
+                        ];
+                        $rawTiers = \App\Models\Dealer::whereNotNull('tier')->where('tier', '!=', '')->distinct()->orderBy('tier')->pluck('tier')->toArray();
+                        $customTiers = [];
+                        foreach ($rawTiers as $rt) {
+                            $cleanT = $fixTierMap[$rt] ?? str_replace(
+                                ['Khách hàng L? l?n', 'Khách hàng L? nh?', 'Khách hàng S?'],
+                                ['Khách hàng Lẻ lớn', 'Khách hàng Lẻ nhỏ', 'Khách hàng Sỉ'],
+                                $rt
+                            );
+                            if (!in_array($cleanT, $customTiers)) {
+                                $customTiers[] = $cleanT;
+                            }
+                        }
                         if (empty($customTiers)) {
                             $customTiers = ['GT - Khách hàng Sỉ', 'GT - Khách hàng Lẻ lớn', 'GT - Khách hàng Lẻ nhỏ', 'Đại lý Cấp 1', 'Đại lý Cấp 2', 'Bán lẻ', 'Dự án', 'Thợ'];
                         }
@@ -141,7 +157,7 @@
                                 <!-- Header row: Code badge on left, Tier badge + pen on right -->
                                 <div class="flex items-center justify-between gap-2 mb-3">
                                     <span class="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-mono font-bold text-sky-700 bg-sky-50 border border-sky-200">
-                                        {{ $d->code ?? ('DL-HN-' . str_pad($d->id, 3, '0', STR_PAD_LEFT)) }}
+                                        {{ $d->code ?: ('DL-' . str_pad($d->id, 4, '0', STR_PAD_LEFT)) }}
                                     </span>
 
                                     <div class="flex items-center gap-1.5">
@@ -188,7 +204,7 @@
                                     <div class="flex items-center gap-1.5 text-slate-600 pt-0.5">
                                         <i class="fa-solid fa-user text-slate-400 text-[11px]"></i>
                                         <span>NV phụ trách:</span>
-                                        <span class="font-bold text-slate-800">{{ $d->salesRep?->name ?? 'Phạm Minh Tuấn' }}</span>
+                                        <span class="font-bold text-slate-800">{{ $d->salesRep?->name ?: 'Chưa phân công' }}</span>
                                     </div>
 
                                     <div class="text-slate-600 truncate pt-0.5" title="{{ $d->address }}">
@@ -223,7 +239,7 @@
                                         @if(count($oldParts) > 0)
                                             <span>{{ implode(', ', $oldParts) }}</span>
                                         @else
-                                            <span>—, {{ $d->district ?: ($d->city ?: 'Hà Nội') }}</span>
+                                            <span>{{ $d->district ? ($d->city ? $d->district . ', ' . $d->city : $d->district) : ($d->city ?: 'Chưa cập nhật') }}</span>
                                         @endif
                                     </div>
                                 </div>
@@ -310,7 +326,7 @@
                                 <a href="{{ url('/dealers/' . $d->id . '/edit') }}" class="font-extrabold text-slate-900 text-sm hover:text-purple-700 transition-colors">
                                     {{ $d->name }}
                                 </a>
-                                <div class="text-[10px] text-purple-700 font-mono font-bold">{{ $d->code ?? ('DL-HN-' . str_pad($d->id, 3, '0', STR_PAD_LEFT)) }}</div>
+                                <div class="text-[10px] text-purple-700 font-mono font-bold">{{ $d->code ?: ('DL-' . str_pad($d->id, 4, '0', STR_PAD_LEFT)) }}</div>
                             </td>
 
                             <td class="py-3.5 px-4 text-center">
@@ -335,7 +351,7 @@
                             </td>
 
                             <td class="py-3.5 px-4">
-                                <div class="font-bold text-slate-800">{{ $d->salesRep?->name ?? 'Phạm Minh Tuấn' }}</div>
+                                <div class="font-bold text-slate-800">{{ $d->salesRep?->name ?: 'Chưa phân công' }}</div>
                                 <div class="text-[10px] text-slate-400 truncate max-w-xs" title="{{ $d->address }}">{{ $d->address ?: 'Chưa có địa chỉ' }}</div>
                             </td>
 
@@ -353,7 +369,7 @@
                                     @endif
                                 </div>
                                 <div class="text-slate-400">
-                                    Cũ: {{ count($oldParts) > 0 ? implode(', ', $oldParts) : ($d->district ?: ($d->city ?: 'Hà Nội')) }}
+                                    Cũ: {{ count($oldParts) > 0 ? implode(', ', $oldParts) : ($d->district ? ($d->city ? $d->district . ', ' . $d->city : $d->district) : ($d->city ?: 'Chưa cập nhật')) }}
                                 </div>
                             </td>
 

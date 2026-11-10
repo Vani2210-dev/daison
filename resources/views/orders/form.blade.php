@@ -1902,7 +1902,7 @@ function orderFormApp() {
         dismissedPendingAlert: false,
         dealersData: [..._rawDealersData],
         warehousesCatalog: @json($warehouses ?? []),
-        mainCompanyWarehouse: '{{ $mainCompanyWarehouse ?? "Kho Tổng Mê Linh (MQ)" }}',
+        mainCompanyWarehouse: '{{ $mainCompanyWarehouse ?? ($warehouses->first()?->name ?? "Kho Tổng") }}',
         employeeWarehouse: '{{ $employeeWarehouse ?? "" }}',
         isDriverUser: false,
         productsCatalog: Object.freeze(_rawProductsCatalog),
@@ -1944,7 +1944,7 @@ function orderFormApp() {
                     customer_phone: '{{ $order ? addslashes($order->customer_phone) : "" }}',
                     customer_address: '{{ $order ? addslashes($order->customer_address) : "" }}',
                     dealer_tier: '{{ ($order && !empty($order->dealer_tier)) ? $order->dealer_tier : "Nguyên Giá" }}',
-                    warehouse: '{{ $order ? $order->warehouse : ((request("order_type") === "consignment") ? ($employeeWarehouse ?? "") : ($mainCompanyWarehouse ?? ($warehouses->first()?->name ?? "Kho Tổng Mê Linh (MQ)"))) }}',
+                    warehouse: '{{ $order ? $order->warehouse : ((request("order_type") === "consignment") ? ($employeeWarehouse ?? "") : ($mainCompanyWarehouse ?? ($warehouses->first()?->name ?? "Kho Tổng"))) }}',
                     payment_method: '{{ $order ? $order->payment_method : "Ghi nợ đại lý" }}',
                     status: '{{ $order ? $order->status : (request("order_type") === "backorder" ? "Giao sau" : "Chốt đơn") }}',
                     notes: '{{ $order ? addslashes(str_replace(["\r", "\n"], ["", "\\n"], $order->notes)) : "" }}',
@@ -2157,7 +2157,7 @@ function orderFormApp() {
                     customer_phone: '',
                     customer_address: '',
                     dealer_tier: 'Nguyên Giá',
-                    warehouse: this.mainCompanyWarehouse || 'Kho Tổng Mê Linh (MQ)',
+                    warehouse: this.mainCompanyWarehouse || 'Kho Tổng',
                     payment_method: 'Ghi nợ đại lý',
                     status: 'Chốt đơn',
                     notes: '',
@@ -3771,7 +3771,7 @@ function orderFormApp() {
                 }
             } else {
                 // Loại bình thường: mặc định kho xuất là kho tổng công ty
-                this.formData.warehouse = this.mainCompanyWarehouse || 'Kho Tổng Mê Linh (MQ)';
+                this.formData.warehouse = this.mainCompanyWarehouse || 'Kho Tổng';
             }
 
             if (this.formData.order_type === 'backorder') {

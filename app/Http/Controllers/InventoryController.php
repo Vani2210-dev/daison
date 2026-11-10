@@ -32,30 +32,27 @@ class InventoryController extends Controller
             }
 
             $stock = (float) $p->stock_quantity;
-            $mqStock = (float) round($stock * 0.55);
-            $mvqStock = (float) round($stock * 0.25);
-            $dxhStock = (float) round($stock * 0.15);
-            $blStock = (float) max(0.0, $stock - $mqStock - $mvqStock - $dxhStock);
-
-            $warehouseStocks = [
-                'Kho Tổng Mê Linh (MQ)' => $mqStock,
-                'KHO-MQ-01' => $mqStock,
-                'Kho Chi Nhánh Vân Quần (MVQ)' => $mvqStock,
-                'KHO-MVQ-01' => $mvqStock,
-                'Kho Chi Nhánh Đông Anh (DXH)' => $dxhStock,
-                'KHO-DXH-01' => $dxhStock,
-                'Kho Bảo Lưu & Kiểm Kê' => $blStock,
-                'KHO-BL-01' => $blStock,
-            ];
+            $warehouses = \App\Models\Warehouse::all();
+            $warehouseStocks = [];
+            if ($warehouses->isNotEmpty()) {
+                foreach ($warehouses as $wIdx => $wh) {
+                    $warehouseStocks[$wh->name] = ($wIdx === 0) ? (float)$stock : 0.0;
+                    if ($wh->code) {
+                        $warehouseStocks[$wh->code] = ($wIdx === 0) ? (float)$stock : 0.0;
+                    }
+                }
+            } else {
+                $warehouseStocks['Kho Tổng'] = (float)$stock;
+            }
 
             return [
                 'id' => (string) $p->id,
                 'sku' => $p->sku,
                 'name' => $p->name,
                 'taxName' => $p->tax_name ?? $p->name,
-                'category' => $p->category?->name ?? 'Ống nhựa PVC',
-                'subcategory' => $p->subcategory ?? 'Tiêu chuẩn',
-                'brand' => $p->brand?->name ?? 'Bình Minh',
+                'category' => $p->category?->name ?? '',
+                'subcategory' => $p->subcategory ?? '',
+                'brand' => $p->brand?->name ?? '',
                 'specification' => $p->specification ?? '',
                 'unit' => $p->unit,
                 'conversionUnit' => $p->conversion_unit,
@@ -71,7 +68,7 @@ class InventoryController extends Controller
                 'warehouseStocks' => $warehouseStocks,
                 'reservedQuantity' => (float) $p->reserved_quantity,
                 'minStockAlert' => (float) $p->min_stock_alert,
-                'location' => ($p->location && $p->location !== 'Kho Tổng') ? $p->location : 'Kho Tổng Mê Linh - Bãi Ngoài 02',
+                'location' => $p->location ?: 'Kho Tổng',
                 'qrCode' => $p->qr_code ?? $p->sku,
                 'updatedAt' => $p->updated_at ? $p->updated_at->format('Y-m-d') : date('Y-m-d'),
             ];
@@ -191,14 +188,14 @@ class InventoryController extends Controller
                     'code' => $t->code,
                     'type' => $t->type,
                     'date' => $t->created_at ? $t->created_at->format('Y-m-d') : date('Y-m-d'),
-                    'warehouse' => $t->warehouse?->name ?? 'Kho Tổng Mê Linh (MQ)',
+                    'warehouse' => $t->warehouse?->name ?? 'Kho Tổng',
                     'warehouseId' => (string) ($t->warehouse_id ?? ''),
                     'targetWarehouse' => $t->targetWarehouse?->name ?? '',
                     'targetWarehouseId' => (string) ($t->target_warehouse_id ?? ''),
-                    'sourceWh' => $t->warehouse?->name ?? 'Kho Tổng Mê Linh (MQ)',
+                    'sourceWh' => $t->warehouse?->name ?? 'Kho Tổng',
                     'targetWh' => $t->targetWarehouse?->name ?? '',
                     'supplier' => $t->supplier_name ?? '',
-                    'supplierAddress' => $t->warehouse?->address ?? 'Hà Nội',
+                    'supplierAddress' => $t->warehouse?->address ?? '',
                     'customer' => $t->supplier_name ?? '',
                     'totalAmount' => (float) $t->total_amount,
                     'paymentMethod' => 'Chuyển khoản',
@@ -278,7 +275,7 @@ class InventoryController extends Controller
             'price_tiers'       => $priceTiers,
             'stock_quantity'    => (float) ($request->input('stockQuantity') ?: 0),
             'min_stock_alert'   => (float) ($request->input('minStockAlert') ?: 10),
-            'location'          => $request->input('location') ?: 'Kho Tổng Mê Linh',
+            'location'          => $request->input('location') ?: 'Kho Tổng',
         ];
 
         if ($id && is_numeric($id)) {

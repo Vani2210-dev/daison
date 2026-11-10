@@ -102,7 +102,7 @@ class AttendanceController extends Controller
         $record->check_in_time = $now;
         $record->check_in_lat = $request->input('lat');
         $record->check_in_lng = $request->input('lng');
-        $record->check_in_address = $request->input('address', 'Chi nhánh Mê Linh');
+        $record->check_in_address = $request->input('address') ?: 'Văn phòng';
         $record->selfie_url = $request->input('selfieUrl');
         $record->status = 'Đúng giờ';
         $record->notes = $request->input('notes');

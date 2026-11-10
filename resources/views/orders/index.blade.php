@@ -420,7 +420,7 @@
             'customer' => $o->dealer?->name ?? $o->customer_name ?? '',
             'phone' => $o->customer_phone ?: ($o->dealer?->phone ?: ''),
             'address' => $o->customer_address ?: ($o->dealer?->address ?: ''),
-            'warehouse' => $o->warehouse ?: 'Kho Tổng Mê Linh (MQ)',
+            'warehouse' => $o->warehouse ?: 'Kho Tổng',
             'total' => (float)$o->total_amount,
             'status' => $o->status ?: 'Báo giá',
             'creator' => $o->order_creator ?: ($o->creator?->name ?? ''),
@@ -881,12 +881,12 @@
                             $orderCode = $order->order_code;
                             $isProject = $order->order_type === 'project';
                             $createdDate = $order->created_at ? $order->created_at->format('Y-m-d') : date('Y-m-d');
-                            $whName = $order->warehouse ?: 'Kho Tổng Mê Linh (MQ)';
-                            $customerName = $order->dealer?->name ?? $order->customer_name ?? 'Đại lý phân phối';
-                            $customerAddr = $order->customer_address ?: ($order->dealer?->address ?: 'Khối 7, Phường Vinh Hưng, Tỉnh Nghệ An');
+                            $whName = $order->warehouse ?: 'Kho Tổng';
+                            $customerName = $order->dealer?->name ?? $order->customer_name ?? 'Khách hàng';
+                            $customerAddr = $order->customer_address ?: ($order->dealer?->address ?: 'Chưa cập nhật địa chỉ');
                             $totalAmtFormatted = number_format($order->total_amount, 0, ',', '.') . ' đ';
                             $payMethod = $order->payment_method ?: 'Ghi nợ đại lý';
-                            $creator = $order->order_creator ?: ($order->creator?->name ?? 'Admin KBTech');
+                            $creator = $order->order_creator ?: ($order->creator?->name ?? 'Hệ thống');
                             $st = $order->status ?: 'Báo giá';
                             $isBackOrder = in_array($st, ['Giao sau', 'Đơn giao sau', 'Nợ hàng', 'Đã đủ hàng']) || ($order->order_type === 'backorder');
                             $isReadyBackOrder = ($isBackOrder && ($order->backorder_status === 'ready_to_deliver' || $order->status === 'Đã đủ hàng'));
