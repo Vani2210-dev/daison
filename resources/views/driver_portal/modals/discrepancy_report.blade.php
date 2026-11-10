@@ -138,42 +138,137 @@
                     </div>
                 </div>
 
-                <!-- 3. Chọn Mặt Hàng Bị Lệch -->
+                <!-- 3. Tìm & Chọn Mặt Hàng Bị Lệch -->
                 <div>
                     <div class="flex items-center justify-between mb-1">
-                        <label class="font-bold text-slate-700 text-xs">
-                            Sản phẩm bị lệch <span class="text-rose-500">*</span>
+                        <label class="font-bold text-slate-700 text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-boxes-stacked text-amber-600"></i>
+                            <span>Sản phẩm bị lệch <span class="text-rose-500">*</span></span>
                         </label>
-                        <template x-if="discrepancyOrderItems.length > 0">
-                            <span class="text-[10px] text-slate-400 font-normal" x-text="discrepancyOrderItems.length + ' SP trong đơn'"></span>
-                        </template>
+                        <span class="text-[10.5px] text-slate-400 font-normal">
+                            Tìm theo tên, mã SKU
+                        </span>
                     </div>
 
-                    <!-- Dropdown danh sách SP trong đơn -->
-                    <template x-if="discrepancyOrderItems.length > 0">
-                        <select @change="onDiscrepancyItemSelect($event.target.value)"
-                                class="w-full px-3 py-2 bg-slate-50 focus:bg-white border border-slate-300 rounded-xl font-bold text-slate-800 outline-none focus:border-amber-500 transition-all cursor-pointer text-xs mb-1.5">
-                            <option value="">-- Chọn mặt hàng từ danh sách đơn --</option>
-                            <template x-for="item in discrepancyOrderItems" :key="item.id || item.sku">
-                                <option :value="item.sku || item.product_id" x-text="item.name + ' (' + item.quantity + ' ' + (item.unit || 'ĐVT') + ')'"></option>
-                            </template>
-                        </select>
+                    <!-- TH 1: Đã chọn sản phẩm -> Hiển thị thẻ tóm tắt + nút Đổi SP -->
+                    <template x-if="discrepancyForm.product_name">
+                        <div class="p-2 sm:p-2.5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-xl flex items-center justify-between gap-2 shadow-2xs">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <template x-if="discrepancyForm.sku">
+                                        <span class="font-mono font-bold text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded" x-text="discrepancyForm.sku"></span>
+                                    </template>
+                                    <span class="font-black text-slate-900 text-xs sm:text-sm truncate" x-text="discrepancyForm.product_name"></span>
+                                </div>
+                                <div class="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                    <span>ĐVT: <strong class="text-slate-700 uppercase" x-text="discrepancyForm.unit || 'ĐVT'"></strong></span>
+                                    <span>•</span>
+                                    <span>Theo phiếu kiểm: <strong class="text-slate-800" x-text="discrepancyForm.expected_qty"></strong></span>
+                                    <template x-if="discrepancyForm.order_code">
+                                        <span>• Đơn: <strong class="text-purple-700 font-mono" x-text="discrepancyForm.order_code"></strong></span>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <button type="button" @click="clearDiscrepancyProduct()" 
+                                    class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-bold text-[11px] border border-slate-300 shadow-2xs shrink-0 cursor-pointer flex items-center gap-1">
+                                <i class="fa-solid fa-magnifying-glass text-amber-600 text-xs"></i>
+                                <span>Đổi SP</span>
+                            </button>
+                        </div>
                     </template>
 
-                    <!-- Nhập tên SP và thông tin bổ trợ gọn gàng -->
-                    <div class="space-y-1.5">
-                        <input type="text" x-model="discrepancyForm.product_name"
-                               placeholder="Tên sản phẩm thực tế bị lệch..."
-                               class="w-full px-3 py-1.5 sm:py-2 bg-slate-50 focus:bg-white border border-slate-300 rounded-xl font-bold text-slate-800 outline-none focus:border-amber-500 transition-all text-xs">
-
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="text" x-model="discrepancyForm.sku"
-                                   placeholder="Mã SKU (nếu có)..."
-                                   class="px-3 py-1.5 bg-slate-50 focus:bg-white border border-slate-300 rounded-xl font-mono text-[11px] text-slate-700 outline-none focus:border-amber-500 transition-all">
-                            <input type="text" x-model="discrepancyForm.unit"
-                                   placeholder="ĐVT (Thùng, Hộp...)"
-                                   class="px-3 py-1.5 bg-slate-50 focus:bg-white border border-slate-300 rounded-xl text-[11px] text-slate-700 outline-none focus:border-amber-500 transition-all">
+                    <!-- TH 2: Chưa chọn hoặc đang tìm kiếm -> Khung tìm kiếm thông minh -->
+                    <div x-show="!discrepancyForm.product_name" class="relative">
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                            <input type="text" 
+                                   id="discrepancy-product-search-input"
+                                   x-model="discrepancyProductSearch"
+                                   @focus="showDiscrepancyProductDropdown = true"
+                                   @input="searchDiscrepancyProductsDebounced()"
+                                   placeholder="Gõ tên hoặc mã SKU để tìm sản phẩm..."
+                                   class="w-full pl-8 pr-8 py-2 bg-slate-50 focus:bg-white border-2 border-amber-400 rounded-xl font-bold text-slate-800 outline-none focus:border-amber-600 transition-all text-xs shadow-2xs">
+                            
+                            <template x-if="discrepancyProductSearch">
+                                <button type="button" @click="discrepancyProductSearch = ''; remoteDiscrepancyProducts = []"
+                                        class="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer text-sm">
+                                    &times;
+                                </button>
+                            </template>
                         </div>
+
+                        <!-- Dropdown Menu Danh Sách Kết Quả Tìm Kiếm -->
+                        <div x-show="showDiscrepancyProductDropdown" 
+                             @click.outside="showDiscrepancyProductDropdown = false"
+                             class="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-2xl border border-slate-200 z-[100] max-h-56 overflow-y-auto divide-y divide-slate-100 text-xs scrollbar-thin">
+                            
+                            <template x-if="isSearchingDiscrepancyProducts">
+                                <div class="p-3 text-center text-slate-400 flex items-center justify-center gap-2 text-[11px]">
+                                    <i class="fa-solid fa-spinner fa-spin text-amber-600"></i>
+                                    <span>Đang tìm kiếm sản phẩm...</span>
+                                </div>
+                            </template>
+
+                            <!-- Danh sách sản phẩm gợi ý / lọc được -->
+                            <template x-for="(p, pIdx) in filteredDiscrepancyProducts" :key="pIdx">
+                                <div @click="selectDiscrepancyProduct(p)"
+                                     class="p-2 sm:p-2.5 hover:bg-amber-50/70 transition-colors cursor-pointer flex items-center justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <template x-if="p.sku">
+                                                <span class="font-mono font-bold text-[9.5px] px-1 py-0.2 rounded bg-slate-100 text-slate-700" x-text="p.sku"></span>
+                                            </template>
+                                            <span class="font-bold text-slate-900 truncate" x-text="p.name"></span>
+                                        </div>
+                                        <div class="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                            <span>ĐVT: <strong class="text-slate-700 uppercase" x-text="p.unit || 'ĐVT'"></strong></span>
+                                            <template x-if="p.is_current_order">
+                                                <span class="text-emerald-700 font-bold bg-emerald-50 px-1 rounded">Trong đơn này (SL: <span x-text="p.expected_qty"></span>)</span>
+                                            </template>
+                                            <template x-if="!p.is_current_order && p.order_code">
+                                                <span class="text-purple-700 font-mono">Đơn: <span x-text="p.order_code"></span> (<span x-text="p.customer_name"></span>)</span>
+                                            </template>
+                                            <template x-if="p.is_remote">
+                                                <span class="text-sky-700 bg-sky-50 px-1 rounded">Kho công ty</span>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <div class="shrink-0 text-right">
+                                        <span class="px-2 py-1 rounded-lg bg-amber-100 text-amber-900 font-bold text-[10px] hover:bg-amber-200">
+                                            Chọn
+                                        </span>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Tùy chọn tự nhập tên nếu không tìm thấy trong hệ thống -->
+                            <template x-if="discrepancyProductSearch && discrepancyProductSearch.trim()">
+                                <div @click="selectCustomDiscrepancyProduct(discrepancyProductSearch)"
+                                     class="p-2.5 bg-slate-50 hover:bg-slate-100 text-amber-800 font-bold cursor-pointer flex items-center gap-2 text-[11px] border-t border-slate-200">
+                                    <i class="fa-solid fa-plus-circle text-amber-600"></i>
+                                    <span>Chọn tên tự nhập: "<strong x-text="discrepancyProductSearch"></strong>"</span>
+                                </div>
+                            </template>
+
+                            <!-- Khi chưa có sản phẩm nào -->
+                            <template x-if="!isSearchingDiscrepancyProducts && filteredDiscrepancyProducts.length === 0 && !discrepancyProductSearch">
+                                <div class="p-3 text-center text-slate-400 text-xs italic">
+                                    Gõ tên hoặc mã SKU để tìm sản phẩm...
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Tùy chỉnh nhanh SKU và ĐVT (nếu cần chỉnh sửa sau khi chọn) -->
+                    <div x-show="discrepancyForm.product_name" class="grid grid-cols-2 gap-2 mt-1.5">
+                        <input type="text" x-model="discrepancyForm.sku"
+                               placeholder="Mã SKU (nếu có)..."
+                               class="px-3 py-1.5 bg-slate-50 focus:bg-white border border-slate-300 rounded-xl font-mono text-[11px] text-slate-700 outline-none focus:border-amber-500 transition-all">
+                        <input type="text" x-model="discrepancyForm.unit"
+                               placeholder="ĐVT (Thùng, Hộp...)"
+                               class="px-3 py-1.5 bg-slate-50 focus:bg-white border border-slate-300 rounded-xl text-[11px] text-slate-700 outline-none focus:border-amber-500 transition-all">
                     </div>
                 </div>
 

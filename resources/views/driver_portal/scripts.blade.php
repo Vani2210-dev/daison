@@ -49,6 +49,82 @@ function deliveryExecutionApp() {
             base64_images: [],
             isSubmitting: false
         },
+        discrepancyProductSearch: '',
+        showDiscrepancyProductDropdown: false,
+        remoteDiscrepancyProducts: [],
+        isSearchingDiscrepancyProducts: false,
+        discrepancySearchTimeout: null,
+
+        get filteredDiscrepancyProducts() {
+            const q = (this.discrepancyProductSearch || '').toLowerCase().trim();
+            const currentOrderId = this.discrepancyForm.order_id ? String(this.discrepancyForm.order_id) : '';
+
+            // 1. Items thuộc đơn hàng đang chọn
+            let orderItems = [];
+            if (currentOrderId) {
+                const ord = (this.orders || []).find(o => String(o.id) === currentOrderId);
+                if (ord && ord.items) {
+                    orderItems = ord.items.map(it => ({
+                        product_id: it.product_id || it.id,
+                        sku: it.sku || '',
+                        name: it.name || it.product_name,
+                        unit: it.unit || 'ĐVT',
+                        expected_qty: Number(it.quantity || 0),
+                        order_id: ord.id,
+                        order_code: ord.order_code,
+                        customer_name: ord.customer_name,
+                        is_current_order: true
+                    }));
+                }
+            }
+
+            // 2. Items thuộc các đơn khác trên xe
+            let otherTripItems = [];
+            (this.orders || []).forEach(o => {
+                if (String(o.id) !== currentOrderId) {
+                    (o.items || []).forEach(it => {
+                        otherTripItems.push({
+                            product_id: it.product_id || it.id,
+                            sku: it.sku || '',
+                            name: it.name || it.product_name,
+                            unit: it.unit || 'ĐVT',
+                            expected_qty: Number(it.quantity || 0),
+                            order_id: o.id,
+                            order_code: o.order_code,
+                            customer_name: o.customer_name,
+                            is_current_order: false
+                        });
+                    });
+                }
+            });
+
+            // Nếu không gõ từ khóa, hiển thị items của đơn đang chọn hoặc tối đa 20 items trên xe
+            if (!q) {
+                return orderItems.length > 0 ? orderItems : otherTripItems.slice(0, 20);
+            }
+
+            const match = (it) => {
+                return (it.name && it.name.toLowerCase().includes(q)) ||
+                       (it.sku && it.sku.toLowerCase().includes(q)) ||
+                       (it.order_code && it.order_code.toLowerCase().includes(q)) ||
+                       (it.customer_name && it.customer_name.toLowerCase().includes(q));
+            };
+
+            const filteredOrder = orderItems.filter(match);
+            const filteredOther = otherTripItems.filter(match);
+
+            // Remote catalog items từ API (loại trừ nếu đã có trong list xe)
+            const remote = (this.remoteDiscrepancyProducts || []).map(p => ({
+                product_id: p.id,
+                sku: p.sku || '',
+                name: p.name,
+                unit: p.unit || 'ĐVT',
+                expected_qty: 0,
+                is_remote: true
+            })).filter(rp => !filteredOrder.some(o => o.sku && o.sku === rp.sku) && !filteredOther.some(o => o.sku && o.sku === rp.sku));
+
+            return [...filteredOrder, ...filteredOther, ...remote];
+        },
 
         get discrepancySelectedOrder() {
             if (!this.discrepancyForm.order_id) return null;
@@ -1736,6 +1812,9 @@ function deliveryExecutionApp() {
         openDiscrepancyModal(order = null) {
             this.showDiscrepancyModal = true;
             this.discrepancyTab = 'create';
+            this.discrepancyProductSearch = '';
+            this.showDiscrepancyProductDropdown = false;
+            this.remoteDiscrepancyProducts = [];
             this.discrepancyForm = {
                 order_id: order ? String(order.id) : '',
                 order_code: order ? order.order_code : '',
@@ -1767,6 +1846,9 @@ function deliveryExecutionApp() {
             this.discrepancyForm.expected_qty = 0;
             this.discrepancyForm.actual_qty = 0;
             this.discrepancyForm.difference_qty = 0;
+            this.discrepancyProductSearch = '';
+            this.showDiscrepancyProductDropdown = false;
+            this.remoteDiscrepancyProducts = [];
             if (ord && ord.items && ord.items.length > 0) {
                 const first = ord.items[0];
                 this.onDiscrepancyItemSelect(first.sku || first.product_id);
@@ -1778,20 +1860,96 @@ function deliveryExecutionApp() {
             const items = this.discrepancyOrderItems;
             const item = items.find(it => String(it.sku) === String(key) || String(it.product_id) === String(key));
             if (item) {
-                this.discrepancyForm.product_id = item.product_id || '';
-                this.discrepancyForm.sku = item.sku || '';
-                this.discrepancyForm.product_name = item.name || '';
-                this.discrepancyForm.unit = item.unit || 'ĐVT';
-                this.discrepancyForm.expected_qty = Number(item.quantity || 0);
-                if (this.discrepancyForm.discrepancy_type === 'shortage') {
-                    this.discrepancyForm.actual_qty = Math.max(0, this.discrepancyForm.expected_qty - 1);
-                } else if (this.discrepancyForm.discrepancy_type === 'excess') {
-                    this.discrepancyForm.actual_qty = this.discrepancyForm.expected_qty + 1;
-                } else {
-                    this.discrepancyForm.actual_qty = this.discrepancyForm.expected_qty;
-                }
-                this.calcDiscrepancyDiff();
+                this.selectDiscrepancyProduct({
+                    ...item,
+                    product_id: item.product_id || item.id,
+                    expected_qty: Number(item.quantity || 0)
+                });
             }
+        },
+
+        searchDiscrepancyProductsDebounced() {
+            this.showDiscrepancyProductDropdown = true;
+            if (this.discrepancySearchTimeout) clearTimeout(this.discrepancySearchTimeout);
+            const q = (this.discrepancyProductSearch || '').trim();
+            if (q.length >= 2) {
+                this.discrepancySearchTimeout = setTimeout(() => {
+                    this.fetchRemoteDiscrepancyProducts(q);
+                }, 300);
+            } else {
+                this.remoteDiscrepancyProducts = [];
+            }
+        },
+
+        async fetchRemoteDiscrepancyProducts(q) {
+            this.isSearchingDiscrepancyProducts = true;
+            try {
+                const res = await fetch('/api/inventory/search-products?q=' + encodeURIComponent(q));
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data)) {
+                        this.remoteDiscrepancyProducts = data;
+                    } else if (data && Array.isArray(data.products)) {
+                        this.remoteDiscrepancyProducts = data.products;
+                    }
+                }
+            } catch (_) {}
+            finally {
+                this.isSearchingDiscrepancyProducts = false;
+            }
+        },
+
+        selectDiscrepancyProduct(item) {
+            if (!item) return;
+            this.discrepancyForm.product_name = item.name || '';
+            this.discrepancyForm.sku = item.sku || '';
+            this.discrepancyForm.product_id = item.product_id || item.id || '';
+            this.discrepancyForm.unit = item.unit || 'ĐVT';
+
+            if (item.order_id) {
+                this.discrepancyForm.order_id = String(item.order_id);
+                this.discrepancyForm.order_code = item.order_code || '';
+                this.discrepancyForm.expected_qty = Number(item.expected_qty || 0);
+            } else {
+                this.discrepancyForm.expected_qty = Number(item.expected_qty || 0);
+            }
+
+            if (this.discrepancyForm.discrepancy_type === 'shortage') {
+                this.discrepancyForm.actual_qty = Math.max(0, this.discrepancyForm.expected_qty - 1);
+            } else if (this.discrepancyForm.discrepancy_type === 'excess') {
+                this.discrepancyForm.actual_qty = this.discrepancyForm.expected_qty + 1;
+            } else {
+                this.discrepancyForm.actual_qty = this.discrepancyForm.expected_qty;
+            }
+
+            this.calcDiscrepancyDiff();
+            this.discrepancyProductSearch = '';
+            this.showDiscrepancyProductDropdown = false;
+        },
+
+        clearDiscrepancyProduct() {
+            this.discrepancyForm.product_name = '';
+            this.discrepancyForm.sku = '';
+            this.discrepancyForm.product_id = '';
+            this.discrepancyForm.expected_qty = 0;
+            this.discrepancyForm.actual_qty = 0;
+            this.discrepancyForm.difference_qty = 0;
+            this.discrepancyProductSearch = '';
+            this.showDiscrepancyProductDropdown = true;
+            this.$nextTick(() => {
+                const el = document.getElementById('discrepancy-product-search-input');
+                if (el) el.focus();
+            });
+        },
+
+        selectCustomDiscrepancyProduct(name) {
+            if (!name || !name.trim()) return;
+            this.discrepancyForm.product_name = name.trim();
+            this.discrepancyForm.expected_qty = 0;
+            this.discrepancyForm.actual_qty = 1;
+            this.calcDiscrepancyDiff();
+            this.discrepancyProductSearch = '';
+            this.showDiscrepancyProductDropdown = false;
         },
 
         calcDiscrepancyDiff() {
