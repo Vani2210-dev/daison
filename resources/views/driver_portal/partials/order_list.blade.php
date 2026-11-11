@@ -34,10 +34,10 @@
                         </div>
                     </div>
 
-                    <!-- Dòng 2: Trạng thái thanh toán (Trái) & Cụm nút Báo lệch / Chuyển xe (Phải) -->
+                    <!-- Dòng 2: Trạng thái thanh toán (Trái) & Nút Chuyển xe (Phải) -->
                     <div class="flex items-center justify-between gap-2 text-xs">
                         <div class="flex items-center gap-1.5 min-w-0">
-                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] sm:text-[11px] font-semibold border shrink-0"
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] sm:text-[11px] font-semibold border shrink-0"
                                   :class="getPaymentBadgeClass(order.payment_status)">
                                 <i class="fa-regular fa-clock text-[9px]"></i>
                                 <span x-text="order.payment_status || 'Chưa thu tiền'"></span>
@@ -50,22 +50,11 @@
                             </template>
                         </div>
 
-                        <!-- Cụm Nút Phụ: Báo lệch & Chuyển xe -->
+                        <!-- Nút Chuyển xe (Nằm độc lập bên phải, không chen chúc với trạng thái tiền) -->
                         <div class="flex items-center gap-1.5 shrink-0">
-                            <!-- Nút Báo lệch -->
-                            <template x-if="!isOrderCompleted(order) && isDeparted && order.status !== 'Không thành công' && order.status !== 'Đã hoàn kho' && order.status !== 'Chờ thủ kho duyệt hoàn'">
-                                <button type="button" @click="openDiscrepancyModal(order)"
-                                        class="px-2 py-0.5 rounded-lg text-amber-800 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
-                                        title="Báo thừa/thiếu hàng phát hiện trên xe tới người kiểm hàng">
-                                    <i class="fa-solid fa-scale-unbalanced text-amber-600 text-[10px]"></i>
-                                    <span>Báo lệch</span>
-                                </button>
-                            </template>
-
-                            <!-- Nút Chuyển xe -->
                             <template x-if="!isOrderCompleted(order) && order.status !== 'Không thành công' && order.status !== 'Đã hoàn kho' && !transfers.some(t => t.order_id == order.id && t.status === 'pending')">
                                 <button type="button" @click="openTransferModal(order)"
-                                        class="px-2 py-0.5 rounded-lg text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                                        class="px-2.5 py-0.5 rounded-lg text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
                                         title="Điều chuyển đơn hàng sang xe khác">
                                     <i class="fa-solid fa-right-left text-indigo-600 text-[10px]"></i>
                                     <span>Chuyển xe</span>
@@ -80,7 +69,7 @@
                         <template x-if="order.status === 'Không thành công'">
                             <div class="pt-1">
                                 <button type="button" @click="returnFailedOrderToWarehouse(order)"
-                                        class="w-full py-2 px-3 rounded-xl font-black text-xs text-amber-950 bg-gradient-to-r from-amber-200 to-amber-300 hover:from-amber-300 hover:to-amber-400 border border-amber-400/80 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-98">
+                                        class="w-full h-[36px] px-3 rounded-xl font-black text-xs text-amber-950 bg-gradient-to-r from-amber-200 to-amber-300 hover:from-amber-300 hover:to-amber-400 border border-amber-400/80 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-98">
                                     <i class="fa-solid fa-boxes-packing text-amber-800 text-xs"></i>
                                     <span>Hoàn hàng vào kho</span>
                                 </button>
@@ -91,7 +80,7 @@
                         <template x-if="isOrderCompleted(order) && (order.payment_status === 'Ghi nợ đại lý' || Number(order.driver_debt_amount || 0) > 0)">
                             <div class="pt-1">
                                 <template x-if="order.is_debt_handed_over">
-                                    <div class="py-1.5 px-2 rounded-xl text-center text-[11px] font-bold border flex items-center justify-center gap-1 shadow-2xs select-none"
+                                    <div class="h-[36px] px-2 rounded-xl text-center text-[11px] font-bold border flex items-center justify-center gap-1 shadow-2xs select-none"
                                          :class="order.debt_handover_info?.status === 'confirmed' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-amber-50 text-amber-800 border-amber-300'">
                                         <i class="fa-solid fa-check text-emerald-600" x-show="order.debt_handover_info?.status === 'confirmed'"></i>
                                         <i class="fa-solid fa-clock text-amber-600" x-show="order.debt_handover_info?.status !== 'confirmed'"></i>
@@ -100,7 +89,7 @@
                                 </template>
                                 <template x-if="!order.is_debt_handed_over">
                                     <button type="button" @click="openDebtHandoverModal(order)"
-                                            class="w-full py-2 px-3 rounded-xl font-bold text-xs text-purple-800 bg-purple-100 hover:bg-purple-200 border border-purple-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-98">
+                                            class="w-full h-[36px] px-3 rounded-xl font-bold text-xs text-purple-800 bg-purple-100 hover:bg-purple-200 border border-purple-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-98">
                                         <i class="fa-solid fa-share-from-square text-purple-700 text-xs"></i>
                                         <span>Bàn giao công nợ cho Kế toán</span>
                                     </button>
@@ -112,20 +101,26 @@
                         <template x-if="!isOrderCompleted(order) && !isDeparted && !isOrderChecked(order)">
                             <div class="pt-1">
                                 <button type="button" @click="quickConfirmChecked(order)"
-                                        class="w-full py-2 px-3 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs">
+                                        class="w-full h-[36px] px-3 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs">
                                     <i class="fa-solid fa-check text-emerald-700 text-xs"></i>
                                     <span>Xác nhận đã kiểm hàng</span>
                                 </button>
                             </div>
                         </template>
 
-                        <!-- 4. Khi xe đã xuất bến và đang đi giao: Nút Giao Đơn Này (To, nổi bật, full-width) -->
+                        <!-- 4. Khi xe đã xuất bến và đang đi giao: Báo lệch & Giao Đơn Này (Ngang hàng, không gãy chữ) -->
                         <template x-if="!isOrderCompleted(order) && isDeparted && order.status !== 'Không thành công' && order.status !== 'Đã hoàn kho' && order.status !== 'Chờ thủ kho duyệt hoàn'">
-                            <div class="pt-1">
+                            <div class="flex items-center gap-2 pt-1">
+                                <button type="button" @click="openDiscrepancyModal(order)"
+                                        class="h-[36px] px-2.5 rounded-xl text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                                        title="Báo thừa/thiếu hàng phát hiện trên xe tới người kiểm hàng">
+                                    <i class="fa-solid fa-scale-unbalanced text-amber-600 text-xs"></i>
+                                    <span>Báo lệch</span>
+                                </button>
                                 <a :href="'/delivery/orders/' + order.id + '/confirm'"
-                                   class="w-full py-2.5 px-3 rounded-xl font-black text-xs sm:text-sm text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-800 shadow-md shadow-purple-600/25 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98">
+                                   class="flex-1 h-[36px] px-3 rounded-xl font-black text-xs sm:text-sm text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-800 shadow-md shadow-purple-600/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98">
                                     <i class="fa-solid fa-truck-ramp-box text-xs sm:text-sm"></i>
-                                    <span>Giao Đơn Này (Xác nhận)</span>
+                                    <span>Giao Đơn Này</span>
                                 </a>
                             </div>
                         </template>
