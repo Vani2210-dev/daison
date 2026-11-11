@@ -817,14 +817,13 @@
                 <!-- ======================================================== -->
                 <template x-if="confirmForm.isDebt || confirmForm.paymentMethod === 'Ghi nợ'">
                     <div class="space-y-4">
-                        <!-- Bảng Chi Tiết Biến Động Công Nợ Đại Lý -->
-                        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5 text-xs">
-                            <div class="font-black text-slate-800 pb-2 border-b border-slate-200 flex items-center justify-between">
+                        <!-- Bảng Chi Tiết Biến Động Công Nợ Đại Lý (Hiện khi phát hiện vượt hạn mức) -->
+                        <div x-show="isOverLimit" class="p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                            <div class="font-black text-slate-800 pb-1.5 border-b border-slate-200 flex items-center justify-between">
                                 <span class="flex items-center gap-1.5">
                                     <i class="fa-solid fa-chart-line text-purple-600"></i>
                                     <span>Dự Tính Biến Động Sổ Nợ Đại Lý</span>
                                 </span>
-                                <span class="text-[10px] font-mono text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md whitespace-nowrap shrink-0">{{ $custCode }}</span>
                             </div>
 
                             <div class="flex items-center justify-between">
@@ -1140,56 +1139,81 @@
                             </div>
                         </div>
 
-                        <!-- Trường hợp bình thường (không vượt hạn mức): Banner ghi nợ thông thường -->
-                        <div x-show="!isOverLimit" class="p-4 sm:p-5 bg-gradient-to-br from-purple-900 via-indigo-900 to-slate-900 rounded-2xl text-white space-y-3 shadow-md">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-xl bg-purple-500/30 border border-purple-400/40 text-purple-200 flex items-center justify-center font-bold text-lg shrink-0">
-                                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                        <!-- THẺ TỔNG HỢP GHI NỢ SỔ ĐẠI LÝ (TINH GỌN, KHÔNG TRÙNG LẶP) -->
+                        <div x-show="!isOverLimit" class="p-3.5 sm:p-4 bg-gradient-to-br from-purple-900 via-indigo-950 to-slate-900 rounded-2xl text-white space-y-2.5 shadow-md">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-xl bg-purple-500/30 border border-purple-400/40 text-purple-200 flex items-center justify-center font-bold text-sm shrink-0">
+                                        <i class="fa-solid fa-file-invoice-dollar"></i>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] text-purple-300 font-bold uppercase tracking-wider block">Chế độ thanh toán</span>
+                                        <h4 class="font-black text-xs sm:text-sm text-white">KÝ NỢ TOÀN BỘ VÀO SỔ ĐẠI LÝ</h4>
+                                    </div>
                                 </div>
-                                <div>
-                                    <span class="text-[10px] text-purple-300 font-bold tracking-wider uppercase block">Chế độ thanh toán</span>
-                                    <h4 class="font-black text-sm text-white">KÝ NỢ TOÀN BỘ VÀO SỔ ĐẠI LÝ</h4>
+                                <div class="text-right">
+                                    <span class="text-[10px] text-purple-300 block">Tiền nợ đơn này</span>
+                                    <strong class="font-mono text-base font-black text-amber-300" x-text="formatNumber(confirmForm.finalAmount) + ' đ'"></strong>
                                 </div>
                             </div>
-                            <p class="text-xs text-purple-200/90 leading-relaxed">
-                                Lái xe giao hàng và nhận biên bản ký nhận từ đại lý <strong class="text-white">{{ $custName }}</strong>.
-                                Không thu tiền mặt tại điểm giao.
+
+                            <p class="text-[11px] text-purple-200/90 leading-relaxed border-t border-purple-800/60 pt-2">
+                                Lái xe nhận biên bản ký nhận từ đại lý. Không thu tiền mặt tại điểm giao.
                             </p>
-                            <div class="pt-2 border-t border-purple-800/80 flex items-center justify-between text-xs">
-                                <span class="text-purple-300">Tiền ghi nợ đơn này:</span>
-                                <strong class="font-mono text-base font-black text-amber-300" x-text="formatNumber(confirmForm.finalAmount) + ' đ'"></strong>
+
+                            <!-- Bảng thông số biến động sổ nợ dạng 2x2 grid hiện đại -->
+                            <div class="p-2.5 rounded-xl bg-white/5 border border-white/10 grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                    <span class="text-purple-300 text-[10px] block">• Nợ cũ trước đơn:</span>
+                                    <span class="font-mono font-bold text-white text-xs">{{ number_format($prevDebt, 0, ',', '.') }} đ</span>
+                                </div>
+                                <div>
+                                    <span class="text-purple-300 text-[10px] block">• Hạn mức cho phép:</span>
+                                    <span class="font-mono font-semibold text-purple-200 text-xs">{{ number_format($cLimit, 0, ',', '.') }} đ</span>
+                                </div>
+                                <div class="pt-1.5 border-t border-white/10">
+                                    <span class="text-purple-300 text-[10px] block">→ Tổng nợ mới sau giao:</span>
+                                    <span class="font-mono font-black text-emerald-300 text-xs sm:text-sm" x-text="formatNumber({{ $prevDebt }} + Number(confirmForm.finalAmount || 0)) + ' đ'"></span>
+                                </div>
+                                <div class="pt-1.5 border-t border-white/10">
+                                    <span class="text-purple-300 text-[10px] block">• Trạng thái:</span>
+                                    <span class="inline-flex items-center gap-1 font-bold text-emerald-400 text-xs">
+                                        <i class="fa-solid fa-circle-check text-[10px]"></i>
+                                        <span>Trong hạn mức</span>
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         @else
-                        <!-- Không có credit limit: Banner ghi nợ thông thường -->
-                        <div class="p-4 sm:p-5 bg-gradient-to-br from-purple-900 via-indigo-900 to-slate-900 rounded-2xl text-white space-y-3 shadow-md">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-xl bg-purple-500/30 border border-purple-400/40 text-purple-200 flex items-center justify-center font-bold text-lg shrink-0">
-                                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                        <!-- Không có credit limit: Thẻ ghi nợ tinh gọn -->
+                        <div class="p-3.5 sm:p-4 bg-gradient-to-br from-purple-900 via-indigo-950 to-slate-900 rounded-2xl text-white space-y-2.5 shadow-md">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-xl bg-purple-500/30 border border-purple-400/40 text-purple-200 flex items-center justify-center font-bold text-sm shrink-0">
+                                        <i class="fa-solid fa-file-invoice-dollar"></i>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] text-purple-300 font-bold tracking-wider uppercase block">Chế độ thanh toán</span>
+                                        <h4 class="font-black text-xs sm:text-sm text-white">KÝ NỢ TOÀN BỘ VÀO SỔ ĐẠI LÝ</h4>
+                                    </div>
                                 </div>
-                                <div>
-                                    <span class="text-[10px] text-purple-300 font-bold tracking-wider uppercase block">Chế độ thanh toán</span>
-                                    <h4 class="font-black text-sm text-white">KÝ NỢ TOÀN BỘ VÀO SỔ ĐẠI LÝ</h4>
+                                <div class="text-right">
+                                    <span class="text-[10px] text-purple-300 block">Tiền nợ đơn này</span>
+                                    <strong class="font-mono text-base font-black text-amber-300" x-text="formatNumber(confirmForm.finalAmount) + ' đ'"></strong>
                                 </div>
                             </div>
-                            <p class="text-xs text-purple-200/90 leading-relaxed">
-                                Lái xe giao hàng và nhận biên bản ký nhận từ đại lý <strong class="text-white">{{ $custName }}</strong>.
+                            <p class="text-[11px] text-purple-200/90 leading-relaxed border-t border-purple-800/60 pt-2">
+                                Lái xe giao hàng và nhận biên bản ký nhận từ đại lý. Không thu tiền mặt.
                             </p>
-                            <div class="pt-2 border-t border-purple-800/80 flex items-center justify-between text-xs">
-                                <span class="text-purple-300">Tiền ghi nợ đơn này:</span>
-                                <strong class="font-mono text-base font-black text-amber-300" x-text="formatNumber(confirmForm.finalAmount) + ' đ'"></strong>
-                            </div>
                         </div>
                         @endif
                     </div>
                 </template>
 
-                <!-- Quy Định Giao Hàng & Chứng Từ Alert Box -->
-                <div class="p-3 bg-amber-50/80 rounded-2xl border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2 leading-relaxed">
-                    <i class="fa-solid fa-circle-info text-amber-600 mt-0.5 shrink-0"></i>
-                    <span>
-                        <strong>Quy định chứng từ:</strong> Lái xe kiểm tra kỹ họ tên người nhận và biên lai giao hàng có chữ ký của đại lý trước khi bấm hoàn tất.
-                    </span>
+                <!-- Quy Định Giao Hàng & Chứng Từ Alert Box (Gọn gàng 1 dòng) -->
+                <div class="px-3.5 py-2 bg-amber-50/90 rounded-xl border border-amber-200 text-[11px] text-amber-900 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-amber-600 shrink-0 text-xs"></i>
+                    <span class="truncate">Lái xe nhận biên lai giao hàng <strong>có đủ chữ ký đại lý</strong> trước khi bấm hoàn tất.</span>
                 </div>
 
                 <!-- NÚT HOÀN TẤT & BÁO GIAO THẤT BẠI -->
