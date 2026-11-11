@@ -77,9 +77,9 @@
                         <span class="text-slate-100 font-extrabold text-xs tracking-tight truncate">Menu Nghiệp Vụ</span>
                     </div>
                     <div class="flex items-center gap-1 shrink-0">
-                        <template x-if="(returnsList?.length || 0) + (discrepancies?.length || 0) + (holdingStocks?.length || 0) > 0">
+                        <template x-if="(returnsList?.length || 0) + (discrepancies?.length || 0) + (holdingStocks?.length || 0) + (pendingIncomingTransfers?.length || 0) > 0">
                             <span class="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-rose-500 text-white font-mono shadow-xs"
-                                  x-text="((returnsList?.length || 0) + (discrepancies?.length || 0) + (holdingStocks?.length || 0))"></span>
+                                  x-text="((returnsList?.length || 0) + (discrepancies?.length || 0) + (holdingStocks?.length || 0) + (pendingIncomingTransfers?.length || 0))"></span>
                         </template>
                         <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200"
                            :class="menuOpen ? 'rotate-180 text-purple-300' : ''"></i>
@@ -87,98 +87,114 @@
                 </button>
             </div>
 
-            <!-- Dropdown Menu Nghiệp Vụ (7 Nghiệp Vụ Chuyến Xe) - Nền đen tuyệt đối 100% không mờ, không trong suốt -->
+            <!-- Dropdown Menu Nghiệp Vụ - Thiết kế tối ưu, chống tràn chữ, hài hòa trên mobile & desktop -->
             <div x-show="menuOpen"
                  x-transition:enter="transition ease-out duration-150"
-                 x-transition:enter-start="opacity-0 -translate-y-2 scale-95"
+                 x-transition:enter-start="opacity-0 -translate-y-2 scale-98"
                  x-transition:enter-end="opacity-100 translate-y-0 scale-100"
                  x-transition:leave="transition ease-in duration-100"
                  x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-                 x-transition:leave-end="opacity-0 -translate-y-2 scale-95"
-                 class="absolute left-0 right-0 sm:left-auto sm:right-0 top-full mt-2 w-full sm:w-84 rounded-2xl shadow-2xl p-2.5 z-[9999] space-y-1.5 select-none max-h-[82vh] overflow-y-auto"
-                 style="display: none; background-color: #0b1120 !important; background: #0b1120 !important; border: 2px solid #334155 !important; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.15) !important;">
+                 x-transition:leave-end="opacity-0 -translate-y-2 scale-98"
+                 class="absolute right-0 top-full mt-2 w-[calc(100vw-1.5rem)] sm:w-[380px] md:w-[410px] max-w-[420px] rounded-2xl shadow-2xl p-2.5 z-[9999] space-y-1.5 select-none max-h-[85vh] overflow-y-auto"
+                 style="display: none; background-color: #0b1120 !important; background: #0b1120 !important; border: 1.5px solid #334155 !important; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.12) !important;">
                 
-                <div class="px-2.5 py-1 text-[11px] uppercase font-black tracking-wider text-indigo-300 flex items-center justify-between border-b border-slate-800/80 pb-1.5 mb-1">
-                    <span class="flex items-center gap-1.5">
-                        <i class="fa-solid fa-boxes-packing text-indigo-400"></i>
+                <!-- Nhóm 1: Hàng Hóa & Đổi Trả -->
+                <div class="px-2.5 py-1 text-[11px] uppercase font-black tracking-wider text-indigo-300 flex items-center justify-between border-b border-slate-800/80 pb-1 mb-1">
+                    <span class="flex items-center gap-1.5 min-w-0 truncate">
+                        <i class="fa-solid fa-boxes-packing text-indigo-400 text-xs"></i>
                         <span>Hàng Hóa & Đổi Trả</span>
                     </span>
-                    <span class="text-[10px] font-mono text-slate-400">4 nghiệp vụ</span>
+                    <span class="text-[10px] font-mono font-bold text-indigo-300/80 shrink-0 ml-2">5 nghiệp vụ</span>
                 </div>
 
                 <!-- 1. Hàng Kho Nhân Sự (Kho Ôm / Xe) -->
                 <button type="button" @click="showHoldingStockModal = true; menuOpen = false"
-                        class="w-full px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/50 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-xs">
+                        class="w-full px-3 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-2xs">
                     <div class="flex items-center gap-2.5 min-w-0">
-                        <span class="w-8 h-8 rounded-lg bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
+                        <span class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-boxes-stacked"></i>
                         </span>
                         <div class="text-left min-w-0">
-                            <div class="text-[13px] font-black text-white truncate">Kho Ôm (Kho Nhân Sự)</div>
-                            <div class="text-[11px] text-slate-300 truncate">Hàng tồn của nhân sự quản lý xe</div>
+                            <div class="text-xs sm:text-[13px] font-black text-white group-hover:text-emerald-300 transition-colors truncate">Kho Ôm (Kho Nhân Sự)</div>
+                            <div class="text-[10.5px] sm:text-[11px] text-slate-400 group-hover:text-slate-300 transition-colors truncate">Hàng tồn lưu động trên xe</div>
                         </div>
                     </div>
-                    <span class="px-2 py-0.5 rounded-full font-mono text-[11px] font-black bg-emerald-500 text-slate-950 shadow-xs shrink-0"
-                          x-text="holdingStocks.length">0</span>
+                    <template x-if="holdingStocks?.length > 0">
+                        <span class="px-2 py-0.5 rounded-full font-mono text-[11px] font-black bg-emerald-500 text-slate-950 shadow-xs shrink-0"
+                              x-text="holdingStocks.length"></span>
+                    </template>
+                    <template x-if="!holdingStocks || holdingStocks.length === 0">
+                        <i class="fa-solid fa-chevron-right text-xs text-slate-500 group-hover:text-emerald-300 transition-colors"></i>
+                    </template>
                 </button>
 
                 <!-- 2. Hàng Trả Về -->
                 <button type="button" @click="showReturnsModal = true; menuOpen = false"
-                        class="w-full px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-rose-500/50 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-xs">
+                        class="w-full px-3 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-2xs">
                     <div class="flex items-center gap-2.5 min-w-0">
-                        <span class="w-8 h-8 rounded-lg bg-rose-500/25 text-rose-300 border border-rose-500/40 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
+                        <span class="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-rotate-left"></i>
                         </span>
                         <div class="text-left min-w-0">
-                            <div class="text-[13px] font-black text-white truncate">Hàng Khách Trả Về</div>
-                            <div class="text-[11px] text-slate-300 truncate">Danh sách đơn từ chối hoặc đổi trả</div>
+                            <div class="text-xs sm:text-[13px] font-black text-white group-hover:text-rose-300 transition-colors truncate">Hàng Khách Trả Về</div>
+                            <div class="text-[10.5px] sm:text-[11px] text-slate-400 group-hover:text-slate-300 transition-colors truncate">Danh sách đơn từ chối / trả hàng</div>
                         </div>
                     </div>
-                    <span class="px-2 py-0.5 rounded-full font-mono text-[11px] font-black bg-rose-500 text-white shadow-xs shrink-0"
-                          x-text="returnsList.length">0</span>
+                    <template x-if="returnsList?.length > 0">
+                        <span class="px-2 py-0.5 rounded-full font-mono text-[11px] font-black bg-rose-500 text-white shadow-xs shrink-0"
+                              x-text="returnsList.length"></span>
+                    </template>
+                    <template x-if="!returnsList || returnsList.length === 0">
+                        <i class="fa-solid fa-chevron-right text-xs text-slate-500 group-hover:text-rose-300 transition-colors"></i>
+                    </template>
                 </button>
 
                 <!-- 3. Hoàn Hàng Vào Kho -->
                 <button type="button" @click="showIntakeWarehouseModal = true; menuOpen = false"
-                        class="w-full px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-xs">
+                        class="w-full px-3 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-2xs">
                     <div class="flex items-center gap-2.5 min-w-0">
-                        <span class="w-8 h-8 rounded-lg bg-amber-500/25 text-amber-300 border border-amber-500/40 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
+                        <span class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-warehouse"></i>
                         </span>
                         <div class="text-left min-w-0">
-                            <div class="text-[13px] font-black text-white truncate">Hoàn Hàng Vào Kho</div>
-                            <div class="text-[11px] text-slate-300 truncate">Nhập hàng trả về lại kho công ty</div>
+                            <div class="text-xs sm:text-[13px] font-black text-white group-hover:text-amber-300 transition-colors truncate">Hoàn Hàng Vào Kho</div>
+                            <div class="text-[10.5px] sm:text-[11px] text-slate-400 group-hover:text-slate-300 transition-colors truncate">Nhập hàng trả về lại kho công ty</div>
                         </div>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-amber-300"></i>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-500 group-hover:text-amber-300 transition-colors"></i>
                 </button>
 
                 <!-- 4. Phản Ánh Thừa/Thiếu Hàng (Lệch Hàng) -->
                 <button type="button" @click="openDiscrepancyModal(); menuOpen = false"
-                        class="w-full px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-amber-500/40 hover:border-amber-400 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-xs">
+                        class="w-full px-3 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-2xs">
                     <div class="flex items-center gap-2.5 min-w-0">
-                        <span class="w-8 h-8 rounded-lg bg-amber-500/30 text-amber-300 border border-amber-400/50 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
+                        <span class="w-8 h-8 rounded-lg bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-scale-unbalanced"></i>
                         </span>
                         <div class="text-left min-w-0">
-                            <div class="text-[13px] font-black text-amber-300 truncate">Lệch Hàng (Thừa / Thiếu)</div>
-                            <div class="text-[11px] text-slate-200 truncate">Báo lệch xe tới Người bốc hàng</div>
+                            <div class="text-xs sm:text-[13px] font-black text-white group-hover:text-orange-300 transition-colors truncate">Lệch Hàng (Thừa / Thiếu)</div>
+                            <div class="text-[10.5px] sm:text-[11px] text-slate-400 group-hover:text-slate-300 transition-colors truncate">Báo lệch xe tới người bốc hàng</div>
                         </div>
                     </div>
-                    <span class="px-2 py-0.5 rounded-full font-mono text-[11px] font-black bg-amber-400 text-slate-950 shadow-xs shrink-0"
-                          x-text="discrepancies.length">0</span>
+                    <template x-if="discrepancies?.length > 0">
+                        <span class="px-2 py-0.5 rounded-full font-mono text-[11px] font-black bg-amber-400 text-slate-950 shadow-xs shrink-0"
+                              x-text="discrepancies.length"></span>
+                    </template>
+                    <template x-if="!discrepancies || discrepancies.length === 0">
+                        <i class="fa-solid fa-chevron-right text-xs text-slate-500 group-hover:text-orange-300 transition-colors"></i>
+                    </template>
                 </button>
 
-                <!-- 4.1. Điều Chuyển Đơn Giữa Các Xe -->
+                <!-- 5. Điều Chuyển Đơn Giữa Các Xe -->
                 <button type="button" @click="openTransferModal(); menuOpen = false"
-                        class="w-full px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-indigo-500/40 hover:border-indigo-400 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-xs">
+                        class="w-full px-3 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-2xs">
                     <div class="flex items-center gap-2.5 min-w-0">
-                        <span class="w-8 h-8 rounded-lg bg-indigo-500/30 text-indigo-300 border border-indigo-400/50 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
+                        <span class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-right-left"></i>
                         </span>
                         <div class="text-left min-w-0">
-                            <div class="text-[13px] font-black text-indigo-300 truncate">Điều Chuyển Đơn Xe</div>
-                            <div class="text-[11px] text-slate-200 truncate">Chuyển & Tiếp nhận đơn giữa các xe</div>
+                            <div class="text-xs sm:text-[13px] font-black text-white group-hover:text-indigo-300 transition-colors truncate">Điều Chuyển Đơn Xe</div>
+                            <div class="text-[10.5px] sm:text-[11px] text-slate-400 group-hover:text-slate-300 transition-colors truncate">Chuyển & nhận đơn giữa các xe</div>
                         </div>
                     </div>
                     <template x-if="pendingIncomingTransfers.length > 0">
@@ -186,63 +202,64 @@
                               x-text="pendingIncomingTransfers.length + ' chờ nhận'"></span>
                     </template>
                     <template x-if="pendingIncomingTransfers.length === 0">
-                        <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-indigo-300"></i>
+                        <i class="fa-solid fa-chevron-right text-xs text-slate-500 group-hover:text-indigo-300 transition-colors"></i>
                     </template>
                 </button>
 
+                <!-- Nhóm 2: Tài Chính & Quyết Toán -->
                 <div class="border-t border-slate-800 my-1 pt-1.5">
-                    <div class="px-2.5 py-1 text-[11px] uppercase font-black tracking-wider text-purple-300 flex items-center justify-between border-b border-slate-800/80 pb-1.5 mb-1">
-                        <span class="flex items-center gap-1.5">
-                            <i class="fa-solid fa-coins text-purple-400"></i>
+                    <div class="px-2.5 py-1 text-[11px] uppercase font-black tracking-wider text-purple-300 flex items-center justify-between border-b border-slate-800/80 pb-1 mb-1">
+                        <span class="flex items-center gap-1.5 min-w-0 truncate">
+                            <i class="fa-solid fa-coins text-purple-400 text-xs"></i>
                             <span>Tài Chính & Quyết Toán</span>
                         </span>
-                        <span class="text-[10px] font-mono text-slate-400">3 nghiệp vụ</span>
+                        <span class="text-[10px] font-mono font-bold text-purple-300/80 shrink-0 ml-2">3 nghiệp vụ</span>
                     </div>
                 </div>
 
-                <!-- 5. Kiểm Đếm & Duyệt COD -->
+                <!-- 6. Kiểm Đếm & Duyệt COD -->
                 <button type="button" @click="showCodApprovalModal = true; menuOpen = false"
-                        class="w-full px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-xs">
+                        class="w-full px-3 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-2xs">
                     <div class="flex items-center gap-2.5 min-w-0">
-                        <span class="w-8 h-8 rounded-lg bg-indigo-500/25 text-indigo-300 border border-indigo-500/40 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
+                        <span class="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-money-bill-transfer"></i>
                         </span>
                         <div class="text-left min-w-0">
-                            <div class="text-[13px] font-black text-white truncate">Kiểm Đếm & Duyệt COD</div>
-                            <div class="text-[11px] text-slate-300 truncate">Xác nhận thu tiền mặt & chuyển khoản</div>
+                            <div class="text-xs sm:text-[13px] font-black text-white group-hover:text-sky-300 transition-colors truncate">Kiểm Đếm & Duyệt COD</div>
+                            <div class="text-[10.5px] sm:text-[11px] text-slate-400 group-hover:text-slate-300 transition-colors truncate">Xác nhận thu tiền mặt & chuyển khoản</div>
                         </div>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-indigo-300"></i>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-500 group-hover:text-sky-300 transition-colors"></i>
                 </button>
 
-                <!-- 6. Quyết Toán Quỹ -->
+                <!-- 7. Quyết Toán Quỹ -->
                 <button type="button" @click="openHandoverModal(); menuOpen = false"
-                        class="w-full px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-fuchsia-500/50 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-xs">
+                        class="w-full px-3 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-2xs">
                     <div class="flex items-center gap-2.5 min-w-0">
-                        <span class="w-8 h-8 rounded-lg bg-fuchsia-500/25 text-fuchsia-300 border border-fuchsia-500/40 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
+                        <span class="w-8 h-8 rounded-lg bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-wallet"></i>
                         </span>
                         <div class="text-left min-w-0">
-                            <div class="text-[13px] font-black text-white truncate">Quyết Toán Quỹ Tiền Mặt</div>
-                            <div class="text-[11px] text-slate-300 truncate">Nộp tiền cho thủ quỹ / kế toán</div>
+                            <div class="text-xs sm:text-[13px] font-black text-white group-hover:text-fuchsia-300 transition-colors truncate">Quyết Toán Quỹ Tiền Mặt</div>
+                            <div class="text-[10.5px] sm:text-[11px] text-slate-400 group-hover:text-slate-300 transition-colors truncate">Nộp tiền cho thủ quỹ / kế toán</div>
                         </div>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-fuchsia-300"></i>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-500 group-hover:text-fuchsia-300 transition-colors"></i>
                 </button>
 
-                <!-- 7. Bàn Giao Nợ Cho Sale -->
+                <!-- 8. Bàn Giao Nợ Cho Sale -->
                 <button type="button" @click="openDebtHandoverModal(); menuOpen = false"
-                        class="w-full px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-purple-500/50 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-xs">
+                        class="w-full px-3 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-2xs">
                     <div class="flex items-center gap-2.5 min-w-0">
-                        <span class="w-8 h-8 rounded-lg bg-purple-500/25 text-purple-300 border border-purple-500/40 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
+                        <span class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-share-from-square"></i>
                         </span>
                         <div class="text-left min-w-0">
-                            <div class="text-[13px] font-black text-white truncate">Bàn Giao Nợ Cho Sale</div>
-                            <div class="text-[11px] text-slate-300 truncate">Chuyển nợ bảo lãnh cho NVKD</div>
+                            <div class="text-xs sm:text-[13px] font-black text-white group-hover:text-purple-300 transition-colors truncate">Bàn Giao Nợ Cho Sale</div>
+                            <div class="text-[10.5px] sm:text-[11px] text-slate-400 group-hover:text-slate-300 transition-colors truncate">Chuyển nợ bảo lãnh cho NVKD</div>
                         </div>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-purple-300"></i>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-500 group-hover:text-purple-300 transition-colors"></i>
                 </button>
 
             </div>
