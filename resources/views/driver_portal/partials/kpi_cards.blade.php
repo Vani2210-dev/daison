@@ -127,87 +127,80 @@
     <!-- KHỐI: HÀNG KHO CỦA NHÂN SỰ QUẢN LÝ XE                                    -->
     <!-- ========================================================================= -->
     <div x-show="holdingStocks.length > 0 || totalHoldingQty > 0 || holdingWarehouse"
-         class="rounded-3xl p-4 sm:p-5 bg-gradient-to-r from-emerald-950/80 via-slate-900 to-teal-950/80 border border-emerald-500/40 text-white shadow-xl space-y-3.5">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div class="flex items-center gap-3">
-                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-xl shadow-lg shadow-emerald-500/30 shrink-0">
-                    <i class="fa-solid fa-boxes-stacked"></i>
-                </div>
-                <div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <h3 class="font-black text-sm sm:text-base text-white tracking-tight">
-                            Hàng Kho Của Nhân Sự Quản Lý Xe
-                        </h3>
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                              x-text="(holdingStocks.length || 0) + ' mặt hàng tồn'"></span>
-                        <template x-if="holdingWarehouse">
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30"
-                                  x-text="holdingWarehouse.name"></span>
-                        </template>
+         class="rounded-2xl p-3 sm:p-4 bg-gradient-to-r from-emerald-950/80 via-slate-900 to-teal-950/80 border border-emerald-500/40 text-white shadow-lg space-y-2.5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div class="flex items-center justify-between sm:justify-start gap-2.5">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-sm sm:text-base shadow-md shadow-emerald-500/30 shrink-0">
+                        <i class="fa-solid fa-boxes-stacked"></i>
                     </div>
-                    <p class="text-xs text-slate-300 mt-0.5">
-                        Nhân sự quản lý: <strong class="text-emerald-300" x-text="vehicleManagerName || 'Lái xe'"></strong> &bull;
-                        Biển số xe: <strong class="text-purple-300" x-text="selectedVehicle?.plate_number || '{{ $selectedPlate ?? '' }}'"></strong>
-                    </p>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <h3 class="font-black text-xs sm:text-sm text-white tracking-tight truncate">
+                                Kho Hàng Ôm Nhân Sự
+                            </h3>
+                            <template x-if="holdingWarehouse">
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 truncate"
+                                      x-text="holdingWarehouse.name"></span>
+                            </template>
+                        </div>
+                        <div class="text-[11px] text-emerald-300/90 font-mono font-bold mt-0.5">
+                            Tồn: <span class="text-white" x-text="formatNumber(totalHoldingQty) + ' SP'"></span> • 
+                            <span class="text-emerald-300" x-text="formatNumber(totalHoldingVal) + ' đ'"></span>
+                            <template x-if="empDebt > 0">
+                                <span class="text-amber-400 ml-1">(Nợ: <span x-text="formatNumber(empDebt) + ' đ'"></span>)</span>
+                            </template>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Badge số lượng mặt hàng (Mobile) -->
+                <span class="sm:hidden px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0"
+                      x-text="(holdingStocks.length || 0) + ' mặt hàng'"></span>
             </div>
 
-            <div class="flex flex-wrap items-center gap-3 shrink-0 self-end sm:self-center">
-                <div class="text-right">
-                    <span class="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">Tổng Tồn Kho / Giá Trị</span>
-                    <span class="text-lg sm:text-xl font-black text-emerald-300 font-mono">
-                        <span x-text="formatNumber(totalHoldingQty)"></span> <span class="text-xs font-normal text-slate-300">SP</span> &bull; 
-                        <span x-text="formatNumber(totalHoldingVal) + ' đ'"></span>
-                    </span>
-                    <template x-if="empDebt > 0">
-                        <span class="block text-[11px] font-bold text-amber-400">
-                            Nợ hàng tồn: <span x-text="formatNumber(empDebt) + ' đ'"></span>
-                        </span>
+            <!-- Action buttons: Chi tiết kho + Bán hàng -->
+            <div class="flex items-center gap-2">
+                <button type="button" @click="showHoldingStockModal = true"
+                        class="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-800 border border-slate-700 text-white font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 h-[34px]">
+                    <i class="fa-solid fa-list-check text-emerald-400 text-xs"></i>
+                    <span>Chi tiết kho</span>
+                </button>
+                <a :href="'/inventory/holding-sale/create?warehouse_id=' + (holdingWarehouse ? holdingWarehouse.id : '') + '&return_url=' + encodeURIComponent(window.location.href)"
+                   class="flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 no-underline h-[34px]">
+                    <i class="fa-solid fa-cart-plus text-xs"></i>
+                    <span>+ Bán Hàng</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Bảng xem nhanh các mặt hàng tồn trong kho (Chỉ hiển thị khi có hàng tồn > 0) -->
+        <template x-if="holdingStocks.length > 0">
+            <div class="bg-slate-950/60 rounded-xl p-2.5 border border-slate-800/80 overflow-x-auto text-xs space-y-1.5">
+                <div class="flex items-center justify-between text-slate-400 text-[10px] sm:text-[11px] font-bold uppercase px-1">
+                    <span>Danh mục hàng tồn kho nhân sự:</span>
+                    <span class="text-emerald-400 font-mono" x-text="holdingStocks.length + ' loại mặt hàng'"></span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    <template x-for="(it, iIdx) in holdingStocks" :key="it.id || iIdx">
+                        <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 transition-colors">
+                            <div class="truncate mr-2">
+                                <p class="font-bold text-white text-xs truncate" x-text="it.product_name"></p>
+                                <p class="text-[10px] text-slate-400 font-mono" x-text="'Mã: ' + (it.sku || '--') + ' | ĐVT: ' + (it.unit || 'cái') + ' | Giá: ' + formatNumber(it.price) + ' đ'"></p>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <span class="px-1.5 py-0.5 rounded font-mono font-black text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                      x-text="'SL: ' + it.quantity"></span>
+                                <p class="text-[10px] font-mono font-bold text-slate-300 mt-0.5" x-text="formatNumber(it.amount) + ' đ'"></p>
+                                <a :href="'/inventory/holding-sale/create?warehouse_id=' + (holdingWarehouse ? holdingWarehouse.id : '') + '&product_id=' + it.product_id + '&return_url=' + encodeURIComponent(window.location.href)"
+                                   class="inline-block text-[10px] font-bold text-emerald-400 hover:text-emerald-300 hover:underline">
+                                    + Bán &rarr;
+                                </a>
+                            </div>
+                        </div>
                     </template>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button type="button" @click="showHoldingStockModal = true"
-                            class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95">
-                        <i class="fa-solid fa-list-check text-emerald-400"></i>
-                        <span>Chi tiết kho</span>
-                    </button>
-                    <a :href="'/inventory/holding-sale/create?warehouse_id=' + (holdingWarehouse ? holdingWarehouse.id : '') + '&return_url=' + encodeURIComponent(window.location.href)"
-                       class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all shadow-md shadow-emerald-600/30 flex items-center gap-1.5 cursor-pointer active:scale-95 no-underline">
-                        <i class="fa-solid fa-cart-plus"></i>
-                        <span>+ Bán Hàng</span>
-                    </a>
-                </div>
             </div>
-        </div>
-
-        <!-- Bảng xem nhanh các mặt hàng tồn trong kho -->
-        <div class="bg-slate-950/60 rounded-2xl p-3 border border-slate-800/80 overflow-x-auto text-xs">
-            <div class="flex items-center justify-between text-slate-400 text-[11px] font-bold uppercase mb-2 px-1">
-                <span>Danh mục hàng tồn kho nhân sự:</span>
-                <span class="text-emerald-400 font-mono" x-text="holdingStocks.length + ' loại mặt hàng'"></span>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                <template x-for="(it, iIdx) in holdingStocks" :key="it.id || iIdx">
-                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 transition-colors">
-                        <div class="truncate mr-2">
-                            <p class="font-bold text-white text-xs truncate" x-text="it.product_name"></p>
-                            <p class="text-[10px] text-slate-400 font-mono" x-text="'Mã: ' + (it.sku || '--') + ' | ĐVT: ' + (it.unit || 'cái') + ' | Giá: ' + formatNumber(it.price) + ' đ'"></p>
-                        </div>
-                        <div class="text-right shrink-0">
-                            <span class="px-2 py-0.5 rounded-md font-mono font-black text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                                  x-text="'SL: ' + it.quantity"></span>
-                            <p class="text-[11px] font-mono font-bold text-slate-300 mt-1" x-text="formatNumber(it.amount) + ' đ'"></p>
-                            <a :href="'/inventory/holding-sale/create?warehouse_id=' + (holdingWarehouse ? holdingWarehouse.id : '') + '&product_id=' + it.product_id + '&return_url=' + encodeURIComponent(window.location.href)"
-                               class="inline-block mt-1 text-[10px] font-bold text-emerald-400 hover:text-emerald-300 hover:underline">
-                                + Bán SP này &rarr;
-                            </a>
-                        </div>
-                    </div>
-                </template>
-                <div x-show="holdingStocks.length === 0" class="col-span-full py-4 text-center text-slate-400 italic">
-                    Kho của nhân sự phụ trách xe hiện chưa có hàng tồn.
-                </div>
-            </div>
-        </div>
+        </template>
     </div>
 
