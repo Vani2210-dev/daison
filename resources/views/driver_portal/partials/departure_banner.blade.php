@@ -3,30 +3,30 @@
     <!-- ========================================================================= -->
     <!-- Trường hợp 1: Xe đã đủ điều kiện xuất bến (100% Đơn Đã Kiểm Hàng) -->
     <div x-show="!isDeparted && isReadyToDepart"
-         class="rounded-xl sm:rounded-2xl p-3 sm:p-4 bg-gradient-to-r from-emerald-950/70 via-emerald-900/50 to-slate-900 border-2 border-emerald-500/70 text-emerald-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-lg shadow-emerald-950/40">
-        <div class="flex items-center gap-2.5 sm:gap-3.5">
-            <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/30 text-base sm:text-xl font-black">
+         class="rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 bg-gradient-to-r from-emerald-950/80 via-emerald-900/60 to-slate-900 border-2 border-emerald-500/80 text-emerald-100 flex items-center justify-between gap-2.5 shadow-lg shadow-emerald-950/40">
+        <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/30 text-sm sm:text-base font-black">
                 <i class="fa-solid fa-circle-check"></i>
             </div>
-            <div>
-                <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                    <span class="font-black text-xs sm:text-base text-white tracking-tight">
-                        Đủ điều kiện xuất bến (100% Đã Kiểm)
+            <div class="min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-black text-xs sm:text-sm text-white tracking-tight truncate">
+                        Đủ ĐK xuất bến
                     </span>
-                    <span class="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 animate-pulse">
-                        SẴN SÀNG
+                    <span class="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 animate-pulse whitespace-nowrap">
+                        100% ĐÃ KIỂM
                     </span>
                 </div>
-                <p class="hidden sm:block text-xs text-emerald-200/80 mt-0.5 font-medium">
-                    Toàn bộ <span class="font-bold text-white font-mono" x-text="orders.length"></span> đơn hàng đã được kiểm hàng 100%. Lái xe bấm "Bấm Xuất Bến" để bắt đầu lộ trình.
+                <p class="text-[10px] sm:text-xs text-emerald-200/80 mt-0.5 font-medium truncate">
+                    Lái xe bấm xuất bến để bắt đầu lộ trình
                 </p>
             </div>
         </div>
 
         <button type="button" @click="departTrip()" :disabled="isDeparting"
-                class="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm text-emerald-950 bg-gradient-to-r from-emerald-300 to-emerald-400 hover:from-emerald-200 hover:to-emerald-300 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 shrink-0 cursor-pointer active:scale-95 disabled:opacity-50">
-            <i class="fa-solid fa-rocket text-xs sm:text-sm"></i>
-            <span x-text="isDeparting ? 'Đang xuất bến...' : 'Bấm Xuất Bến (Bắt đầu)'"></span>
+                class="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm text-emerald-950 bg-gradient-to-r from-emerald-300 to-emerald-400 hover:from-emerald-200 hover:to-emerald-300 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/25 shrink-0 cursor-pointer active:scale-95 disabled:opacity-50 whitespace-nowrap">
+            <i class="fa-solid fa-rocket text-xs"></i>
+            <span x-text="isDeparting ? 'Đang gửi...' : 'Xuất Bến'"></span>
         </button>
     </div>
 
@@ -70,59 +70,59 @@
 
     <!-- Banner khi xe đang trên đường quay về bãi / kho -->
     <div x-show="isReturning"
-         class="rounded-xl sm:rounded-2xl p-3 sm:p-4 bg-gradient-to-r from-amber-950/80 via-slate-900 to-indigo-950/70 border-2 border-amber-500/70 text-amber-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-lg shadow-amber-950/40">
-        <div class="flex items-center gap-2.5 sm:gap-3.5">
-            <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 text-base sm:text-xl font-black">
+         class="rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 bg-gradient-to-r from-amber-950/80 via-slate-900 to-indigo-950/70 border-2 border-amber-500/70 text-amber-100 flex items-center justify-between gap-2.5 shadow-lg shadow-amber-950/40">
+        <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 text-sm sm:text-base font-black">
                 <i class="fa-solid fa-warehouse"></i>
             </div>
-            <div>
-                <div class="flex items-center gap-2">
-                    <span class="font-black text-xs sm:text-base text-white tracking-tight">
-                        Xe đang trên đường về bãi / kho
+            <div class="min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-black text-xs sm:text-sm text-white tracking-tight truncate">
+                        Đang về bãi / kho
                     </span>
-                    <span class="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/40 animate-pulse">
+                    <span class="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/40 animate-pulse whitespace-nowrap">
                         TRÊN ĐƯỜNG VỀ
                     </span>
                 </div>
-                <p class="hidden sm:block text-xs text-amber-200/80 mt-0.5 font-medium">
-                    Toàn bộ đơn hàng đã giao xong. Khi xe về tới bãi an toàn, bấm "Đã Về Tới Bãi" để kết thúc chuyến.
+                <p class="text-[10px] sm:text-xs text-amber-200/80 mt-0.5 font-medium truncate">
+                    Bấm xác nhận khi xe về tới bãi
                 </p>
             </div>
         </div>
 
         <button type="button" @click="finishTripArrival()" :disabled="isReturningVehicle"
-                class="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 shrink-0 cursor-pointer active:scale-95 disabled:opacity-50">
-            <i class="fa-solid fa-flag-checkered text-xs sm:text-sm"></i>
-            <span x-text="isReturningVehicle ? 'Đang cập nhật...' : '🏁 Đã Về Tới Bãi (Kết thúc)'"></span>
+                class="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/30 shrink-0 cursor-pointer active:scale-95 disabled:opacity-50 whitespace-nowrap">
+            <i class="fa-solid fa-flag-checkered text-xs"></i>
+            <span x-text="isReturningVehicle ? 'Đang gửi...' : 'Về Tới Bãi'"></span>
         </button>
     </div>
 
     <!-- Banner khi xe đã xuất bến và ĐÃ GIAO XONG TOÀN BỘ ĐƠN HÀNG (Hiển thị nút Quay Về) -->
     <div x-show="isDeparted && !isReturning && isAllCompleted"
-         class="rounded-xl sm:rounded-2xl p-3 sm:p-4 bg-gradient-to-r from-emerald-950/80 via-teal-950/60 to-slate-900 border-2 border-emerald-400/70 text-emerald-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-lg shadow-emerald-950/40">
-        <div class="flex items-center gap-2.5 sm:gap-3.5">
-            <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 text-slate-950 flex items-center justify-center shrink-0 text-base sm:text-xl font-black">
+         class="rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 bg-gradient-to-r from-emerald-950/80 via-teal-950/60 to-slate-900 border-2 border-emerald-400/70 text-emerald-100 flex items-center justify-between gap-2.5 shadow-lg shadow-emerald-950/40">
+        <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 text-slate-950 flex items-center justify-center shrink-0 text-sm sm:text-base font-black">
                 <i class="fa-solid fa-circle-check"></i>
             </div>
-            <div>
-                <div class="flex items-center gap-2">
-                    <span class="font-black text-xs sm:text-base text-white tracking-tight">
-                        Đã giao xong toàn bộ đơn hàng!
+            <div class="min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-black text-xs sm:text-sm text-white tracking-tight truncate">
+                        Đã giao xong toàn bộ!
                     </span>
-                    <span class="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-400/20 text-emerald-300 border border-emerald-400/40"
+                    <span class="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 whitespace-nowrap"
                           x-text="completedOrdersCount + '/' + orders.length + ' ĐƠN XONG'">
                     </span>
                 </div>
-                <p class="hidden sm:block text-xs text-emerald-200/90 mt-0.5 font-medium">
-                    Tất cả các điểm giao trên xe đã được phục vụ xong. Lái xe bấm nút "Quay Về" để di chuyển về kho bãi.
+                <p class="text-[10px] sm:text-xs text-emerald-200/90 mt-0.5 font-medium truncate">
+                    Bấm quay về để di chuyển về kho bãi
                 </p>
             </div>
         </div>
 
         <button type="button" @click="returnToDepot()" :disabled="isReturningVehicle"
-                class="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm text-slate-950 bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-400 hover:from-amber-200 hover:to-yellow-300 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/35 shrink-0 cursor-pointer active:scale-95 disabled:opacity-50">
-            <i class="fa-solid fa-house-chimney text-xs sm:text-sm"></i>
-            <span x-text="isReturningVehicle ? 'Đang cập nhật...' : 'Bấm Quay Về (Về Bãi / Kho)'"></span>
+                class="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm text-slate-950 bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-400 hover:from-amber-200 hover:to-yellow-300 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/35 shrink-0 cursor-pointer active:scale-95 disabled:opacity-50 whitespace-nowrap">
+            <i class="fa-solid fa-house-chimney text-xs"></i>
+            <span x-text="isReturningVehicle ? 'Đang gửi...' : 'Quay Về Bãi'"></span>
         </button>
     </div>
 
