@@ -2303,11 +2303,6 @@ function deliveryExecutionApp() {
         },
 
         // ─── Quick Views & Prints ──────────────────────────────────
-        openViewOrderModal(order) {
-            this.inspectOrder = order;
-            this.showOrderViewModal = true;
-        },
-
         printDeliverySlip(order) {
             if (!order) return;
             const url = '/orders/' + order.id + '/edit?mode=print';

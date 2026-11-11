@@ -53,7 +53,7 @@
                             </template>
                         </div>
 
-                        <!-- Cụm Nút Chuyển xe & Xem đơn -->
+                        <!-- Nút Chuyển xe -->
                         <div class="flex items-center gap-1.5 shrink-0">
                             <template x-if="!isOrderCompleted(order) && order.status !== 'Không thành công' && order.status !== 'Đã hoàn kho' && !transfers.some(t => t.order_id == order.id && t.status === 'pending')">
                                 <button type="button" @click="openTransferModal(order)"
@@ -63,12 +63,6 @@
                                     <span>Chuyển xe</span>
                                 </button>
                             </template>
-
-                            <button type="button" @click="openViewOrderModal(order)"
-                                    class="px-2 py-0.5 rounded-lg text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs shrink-0">
-                                <i class="fa-regular fa-eye text-slate-500 text-[10px]"></i>
-                                <span>Xem đơn</span>
-                            </button>
                         </div>
                     </div>
 

@@ -48,7 +48,6 @@
     @include('driver_portal.modals.return_warehouse')
     @include('driver_portal.modals.return_items_list')
     @include('driver_portal.modals.failed_delivery')
-    @include('driver_portal.modals.order_detail')
     @include('driver_portal.modals.personnel_warehouse')
     @include('driver_portal.modals.holding_sale')
     @include('driver_portal.modals.driver_holding_return')
