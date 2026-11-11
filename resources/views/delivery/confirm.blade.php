@@ -298,14 +298,10 @@
                 </a>
 
                 <div class="flex items-center gap-1.5 min-w-0">
-                    <h1 class="text-xs sm:text-lg font-black text-slate-900 tracking-tight truncate flex items-center gap-1">
+                    <h1 class="text-xs sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1">
                         <span class="hidden sm:inline text-slate-500 font-bold">Xác nhận giao đơn:</span>
-                        <span class="font-mono text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-lg border border-purple-200 text-xs sm:text-base font-black">#{{ $order->order_code }}</span>
+                        <span class="font-mono text-purple-700 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-200 text-xs sm:text-base font-black whitespace-nowrap">#{{ $order->order_code }}</span>
                     </h1>
-                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono font-bold text-[10px] sm:text-xs border border-slate-200 shrink-0">
-                        <i class="fa-solid fa-truck text-purple-600 text-[10px]"></i>
-                        <span>{{ $vehiclePlate ?? 'Xe giao' }}</span>
-                    </span>
                 </div>
             </div>
 
