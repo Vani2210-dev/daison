@@ -267,7 +267,7 @@
     }
 }
 </style>
-<div x-data="deliveryConfirmPage()" x-init="initData()" class="space-y-5 max-w-[1600px] mx-auto pb-24 font-sans text-slate-800 antialiased confirm-container" x-cloak>
+<div x-data="deliveryConfirmPage()" x-init="initData()" class="space-y-2.5 sm:space-y-4 max-w-[1600px] mx-auto pb-24 font-sans text-slate-800 antialiased confirm-container" x-cloak>
 
     <!-- Toast Notification -->
     <div x-show="toast.show" x-cloak
@@ -284,91 +284,85 @@
     </div>
 
     <!-- ========================================================================= -->
-    <!-- 1. HEADER BANNER TRANG XÁC NHẬN GIAO ĐƠN                                    -->
+    <!-- 1. HEADER BANNER TRANG XÁC NHẬN GIAO ĐƠN (Tối ưu gọn gàng cho Mobile)       -->
     <!-- ========================================================================= -->
-    <div class="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 confirm-header-banner">
-        <div class="confirm-header-left flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4">
-            <!-- Hàng nút quay lại và Trạng thái (trên mobile phân tách rõ ràng) -->
-            <div class="flex items-center justify-between gap-2 w-full sm:w-auto">
+    <div class="bg-white rounded-2xl sm:rounded-3xl p-3 sm:p-5 border border-slate-200 shadow-2xs flex flex-col gap-2 sm:gap-3 confirm-header-banner">
+        <!-- Hàng 1: Nút Quay Lại + Mã Đơn Hàng + Biển Số Xe + Trạng Thái -->
+        <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
                 <a href="{{ url('/delivery-execution') }}?vehicle={{ urlencode($vehiclePlate ?? '') }}"
-                   class="confirm-back-btn px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl bg-slate-100 hover:bg-purple-50 text-slate-700 hover:text-purple-700 border border-slate-200 hover:border-purple-300 font-bold text-xs sm:text-sm cursor-pointer transition-all shadow-xs inline-flex items-center gap-1.5 sm:gap-2 group shrink-0 whitespace-nowrap">
-                    <i class="fa-solid fa-arrow-left transition-transform group-hover:-translate-x-1 text-purple-600"></i>
-                    <span class="hidden sm:inline">Quay lại danh sách đơn</span>
-                    <span class="inline sm:hidden">Quay lại đơn</span>
+                   class="h-8 px-2.5 sm:px-3 rounded-xl bg-slate-100 hover:bg-purple-50 text-slate-700 hover:text-purple-700 border border-slate-200 hover:border-purple-300 font-bold text-xs cursor-pointer transition-all shadow-2xs inline-flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+                    <i class="fa-solid fa-arrow-left text-xs text-purple-600"></i>
+                    <span class="hidden sm:inline">Quay lại danh sách</span>
+                    <span class="sm:hidden">Quay lại</span>
                 </a>
 
-                <div class="sm:hidden">
-                    <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold"
-                          :class="orderStatusBadgeClass()">
-                        {{ $displayStatus }}
+                <div class="flex items-center gap-1.5 min-w-0">
+                    <h1 class="text-xs sm:text-lg font-black text-slate-900 tracking-tight truncate flex items-center gap-1">
+                        <span class="hidden sm:inline text-slate-500 font-bold">Xác nhận giao đơn:</span>
+                        <span class="font-mono text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-lg border border-purple-200 text-xs sm:text-base font-black">#{{ $order->order_code }}</span>
+                    </h1>
+                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono font-bold text-[10px] sm:text-xs border border-slate-200 shrink-0">
+                        <i class="fa-solid fa-truck text-purple-600 text-[10px]"></i>
+                        <span>{{ $vehiclePlate ?? 'Xe giao' }}</span>
                     </span>
                 </div>
             </div>
 
-            <div class="h-8 w-px bg-slate-200 hidden sm:block"></div>
-
-            <!-- Cụm thông tin xe, mã KH và tiêu đề đơn hàng -->
-            <div class="confirm-header-info min-w-0 flex-1">
-                <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-slate-500 font-semibold mb-1">
-                    <span class="inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-800 font-mono font-bold text-[11px] sm:text-xs">
-                        <i class="fa-solid fa-truck text-purple-600"></i>
-                        <span>{{ $vehiclePlate ?? 'Xe giao hàng' }}</span>
-                    </span>
-                    <span class="text-slate-300 hidden sm:inline">•</span>
-                    <span class="inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 rounded-lg bg-purple-50 text-purple-700 font-mono font-bold text-[11px] sm:text-xs">
-                        <i class="fa-regular fa-id-badge"></i>
-                        <span>Mã KH: {{ $custCode }}</span>
-                    </span>
-                    <span class="text-slate-300 hidden sm:inline">•</span>
-                    <span class="hidden sm:inline-block px-2.5 py-0.5 rounded-lg text-[11px] font-bold"
-                          :class="orderStatusBadgeClass()">
-                        {{ $displayStatus }}
-                    </span>
-                </div>
-
-                <h1 class="text-base sm:text-2xl font-black text-slate-900 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
-                    <span>Xác nhận giao đơn:</span>
-                    <span class="font-mono text-purple-700 bg-purple-50 sm:bg-transparent px-2 py-0.5 sm:p-0 rounded-lg sm:rounded-none border border-purple-200 sm:border-0 whitespace-nowrap text-sm sm:text-2xl font-black">#{{ $order->order_code }}</span>
-                </h1>
-            </div>
+            <!-- Trạng thái đơn -->
+            <span class="px-2.5 py-1 rounded-lg text-[10px] sm:text-xs font-bold shrink-0 whitespace-nowrap shadow-2xs"
+                  :class="orderStatusBadgeClass()">
+                {{ $displayStatus }}
+            </span>
         </div>
 
-        <!-- Quick Actions: Gọi khách, Chỉ đường, Tồn kho ôm -->
-        <div class="confirm-header-actions flex flex-wrap items-center gap-2 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
-            @if($order->customer_phone)
-                <a href="tel:{{ $order->customer_phone }}"
-                   class="btn-call-customer px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-colors whitespace-nowrap">
-                    <i class="fa-solid fa-phone"></i>
-                    <span class="hidden sm:inline">Gọi khách: <strong class="font-mono">{{ $order->customer_phone }}</strong></span>
-                    <span class="inline sm:hidden">Gọi: <strong class="font-mono">{{ $order->customer_phone }}</strong></span>
+        <!-- Hàng 2: Thông tin Đại lý / Khách hàng + Nút Gọi & Chỉ đường Maps -->
+        <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-900 truncate">
+                    <span class="px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 font-mono text-[10px] border border-purple-200 shrink-0">{{ $custCode }}</span>
+                    <span class="truncate">{{ $custName }}</span>
+                </div>
+                <div class="text-[10.5px] text-slate-500 truncate mt-0.5">
+                    <i class="fa-solid fa-location-dot text-slate-400 text-[10px] mr-0.5"></i>
+                    <span>{{ $order->customer_address ?: 'Tại cửa hàng / điểm giao' }}</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0">
+                @if($order->customer_phone)
+                    <a href="tel:{{ $order->customer_phone }}"
+                       class="h-7 px-2.5 sm:h-8 sm:px-3 rounded-lg sm:rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] sm:text-xs flex items-center justify-center gap-1 cursor-pointer shadow-2xs transition-colors whitespace-nowrap">
+                        <i class="fa-solid fa-phone text-[10px]"></i>
+                        <span class="hidden sm:inline">Gọi: <strong class="font-mono">{{ $order->customer_phone }}</strong></span>
+                        <span class="sm:hidden">Gọi</span>
+                    </a>
+                @endif
+
+                <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($order->customer_address ?: $custName) }}"
+                   target="_blank"
+                   class="h-7 px-2.5 sm:h-8 sm:px-3 rounded-lg sm:rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold text-[11px] sm:text-xs flex items-center justify-center gap-1 cursor-pointer transition-colors whitespace-nowrap">
+                    <i class="fa-solid fa-location-dot text-rose-500 text-[10px]"></i>
+                    <span>Maps ↗</span>
                 </a>
-            @endif
-
-            <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($order->customer_address ?: $custName) }}"
-               target="_blank"
-               class="btn-maps px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors whitespace-nowrap">
-                <i class="fa-solid fa-location-dot text-rose-500"></i>
-                <span>Chỉ đường Maps ↗</span>
-            </a>
-
-
+            </div>
         </div>
     </div>
 
     <!-- ========================================================================= -->
     <!-- THANH ĐIỀU HƯỚNG 2 TAB: GIAO ĐƠN & THU TIỀN vs TỒN KHO HÀNG ÔM            -->
     <!-- ========================================================================= -->
-    <div class="bg-white rounded-2xl p-2 border border-slate-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-2 mobile-main-tabs">
-        <div class="flex items-center gap-2 flex-wrap tab-btn-group">
+    <div class="bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-2 border border-slate-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-2 mobile-main-tabs">
+        <div class="grid grid-cols-2 gap-1.5 w-full sm:w-auto sm:flex sm:items-center sm:gap-2 tab-btn-group">
             <button type="button"
                     @click="activeMainTab = 'delivery'"
                     :class="activeMainTab === 'delivery'
                         ? 'bg-gradient-to-r from-purple-700 to-indigo-700 text-white shadow-md shadow-purple-700/20 ring-1 ring-purple-600'
                         : 'bg-slate-100/90 text-slate-700 hover:bg-slate-200/80 border border-slate-200'"
-                    class="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer">
-                <i class="fa-solid fa-truck-ramp-box shrink-0"></i>
+                    class="h-[36px] sm:h-[40px] px-2 sm:px-4 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+                <i class="fa-solid fa-truck-ramp-box shrink-0 text-xs sm:text-sm"></i>
                 <span class="hidden sm:inline">Xác Nhận Giao Đơn & Thu Tiền</span>
-                <span class="inline sm:hidden">Giao Đơn & Thu Tiền</span>
+                <span class="sm:hidden">Giao Đơn & Thu Tiền</span>
             </button>
 
             <button type="button"
@@ -376,12 +370,12 @@
                     :class="activeMainTab === 'holding'
                         ? 'bg-gradient-to-r from-blue-700 to-[#1b4a8c] text-white shadow-md shadow-blue-800/20 ring-1 ring-blue-600'
                         : 'bg-slate-100/90 text-slate-700 hover:bg-slate-200/80 border border-slate-200'"
-                    class="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer">
-                <i class="fa-solid fa-boxes-stacked shrink-0"></i>
+                    class="h-[36px] sm:h-[40px] px-2 sm:px-4 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+                <i class="fa-solid fa-boxes-stacked shrink-0 text-xs sm:text-sm"></i>
                 <span class="hidden sm:inline">Tồn Kho Hàng Ôm & Bán Trực Tiếp</span>
-                <span class="inline sm:hidden">Kho Hàng Ôm</span>
+                <span class="sm:hidden">Kho Hàng Ôm</span>
                 <span :class="activeMainTab === 'holding' ? 'bg-white/20 text-white' : 'bg-blue-100 text-[#1b4a8c]'"
-                      class="px-1.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-mono font-bold whitespace-nowrap shrink-0"
+                      class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold whitespace-nowrap shrink-0"
                       x-text="(selectedHoldingWh?.total_qty || 0) + ' SP'"></span>
             </button>
         </div>
