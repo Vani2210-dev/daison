@@ -2464,24 +2464,16 @@ class DeliveryController extends Controller
                     if ($order->status === 'Đang vận chuyển') {
                         $order->status = 'Đã bốc xong';
                     }
-                    $order->notes = ($order->notes ? $order->notes . "\n" : '') . 
-                        "[RÚT KHỎI XE " . now()->format('H:i d/m/Y') . "]: Rút đơn khỏi xe " . ($oldPlate ?: 'cũ') . " về danh sách chờ xếp xe. Lý do: {$reason}. Người thực hiện: {$performerName}.";
                     $order->save();
 
-                    try {
-                        \App\Models\AuditLog::create([
-                            'timestamp'            => now()->format('Y-m-d H:i:s'),
-                            'performer_name'       => $performerName,
-                            'user_id'              => $performerId,
-                            'action'               => 'Rút Đơn Khỏi Xe',
-                            'module'               => 'Vận Tải & Giao Nhận',
-                            'target_document_code' => $order->order_code,
-                            'field_name'           => 'Phân bổ xe giao hàng',
-                            'old_value'            => $oldPlate ? "Xe {$oldPlate}" : 'Chưa xếp xe',
-                            'new_value'            => 'Hàng chờ xếp xe',
-                            'notes'                => "Rút đơn về hàng chờ. Lý do: {$reason}.",
-                        ]);
-                    } catch (\Throwable $e) {}
+                    // Ghi nhật ký thao tác đơn hàng vào file log riêng và AuditLog
+                    $order->logOperation(
+                        'Rút Đơn Khỏi Xe',
+                        "Rút đơn khỏi xe " . ($oldPlate ?: 'cũ') . " về danh sách chờ xếp xe. Lý do: {$reason}.",
+                        $performerName,
+                        $oldPlate ? "Xe {$oldPlate}" : 'Chưa xếp xe',
+                        'Hàng chờ xếp xe'
+                    );
 
                 } else {
                     // Xếp đơn vào xe
@@ -2495,24 +2487,16 @@ class DeliveryController extends Controller
                     }
                     $order->failed_delivery_reason = null;
                     $order->failed_delivery_note = null;
-                    $order->notes = ($order->notes ? $order->notes . "\n" : '') . 
-                        "[XẾP XE " . now()->format('H:i d/m/Y') . "]: Xếp vào xe {$targetVehiclePlate}" . ($oldPlate ? " (từ xe {$oldPlate})" : "") . ". Lý do: {$reason}. Người thực hiện: {$performerName}.";
                     $order->save();
 
-                    try {
-                        \App\Models\AuditLog::create([
-                            'timestamp'            => now()->format('Y-m-d H:i:s'),
-                            'performer_name'       => $performerName,
-                            'user_id'              => $performerId,
-                            'action'               => 'Điều Phối Xe Giao Hàng',
-                            'module'               => 'Vận Tải & Giao Nhận',
-                            'target_document_code' => $order->order_code,
-                            'field_name'           => 'Phân bổ xe giao hàng',
-                            'old_value'            => $oldPlate ? "Xe {$oldPlate}" : 'Chưa xếp xe',
-                            'new_value'            => "Xe {$targetVehiclePlate}",
-                            'notes'                => "Xếp đơn vào xe {$targetVehiclePlate}. Lý do: {$reason}.",
-                        ]);
-                    } catch (\Throwable $e) {}
+                    // Ghi nhật ký thao tác đơn hàng vào file log riêng và AuditLog
+                    $order->logOperation(
+                        'Điều Phối Xe Giao Hàng',
+                        "Xếp vào xe {$targetVehiclePlate}" . ($oldPlate ? " (từ xe {$oldPlate})" : "") . ". Lý do: {$reason}.",
+                        $performerName,
+                        $oldPlate ? "Xe {$oldPlate}" : 'Chưa xếp xe',
+                        "Xe {$targetVehiclePlate}"
+                    );
                 }
 
                 $updatedOrders[] = [
@@ -3589,9 +3573,6 @@ class DeliveryController extends Controller
             ($order->credit_overrun_status === 'Đã duyệt' ? "[Bảo lãnh nợ duyệt bởi {$order->credit_overrun_approved_name}] " : "") .
             ($deliveryNotes ? "Ghi chú tài xế: {$deliveryNotes}" : "");
 
-        if (!empty($deliveryNotes)) {
-            $order->notes = ($order->notes ? $order->notes . "\n" : '') . "Ghi chú giao: {$deliveryNotes}";
-        }
         $order->save();
 
         $order->logOperation(

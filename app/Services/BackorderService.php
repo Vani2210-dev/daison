@@ -283,11 +283,16 @@ class BackorderService
                 // Đơn này đã đủ 100% hàng trong kho để giao!
                 $bOrder->backorder_status = 'ready_to_deliver';
                 $bOrder->status = 'Đã đủ hàng';
-                $appendNote = "\n[TỰ ĐỘNG BÁO HÀNG VỀ " . now()->format('H:i d/m/Y') . "] Kho đã có đủ hàng để xuất giao!";
-                if (!str_contains($bOrder->notes ?? '', '[TỰ ĐỘNG BÁO HÀNG VỀ')) {
-                    $bOrder->notes = ($bOrder->notes ? $bOrder->notes : '') . $appendNote;
-                }
                 $bOrder->save();
+
+                // Ghi nhật ký thao tác đơn hàng vào file log riêng
+                $bOrder->logOperation(
+                    'Báo Hàng Về Đủ Kho',
+                    'Kho đã có đủ 100% hàng để xuất giao cho đại lý.',
+                    'Hệ thống tự động',
+                    'Giao sau',
+                    'Đã đủ hàng'
+                );
 
                 // Tạo sự kiện PickingSyncEvent để phát thông báo realtime tới toàn bộ hệ thống
                 try {

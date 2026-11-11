@@ -155,7 +155,7 @@ class Order extends Model
 
     /**
      * Ghi nhật ký thao tác nghiệp vụ cho đơn hàng vào file log (storage/logs/orders/{order_code}.log)
-     * và AuditLog, không lưu đè hoặc tự động chèn vào trường `notes` (ghi chú đơn hàng của khách).
+     * và AuditLog, tuyệt đối không lưu đè hoặc tự động chèn vào trường `notes` (ghi chú đơn hàng của khách).
      */
     public function logOperation(string $action, string $details, ?string $performerName = null, ?string $oldValue = null, ?string $newValue = null)
     {
@@ -169,7 +169,7 @@ class Order extends Model
             if (!is_dir($logDir)) {
                 @mkdir($logDir, 0755, true);
             }
-            $safeCode = preg_replace('/[^A-Za-z0-9_-]/', '_', $this->order_code);
+            $safeCode = preg_replace('/[^A-Za-z0-9_-]/', '_', $this->order_code ?: ('ORDER_' . $this->id));
             $logFile = $logDir . '/' . $safeCode . '.log';
             $logEntry = sprintf(
                 "[%s] [%s] [Người thực hiện: %s] [Trạng thái: %s -> %s]\nChi tiết: %s\n--------------------------------------------------------------------------------\n",
@@ -180,11 +180,11 @@ class Order extends Model
                 $newValue ?? $this->status,
                 $details
             );
-            @file_put_contents($logFile, $logEntry, FILE_APPEND);
+            @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
 
             // Ghi thêm vào file tổng hợp order_operations.log
             $generalLog = storage_path('logs/order_operations.log');
-            @file_put_contents($generalLog, "[{$dateStr}] [ĐƠN {$this->order_code}] [{$action}] ({$performer}): {$details}\n", FILE_APPEND);
+            @file_put_contents($generalLog, "[{$dateStr}] [ĐƠN {$this->order_code}] [{$action}] ({$performer}): {$details}\n", FILE_APPEND | LOCK_EX);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning("Lỗi ghi file log đơn hàng {$this->order_code}: " . $e->getMessage());
         }
@@ -204,5 +204,33 @@ class Order extends Model
                 'notes'                => $details,
             ]);
         } catch (\Throwable $e) {}
+    }
+
+    /**
+     * Lấy danh sách lịch sử thao tác từ file log riêng của đơn hàng
+     */
+    public function getOperationLogs(): array
+    {
+        $safeCode = preg_replace('/[^A-Za-z0-9_-]/', '_', $this->order_code ?: ('ORDER_' . $this->id));
+        $logFile = storage_path('logs/orders/' . $safeCode . '.log');
+        if (!file_exists($logFile)) {
+            return [];
+        }
+        $content = @file_get_contents($logFile);
+        if (!$content) return [];
+        return array_values(array_filter(array_map('trim', explode('--------------------------------------------------------------------------------', $content))));
+    }
+
+    /**
+     * Lấy toàn bộ nội dung file log dạng raw text
+     */
+    public function getOperationLogsRaw(): string
+    {
+        $safeCode = preg_replace('/[^A-Za-z0-9_-]/', '_', $this->order_code ?: ('ORDER_' . $this->id));
+        $logFile = storage_path('logs/orders/' . $safeCode . '.log');
+        if (!file_exists($logFile)) {
+            return '';
+        }
+        return @file_get_contents($logFile) ?: '';
     }
 }

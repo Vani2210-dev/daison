@@ -353,18 +353,14 @@ class OrderController extends Controller
             }
 
             try {
-                \App\Models\AuditLog::create([
-                    'timestamp'            => now()->format('Y-m-d H:i:s'),
-                    'performer_name'       => $performerName,
-                    'user_id'              => $performerId,
-                    'action'               => $actionName,
-                    'module'               => 'Đơn Hàng & Bán Hàng',
-                    'target_document_code' => $order->order_code,
-                    'field_name'           => 'Trạng thái chứng từ',
-                    'old_value'            => $oldStatus,
-                    'new_value'            => $status,
-                    'notes'                => $request->input('notes', "Chuyển tiến trình từ [{$oldStatus}] sang [{$status}]"),
-                ]);
+                // Ghi vào file log riêng của đơn hàng và AuditLog
+                $order->logOperation(
+                    $actionName,
+                    $request->input('notes', "Chuyển tiến trình từ [{$oldStatus}] sang [{$status}]"),
+                    $performerName,
+                    $oldStatus,
+                    $status
+                );
 
                 // Bắn sự kiện đồng bộ PickingSyncEvent khi trạng thái đơn đổi
                 \App\Models\PickingSyncEvent::create([
@@ -1254,66 +1250,55 @@ class OrderController extends Controller
                         'Hủy', 'Đã hủy' => 'Hủy Chứng Từ',
                         default => 'Chuyển Trạng Thái Đơn Hàng'
                     };
-                    \App\Models\AuditLog::create([
-                        'timestamp'            => now()->format('Y-m-d H:i:s'),
-                        'performer_name'       => $performer,
-                        'user_id'              => $perfId,
-                        'action'               => $actionName,
-                        'module'               => 'Đơn Hàng & Bán Hàng',
-                        'target_document_code' => $order->order_code,
-                        'field_name'           => 'Trạng thái đơn hàng',
-                        'old_value'            => $oldStatus,
-                        'new_value'            => $order->status,
-                        'notes'                => "Chuyển tiến trình từ [{$oldStatus}] sang [{$order->status}]." . ($order->status === 'Đã giao' ? " Phương thức: {$order->payment_method}." : ''),
-                    ]);
+                    $order->logOperation(
+                        $actionName,
+                        "Chuyển tiến trình từ [{$oldStatus}] sang [{$order->status}]." . ($order->status === 'Đã giao' ? " Phương thức: {$order->payment_method}." : ''),
+                        $performer,
+                        $oldStatus,
+                        $order->status
+                    );
                 }
 
                 // B. Chỉnh sửa giá trị / chi tiết mặt hàng
+                $itemChangeMsgs = [];
+                if (!empty($detectedItemChanges)) {
+                    foreach ($detectedItemChanges as $ch) {
+                        $itemChangeMsgs[] = $ch['message'] ?? ($ch['name'] . ': ' . ($ch['delta'] > 0 ? "+{$ch['delta']}" : "{$ch['delta']}"));
+                    }
+                }
                 if ($oldTotal > 0 && abs($oldTotal - (float)$order->total_amount) > 100) {
-                    \App\Models\AuditLog::create([
-                        'timestamp'            => now()->format('Y-m-d H:i:s'),
-                        'performer_name'       => $performer,
-                        'user_id'              => $perfId,
-                        'action'               => 'Chỉnh Sửa Giá Trị Đơn',
-                        'module'               => 'Đơn Hàng & Bán Hàng',
-                        'target_document_code' => $order->order_code,
-                        'field_name'           => 'Tổng tiền đơn hàng',
-                        'old_value'            => number_format($oldTotal, 0, ',', '.') . ' đ',
-                        'new_value'            => number_format($order->total_amount, 0, ',', '.') . ' đ',
-                        'notes'                => "Chỉnh sửa số lượng hoặc đơn giá vật tư trong đơn.",
-                    ]);
+                    $itemChangeMsgs[] = "Tổng tiền thay đổi: " . number_format($oldTotal, 0, ',', '.') . " đ -> " . number_format($order->total_amount, 0, ',', '.') . " đ";
+                }
+                if (!empty($itemChangeMsgs)) {
+                    $order->logOperation(
+                        'Chỉnh Sửa Mặt Hàng / Giá Trị Đơn',
+                        implode(" | ", $itemChangeMsgs),
+                        $performer,
+                        number_format($oldTotal, 0, ',', '.') . ' đ',
+                        number_format($order->total_amount, 0, ',', '.') . ' đ'
+                    );
                 }
 
                 // C. Phân bổ xe giao hàng
                 if (!empty($order->assigned_vehicle_plate) && $oldVehiclePlate !== $order->assigned_vehicle_plate) {
-                    \App\Models\AuditLog::create([
-                        'timestamp'            => now()->format('Y-m-d H:i:s'),
-                        'performer_name'       => $performer,
-                        'user_id'              => $perfId,
-                        'action'               => 'Điều Phối Xe Giao Hàng',
-                        'module'               => 'Vận Tải & Giao Nhận',
-                        'target_document_code' => $order->order_code,
-                        'field_name'           => 'Xe tải phụ trách',
-                        'old_value'            => $oldVehiclePlate ?: 'Chưa phân xe',
-                        'new_value'            => $order->assigned_vehicle_plate,
-                        'notes'                => "Gán xe [{$order->assigned_vehicle_plate}] thực hiện giao nhận đơn.",
-                    ]);
+                    $order->logOperation(
+                        'Điều Phối Xe Giao Hàng',
+                        "Gán xe [{$order->assigned_vehicle_plate}] thực hiện giao nhận đơn.",
+                        $performer,
+                        $oldVehiclePlate ?: 'Chưa phân xe',
+                        $order->assigned_vehicle_plate
+                    );
                 }
 
                 // D. Ghi nhận hoàn hàng
                 if ($order->has_returns && $order->return_slip_code) {
-                    \App\Models\AuditLog::create([
-                        'timestamp'            => now()->format('Y-m-d H:i:s'),
-                        'performer_name'       => $performer,
-                        'user_id'              => $perfId,
-                        'action'               => 'Ghi Nhận Hoàn Hàng Tại Điểm Giao',
-                        'module'               => 'Vận Tải & Giao Nhận',
-                        'target_document_code' => $order->order_code,
-                        'field_name'           => 'Hàng hoàn trả',
-                        'old_value'            => '0 đ',
-                        'new_value'            => '-' . number_format($order->total_returned_amount, 0, ',', '.') . ' đ',
-                        'notes'                => "Lập phiếu hoàn trả [#{$order->return_slip_code}] giảm trừ công nợ / COD.",
-                    ]);
+                    $order->logOperation(
+                        'Ghi Nhận Hoàn Hàng Tại Điểm Giao',
+                        "Lập phiếu hoàn trả [#{$order->return_slip_code}] giảm trừ công nợ / COD: -" . number_format($order->total_returned_amount, 0, ',', '.') . " đ",
+                        $performer,
+                        '0 đ',
+                        '-' . number_format($order->total_returned_amount, 0, ',', '.') . ' đ'
+                    );
                 }
             }
         } catch (\Throwable $e) {
@@ -1848,9 +1833,18 @@ class OrderController extends Controller
             foreach ($mergedIds as $id) {
                 $order = Order::find($id);
                 if ($order && $order->status !== 'Đã gộp đơn') {
+                    $oldStatus = $order->status;
                     $order->status = 'Đã gộp đơn';
-                    $order->notes = ($order->notes ? $order->notes . "\n" : '') . "[Đã gộp vào đơn {$targetOrderCode} lúc " . date('H:i d/m/Y') . "]";
                     $order->save();
+
+                    // Ghi nhật ký thao tác đơn hàng vào file log riêng
+                    $order->logOperation(
+                        'Gộp Đơn Hàng',
+                        "Đã gộp vào đơn {$targetOrderCode} lúc " . date('H:i d/m/Y'),
+                        auth()->user()?->name ?? 'Hệ thống',
+                        $oldStatus,
+                        'Đã gộp đơn'
+                    );
                 }
             }
         }

@@ -554,9 +554,14 @@ class DebtHandoverController extends Controller
                     } elseif ($toUser && $toUser->dealer_id) {
                         $order->dealer_id = $toUser->dealer_id;
                     }
-                    $order->notes = ($order->notes ? $order->notes . "\n" : '') .
-                        "[ĐÃ XÁC NHẬN BÀN GIAO NỢ]: {$approverName} đã nhận bàn giao đơn hàng và công nợ " . number_format($order->total_amount, 0, ',', '.') . " đ theo biên bản {$handover->code}. Lái xe đã được giải phóng nợ.";
                     $order->save();
+
+                    // Ghi nhật ký thao tác đơn hàng vào file log riêng và AuditLog
+                    $order->logOperation(
+                        'Xác Nhận Bàn Giao Nợ',
+                        "{$approverName} đã nhận bàn giao đơn hàng và công nợ " . number_format($order->total_amount, 0, ',', '.') . " đ theo biên bản {$handover->code}. Lái xe đã được giải phóng nợ.",
+                        $approverName
+                    );
 
                     // Tự động tính toán lại công nợ đại lý
                     if ($order->dealer_id) {
@@ -681,9 +686,14 @@ class DebtHandoverController extends Controller
         if (!empty($orderIds)) {
             $orders = Order::whereIn('id', $orderIds)->get();
             foreach ($orders as $order) {
-                $order->notes = ($order->notes ? $order->notes . "\n" : '') .
-                    "[TỪ CHỐI BÀN GIAO NỢ]: {$rejecterName} đã từ chối nhận nợ biên bản {$handover->code}. Lý do: {$reason}";
                 $order->save();
+
+                // Ghi nhật ký thao tác đơn hàng vào file log riêng và AuditLog
+                $order->logOperation(
+                    'Từ Chối Bàn Giao Nợ',
+                    "{$rejecterName} đã từ chối nhận nợ biên bản {$handover->code}. Lý do: {$reason}",
+                    $rejecterName
+                );
             }
         }
 
