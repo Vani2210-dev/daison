@@ -319,9 +319,8 @@
         <!-- Hàng 2: Thông tin Đại lý / Khách hàng + Nút Gọi & Chỉ đường Maps -->
         <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
             <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-900 truncate">
-                    <span class="px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 font-mono text-[10px] border border-purple-200 shrink-0">{{ $custCode }}</span>
-                    <span class="truncate">{{ $custName }}</span>
+                <div class="text-xs sm:text-sm font-black text-slate-900 truncate">
+                    <span>{{ $custName }}</span>
                 </div>
                 <div class="text-[10.5px] text-slate-500 truncate mt-0.5">
                     <i class="fa-solid fa-location-dot text-slate-400 text-[10px] mr-0.5"></i>
