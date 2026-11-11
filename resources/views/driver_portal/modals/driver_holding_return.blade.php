@@ -37,10 +37,10 @@
                             <span>Kho nhận hàng ôm:</span>
                         </span>
                         <span class="px-2.5 py-0.5 rounded-lg bg-emerald-600 text-white font-mono font-bold text-xs shadow-xs"
-                              x-text="holdingWarehouse?.name || ('Kho Hàng Ôm - ' + (vehicleManagerName || currentUserName || 'Lái xe'))"></span>
+                              x-text="holdingWarehouse?.name || ('Kho Hàng Ôm - ' + (vehicleManagerName || currentUserName || '{{ auth()->user()?->name ?? 'Lái xe' }}'))"></span>
                     </div>
                     <div class="text-[11px] text-emerald-800">
-                        Phụ trách kho: <strong x-text="vehicleManagerName || currentUserName || 'Lái xe'"></strong> 
+                        Phụ trách kho: <strong x-text="vehicleManagerName || currentUserName || '{{ auth()->user()?->name ?? 'Lái xe' }}'"></strong> 
                         &bull; Xe: <strong class="font-mono" x-text="selectedVehicle?.plate_number || '{{ $selectedPlate ?? '' }}'"></strong>
                     </div>
                 </div>

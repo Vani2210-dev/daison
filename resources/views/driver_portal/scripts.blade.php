@@ -16,6 +16,7 @@
     "empDebt": {{ (float)($empDebt ?? 0) }},
     "vehicleManagerName": @json($vehicleManagerName ?? ''),
     "vehicleManagerId": @json($vehicleManagerId ?? null),
+    "currentUserName": @json(auth()->user()?->name ?? 'Lái xe'),
     "dealers": @json($dealers ?? []),
     "driverVanDispatches": @json($driverVanDispatches ?? []),
     "totalVanSaleDebt": {{ (float)($totalVanSaleDebt ?? 0) }},
@@ -25,6 +26,24 @@
 </script>
 
 <script>
+window.currentUserName = @json(auth()->user()?->name ?? 'Lái xe');
+window.formatDate = function(dateStr) {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) {
+            const s = String(dateStr).substring(0, 10);
+            const parts = s.split('-');
+            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return dateStr;
+        }
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+    } catch (e) {
+        return dateStr;
+    }
+};
+
 function deliveryExecutionApp() {
     const rawData = JSON.parse(document.getElementById('driver-execution-data')?.textContent || '{}');
 
@@ -275,6 +294,7 @@ function deliveryExecutionApp() {
         empDebt: Number(rawData.empDebt || 0),
         vehicleManagerName: rawData.vehicleManagerName || '',
         vehicleManagerId: rawData.vehicleManagerId || null,
+        currentUserName: rawData.currentUserName || window.currentUserName || 'Lái xe',
         dealers: rawData.dealers || [],
         holdingSearchQuery: '',
 
@@ -802,6 +822,10 @@ function deliveryExecutionApp() {
 
         formatNumber(val) {
             return new Intl.NumberFormat('vi-VN').format(Math.round(Number(val) || 0));
+        },
+
+        formatDate(dateStr) {
+            return window.formatDate(dateStr);
         },
 
         isOrderCompleted(order) {
