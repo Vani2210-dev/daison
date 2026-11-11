@@ -17,36 +17,32 @@
         <!-- Filter tabs: 4 tabs chia đều 4 cột trên mobile, vừa vặn 100% màn hình không bị tràn hay cuộn ngang -->
         <div class="grid grid-cols-4 gap-1.5 w-full md:w-auto md:flex md:items-center">
             <button type="button" @click="statusFilter = 'all'"
-                    class="h-[34px] px-1 sm:px-3 rounded-xl font-black text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
+                    class="h-[34px] px-2 sm:px-3 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
                     :class="statusFilter === 'all' ? 'bg-slate-900 text-white shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'">
                 <span>Tất cả</span>
-                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold" :class="statusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'" x-text="orders.length"></span>
             </button>
 
             <button type="button" @click="statusFilter = 'pending'"
-                    class="h-[34px] px-1 sm:px-3 rounded-xl font-black text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
+                    class="h-[34px] px-2 sm:px-3 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
                     :class="statusFilter === 'pending' ? 'bg-amber-500 text-white shadow-2xs' : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'">
                 <span class="hidden sm:inline-block"><i class="fa-regular fa-clock text-[10px]"></i></span>
                 <span>Chờ giao</span>
-                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold" :class="statusFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-200 text-amber-900'" x-text="pendingOrdersCount"></span>
             </button>
 
             <button type="button" @click="statusFilter = 'completed'"
-                    class="h-[34px] px-1 sm:px-3 rounded-xl font-black text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
+                    class="h-[34px] px-2 sm:px-3 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
                     :class="statusFilter === 'completed' ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'">
                 <span class="hidden sm:inline-block"><i class="fa-solid fa-check text-[10px]"></i></span>
                 <span class="sm:hidden">Đã giao</span>
                 <span class="hidden sm:inline">Đã giao xong</span>
-                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold" :class="statusFilter === 'completed' ? 'bg-white/20 text-white' : 'bg-emerald-200 text-emerald-900'" x-text="completedOrdersCount"></span>
             </button>
 
             <button type="button" @click="statusFilter = 'failed'"
-                    class="h-[34px] px-1 sm:px-3 rounded-xl font-black text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
+                    class="h-[34px] px-2 sm:px-3 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
                     :class="statusFilter === 'failed' ? 'bg-rose-600 text-white shadow-2xs' : 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200'">
                 <span class="hidden sm:inline-block"><i class="fa-solid fa-xmark text-[10px]"></i></span>
                 <span class="sm:hidden">Thất bại</span>
                 <span class="hidden sm:inline">Không thành công</span>
-                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold" :class="statusFilter === 'failed' ? 'bg-white/20 text-white' : 'bg-rose-200 text-rose-900'" x-text="failedOrdersCount"></span>
             </button>
         </div>
 
