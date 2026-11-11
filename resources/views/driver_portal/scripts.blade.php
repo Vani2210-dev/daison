@@ -21,7 +21,9 @@
     "driverVanDispatches": @json($driverVanDispatches ?? []),
     "totalVanSaleDebt": {{ (float)($totalVanSaleDebt ?? 0) }},
     "salesStaff": @json($salesStaff ?? []),
-    "discrepancies": @json($discrepancies ?? [])
+    "discrepancies": @json($discrepancies ?? []),
+    "allVehicles": @json($allVehicles ?? []),
+    "transfers": @json($transfers ?? [])
 }
 </script>
 
@@ -49,6 +51,50 @@ function deliveryExecutionApp() {
 
     return {
         selectedVehicle: rawData.selectedVehicle || null,
+        allVehicles: (rawData.allVehicles || []),
+        transfers: (rawData.transfers || []),
+        showTransferModal: false,
+        transferTab: 'incoming',
+        transferForm: {
+            order_id: '',
+            to_vehicle_plate: '',
+            reason: 'Xếp ghép tuyến giao hàng tiện đường hơn',
+            isSubmitting: false
+        },
+
+        get pendingIncomingTransfers() {
+            const currentPlate = this.selectedVehicle?.plate_number;
+            if (!currentPlate) return [];
+            return (this.transfers || []).filter(t => 
+                t.to_vehicle_plate === currentPlate && t.status === 'pending'
+            );
+        },
+
+        get pendingOutgoingTransfers() {
+            const currentPlate = this.selectedVehicle?.plate_number;
+            if (!currentPlate) return [];
+            return (this.transfers || []).filter(t => 
+                t.from_vehicle_plate === currentPlate && t.status === 'pending'
+            );
+        },
+
+        get transferableOrders() {
+            return (this.orders || []).filter(o => 
+                !this.isOrderCompleted(o) && o.status !== 'Không thành công' && o.status !== 'Đã hoàn kho'
+            );
+        },
+
+        get selectedTransferOrder() {
+            if (!this.transferForm.order_id) return null;
+            return (this.orders || []).find(o => String(o.id) === String(this.transferForm.order_id)) || null;
+        },
+
+        get targetAvailableVehicles() {
+            const currentPlate = this.selectedVehicle?.plate_number;
+            const list = this.allVehicles && this.allVehicles.length > 0 ? this.allVehicles : (rawData.vehicles || []);
+            return list.filter(v => v.plate_number !== currentPlate);
+        },
+
         showOrderReturnWarehouseModal: false,
         showDiscrepancyModal: false,
         discrepancyTab: 'create',
@@ -650,6 +696,19 @@ function deliveryExecutionApp() {
                         this.showToast('💬 Người bốc hàng vừa phản hồi về hàng lệch trên xe!');
                     }
                 };
+
+                const tc = new BroadcastChannel('erp_transfer_sync');
+                tc.onmessage = (ev) => {
+                    this.refreshVehicleTransfers();
+                    if (ev.data && ev.data.type === 'TRANSFER_CREATED') {
+                        this.showToast('🚚 Có yêu cầu điều chuyển đơn hàng mới giữa các xe!');
+                    }
+                };
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('tab') === 'transfers') {
+                this.openTransferModal(null, 'incoming');
             }
 
             window.addEventListener('erp:delivery-discrepancy-responded', () => {
@@ -2075,6 +2134,170 @@ function deliveryExecutionApp() {
                 const { ok, data } = await this.safeFetchJson('/delivery/discrepancies?vehicle_plate=' + encodeURIComponent(this.selectedVehicle.plate_number));
                 if (ok && data?.success && data.discrepancies) {
                     this.discrepancies = data.discrepancies;
+                }
+            } catch (_) {}
+        },
+
+        // ─── Vehicle Order Transfers (Điều chuyển đơn hàng giữa các xe) ────
+        openTransferModal(order = null, tab = null) {
+            if (order) {
+                this.transferForm.order_id = String(order.id);
+                this.transferTab = 'create';
+            } else if (tab) {
+                this.transferTab = tab;
+            } else if (this.pendingIncomingTransfers.length > 0) {
+                this.transferTab = 'incoming';
+            } else {
+                this.transferTab = 'create';
+            }
+            this.showTransferModal = true;
+        },
+
+        async submitVehicleTransfer() {
+            if (!this.transferForm.order_id) {
+                alert('Vui lòng chọn đơn hàng cần điều chuyển!');
+                return;
+            }
+            if (!this.transferForm.to_vehicle_plate) {
+                alert('Vui lòng chọn xe tiếp nhận đơn hàng!');
+                return;
+            }
+            if (!this.transferForm.reason || !this.transferForm.reason.trim()) {
+                alert('Vui lòng nhập lý do điều chuyển đơn hàng!');
+                return;
+            }
+
+            this.transferForm.isSubmitting = true;
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const res = await fetch('/delivery/transfers/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        order_id: this.transferForm.order_id,
+                        to_vehicle_plate: this.transferForm.to_vehicle_plate,
+                        reason: this.transferForm.reason,
+                        from_vehicle_plate: this.selectedVehicle?.plate_number || ''
+                    })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    this.showToast('✅ ' + (data.message || 'Đã gửi yêu cầu điều chuyển thành công!'));
+                    if (data.transfer) {
+                        this.transfers.unshift(data.transfer);
+                    }
+                    this.transferForm.order_id = '';
+                    this.transferTab = 'history';
+
+                    if (typeof BroadcastChannel !== 'undefined') {
+                        try {
+                            const tc = new BroadcastChannel('erp_transfer_sync');
+                            tc.postMessage({ type: 'TRANSFER_CREATED', transfer: data.transfer });
+                        } catch (_) {}
+                    }
+                } else {
+                    alert('Lỗi: ' + (data.message || 'Không thể gửi yêu cầu điều chuyển'));
+                }
+            } catch (e) {
+                alert('Lỗi kết nối: ' + e.message);
+            } finally {
+                this.transferForm.isSubmitting = false;
+            }
+        },
+
+        async respondVehicleTransfer(transferId, action, reason = '') {
+            const confirmMsg = action === 'accept'
+                ? 'Bạn có chắc chắn muốn tiếp nhận đơn hàng này vào xe của bạn?'
+                : 'Bạn có chắc chắn muốn từ chối tiếp nhận đơn hàng này?';
+            
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const res = await fetch(`/delivery/transfers/${transferId}/respond`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ action, reason })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    this.showToast(action === 'accept' ? '✅ Đã tiếp nhận đơn hàng vào xe!' : 'ℹ️ Đã từ chối tiếp nhận đơn hàng');
+
+                    // Cập nhật trạng thái transfer trong danh sách cục bộ
+                    const idx = this.transfers.findIndex(t => t.id === transferId);
+                    if (idx !== -1 && data.transfer) {
+                        this.transfers[idx] = data.transfer;
+                    }
+
+                    // Nếu tiếp nhận thành công, reload sau 1 giây để cập nhật lại danh sách đơn trên xe
+                    if (action === 'accept') {
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1200);
+                    }
+                } else {
+                    alert('Lỗi: ' + (data.message || 'Không thể xử lý phản hồi'));
+                }
+            } catch (e) {
+                alert('Lỗi kết nối: ' + e.message);
+            }
+        },
+
+        promptRejectTransfer(transfer) {
+            const reason = prompt(`Nhập lý do từ chối nhận đơn #${transfer.order_code}:`, 'Xe đã đầy tải / Không tiện đường');
+            if (reason !== null && reason.trim()) {
+                this.respondVehicleTransfer(transfer.id, 'reject', reason.trim());
+            }
+        },
+
+        async cancelVehicleTransfer(transferId) {
+            if (!confirm('Bạn có chắc chắn muốn hủy yêu cầu điều chuyển đơn hàng này?')) return;
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const res = await fetch(`/delivery/transfers/${transferId}/cancel`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    this.showToast('✅ ' + (data.message || 'Đã hủy yêu cầu điều chuyển!'));
+                    const idx = this.transfers.findIndex(t => t.id === transferId);
+                    if (idx !== -1 && data.transfer) {
+                        this.transfers[idx] = data.transfer;
+                    }
+                } else {
+                    alert('Lỗi: ' + (data.message || 'Không thể hủy yêu cầu'));
+                }
+            } catch (e) {
+                alert('Lỗi kết nối: ' + e.message);
+            }
+        },
+
+        async refreshVehicleTransfers() {
+            if (!this.selectedVehicle) return;
+            try {
+                const res = await fetch('/delivery/transfers?plate=' + encodeURIComponent(this.selectedVehicle.plate_number));
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data?.success && data.transfers) {
+                        this.transfers = data.transfers;
+                    }
                 }
             } catch (_) {}
         },

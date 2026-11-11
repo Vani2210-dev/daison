@@ -55,6 +55,7 @@
     @include('driver_portal.modals.debt_handover')
     @include('driver_portal.modals.order_return_warehouse')
     @include('driver_portal.modals.discrepancy_report')
+    @include('driver_portal.modals.vehicle_order_transfer')
 
 </div>
 

@@ -18,15 +18,24 @@
                             <span class="text-[11px] text-slate-500 font-bold truncate hidden sm:inline" x-text="order.dealer?.tier || 'Đại lý Cấp 1'"></span>
                         </div>
 
-                        <!-- Trạng thái đơn -->
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] sm:text-[11px] font-bold border shrink-0 shadow-2xs"
-                              :class="order.status === 'Không thành công' ? 'bg-rose-50 text-rose-700 border-rose-300' : (order.status === 'Chờ thủ kho duyệt hoàn' ? 'bg-amber-50 text-amber-900 border-amber-300' : (order.status === 'Đã hoàn kho' ? 'bg-blue-50 text-blue-700 border-blue-300' : (isOrderChecked(order) ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-amber-50 text-amber-900 border-amber-300')))">
-                            <i :class="order.status === 'Không thành công' ? 'fa-solid fa-circle-xmark text-rose-600 text-[10px]' : (order.status === 'Chờ thủ kho duyệt hoàn' ? 'fa-solid fa-hourglass-half text-amber-600 text-[10px]' : (order.status === 'Đã hoàn kho' ? 'fa-solid fa-warehouse text-blue-600 text-[10px]' : (isOrderChecked(order) ? 'fa-solid fa-clipboard-check text-emerald-600 text-[10px]' : 'fa-regular fa-clock text-amber-600 text-[10px]')))"></i>
-                            <span x-text="order.status"></span>
-                        </span>
+                        <!-- Trạng thái đơn & Chờ chuyển xe -->
+                        <div class="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                            <template x-if="transfers.some(t => t.order_id == order.id && t.status === 'pending')">
+                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black bg-indigo-100 text-indigo-900 border border-indigo-300 animate-pulse">
+                                    <i class="fa-solid fa-right-left text-[9px]"></i>
+                                    <span>Đang chờ chuyển xe</span>
+                                </span>
+                            </template>
+
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] sm:text-[11px] font-bold border shrink-0 shadow-2xs"
+                                  :class="order.status === 'Không thành công' ? 'bg-rose-50 text-rose-700 border-rose-300' : (order.status === 'Chờ thủ kho duyệt hoàn' ? 'bg-amber-50 text-amber-900 border-amber-300' : (order.status === 'Đã hoàn kho' ? 'bg-blue-50 text-blue-700 border-blue-300' : (isOrderChecked(order) ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-amber-50 text-amber-900 border-amber-300')))">
+                                <i :class="order.status === 'Không thành công' ? 'fa-solid fa-circle-xmark text-rose-600 text-[10px]' : (order.status === 'Chờ thủ kho duyệt hoàn' ? 'fa-solid fa-hourglass-half text-amber-600 text-[10px]' : (order.status === 'Đã hoàn kho' ? 'fa-solid fa-warehouse text-blue-600 text-[10px]' : (isOrderChecked(order) ? 'fa-solid fa-clipboard-check text-emerald-600 text-[10px]' : 'fa-regular fa-clock text-amber-600 text-[10px]')))"></i>
+                                <span x-text="order.status"></span>
+                            </span>
+                        </div>
                     </div>
 
-                    <!-- Dòng 2: Thông tin đại lý, thanh toán & Nút Xem đơn -->
+                    <!-- Dòng 2: Thông tin đại lý, thanh toán & Cụm Nút Xem đơn / Chuyển xe -->
                     <div class="flex items-center justify-between gap-2 text-xs">
                         <div class="flex items-center gap-1.5 text-slate-500 font-medium truncate">
                             <span class="font-bold text-slate-700 sm:hidden text-[11px] truncate" x-text="order.dealer?.tier || 'Đại lý Cấp 1'"></span>
@@ -44,12 +53,23 @@
                             </template>
                         </div>
 
-                        <!-- Nút Xem đơn nhỏ gọn ở góc phải -->
-                        <button type="button" @click="openViewOrderModal(order)"
-                                class="px-2 py-0.5 rounded-lg text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs shrink-0">
-                            <i class="fa-regular fa-eye text-slate-500 text-[10px]"></i>
-                            <span>Xem đơn</span>
-                        </button>
+                        <!-- Cụm Nút Chuyển xe & Xem đơn -->
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <template x-if="!isOrderCompleted(order) && order.status !== 'Không thành công' && order.status !== 'Đã hoàn kho' && !transfers.some(t => t.order_id == order.id && t.status === 'pending')">
+                                <button type="button" @click="openTransferModal(order)"
+                                        class="px-2 py-0.5 rounded-lg text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                                        title="Điều chuyển đơn hàng sang xe khác">
+                                    <i class="fa-solid fa-right-left text-indigo-600 text-[10px]"></i>
+                                    <span>Chuyển xe</span>
+                                </button>
+                            </template>
+
+                            <button type="button" @click="openViewOrderModal(order)"
+                                    class="px-2 py-0.5 rounded-lg text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs shrink-0">
+                                <i class="fa-regular fa-eye text-slate-500 text-[10px]"></i>
+                                <span>Xem đơn</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Dòng 3: Cụm nút thao tác nghiệp vụ (Chỉ hiện khi cần hành động) -->

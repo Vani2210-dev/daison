@@ -384,6 +384,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/delivery/discrepancies/{id}/respond', [DeliveryController::class, 'respondDiscrepancy']);
     Route::post('/api/delivery/discrepancies/{id}/respond', [DeliveryController::class, 'respondDiscrepancy']);
 
+    // Vehicle Order Transfers (Điều chuyển đơn hàng giữa các xe)
+    Route::post('/delivery/transfers/create', [DeliveryController::class, 'createVehicleOrderTransfer']);
+    Route::post('/api/delivery/transfers/create', [DeliveryController::class, 'createVehicleOrderTransfer']);
+    Route::get('/delivery/transfers', [DeliveryController::class, 'getVehicleOrderTransfers']);
+    Route::get('/api/delivery/transfers', [DeliveryController::class, 'getVehicleOrderTransfers']);
+    Route::post('/delivery/transfers/{id}/respond', [DeliveryController::class, 'respondVehicleOrderTransfer']);
+    Route::post('/api/delivery/transfers/{id}/respond', [DeliveryController::class, 'respondVehicleOrderTransfer']);
+    Route::post('/delivery/transfers/{id}/cancel', [DeliveryController::class, 'cancelVehicleOrderTransfer']);
+    Route::post('/api/delivery/transfers/{id}/cancel', [DeliveryController::class, 'cancelVehicleOrderTransfer']);
+
     Route::post('/delivery/orders/{id}/request-credit-override', [DeliveryController::class, 'requestCreditOverride']);
     Route::post('/delivery/orders/{id}/approve-credit-override', [DeliveryController::class, 'approveCreditOverride']);
     Route::get('/delivery/orders/{id}/credit-override-status', [DeliveryController::class, 'getCreditOverrideStatus']);

@@ -169,6 +169,27 @@
                           x-text="discrepancies.length">0</span>
                 </button>
 
+                <!-- 4.1. Điều Chuyển Đơn Giữa Các Xe -->
+                <button type="button" @click="openTransferModal(); menuOpen = false"
+                        class="w-full px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-indigo-500/40 hover:border-indigo-400 text-white transition flex items-center justify-between gap-2.5 cursor-pointer group shadow-xs">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-8 h-8 rounded-lg bg-indigo-500/30 text-indigo-300 border border-indigo-400/50 flex items-center justify-center text-xs shrink-0 group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-right-left"></i>
+                        </span>
+                        <div class="text-left min-w-0">
+                            <div class="text-[13px] font-black text-indigo-300 truncate">Điều Chuyển Đơn Xe</div>
+                            <div class="text-[11px] text-slate-200 truncate">Chuyển & Tiếp nhận đơn giữa các xe</div>
+                        </div>
+                    </div>
+                    <template x-if="pendingIncomingTransfers.length > 0">
+                        <span class="px-2 py-0.5 rounded-full font-mono text-[11px] font-black bg-rose-500 text-white shadow-xs shrink-0 animate-pulse"
+                              x-text="pendingIncomingTransfers.length + ' chờ nhận'"></span>
+                    </template>
+                    <template x-if="pendingIncomingTransfers.length === 0">
+                        <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-indigo-300"></i>
+                    </template>
+                </button>
+
                 <div class="border-t border-slate-800 my-1 pt-1.5">
                     <div class="px-2.5 py-1 text-[11px] uppercase font-black tracking-wider text-purple-300 flex items-center justify-between border-b border-slate-800/80 pb-1.5 mb-1">
                         <span class="flex items-center gap-1.5">

@@ -10,6 +10,8 @@ use App\Models\Order;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\DriverCashHandover;
+use App\Models\VehicleOrderTransfer;
+use App\Models\SystemNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -2930,8 +2932,34 @@ class DeliveryController extends Controller
             ->latest('id')
             ->get();
 
+        // Danh sách toàn bộ xe để hỗ trợ chọn xe nhận khi điều chuyển đơn
+        $allVehicles = Vehicle::with(['driver', 'deliveryRoute'])
+            ->where('status', '!=', 'Bảo dưỡng')
+            ->orderBy('plate_number')
+            ->get();
+
+        // Lấy danh sách các yêu cầu điều chuyển đơn hàng liên quan đến xe / tài xế hiện tại
+        $transfers = collect();
+        if ($selectedVehicle || $user) {
+            $transfers = VehicleOrderTransfer::where(function($q) use ($selectedVehicle, $user) {
+                    if ($selectedVehicle) {
+                        $q->where('from_vehicle_plate', $selectedVehicle->plate_number)
+                          ->orWhere('to_vehicle_plate', $selectedVehicle->plate_number);
+                    }
+                    if ($user) {
+                        $q->orWhere('from_driver_id', $user->id)
+                          ->orWhere('to_driver_id', $user->id);
+                    }
+                })
+                ->whereDate('created_at', '>=', now()->subDays(7))
+                ->latest('id')
+                ->get();
+        }
+
         return view('driver_portal.index', compact(
             'vehicles',
+            'allVehicles',
+            'transfers',
             'selectedVehicle',
             'selectedPlate',
             'orders',
@@ -4519,6 +4547,390 @@ class DeliveryController extends Controller
             'success'     => true,
             'message'     => 'Đã gửi phản hồi tới người giao hàng thành công!',
             'discrepancy' => $discrepancy,
+        ]);
+    }
+
+    /**
+     * API: Tạo yêu cầu điều chuyển đơn hàng giữa các xe
+     */
+    public function createVehicleOrderTransfer(Request $request)
+    {
+        $request->validate([
+            'order_id'         => 'required',
+            'to_vehicle_plate' => 'required|string',
+            'reason'           => 'required|string|max:500',
+        ]);
+
+        $order = Order::with('dealer')->find($request->input('order_id'));
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng trong hệ thống'], 404);
+        }
+
+        if (in_array($order->status, ['Đã giao hàng', 'Hoàn tất', 'Đã hủy', 'Đã hoàn kho'])) {
+            return response()->json(['success' => false, 'message' => "Không thể điều chuyển đơn hàng đã kết thúc (Trạng thái: '{$order->status}')!"], 422);
+        }
+
+        $toVehiclePlate = trim($request->input('to_vehicle_plate'));
+        $targetVehicle = Vehicle::with('driver')->where('plate_number', $toVehiclePlate)->first();
+        if (!$targetVehicle) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy xe nhận đích: ' . $toVehiclePlate], 404);
+        }
+
+        $fromVehiclePlate = $order->assigned_vehicle_plate ?: ($request->input('from_vehicle_plate') ?: 'Chưa xếp xe');
+        if ($fromVehiclePlate === $toVehiclePlate) {
+            return response()->json(['success' => false, 'message' => 'Xe tiếp nhận không được trùng với xe hiện tại của đơn hàng'], 422);
+        }
+
+        // Kiểm tra xem đơn hàng đã có yêu cầu điều chuyển đang chờ tiếp nhận không
+        $existingPending = VehicleOrderTransfer::where('order_id', $order->id)
+            ->where('status', 'pending')
+            ->first();
+        if ($existingPending) {
+            return response()->json([
+                'success' => false,
+                'message' => "Đơn hàng #{$order->order_code} đang có yêu cầu điều chuyển chờ xe {$existingPending->to_vehicle_plate} duyệt!"
+            ], 422);
+        }
+
+        $user = auth()->user();
+        $fromDriverId = $user?->id;
+        $fromDriverName = $user?->name ?? 'Tài xế';
+
+        $toDriverId = $targetVehicle->driver_id;
+        $toDriverName = $targetVehicle->driver?->name ?? 'Tài xế nhận';
+
+        $reason = trim($request->input('reason'));
+        $transferCode = 'DCX-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
+
+        DB::beginTransaction();
+        try {
+            $transfer = VehicleOrderTransfer::create([
+                'transfer_code'      => $transferCode,
+                'order_id'           => $order->id,
+                'order_code'         => $order->order_code,
+                'customer_name'      => $order->customer_name ?: ($order->dealer?->name ?? 'Khách lẻ'),
+                'customer_address'   => $order->shipping_address ?: ($order->dealer?->address ?? ''),
+                'order_amount'       => (float) $order->total_amount,
+                'from_vehicle_plate' => $fromVehiclePlate,
+                'from_driver_id'     => $fromDriverId,
+                'from_driver_name'   => $fromDriverName,
+                'to_vehicle_plate'   => $toVehiclePlate,
+                'to_driver_id'       => $toDriverId,
+                'to_driver_name'     => $toDriverName,
+                'reason'             => $reason,
+                'status'             => 'pending',
+            ]);
+
+            // Ghi nhật ký vào file log riêng (storage/logs/orders/{order_code}.log) và AuditLog
+            $order->logOperation(
+                'Yêu Cầu Điều Chuyển Xe',
+                "Tạo yêu cầu điều chuyển đơn sang xe {$toVehiclePlate} (Tài xế nhận: {$toDriverName}). Mã yêu cầu: {$transferCode}. Lý do: {$reason}.",
+                $fromDriverName,
+                "Xe {$fromVehiclePlate}",
+                "Chờ xe {$toVehiclePlate} tiếp nhận"
+            );
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Lỗi tạo yêu cầu điều chuyển: ' . $e->getMessage()], 500);
+        }
+
+        // Gửi thông báo SystemNotification tới:
+        // 1. Tài xế xe nhận (nếu có tài khoản)
+        // 2. Bộ phận điều phối / Ban Giám Đốc (Logistics, Executive, Admin)
+        try {
+            $notifyUserIds = [];
+            if ($toDriverId) {
+                $notifyUserIds[] = (int) $toDriverId;
+            }
+
+            $admins = User::where(function($q) {
+                $q->whereIn('department', ['Logistics', 'Executive', 'Kho', 'Warehouse'])
+                  ->orWhere('id', 1);
+            })->pluck('id')->all();
+
+            $notifyUserIds = array_unique(array_filter(array_merge($notifyUserIds, $admins)));
+            if ($fromDriverId) {
+                $notifyUserIds = array_values(array_diff($notifyUserIds, [(int)$fromDriverId]));
+            }
+
+            foreach ($notifyUserIds as $uId) {
+                $isToDriver = ($uId == $toDriverId);
+                $title = $isToDriver 
+                    ? "🚚 Đơn hàng chuyển sang xe bạn: Xe {$fromVehiclePlate} ➜ Xe {$toVehiclePlate}"
+                    : "🔄 Yêu cầu điều chuyển xe: {$fromVehiclePlate} ➜ {$toVehiclePlate} (Đơn #{$order->order_code})";
+
+                $msg = $isToDriver
+                    ? "Tài xế {$fromDriverName} (Xe {$fromVehiclePlate}) gửi đơn #{$order->order_code} ({$transfer->customer_name}) sang xe {$toVehiclePlate} của bạn. Lý do: {$reason}. Vui lòng mở cổng thông tin lái xe để xác nhận tiếp nhận."
+                    : "Yêu cầu chuyển đơn #{$order->order_code} từ xe {$fromVehiclePlate} ({$fromDriverName}) sang xe {$toVehiclePlate} ({$toDriverName}). Lý do: {$reason}.";
+
+                SystemNotification::send(
+                    (int) $uId,
+                    $title,
+                    $msg,
+                    "/driver-portal?vehicle=" . urlencode($toVehiclePlate) . "&tab=transfers",
+                    'vehicle_order_transfer',
+                    $transfer,
+                    [
+                        'transfer_id'        => $transfer->id,
+                        'transfer_code'      => $transferCode,
+                        'order_id'           => $order->id,
+                        'order_code'         => $order->order_code,
+                        'from_vehicle_plate' => $fromVehiclePlate,
+                        'to_vehicle_plate'   => $toVehiclePlate,
+                        'reason'             => $reason,
+                        'status'             => 'pending',
+                    ]
+                );
+            }
+        } catch (\Throwable $e) {}
+
+        try {
+            \App\Models\PickingSyncEvent::create([
+                'order_id'       => (string) $order->id,
+                'event_type'     => 'VEHICLE_TRANSFER_CREATED',
+                'performer_name' => $fromDriverName,
+                'extra_data'     => [
+                    'transfer_id'        => $transfer->id,
+                    'order_code'         => $order->order_code,
+                    'from_vehicle_plate' => $fromVehiclePlate,
+                    'to_vehicle_plate'   => $toVehiclePlate,
+                    'reason'             => $reason,
+                ],
+                'created_at'     => now(),
+            ]);
+        } catch (\Throwable $e) {}
+
+        return response()->json([
+            'success'  => true,
+            'message'  => "Đã gửi yêu cầu điều chuyển đơn #{$order->order_code} đến xe {$toVehiclePlate} thành công!",
+            'transfer' => $transfer,
+        ]);
+    }
+
+    /**
+     * API: Xác nhận tiếp nhận hoặc từ chối đơn hàng điều chuyển
+     */
+    public function respondVehicleOrderTransfer(Request $request, $id)
+    {
+        $request->validate([
+            'action' => 'required|in:accept,reject',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $transfer = VehicleOrderTransfer::find($id);
+        if (!$transfer) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy yêu cầu điều chuyển'], 404);
+        }
+
+        if ($transfer->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Yêu cầu này đã được xử lý trước đó (Trạng thái hiện tại: ' . $transfer->status . ')'
+            ], 422);
+        }
+
+        $order = Order::find($transfer->order_id);
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng gốc trong hệ thống'], 404);
+        }
+
+        $action = $request->input('action');
+        $rejectionReason = trim($request->input('reason', ''));
+        if ($action === 'reject' && empty($rejectionReason)) {
+            $rejectionReason = 'Tài xế xe nhận từ chối tiếp nhận đơn hàng này';
+        }
+
+        $user = auth()->user();
+        $performerName = $user?->name ?? ($transfer->to_driver_name ?: 'Tài xế tiếp nhận');
+        $performerId = $user?->id;
+
+        DB::beginTransaction();
+        try {
+            if ($action === 'accept') {
+                $oldPlate = $order->assigned_vehicle_plate;
+                $order->assigned_vehicle_plate = $transfer->to_vehicle_plate;
+                if ($transfer->to_driver_id) {
+                    $order->assigned_driver_id = $transfer->to_driver_id;
+                } elseif ($performerId) {
+                    $order->assigned_driver_id = $performerId;
+                }
+                $order->save();
+
+                $transfer->status = 'accepted';
+                $transfer->responded_at = now();
+                $transfer->responded_by_id = $performerId;
+                $transfer->responded_by_name = $performerName;
+                $transfer->save();
+
+                // Ghi nhật ký vào file log riêng (storage/logs/orders/{order_code}.log) và AuditLog
+                $order->logOperation(
+                    'Tiếp Nhận Điều Chuyển Xe',
+                    "Tài xế {$performerName} (Xe {$transfer->to_vehicle_plate}) đã chấp thuận tiếp nhận đơn hàng từ xe {$transfer->from_vehicle_plate}. Mã điều chuyển: {$transfer->transfer_code}. Lý do chuyển ban đầu: {$transfer->reason}.",
+                    $performerName,
+                    "Xe {$oldPlate}",
+                    "Xe {$transfer->to_vehicle_plate}"
+                );
+            } else {
+                $transfer->status = 'rejected';
+                $transfer->rejection_reason = $rejectionReason;
+                $transfer->responded_at = now();
+                $transfer->responded_by_id = $performerId;
+                $transfer->responded_by_name = $performerName;
+                $transfer->save();
+
+                // Ghi nhật ký vào file log riêng (storage/logs/orders/{order_code}.log) và AuditLog
+                $order->logOperation(
+                    'Từ Chối Điều Chuyển Xe',
+                    "Tài xế {$performerName} (Xe {$transfer->to_vehicle_plate}) từ chối tiếp nhận đơn từ xe {$transfer->from_vehicle_plate}. Lý do từ chối: {$rejectionReason}.",
+                    $performerName,
+                    "Chờ xe {$transfer->to_vehicle_plate} tiếp nhận",
+                    "Xe {$transfer->from_vehicle_plate} (Giữ nguyên)"
+                );
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Lỗi xử lý tiếp nhận: ' . $e->getMessage()], 500);
+        }
+
+        // Gửi thông báo SystemNotification kết quả tới tài xế gửi & ban điều phối
+        try {
+            $notifyUserIds = [];
+            if ($transfer->from_driver_id) {
+                $notifyUserIds[] = (int) $transfer->from_driver_id;
+            }
+
+            $admins = User::where(function($q) {
+                $q->whereIn('department', ['Logistics', 'Executive', 'Kho', 'Warehouse'])
+                  ->orWhere('id', 1);
+            })->pluck('id')->all();
+
+            $notifyUserIds = array_unique(array_filter(array_merge($notifyUserIds, $admins)));
+            if ($performerId) {
+                $notifyUserIds = array_values(array_diff($notifyUserIds, [(int)$performerId]));
+            }
+
+            foreach ($notifyUserIds as $uId) {
+                if ($action === 'accept') {
+                    $title = "✅ Xe {$transfer->to_vehicle_plate} đã tiếp nhận đơn #{$order->order_code}";
+                    $msg = "Tài xế {$performerName} (Xe {$transfer->to_vehicle_plate}) đã chấp thuận tiếp nhận đơn #{$order->order_code} ({$transfer->customer_name}) chuyển từ xe {$transfer->from_vehicle_plate}.";
+                } else {
+                    $title = "❌ Xe {$transfer->to_vehicle_plate} từ chối nhận đơn #{$order->order_code}";
+                    $msg = "Tài xế {$performerName} từ chối nhận đơn #{$order->order_code} từ xe {$transfer->from_vehicle_plate}. Lý do: {$rejectionReason}. Đơn được giữ nguyên tại xe {$transfer->from_vehicle_plate}.";
+                }
+
+                SystemNotification::send(
+                    (int) $uId,
+                    $title,
+                    $msg,
+                    "/driver-portal?vehicle=" . urlencode($action === 'accept' ? $transfer->to_vehicle_plate : $transfer->from_vehicle_plate),
+                    'vehicle_order_transfer_result',
+                    $transfer,
+                    [
+                        'transfer_id'        => $transfer->id,
+                        'order_code'         => $order->order_code,
+                        'from_vehicle_plate' => $transfer->from_vehicle_plate,
+                        'to_vehicle_plate'   => $transfer->to_vehicle_plate,
+                        'action'             => $action,
+                        'rejection_reason'   => $rejectionReason,
+                    ]
+                );
+            }
+        } catch (\Throwable $e) {}
+
+        try {
+            \App\Models\PickingSyncEvent::create([
+                'order_id'       => (string) $order->id,
+                'event_type'     => 'VEHICLE_TRANSFER_' . strtoupper($action),
+                'performer_name' => $performerName,
+                'extra_data'     => [
+                    'transfer_id'        => $transfer->id,
+                    'order_code'         => $order->order_code,
+                    'from_vehicle_plate' => $transfer->from_vehicle_plate,
+                    'to_vehicle_plate'   => $transfer->to_vehicle_plate,
+                    'status'             => $transfer->status,
+                ],
+                'created_at'     => now(),
+            ]);
+        } catch (\Throwable $e) {}
+
+        return response()->json([
+            'success'  => true,
+            'message'  => $action === 'accept' 
+                ? "Đã tiếp nhận đơn #{$order->order_code} vào xe {$transfer->to_vehicle_plate} thành công!" 
+                : "Đã từ chối tiếp nhận đơn #{$order->order_code} thành công!",
+            'transfer' => $transfer,
+            'order'    => [
+                'id'                   => (string) $order->id,
+                'orderCode'            => $order->order_code,
+                'assignedVehiclePlate' => $order->assigned_vehicle_plate,
+                'assignedDriverId'     => $order->assigned_driver_id,
+            ],
+        ]);
+    }
+
+    /**
+     * API: Hủy yêu cầu điều chuyển (dành cho người gửi khi đang ở trạng thái pending)
+     */
+    public function cancelVehicleOrderTransfer(Request $request, $id)
+    {
+        $transfer = VehicleOrderTransfer::find($id);
+        if (!$transfer) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy yêu cầu điều chuyển'], 404);
+        }
+
+        if ($transfer->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Chỉ có thể hủy yêu cầu đang ở trạng thái Chờ tiếp nhận (Trạng thái hiện tại: ' . $transfer->status . ')'
+            ], 422);
+        }
+
+        $order = Order::find($transfer->order_id);
+        $user = auth()->user();
+        $performerName = $user?->name ?? 'Người gửi';
+
+        $transfer->status = 'cancelled';
+        $transfer->save();
+
+        if ($order) {
+            $order->logOperation(
+                'Hủy Yêu Cầu Điều Chuyển',
+                "Hủy yêu cầu điều chuyển đơn hàng sang xe {$transfer->to_vehicle_plate}. Mã điều chuyển: {$transfer->transfer_code}.",
+                $performerName,
+                "Chờ xe {$transfer->to_vehicle_plate} tiếp nhận",
+                "Xe {$transfer->from_vehicle_plate} (Giữ nguyên)"
+            );
+        }
+
+        return response()->json([
+            'success'  => true,
+            'message'  => 'Đã hủy yêu cầu điều chuyển thành công!',
+            'transfer' => $transfer,
+        ]);
+    }
+
+    /**
+     * API: Lấy danh sách yêu cầu điều chuyển theo xe
+     */
+    public function getVehicleOrderTransfers(Request $request)
+    {
+        $plate = $request->query('plate');
+        $transfers = VehicleOrderTransfer::query()
+            ->when($plate, function ($q) use ($plate) {
+                $q->where('from_vehicle_plate', $plate)
+                  ->orWhere('to_vehicle_plate', $plate);
+            })
+            ->whereDate('created_at', '>=', now()->subDays(7))
+            ->latest('id')
+            ->get();
+
+        return response()->json([
+            'success'   => true,
+            'transfers' => $transfers,
         ]);
     }
 }

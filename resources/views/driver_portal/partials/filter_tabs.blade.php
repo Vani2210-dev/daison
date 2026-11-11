@@ -52,6 +52,32 @@
 
     </div>
 
+    <!-- Banner Thông báo Đơn hàng chờ tiếp nhận điều chuyển từ xe khác -->
+    <template x-if="pendingIncomingTransfers.length > 0">
+        <div class="p-2.5 sm:p-3 bg-indigo-50 border border-indigo-300 rounded-xl sm:rounded-2xl flex items-center justify-between gap-2.5 text-xs text-indigo-950 shadow-xs">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-8 h-8 rounded-xl bg-indigo-200 text-indigo-900 flex items-center justify-center font-bold shrink-0">
+                    <i class="fa-solid fa-truck-ramp-box text-xs animate-bounce"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="font-extrabold text-indigo-950 text-xs flex items-center gap-1.5 flex-wrap">
+                        <span>Đơn Hàng Chờ Tiếp Nhận Chuyển Xe:</span>
+                        <span class="px-2 py-0.5 rounded-full bg-indigo-600 text-white font-mono font-bold text-[11px]" x-text="pendingIncomingTransfers.length + ' đơn'"></span>
+                    </div>
+                    <div class="text-[10px] sm:text-[11px] text-indigo-800 truncate mt-0.5">
+                        Có đơn được chuyển sang xe bạn. Vui lòng bấm để xem và xác nhận tiếp nhận.
+                    </div>
+                </div>
+            </div>
+            <button type="button" @click="openTransferModal(null, 'incoming')"
+                    class="px-2.5 sm:px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold rounded-xl text-xs cursor-pointer flex items-center gap-1.5 transition-all shrink-0 whitespace-nowrap shadow-xs">
+                <i class="fa-solid fa-clipboard-check text-xs"></i>
+                <span class="hidden sm:inline">Xác nhận ngay</span>
+                <span class="sm:hidden">Xem</span>
+            </button>
+        </div>
+    </template>
+
     <!-- Banner Thông báo Đang chờ Kế toán duyệt COD (Thiết kế ngang gọn 1 hàng) -->
     <div x-show="hasPendingCodSubmission" x-cloak class="p-2.5 sm:p-3 bg-amber-50 border border-amber-300/90 rounded-xl sm:rounded-2xl flex items-center justify-between gap-2.5 text-xs text-amber-950 shadow-xs">
         <div class="flex items-center gap-2.5 min-w-0">

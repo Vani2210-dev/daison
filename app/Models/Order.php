@@ -135,6 +135,11 @@ class Order extends Model
         return $this->hasMany(DeliveryDiscrepancy::class, 'order_id');
     }
 
+    public function vehicleTransfers()
+    {
+        return $this->hasMany(VehicleOrderTransfer::class, 'order_id');
+    }
+
     /**
      * Scope chỉ lấy các đơn hàng xuất bán của công ty (loại trừ đơn hàng xuất bán từ kho hàng ôm của nhân sự)
      */
