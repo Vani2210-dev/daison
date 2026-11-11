@@ -26,8 +26,6 @@
 
                         <div class="flex items-center gap-2 text-[11px] sm:text-xs text-slate-400 mt-0.5">
                             <span>{{ \Carbon\Carbon::now()->locale('vi')->isoFormat('dddd, DD/MM/YYYY') }}</span>
-                            <span>•</span>
-                            <span class="text-slate-300 font-medium truncate max-w-[150px] sm:max-w-none" x-text="selectedVehicle?.vehicle_type || 'Xe tải vận chuyển'"></span>
                         </div>
                     </div>
                 </div>
