@@ -355,8 +355,10 @@ Route::middleware('auth')->group(function () {
 
     // Delivery Dispatch & Logistics
     Route::get('/delivery-dispatch', [WebViewController::class, 'deliveryDispatch'])->name('delivery.dispatch')->middleware('permission:delivery_dispatch.view');
-    Route::get('/driver-portal', [DeliveryController::class, 'deliveryExecution'])->name('driver.portal')->middleware('permission:delivery_dispatch.view,fleet.view');
-    Route::get('/delivery-execution', [DeliveryController::class, 'deliveryExecution'])->name('delivery.execution')->middleware('permission:delivery_dispatch.view,fleet.view');
+    Route::get('/driver-portal', [DeliveryController::class, 'deliveryExecution'])->name('driver.portal')->middleware('permission:delivery_dispatch.view,fleet.view,driver_debt.view');
+    Route::get('/delivery-execution', [DeliveryController::class, 'deliveryExecution'])->name('delivery.execution')->middleware('permission:delivery_dispatch.view,fleet.view,driver_debt.view');
+    Route::get('/shipments', function() { return redirect('/driver-portal'); });
+    Route::get('/delivery/execution', function() { return redirect('/driver-portal'); });
     Route::get('/delivery/orders/{id}/confirm', [DeliveryController::class, 'confirmDeliveryPage'])->name('delivery.confirm')->middleware('permission:delivery_dispatch.view,fleet.view');
     Route::get('/delivery-orders/{id}/confirm', [DeliveryController::class, 'confirmDeliveryPage'])->middleware('permission:delivery_dispatch.view,fleet.view');
     Route::post('/delivery/transfer-order-vehicle', [DeliveryController::class, 'transferOrderVehicle'])->middleware('permission:delivery_dispatch.assign,delivery_dispatch.dispatch');

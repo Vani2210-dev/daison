@@ -1072,7 +1072,7 @@
     <!-- MOBILE BOTTOM NAVIGATION & SLIDE-UP DRAWER (CHUẨN ERP HIỆN ĐẠI) -->
     <!-- ============================================================== -->
     @php
-        $isSalesActive = request()->is('orders*') || request()->is('returns*') || request()->is('quotation*') || request()->is('shipments*') || request()->is('supplier-orders*') || request()->is('promotion-advances*');
+        $isSalesActive = request()->is('orders*') || request()->is('returns*') || request()->is('quotation*') || request()->is('shipments*') || request()->is('driver-portal*') || request()->is('delivery*') || request()->is('supplier-orders*') || request()->is('promotion-advances*');
         $isInventoryActive = request()->is('inventory*') || request()->is('warehouse*') || request()->is('*picking*');
         $isWaterFilterActive = request()->is('water-filter*') || request()->is('bao-hanh-may-loc*') || request()->is('m/*');
         $isTasksActive = request()->is('tasks*') || request()->is('dealers*') || request()->is('proposals*');
@@ -1276,8 +1276,8 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Ứng KM kho</span>
                     </a>
 
-                    <!-- 6. Điều phối xe -->
-                    <a href="{{ url('/shipments') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('shipments*') ? 'border-[#1b4a8c] bg-indigo-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-indigo-200 bg-slate-50/70 hover:bg-indigo-50/40' }}">
+                    <!-- 6. Giao hàng & Chuyến xe -->
+                    <a href="{{ url('/driver-portal') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('driver-portal*') || request()->is('delivery*') || request()->is('shipments*') ? 'border-[#1b4a8c] bg-indigo-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-indigo-200 bg-slate-50/70 hover:bg-indigo-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-truck-ramp-box"></i>
                         </div>
