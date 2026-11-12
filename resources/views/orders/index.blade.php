@@ -1199,10 +1199,10 @@
                 <div class="border-t border-slate-100 my-1"></div>
 
                 <!-- 4. Theo dõi đơn hàng -->
-                <button type="button" @click="openTrackingModal(activeActionOrder)" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-3 text-slate-800 transition-colors cursor-pointer">
+                <a :href="'/orders/' + (activeActionOrder?.id || '') + '/tracking'" @click="closeActionMenu()" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-3 text-slate-800 transition-colors cursor-pointer">
                     <i class="fa-solid fa-rotate-left text-sky-600 w-5 text-center text-sm"></i>
                     <span class="font-bold">Theo dõi đơn hàng</span>
-                </button>
+                </a>
 
                 <!-- 5. Xuất Excel -->
                 <button type="button" @click="exportOrderExcel(activeActionOrder, 'standard')" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-3 text-slate-700 transition-colors cursor-pointer">
@@ -1256,136 +1256,6 @@
                 @endif
             </div>
         </template>
-    </div>
-
-    <!-- Modal: Theo dõi đơn hàng (Tracking lifecycle) -->
-    <div x-show="showTrackingModal" x-cloak class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-        <div @click.outside="showTrackingModal = false" class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold">
-                        <i class="fa-solid fa-rotate-left"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-black text-slate-900 text-sm">Theo dõi tiến trình đơn hàng</h3>
-                        <p class="text-xs text-sky-600 font-mono font-bold" x-text="activeTrackingOrder?.code"></p>
-                    </div>
-                </div>
-                <button type="button" @click="showTrackingModal = false" class="w-7 h-7 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center cursor-pointer">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-
-            <!-- Cảnh báo đơn đã bị hủy -->
-            <template x-if="['Hủy', 'Đã hủy', 'Đã huỷ'].includes(activeTrackingOrder?.status)">
-                <div class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start gap-2.5 shadow-2xs">
-                    <i class="fa-solid fa-ban text-rose-600 text-sm mt-0.5 shrink-0"></i>
-                    <div class="flex-1">
-                        <div class="font-black text-rose-900">Đơn hàng này ĐÃ BỊ HỦY</div>
-                        <div class="text-[11px] text-rose-700 mt-0.5">Tiến trình đã dừng lại. Tồn kho và công nợ đại lý đã được hoàn trả theo quy định.</div>
-                    </div>
-                </div>
-            </template>
-
-            <!-- Lifecycle Stepper -->
-            <div class="py-2 space-y-3">
-                <template x-for="(st, sIdx) in trackingSteps" :key="st.name">
-                    <div class="flex items-start gap-3 relative">
-                        <div class="flex flex-col items-center">
-                            <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all"
-                                 :class="isStepCompleted(st.name) ? 'bg-emerald-500 text-white shadow-xs' : (isStepCurrent(st.name) ? 'bg-sky-600 text-white ring-4 ring-sky-100' : 'bg-slate-100 text-slate-400')">
-                                <template x-if="isStepCompleted(st.name)">
-                                    <i class="fa-solid fa-check text-[10px]"></i>
-                                </template>
-                                <template x-if="!isStepCompleted(st.name)">
-                                    <span x-text="sIdx + 1"></span>
-                                </template>
-                            </div>
-                            <template x-if="sIdx < trackingSteps.length - 1">
-                                <div class="w-0.5 h-6 my-0.5" :class="isStepCompleted(trackingSteps[sIdx + 1].name) ? 'bg-emerald-400' : 'bg-slate-200'"></div>
-                            </template>
-                        </div>
-                        <div class="flex-1 pt-0.5">
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold" :class="isStepCurrent(st.name) ? 'text-sky-700 font-black' : (isStepCompleted(st.name) ? 'text-slate-800' : 'text-slate-400')" x-text="st.label"></span>
-                                <span class="text-[10px]" :class="isStepCurrent(st.name) ? 'text-sky-600 font-bold' : 'text-slate-400'" x-text="isStepCurrent(st.name) ? 'Đang thực hiện' : (isStepCompleted(st.name) ? 'Đã hoàn tất' : 'Chưa đến')"></span>
-                            </div>
-                            <p class="text-[11px] text-slate-500 mt-0.5" x-text="st.desc"></p>
-                        </div>
-                    </div>
-                </template>
-            </div>
-
-            <!-- Order info summary -->
-            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-xs space-y-1.5">
-                <div class="flex justify-between"><span class="text-slate-500">Khách hàng:</span> <span class="font-bold text-slate-800" x-text="activeTrackingOrder?.customer"></span></div>
-                <div class="flex justify-between"><span class="text-slate-500">Kho xuất hàng:</span> <span class="font-bold text-slate-800" x-text="activeTrackingOrder?.warehouse"></span></div>
-                <div class="flex justify-between"><span class="text-slate-500">Lái xe & Phương tiện:</span> <span class="font-bold text-sky-700" x-text="(activeTrackingOrder?.driver || 'Chưa phân công') + ' (' + (activeTrackingOrder?.vehicle || 'Chưa xếp xe') + ')'"></span></div>
-                <div class="flex justify-between border-t border-slate-200 pt-1.5"><span class="text-slate-500">Tổng giá trị đơn:</span> <span class="font-black text-slate-900" x-text="formatMoney(activeTrackingOrder?.total)"></span></div>
-            </div>
-
-            <!-- Thông tin File Log & Nhật Ký Thao Tác Đơn Hàng -->
-            <div class="pt-2 border-t border-slate-100 space-y-2">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                        <i class="fa-solid fa-file-waveform text-sky-600"></i>
-                        <span>Nhật ký file log chứng từ</span>
-                    </span>
-                    <div class="flex items-center gap-2">
-                        <template x-if="rawFileLog">
-                            <button type="button" @click="showRawLog = !showRawLog" class="text-[11px] font-bold text-sky-600 hover:text-sky-800 cursor-pointer">
-                                <span x-text="showRawLog ? 'Xem dạng bảng' : 'Xem file .log gốc'"></span>
-                            </button>
-                        </template>
-                        <span class="text-[10px] text-slate-400 font-mono" x-show="trackingLogs.length > 0" x-text="trackingLogs.length + ' bản ghi'"></span>
-                    </div>
-                </div>
-
-                <!-- Loading spinner -->
-                <div x-show="isLoadingTrackingLogs" class="py-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2 bg-slate-50 rounded-xl border border-slate-100">
-                    <i class="fa-solid fa-spinner fa-spin text-sky-600"></i>
-                    <span>Đang đọc file log đơn hàng...</span>
-                </div>
-
-                <!-- Structured logs view -->
-                <div x-show="!isLoadingTrackingLogs && !showRawLog && trackingLogs.length > 0" class="space-y-2 max-h-52 overflow-y-auto pr-1">
-                    <template x-for="(log, lIdx) in trackingLogs" :key="lIdx">
-                        <div class="p-2.5 rounded-xl border border-slate-200/90 bg-slate-50/60 text-xs space-y-1">
-                            <div class="flex items-center justify-between text-[11px]">
-                                <span class="font-black text-sky-700 flex items-center gap-1.5">
-                                    <i class="fa-solid fa-clock-rotate-left text-[10px] text-sky-500"></i>
-                                    <span x-text="log.action || 'Thao tác'"></span>
-                                </span>
-                                <span class="text-slate-400 font-mono text-[10px]" x-text="log.timestamp"></span>
-                            </div>
-                            <div class="text-[11px] text-slate-700 leading-relaxed font-medium" x-text="log.notes || log.details"></div>
-                            <div class="text-[10px] text-slate-500 flex items-center justify-between pt-0.5 border-t border-slate-200/50 mt-1">
-                                <span>Thực hiện: <strong class="text-slate-700 font-bold" x-text="log.performer"></strong></span>
-                                <span x-show="log.new_status" class="px-1.5 py-0.2 rounded font-bold text-[9px]"
-                                      :class="['Hủy', 'Đã hủy'].includes(log.new_status) ? 'bg-rose-100 text-rose-800' : 'bg-slate-200/70 text-slate-700'"
-                                      x-text="log.new_status"></span>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-
-                <!-- Raw log file view -->
-                <div x-show="!isLoadingTrackingLogs && showRawLog && rawFileLog" class="p-2.5 bg-slate-900 text-slate-100 rounded-xl font-mono text-[11px] max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed select-all">
-                    <div x-text="rawFileLog"></div>
-                </div>
-
-                <!-- Empty state -->
-                <div x-show="!isLoadingTrackingLogs && trackingLogs.length === 0 && !rawFileLog" class="py-3 px-3 bg-slate-50 rounded-xl text-center text-xs text-slate-400 border border-dashed border-slate-200">
-                    Chưa có file log ghi nhận thao tác cho đơn hàng này.
-                </div>
-            </div>
-
-            <div class="flex items-center justify-end gap-2 pt-2">
-                <a :href="'/orders/' + activeTrackingOrder?.id + '/edit'" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer">
-                    Mở chi tiết đơn hàng
-                </a>
-            </div>
-        </div>
     </div>
 
     <!-- Modal: Nhập thanh toán (Quick Payment) -->
@@ -2221,12 +2091,6 @@ function ordersIndexApp() {
         bulkPrintData: null,
 
         // Modal states for Tracking, Payment & Picking
-        showTrackingModal: false,
-        activeTrackingOrder: null,
-        trackingLogs: [],
-        rawFileLog: '',
-        isLoadingTrackingLogs: false,
-        showRawLog: false,
         showPaymentModal: false,
         activePaymentOrder: null,
         paymentSubmitting: false,
@@ -2727,74 +2591,6 @@ function ordersIndexApp() {
         printOrder(id) {
             this.closeActionMenu();
             this.openPrintModal(id);
-        },
-
-        async openTrackingModal(order) {
-            this.closeActionMenu();
-            this.activeTrackingOrder = order;
-            this.trackingLogs = [];
-            this.rawFileLog = '';
-            this.isLoadingTrackingLogs = true;
-            this.showRawLog = false;
-            this.showTrackingModal = true;
-
-            try {
-                const res = await fetch(`/orders/${order.id}/logs`);
-                const data = await res.json();
-                if (data.success) {
-                    this.trackingLogs = data.audit_logs || [];
-                    this.rawFileLog = data.raw_file_log || '';
-                }
-            } catch (e) {
-                console.error('Lỗi tải nhật ký đơn hàng:', e);
-            } finally {
-                this.isLoadingTrackingLogs = false;
-            }
-        },
-
-        getLastActiveStatus() {
-            if (!this.activeTrackingOrder) return null;
-            if (!['Hủy', 'Đã hủy', 'Đã huỷ'].includes(this.activeTrackingOrder.status)) {
-                return this.activeTrackingOrder.status;
-            }
-            if (this.trackingLogs && this.trackingLogs.length > 0) {
-                for (const log of this.trackingLogs) {
-                    if (log.old_status && !['Hủy', 'Đã hủy', 'Đã huỷ'].includes(log.old_status)) {
-                        return log.old_status;
-                    }
-                }
-            }
-            return null;
-        },
-
-        isStepCompleted(stepName) {
-            if (!this.activeTrackingOrder) return false;
-            let current = this.getLastActiveStatus() || this.activeTrackingOrder.status;
-            if (['Hủy', 'Đã hủy', 'Đã huỷ'].includes(current)) return false;
-            if (current === 'Soạn bốc' || current === 'Kho đang soạn' || current === 'Đang bốc hàng' || current === 'Đã bốc xong') current = 'Soạn hàng';
-            if (current === 'Đã duyệt' || current === 'Chờ duyệt') current = 'Chốt đơn';
-            if (current === 'Đã kiểm hàng' || current === 'Đã kiểm xong') current = 'Kiểm hàng';
-            if (current === 'Đang giao hàng') current = 'Đang vận chuyển';
-            if (current === 'Giao thành công') current = 'Đã giao';
-
-            let checkStep = stepName === 'Soạn bốc' ? 'Soạn hàng' : stepName;
-            const orderStages = ['Báo giá', 'Chốt đơn', 'Soạn hàng', 'Kiểm hàng', 'Đang vận chuyển', 'Đã giao'];
-            const curIdx = orderStages.indexOf(current);
-            const stepIdx = orderStages.indexOf(checkStep);
-            if (curIdx === -1) return false;
-            return curIdx >= stepIdx;
-        },
-
-        isStepCurrent(stepName) {
-            if (!this.activeTrackingOrder) return false;
-            if (['Hủy', 'Đã hủy', 'Đã huỷ'].includes(this.activeTrackingOrder.status)) return false;
-            const current = this.activeTrackingOrder.status;
-            if (stepName === current) return true;
-            if ((stepName === 'Soạn hàng' || stepName === 'Soạn bốc') && ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong'].includes(current)) return true;
-            if (stepName === 'Kiểm hàng' && ['Kiểm hàng', 'Đã kiểm hàng', 'Sẵn sàng xuất xe'].includes(current)) return true;
-            if (stepName === 'Đang vận chuyển' && ['Đang vận chuyển', 'Đang giao hàng'].includes(current)) return true;
-            if (stepName === 'Đã giao' && ['Đã giao', 'Giao thành công'].includes(current)) return true;
-            return false;
         },
 
         exportOrderExcel(order, type = 'standard') {

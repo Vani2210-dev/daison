@@ -665,6 +665,25 @@ class WebViewController extends Controller
     }
 
     /**
+     * Dedicated Order Tracking & Operation Logs Page
+     */
+    public function orderTracking($id)
+    {
+        $order = Order::with(['items.product', 'dealer', 'creator', 'assignedDriver'])
+            ->where('id', $id)
+            ->orWhere('order_code', $id)
+            ->firstOrFail();
+
+        $fileLogs = $order->getOperationLogs();
+        $rawFileLog = $order->getOperationLogsRaw();
+        $auditLogs = \App\Models\AuditLog::where('target_document_code', $order->order_code)
+            ->orderBy('id', 'desc')
+            ->get();
+
+        return view('orders.tracking', compact('order', 'fileLogs', 'rawFileLog', 'auditLogs'));
+    }
+
+    /**
      * Display Dealers
      */
     public function dealers(Request $request)

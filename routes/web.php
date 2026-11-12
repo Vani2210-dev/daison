@@ -312,6 +312,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales/cod-verification', [DeliveryController::class, 'codVerificationPage']);
     Route::get('/cod-verification', [DeliveryController::class, 'codVerificationPage']);
     Route::get('/orders/{id}/edit', [WebViewController::class, 'orderEdit'])->name('orders.edit')->middleware('permission:orders.edit');
+    Route::get('/orders/{id}/tracking', [WebViewController::class, 'orderTracking'])->name('orders.tracking')->middleware('permission:orders.view');
     Route::post('/orders/save', [OrderController::class, 'saveOrder']);
     Route::post('/inventory/check-availability', [OrderController::class, 'checkStockAvailability']);
     Route::post('/orders/update-status', [OrderController::class, 'updateOrderStatus']);
