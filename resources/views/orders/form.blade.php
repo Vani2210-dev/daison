@@ -1171,7 +1171,7 @@
                                                @focus="$event.target.select()"
                                                placeholder="%"
                                                title="Nhập % chiết khấu để áp dụng cho toàn bộ sản phẩm"
-                                               class="w-10 px-1 py-0.5 bg-sky-50/60 focus:bg-white border border-sky-200 rounded text-center text-xs font-bold text-sky-700 focus:outline-none">
+                                               class="w-12 px-1 py-0.5 bg-sky-50/60 focus:bg-white border border-sky-200 rounded text-center text-xs font-bold text-sky-700 focus:outline-none">
                                         <span class="text-[10px] text-sky-700 font-bold">%</span>
                                     </div>
                                 </div>
@@ -1370,7 +1370,7 @@
                                                        @input="onLineDiscountPercentChange(getItemIndex(item))" 
                                                        placeholder="%" 
                                                        title="Tỷ lệ chiết khấu (%)"
-                                                       class="w-11 px-1 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded text-center text-xs font-semibold focus:outline-none shadow-2xs transition-colors">
+                                                       class="w-16 px-1.5 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded text-center text-xs font-semibold focus:outline-none shadow-2xs transition-colors">
                                                 <span class="text-[10px] text-slate-400 font-bold">%</span>
                                             </div>
                                             <!-- Ô nhập Tiền Chiết Khấu (VNĐ) -->
