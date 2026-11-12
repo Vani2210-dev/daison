@@ -1425,8 +1425,8 @@
                                                 <span class="text-[10px] text-slate-400 font-bold shrink-0">đ</span>
                                             </div>
                                         </div>
-                                        <div x-show="Number(item.gift_quantity) > 0" class="mt-0.5 text-[9px] text-emerald-600 font-semibold truncate text-right" title="Dòng này có quà tặng kèm">
-                                            <i class="fa-solid fa-gift text-[8px]"></i> Quà tặng: <span x-text="item.gift_quantity"></span>
+                                        <div x-show="Number(item.gift_quantity) > 0" class="mt-0.5 text-[9px] text-emerald-600 font-semibold truncate text-right" title="Dòng này có hàng khuyến mại kèm">
+                                            <i class="fa-solid fa-gift text-[8px]"></i> KM kèm: <span x-text="item.gift_quantity"></span>
                                         </div>
                                     </div>
                                 </td>
@@ -1514,9 +1514,8 @@
                             <i class="fa-solid fa-gift"></i>
                         </span>
                         <div class="min-w-0">
-                            <span class="font-bold text-emerald-900 text-xs uppercase tracking-wide">Hàng khuyến mại / Quà tặng (0đ)</span>
+                            <span class="font-bold text-emerald-900 text-xs uppercase tracking-wide">Hàng khuyến mại</span>
                         </div>
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0" x-text="getGiftItems().filter(it => it.product_id).length + ' SP tặng'"></span>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                         <span class="hidden sm:inline-flex text-[11px] text-emerald-700 font-semibold italic items-center gap-1">
@@ -1537,17 +1536,17 @@
                 <div class="block md:hidden space-y-2.5">
                     <template x-for="(gItem, gIdx) in getGiftItems()" :key="gItem._rowKey || ('gift-m-' + gIdx)">
                         <div class="bg-white rounded-xl p-3 border border-emerald-300 shadow-2xs space-y-2">
-                            <!-- Dòng 1: STT Quà tặng + Badge + Nút Xóa -->
+                            <!-- Dòng 1: STT Khuyến mại + Badge + Nút Xóa -->
                             <div class="flex items-center justify-between pb-1.5 border-b border-emerald-100">
                                 <div class="flex items-center gap-1.5 min-w-0 flex-wrap">
                                     <span class="w-5 h-5 rounded-md bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
                                         <i class="fa-solid fa-gift"></i>
                                     </span>
-                                    <span class="font-bold text-emerald-900 text-xs shrink-0" x-text="'Quà tặng #' + (gIdx + 1)"></span>
+                                    <span class="font-bold text-emerald-900 text-xs shrink-0" x-text="'Khuyến mại #' + (gIdx + 1)"></span>
                                     <span class="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold truncate max-w-[150px]" x-text="gItem.appliedTierPolicy || 'Hàng khuyến mại'"></span>
                                     <span class="text-[9px] px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded font-bold shrink-0">0 đ</span>
                                 </div>
-                                <button type="button" @click="removeGiftItem(gItem)" class="w-7 h-7 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer shrink-0" title="Xóa hàng quà tặng">
+                                <button type="button" @click="removeGiftItem(gItem)" class="w-7 h-7 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer shrink-0" title="Xóa hàng khuyến mại">
                                     <i class="fa-solid fa-trash-can text-xs"></i>
                                 </button>
                             </div>
@@ -1605,7 +1604,7 @@
                                                     <span class="text-emerald-700 font-semibold" x-text="'Khả dụng: ' + formatNumber(getProductStockData(p, formData.warehouse).available) + ' ' + (p.unit || '')"></span>
                                                 </div>
                                             </div>
-                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 shrink-0">Tặng 0đ</span>
+                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 shrink-0">KM 0đ</span>
                                         </div>
                                     </template>
                                 </div>
@@ -1648,7 +1647,7 @@
                                 <th class="py-2.5 px-3 text-center w-12">STT</th>
                                 <th class="py-2.5 px-3">TÊN / MÃ SẢN PHẨM KHUYẾN MẠI</th>
                                 <th class="py-2.5 px-2 text-center w-28">ĐVT</th>
-                                <th class="py-2.5 px-2 text-center w-24">SL TẶNG</th>
+                                <th class="py-2.5 px-2 text-center w-24">SỐ LƯỢNG</th>
                                 <th class="py-2.5 px-3 text-right w-24">ĐƠN GIÁ</th>
                                 <th class="py-2.5 px-3 text-right w-24">THÀNH TIỀN</th>
                                 <th class="py-2.5 px-3 text-left">CHÍNH SÁCH / LÝ DO</th>
@@ -1709,7 +1708,7 @@
                                                             <span class="text-emerald-700 font-semibold" x-text="'Khả dụng: ' + formatNumber(getProductStockData(p, formData.warehouse).available) + ' ' + (p.unit || '')"></span>
                                                         </div>
                                                     </div>
-                                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 shrink-0">Tặng 0đ</span>
+                                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 shrink-0">KM 0đ</span>
                                                 </div>
                                             </template>
                                         </div>
@@ -1744,19 +1743,19 @@
                     </table>
                 </div>
 
-                <!-- Empty state hint khi chưa có quà tặng -->
+                <!-- Empty state hint khi chưa có hàng khuyến mại -->
                 <div x-show="getGiftItems().length === 0" class="py-3 px-4 text-center text-xs text-emerald-700 italic bg-white/70 rounded-xl border border-dashed border-emerald-200">
                     <i class="fa-solid fa-gift mr-1 text-emerald-500"></i>
-                    <span>Chưa có sản phẩm khuyến mại nào. Bấm nút <b>+ Thêm dòng quà tặng</b> bên dưới để thêm hàng tặng kèm (0đ).</span>
+                    <span>Chưa có sản phẩm khuyến mại nào. Bấm nút <b>+ Thêm dòng khuyến mại</b> bên dưới để thêm hàng.</span>
                 </div>
 
-                <!-- Nút Thêm dòng quà tặng phía dưới -->
+                <!-- Nút Thêm dòng khuyến mại phía dưới -->
                 <div class="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-t border-emerald-100/80">
                     <button type="button" 
                             @click="addNewGiftRow()" 
                             class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer shadow-2xs active:scale-95 shrink-0">
                         <i class="fa-solid fa-plus text-xs"></i>
-                        <span>+ Thêm dòng quà tặng</span>
+                        <span>+ Thêm dòng khuyến mại</span>
                     </button>
                     <span class="text-[11px] text-emerald-700 font-semibold italic text-center sm:text-right">
                         <i class="fa-solid fa-circle-check text-[10px] mr-0.5"></i> Đơn giá: 0đ (Xuất kho không thu tiền)
