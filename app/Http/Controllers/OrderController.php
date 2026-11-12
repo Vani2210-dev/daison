@@ -652,7 +652,17 @@ class OrderController extends Controller
 
         $discount = isset($data['discountAmount'])
             ? (float)$data['discountAmount']
-            : (float)($order?->discount_amount ?? 0);
+            : (isset($data['discount_amount']) ? (float)$data['discount_amount'] : (float)($order?->discount_amount ?? 0));
+
+        $discountPercent = isset($data['discountPercent'])
+            ? (float)$data['discountPercent']
+            : (isset($data['discount_percent']) 
+                ? (float)$data['discount_percent'] 
+                : ($order?->discount_percent !== null ? (float)$order->discount_percent : null));
+
+        if ($discountPercent === null && $subtotal > 0 && $discount > 0) {
+            $discountPercent = round(($discount / $subtotal) * 100, 2);
+        }
 
         $tax = isset($data['taxAmount'])
             ? (float)$data['taxAmount']
@@ -721,6 +731,7 @@ class OrderController extends Controller
                     ? (bool)$data['settled_with_accountant'] 
                     : ($order?->settled_with_accountant ?? false)),
             'subtotal'               => $subtotal,
+            'discount_percent'       => (float)($discountPercent ?? 0),
             'discount_amount'        => $discount,
             'tax_amount'             => $tax,
             'total_amount'           => $total,
@@ -1005,6 +1016,8 @@ class OrderController extends Controller
                     'cost_price'          => (float) ($it['costPrice'] ?? ($it['cost_price'] ?? ($uPrice * 0.8))),
                     'unit_price'          => $uPrice,
                     'original_price'      => (float) ($it['originalPrice'] ?? ($it['original_price'] ?? $uPrice)),
+                    'discount_percent'    => (float) ($it['discount_percent'] ?? ($it['discountPercent'] ?? 0)),
+                    'discount_amount'     => (float) ($it['discount_amount'] ?? ($it['discountAmount'] ?? 0)),
                     'applied_tier_policy' => $it['appliedTierPolicy'] ?? ($it['applied_tier_policy'] ?? 'Đại lý Cấp 1'),
                     'amount'              => $amt,
                 ]);

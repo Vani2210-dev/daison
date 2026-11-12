@@ -598,6 +598,14 @@
 @section('content')
 @php
     $orderTier = ($order && !empty($order->dealer_tier)) ? $order->dealer_tier : ($order?->dealer?->tier ?: 'Nguyên Giá');
+    $orderDiscPct = 0;
+    if ($order) {
+        if ($order->discount_percent !== null && (float)$order->discount_percent > 0) {
+            $orderDiscPct = (float)$order->discount_percent;
+        } elseif ((float)$order->discount_amount > 0 && (float)$order->subtotal > 0) {
+            $orderDiscPct = round(((float)$order->discount_amount / (float)$order->subtotal) * 100, 2);
+        }
+    }
     $initialItems = [];
     if ($order && $order->items && count($order->items) > 0) {
         foreach ($order->items as $it) {
@@ -622,8 +630,8 @@
                 'unitPrice' => $price,
                 'originalPrice' => (float) ($it->original_price ?? $price),
                 'costPrice' => (float) ($it->cost_price ?? 0),
-                'discount_percent' => 0,
-                'discount_amount' => 0,
+                'discount_percent' => (float) ($it->discount_percent ?? 0),
+                'discount_amount' => (float) ($it->discount_amount ?? 0),
                 'vat_percent' => 0,
                 'vat_amount' => 0,
                 'appliedTierPolicy' => $itTier,
@@ -1531,14 +1539,15 @@
                         <div class="bg-white rounded-xl p-3 border border-emerald-300 shadow-2xs space-y-2">
                             <!-- Dòng 1: STT Quà tặng + Badge + Nút Xóa -->
                             <div class="flex items-center justify-between pb-1.5 border-b border-emerald-100">
-                                <div class="flex items-center gap-1.5">
-                                    <span class="w-5 h-5 rounded-md bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">
+                                <div class="flex items-center gap-1.5 min-w-0 flex-wrap">
+                                    <span class="w-5 h-5 rounded-md bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
                                         <i class="fa-solid fa-gift"></i>
                                     </span>
-                                    <span class="font-bold text-emerald-900 text-xs" x-text="'Quà tặng #' + (gIdx + 1)"></span>
-                                    <span class="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold" x-text="gItem.appliedTierPolicy || 'Hàng khuyến mại'"></span>
+                                    <span class="font-bold text-emerald-900 text-xs shrink-0" x-text="'Quà tặng #' + (gIdx + 1)"></span>
+                                    <span class="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold truncate max-w-[150px]" x-text="gItem.appliedTierPolicy || 'Hàng khuyến mại'"></span>
+                                    <span class="text-[9px] px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded font-bold shrink-0">0 đ</span>
                                 </div>
-                                <button type="button" @click="removeGiftItem(gItem)" class="w-7 h-7 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer" title="Xóa hàng quà tặng">
+                                <button type="button" @click="removeGiftItem(gItem)" class="w-7 h-7 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer shrink-0" title="Xóa hàng quà tặng">
                                     <i class="fa-solid fa-trash-can text-xs"></i>
                                 </button>
                             </div>
@@ -1602,13 +1611,13 @@
                                 </div>
                             </div>
 
-                            <!-- Dòng 3: 3 cột trên 1 hàng y hệt sản phẩm bán: ĐVT | SỐ LƯỢNG | ĐƠN GIÁ -->
-                            <div class="grid grid-cols-3 gap-2 pt-0.5">
+                            <!-- Dòng 3: 2 cột rộng rãi trên mobile: ĐVT & SỐ LƯỢNG (Đơn giá 0đ đã có nhãn ở trên) -->
+                            <div class="grid grid-cols-2 gap-2.5 pt-0.5">
                                 <!-- ĐVT -->
                                 <div>
-                                    <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wide mb-0.5 text-center">ĐƠN VỊ TÍNH</div>
+                                    <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wide mb-1 text-center">ĐƠN VỊ TÍNH</div>
                                     <select x-model="gItem.unit"
-                                            class="w-full h-9 px-1 bg-white border border-slate-300 hover:border-slate-400 focus:border-emerald-500 rounded-lg text-xs text-center font-bold text-slate-800 focus:outline-none cursor-pointer transition-colors shadow-2xs">
+                                            class="w-full h-9 px-2 bg-white border border-slate-300 hover:border-slate-400 focus:border-emerald-500 rounded-lg text-xs text-center font-bold text-slate-800 focus:outline-none cursor-pointer transition-colors shadow-2xs">
                                         <template x-for="u in getItemUnits(gItem)" :key="u">
                                             <option :value="u" x-text="u" :selected="gItem.unit === u"></option>
                                         </template>
@@ -1617,22 +1626,14 @@
 
                                 <!-- SỐ LƯỢNG -->
                                 <div>
-                                    <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wide mb-0.5 text-center">SỐ LƯỢNG</div>
+                                    <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wide mb-1 text-center">SỐ LƯỢNG</div>
                                     <input type="number"
                                            :id="'gift-qty-input-' + gIdx"
                                            x-model.number="gItem.quantity"
                                            min="1"
                                            @input="gItem.gift_quantity = gItem.quantity; gItem._manualQty = true; calculateTotals()"
                                            @keydown.enter.prevent="addNewGiftRow()"
-                                           class="w-full h-9 px-1 text-center font-black text-emerald-800 bg-white border border-slate-300 hover:border-slate-400 focus:border-emerald-500 rounded-lg text-sm focus:outline-none shadow-2xs transition-colors">
-                                </div>
-
-                                <!-- ĐƠN GIÁ -->
-                                <div>
-                                    <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wide mb-0.5 text-right">ĐƠN GIÁ</div>
-                                    <div class="w-full h-9 flex items-center justify-end px-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-emerald-600">
-                                        0 đ
-                                    </div>
+                                           class="w-full h-9 px-2 text-center font-black text-emerald-800 bg-emerald-50/50 border border-emerald-300 hover:border-emerald-400 focus:border-emerald-500 focus:bg-white rounded-lg text-sm focus:outline-none shadow-2xs transition-colors">
                                 </div>
                             </div>
                         </div>
@@ -1749,15 +1750,17 @@
                     <span>Chưa có sản phẩm khuyến mại nào. Bấm nút <b>+ Thêm dòng quà tặng</b> bên dưới để thêm hàng tặng kèm (0đ).</span>
                 </div>
 
-                <!-- Nút Thêm dòng quà tặng phía dưới (y hệt dưới bảng sản phẩm bán) -->
-                <div class="pt-1 flex items-center justify-between">
+                <!-- Nút Thêm dòng quà tặng phía dưới -->
+                <div class="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-t border-emerald-100/80">
                     <button type="button" 
                             @click="addNewGiftRow()" 
-                            class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer shadow-2xs active:scale-95">
+                            class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer shadow-2xs active:scale-95 shrink-0">
                         <i class="fa-solid fa-plus text-xs"></i>
-                        <span>Thêm dòng quà tặng</span>
+                        <span>+ Thêm dòng quà tặng</span>
                     </button>
-                    <span class="text-[11px] text-emerald-700 font-semibold italic">Đơn giá: 0đ (Xuất kho không thu tiền)</span>
+                    <span class="text-[11px] text-emerald-700 font-semibold italic text-center sm:text-right">
+                        <i class="fa-solid fa-circle-check text-[10px] mr-0.5"></i> Đơn giá: 0đ (Xuất kho không thu tiền)
+                    </span>
                 </div>
             </div>
         </div>
@@ -2243,7 +2246,7 @@ function orderFormApp() {
                 id: 1,
                 title: '{{ $order ? ($order->order_code ?: "Phiếu đơn hàng") : (request("order_type") === "backorder" ? "Đơn giao sau mới" : "Phiếu 1") }}',
                 orderId: '{{ $order ? $order->id : "" }}',
-                orderDiscountPercent: 0,
+                orderDiscountPercent: {{ $orderDiscPct }},
                 bulkDiscountPercent: '',
                 subtotalBeforeVat: 0,
                 totalVat: 0,
@@ -2266,6 +2269,7 @@ function orderFormApp() {
                     payment_method: '{{ $order ? $order->payment_method : "Ghi nợ đại lý" }}',
                     status: '{{ $order ? $order->status : (request("order_type") === "backorder" ? "Giao sau" : "Chốt đơn") }}',
                     notes: '{{ $order ? addslashes(str_replace(["\r", "\n"], ["", "\\n"], $order->notes)) : "" }}',
+                    discount_percent: {{ $orderDiscPct }},
                     discount_amount: {{ $order ? (float)$order->discount_amount : 0 }},
                     tax_amount: {{ $order ? (float)$order->tax_amount : 0 }},
                     shortage_reported: {{ ($order && $order->shortage_reported) ? 'true' : 'false' }},
@@ -3390,15 +3394,14 @@ function orderFormApp() {
         addNewGiftRow() {
             this.showPromoSection = true;
             this.activeGiftDropdownIndex = null;
-            // Nếu đã có dòng quà tặng chưa chọn sản phẩm thì focus vào dòng đó
+            // Nếu đã có dòng quà tặng chưa chọn sản phẩm thì cuộn đến dòng đó
             const existingEmpty = this.items.find(it => it.isPromotionalGift && !it.product_id);
             if (existingEmpty) {
                 const giftIdx = this.getGiftItems().indexOf(existingEmpty);
                 this.$nextTick(() => {
                     const el = document.getElementById('gift-product-input-' + giftIdx) || document.getElementById('gift-desk-input-' + giftIdx);
                     if (el) {
-                        el.focus();
-                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     }
                 });
                 return;
@@ -3436,11 +3439,9 @@ function orderFormApp() {
             });
             this.calculateTotals();
             this.$nextTick(() => {
-                const newIdx = this.getGiftItems().length - 1;
-                const el = document.getElementById('gift-product-input-' + newIdx) || document.getElementById('gift-desk-input-' + newIdx);
-                if (el) {
-                    el.focus();
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const promoSec = document.getElementById('promo-section');
+                if (promoSec) {
+                    promoSec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 }
             });
         },
@@ -4529,6 +4530,9 @@ function orderFormApp() {
                 notes: this.formData.notes,
                 subtotal: this.subtotal,
                 discountAmount: this.formData.discount_amount,
+                discountPercent: this.orderDiscountPercent,
+                discount_amount: this.formData.discount_amount,
+                discount_percent: this.orderDiscountPercent,
                 taxAmount: this.formData.tax_amount,
                 totalAmount: this.totalAmount,
                 hasShortageWarning: this.getOverStockItems().length > 0,

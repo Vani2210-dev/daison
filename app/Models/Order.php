@@ -26,6 +26,7 @@ class Order extends Model
         'assigned_driver_id',
         'assigned_vehicle_plate',
         'subtotal',
+        'discount_percent',
         'discount_amount',
         'tax_amount',
         'total_amount',
@@ -68,6 +69,7 @@ class Order extends Model
 
     protected $casts = [
         'subtotal' => 'decimal:2',
+        'discount_percent' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
