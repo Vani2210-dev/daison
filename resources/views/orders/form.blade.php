@@ -1737,7 +1737,7 @@
                         <span title="Chiết khấu đơn hàng">CK</span>
                         <div class="flex items-center gap-1.5">
                             <div class="flex items-center gap-0.5">
-                                <input type="number" min="0" max="100" step="any" x-model.number="orderDiscountPercent" @input="onOrderDiscountPercentChange()" placeholder="%" class="w-12 px-1.5 py-1 bg-white border border-slate-200 rounded text-center text-xs focus:outline-none">
+                                <input type="number" min="0" max="100" step="any" x-model.number="orderDiscountPercent" @input="onOrderDiscountPercentChange()" placeholder="%" class="w-16 sm:w-20 px-2 py-1 bg-white border border-slate-200 rounded text-center text-xs focus:outline-none font-semibold">
                                 <span class="text-[10px] text-slate-400">%</span>
                             </div>
                             <div class="flex items-center gap-1">
