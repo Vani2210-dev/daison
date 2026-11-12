@@ -1532,43 +1532,37 @@
                 <div class="block md:hidden divide-y divide-emerald-200/80">
                     <template x-for="(gItem, gIdx) in getGiftItems()" :key="gItem._rowKey || ('gift-m-' + gIdx)">
                         <div class="py-3 space-y-2.5 first:pt-1 last:pb-1">
-                            <!-- Hàng 1: Ô tìm & chọn sản phẩm + Nút Xóa -->
+                            <!-- Hàng 1: Ô tìm & chọn sản phẩm (chiếm full chiều ngang) -->
                             <div class="relative" @click.outside="if (activeGiftDropdownIndex === gIdx) activeGiftDropdownIndex = null">
-                                <div class="flex items-center gap-2">
-                                    <input type="text"
-                                           :id="'gift-product-input-' + gIdx"
-                                           autocomplete="off"
-                                           autocorrect="off"
-                                           spellcheck="false"
-                                           x-model="gItem.searchQuery"
-                                           @focus="activeGiftDropdownIndex = gIdx; giftHighlightIndex = 0"
-                                           @input="activeGiftDropdownIndex = gIdx; giftHighlightIndex = 0"
-                                           @keydown.down.prevent="
-                                               activeGiftDropdownIndex = gIdx;
+                                <input type="text"
+                                       :id="'gift-product-input-' + gIdx"
+                                       autocomplete="off"
+                                       autocorrect="off"
+                                       spellcheck="false"
+                                       x-model="gItem.searchQuery"
+                                       @focus="activeGiftDropdownIndex = gIdx; giftHighlightIndex = 0"
+                                       @input="activeGiftDropdownIndex = gIdx; giftHighlightIndex = 0"
+                                       @keydown.down.prevent="
+                                           activeGiftDropdownIndex = gIdx;
+                                           const prods = getFilteredPromoProducts(gItem.searchQuery);
+                                           giftHighlightIndex = Math.min(giftHighlightIndex + 1, prods.length - 1);
+                                           scrollGiftProdIntoView(gIdx, giftHighlightIndex);
+                                       "
+                                       @keydown.up.prevent="
+                                           giftHighlightIndex = Math.max(giftHighlightIndex - 1, 0);
+                                           scrollGiftProdIntoView(gIdx, giftHighlightIndex);
+                                       "
+                                       @keydown.enter.prevent="
+                                           if (activeGiftDropdownIndex === gIdx) {
                                                const prods = getFilteredPromoProducts(gItem.searchQuery);
-                                               giftHighlightIndex = Math.min(giftHighlightIndex + 1, prods.length - 1);
-                                               scrollGiftProdIntoView(gIdx, giftHighlightIndex);
-                                           "
-                                           @keydown.up.prevent="
-                                               giftHighlightIndex = Math.max(giftHighlightIndex - 1, 0);
-                                               scrollGiftProdIntoView(gIdx, giftHighlightIndex);
-                                           "
-                                           @keydown.enter.prevent="
-                                               if (activeGiftDropdownIndex === gIdx) {
-                                                   const prods = getFilteredPromoProducts(gItem.searchQuery);
-                                                   if (prods.length > 0 && prods[giftHighlightIndex]) {
-                                                       selectGiftProductForRow(gItem, prods[giftHighlightIndex]);
-                                                   }
+                                               if (prods.length > 0 && prods[giftHighlightIndex]) {
+                                                   selectGiftProductForRow(gItem, prods[giftHighlightIndex]);
                                                }
-                                           "
-                                           @keydown.escape.prevent="activeGiftDropdownIndex = null"
-                                           placeholder="Gõ mã hoặc tên SP khuyến mại..."
-                                           class="flex-1 min-w-0 h-9 px-3 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:border-emerald-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors">
-
-                                    <button type="button" @click="removeGiftItem(gItem)" class="w-9 h-9 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 bg-white border border-slate-300 hover:border-rose-300 flex items-center justify-center transition-colors cursor-pointer shrink-0 shadow-2xs" title="Xóa hàng khuyến mại">
-                                        <i class="fa-solid fa-trash-can text-sm"></i>
-                                    </button>
-                                </div>
+                                           }
+                                       "
+                                       @keydown.escape.prevent="activeGiftDropdownIndex = null"
+                                       placeholder="Gõ mã hoặc tên SP khuyến mại..."
+                                       class="w-full h-9 px-3 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:border-emerald-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors">
 
                                 <!-- Dropdown gợi ý sản phẩm trên mobile (phủ trọn chiều ngang) -->
                                 <div x-show="activeGiftDropdownIndex === gIdx && getFilteredPromoProducts(gItem.searchQuery).length > 0"
@@ -1596,10 +1590,10 @@
                                 </div>
                             </div>
 
-                            <!-- Hàng 2: 2 cột rộng rãi trên mobile: ĐVT & SỐ LƯỢNG -->
-                            <div class="grid grid-cols-2 gap-2.5">
+                            <!-- Hàng 2: ĐVT, SỐ LƯỢNG & NÚT XÓA ngang hàng -->
+                            <div class="flex items-end gap-2.5">
                                 <!-- ĐVT -->
-                                <div>
+                                <div class="flex-1 min-w-0">
                                     <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wide mb-1 text-center">ĐƠN VỊ TÍNH</div>
                                     <select x-model="gItem.unit"
                                             class="w-full h-9 px-2 bg-white border border-slate-300 hover:border-slate-400 focus:border-emerald-500 rounded-lg text-xs text-center font-bold text-slate-800 focus:outline-none cursor-pointer transition-colors shadow-2xs">
@@ -1610,7 +1604,7 @@
                                 </div>
 
                                 <!-- SỐ LƯỢNG -->
-                                <div>
+                                <div class="flex-1 min-w-0">
                                     <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wide mb-1 text-center">SỐ LƯỢNG</div>
                                     <input type="number"
                                            :id="'gift-qty-input-' + gIdx"
@@ -1619,6 +1613,16 @@
                                            @input="gItem.gift_quantity = gItem.quantity; gItem._manualQty = true; calculateTotals()"
                                            @keydown.enter.prevent="addNewGiftRow()"
                                            class="w-full h-9 px-2 text-center font-black text-emerald-800 bg-white border border-slate-300 hover:border-slate-400 focus:border-emerald-500 rounded-lg text-sm focus:outline-none shadow-2xs transition-colors">
+                                </div>
+
+                                <!-- Nút Xóa (ngang hàng ô số lượng) -->
+                                <div class="shrink-0">
+                                    <button type="button" 
+                                            @click="removeGiftItem(gItem)" 
+                                            class="w-9 h-9 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 bg-white border border-slate-300 hover:border-rose-300 flex items-center justify-center transition-colors cursor-pointer shadow-2xs" 
+                                            title="Xóa hàng khuyến mại">
+                                        <i class="fa-solid fa-trash-can text-sm"></i>
+                                    </button>
                                 </div>
                             </div>
                         </div>
