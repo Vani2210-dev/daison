@@ -1162,10 +1162,6 @@
                                         <div x-show="activeProdDropdownIndex === index && getFilteredProducts(item.searchQuery, index).length > 0" 
                                              x-cloak 
                                              class="order-product-dropdown absolute left-0 top-full mt-1 w-[460px] max-w-[90vw] z-50 bg-white rounded-xl shadow-2xl border border-slate-200 max-h-60 overflow-y-auto py-1 text-xs">
-                                            <div class="px-3 py-1 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                                                <span>Gợi ý sản phẩm (<span x-text="getFilteredProducts(item.searchQuery, index).length"></span>)</span>
-                                                <span class="text-sky-600 font-normal lowercase">dùng phím &uarr; &darr; &bull; Enter chọn</span>
-                                            </div>
                                             <template x-for="(p, pIdx) in getFilteredProducts(item.searchQuery, index)" :key="p.id">
                                                 <div :id="'prod-opt-' + index + '-' + pIdx"
                                                      @mousedown.prevent="selectProductForRow(index, p); activeProdDropdownIndex = null; $nextTick(() => { const q = document.getElementById('row-qty-input-' + index); if(q) { q.focus(); q.select(); } })"
@@ -1173,9 +1169,9 @@
                                                      @mouseenter="prodHighlightIndex = pIdx"
                                                      class="px-3 py-2 cursor-pointer flex items-center justify-between transition-colors border-b border-slate-50 last:border-0"
                                                      :class="prodHighlightIndex === pIdx ? 'bg-sky-100 text-sky-950 font-bold ring-1 ring-sky-300' : 'hover:bg-slate-50'">
-                                                    <div class="min-w-0 pr-3">
-                                                        <div class="font-bold text-slate-900 truncate">
-                                                            <span class="text-sky-600 font-mono mr-1" x-text="'[' + p.sku + ']'"></span>
+                                                    <div class="min-w-0 pr-3 flex-1">
+                                                        <div class="font-bold text-slate-900 leading-snug break-words">
+                                                            <span class="text-sky-600 font-mono mr-1 shrink-0" x-text="'[' + p.sku + ']'"></span>
                                                             <span x-text="p.name"></span>
                                                         </div>
                                                         <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5 flex-wrap">
@@ -1510,19 +1506,15 @@
                             <div x-show="activePromoDropdown && getFilteredPromoProducts(newPromoItem.searchQuery).length > 0"
                                  x-cloak
                                  class="absolute left-0 top-full mt-1 w-full sm:w-[460px] z-50 bg-white rounded-xl shadow-2xl border border-emerald-200 max-h-56 overflow-y-auto py-1 text-xs">
-                                <div class="px-3 py-1 bg-emerald-50/60 border-b border-emerald-100 text-[10px] font-bold text-emerald-800 uppercase tracking-wider flex items-center justify-between">
-                                    <span>Chọn sản phẩm tặng (<span x-text="getFilteredPromoProducts(newPromoItem.searchQuery).length"></span>)</span>
-                                    <span class="text-emerald-600 font-normal lowercase">dùng phím &uarr; &darr; &bull; Enter chọn</span>
-                                </div>
                                 <template x-for="(p, pIdx) in getFilteredPromoProducts(newPromoItem.searchQuery)" :key="'promo-p-' + p.id">
                                     <div :id="'promo-opt-' + pIdx"
                                          @mousedown.prevent="selectPromoProduct(p)"
                                          @mouseenter="promoHighlightIndex = pIdx"
                                          class="px-3 py-2 cursor-pointer flex items-center justify-between transition-colors border-b border-slate-50 last:border-0"
                                          :class="promoHighlightIndex === pIdx ? 'bg-emerald-100 text-emerald-950 font-bold ring-1 ring-emerald-300' : 'hover:bg-emerald-50/50'">
-                                        <div class="min-w-0 pr-2">
-                                            <div class="font-bold text-slate-900 truncate">
-                                                <span class="text-emerald-700 font-mono mr-1" x-text="'[' + p.sku + ']'"></span>
+                                        <div class="min-w-0 pr-2 flex-1">
+                                            <div class="font-bold text-slate-900 leading-snug break-words">
+                                                <span class="text-emerald-700 font-mono mr-1 shrink-0" x-text="'[' + p.sku + ']'"></span>
                                                 <span x-text="p.name"></span>
                                             </div>
                                             <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
