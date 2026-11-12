@@ -21,13 +21,17 @@
     .order-form-app-wrapper,
     main .order-form-app-wrapper {
         padding-bottom: calc(75px + env(safe-area-inset-bottom, 0px)) !important;
-        margin-left: -0.5rem !important;
-        margin-right: -0.5rem !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
     }
     .order-form-main-card {
         padding: 0.875rem 0.75rem !important;
         border-radius: 1rem !important;
         gap: 1rem !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
     }
 
     /* 2. Thanh Tabs phía trên */
@@ -84,18 +88,22 @@
         border: none !important;
         background: transparent !important;
         overflow: visible !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
     .order-items-table,
     .order-items-table tbody {
         display: block !important;
         width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
     .order-items-table thead {
         display: none !important;
     }
     .order-items-table tr.order-item-row {
         display: grid !important;
-        grid-template-columns: 2.1fr 1.6fr 2.3fr !important;
+        grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.5fr) minmax(0, 2.3fr) !important;
         grid-template-areas:
             "stt . action"
             "product product product"
@@ -105,6 +113,9 @@
             "picking picking picking"
             "amount amount amount";
         gap: 0.45rem 0.5rem !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
         background: #ffffff !important;
         border: 1px solid #e2e8f0 !important;
         border-radius: 0.875rem !important;
@@ -112,6 +123,7 @@
         margin-bottom: 0.625rem !important;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
         position: relative !important;
+        overflow: hidden !important;
     }
     .order-items-table tr.order-item-row:last-child {
         margin-bottom: 0 !important;
@@ -122,6 +134,9 @@
         padding: 0 !important;
         border: none !important;
         background: transparent !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     /* Dòng 1: STT/Checkbox bên trái, nút Xóa bên phải */
@@ -244,16 +259,29 @@
         padding-right: 0.35rem !important;
     }
 
-    /* Ẩn các dòng quà tặng khỏi bảng chính (đã được hiển thị riêng ở khối Danh Sách Hàng Tặng bên dưới) */
+    /* Ẩn triệt để các dòng quà tặng khỏi bảng sản phẩm chính, hoàn toàn không chiếm layout */
     .order-items-table tr.order-item-row.is-promo-gift,
     .order-items-table tr.order-item-row[style*="display: none"] {
         display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        max-width: 0 !important;
+        max-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        position: absolute !important;
+        overflow: hidden !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
     }
 
     /* Dòng 4: Ô chọn Chính sách (chiếm trọn 100% bề ngang) */
-
     .order-items-table td.col-policy {
         grid-area: policy !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
     }
     .order-items-table td.col-policy::before {
         content: "CHÍNH SÁCH";
@@ -267,6 +295,8 @@
     .order-items-table td.col-policy select {
         height: 36px !important;
         width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
         border: 1px solid #cbd5e1 !important;
         border-radius: 0.5rem !important;
         font-size: 12px !important;
@@ -276,11 +306,15 @@
         box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
         padding-left: 0.5rem !important;
         padding-right: 0.5rem !important;
+        box-sizing: border-box !important;
     }
 
     /* Dòng 5: Chiết khấu & VAT */
     .order-items-table td.col-discount {
         grid-area: discount !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
     }
     .order-items-table td.col-discount::before {
         content: "CHIẾT KHẤU";
@@ -293,12 +327,17 @@
     }
     .order-items-table td.col-discount .flex {
         align-items: center !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
     }
     .order-items-table td.col-discount input {
         height: 34px !important;
         font-size: 12px !important;
         border-radius: 0.375rem !important;
         border-color: #cbd5e1 !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .order-items-table td.col-vat,
@@ -311,6 +350,8 @@
         grid-area: picking !important;
         padding-top: 0.35rem !important;
         border-top: 1px dashed #f1f5f9 !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
     }
     .order-items-table td.col-picking::before {
         content: "TIẾN ĐỘ BỐC HÀNG: ";
@@ -330,6 +371,8 @@
         padding-top: 0.5rem !important;
         border-top: 1px dashed #cbd5e1 !important;
         margin-top: 0.2rem !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
     }
     .order-items-table td.col-amount::before {
         content: "THÀNH TIỀN:";
@@ -1042,7 +1085,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 font-medium">
-                        <template x-for="(item, index) in items" :key="index">
+                        <template x-for="(item, index) in items" :key="item._rowKey || (item._rowKey = 'it-' + (item.item_id_db || item.id || index) + '-' + Math.random())">
                             <tr x-show="!item.isPromotionalGift" 
                                 class="order-item-row hover:bg-slate-50/60 transition-colors" 
                                 :class="(activeProdDropdownIndex === index ? 'relative z-30 ' : '') + (item.isPromotionalGift ? 'is-promo-gift hidden !hidden' : '')">
@@ -1280,9 +1323,11 @@
                                                         x-text="p.name"></option>
                                             </template>
                                         </select>
-                                        <template x-if="item.policy_id && getPolicySummaryText(item)">
-                                            <div class="mt-0.5 text-[9px] text-emerald-700 font-bold truncate text-center" x-text="getPolicySummaryText(item)"></div>
-                                        </template>
+                                        <div class="min-h-[14px]">
+                                            <template x-if="item.policy_id && getPolicySummaryText(item)">
+                                                <div class="mt-0.5 text-[9px] text-emerald-700 font-bold truncate text-center" x-text="getPolicySummaryText(item)"></div>
+                                            </template>
+                                        </div>
                                     </div>
                                 </td>
 
@@ -1382,17 +1427,17 @@
 
             <!-- Under Table: Thêm dòng button + Shortcut tip -->
             <div class="order-under-table-actions flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
-                <div class="flex items-center gap-2">
-                    <button type="button" @click="addNewRow()" class="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold text-xs rounded-xl border border-sky-200 transition-colors cursor-pointer shadow-2xs">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button type="button" @click="addNewRow()" class="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold text-xs rounded-xl border border-sky-200 transition-colors cursor-pointer shadow-2xs shrink-0">
                         <i class="fa-solid fa-plus text-xs"></i>
                         <span>Thêm dòng sản phẩm</span>
                     </button>
-                    <button type="button" @click="focusPromoInput()" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-300 transition-colors cursor-pointer shadow-2xs">
+                    <button type="button" @click="focusPromoInput()" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-300 transition-colors cursor-pointer shadow-2xs shrink-0">
                         <i class="fa-solid fa-gift text-xs"></i>
                         <span>+ Thêm hàng khuyến mại</span>
                     </button>
                 </div>
-                <div class="text-[11px] text-slate-500 font-medium flex items-center gap-1.5">
+                <div class="text-[11px] text-slate-500 font-medium flex items-center gap-1.5 flex-wrap">
                     <span class="text-slate-400">Mẹo:</span>
                     <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">F8</kbd> / <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">Ctrl+Enter</kbd> thêm dòng
                     <span class="text-slate-300">&bull;</span>
@@ -1403,17 +1448,17 @@
             </div>
 
             <!-- KHỐI NHẬP & QUẢN LÝ HÀNG KHUYẾN MẠI / TẶNG KÈM -->
-            <div id="promo-section" class="mt-4 rounded-xl border border-emerald-300 bg-linear-to-br from-emerald-50/70 via-white to-emerald-50/40 p-3.5 space-y-3 shadow-2xs">
+            <div id="promo-section" class="mt-4 rounded-xl border border-emerald-300 bg-linear-to-br from-emerald-50/70 via-white to-emerald-50/40 p-3.5 space-y-3 shadow-2xs max-w-full overflow-hidden">
                 <!-- Header -->
                 <div class="flex items-center justify-between gap-2 flex-wrap pb-2.5 border-b border-emerald-200">
-                    <div class="flex items-center gap-2">
-                        <span class="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs shadow-2xs font-bold">
+                    <div class="flex items-center gap-2 flex-wrap min-w-0">
+                        <span class="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs shadow-2xs font-bold shrink-0">
                             <i class="fa-solid fa-gift"></i>
                         </span>
-                        <span class="font-bold text-emerald-900 text-xs uppercase tracking-wide">Hàng Khuyến Mại / Quà Tặng Kèm (Đơn giá 0đ)</span>
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300" x-text="getGiftItems().length + ' sản phẩm tặng'"></span>
+                        <span class="font-bold text-emerald-900 text-xs uppercase tracking-wide truncate max-w-[220px] sm:max-w-none">Hàng Khuyến Mại / Quà Tặng Kèm (Đơn giá 0đ)</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0" x-text="getGiftItems().length + ' sản phẩm tặng'"></span>
                     </div>
-                    <span class="text-[11px] text-emerald-700 font-semibold italic flex items-center gap-1">
+                    <span class="text-[11px] text-emerald-700 font-semibold italic flex items-center gap-1 shrink-0">
                         <i class="fa-solid fa-circle-check text-[10px]"></i>
                         <span>Đơn giá: 0đ (Xuất kho không thu tiền)</span>
                     </span>
@@ -2138,7 +2183,10 @@ function orderFormApp() {
             
             // Đồng bộ loại giá phía trên với phía dưới sản phẩm và VAT theo cài đặt sản phẩm
             const topTier = this.formData.dealer_tier || 'Nguyên Giá';
-            this.items.forEach(it => {
+            this.items.forEach((it, idx) => {
+                if (!it._rowKey) {
+                    it._rowKey = 'it-' + (it.item_id_db || it.id || idx) + '-' + Math.random();
+                }
                 if (!it.price_type || it.price_type === 'Theo phiếu') {
                     it.price_type = topTier;
                     it.appliedTierPolicy = topTier;
@@ -3170,6 +3218,7 @@ function orderFormApp() {
                     existing.appliedTierPolicy = tierPolicyLabel;
                 } else {
                     this.items.push({
+                        _rowKey: 'gift-' + Date.now() + '-' + Math.random(),
                         id: '',
                         itemId: freeProd?.id ? String(freeProd.id) : String(item.product_id),
                         product_id: freeProd?.id || item.product_id,
@@ -3198,11 +3247,13 @@ function orderFormApp() {
                 }
             });
 
-            // Xóa các quà tặng tự động gắn với key này nếu điều kiện không còn thỏa mãn
-            this.items = this.items.filter(g => {
-                if (!g.isPromotionalGift || !g._giftKey) return true;
-                return activeGiftKeys.includes(g._giftKey);
-            });
+            // Xóa các quà tặng tự động gắn với key này nếu điều kiện không còn thỏa mãn (xóa in-place để không làm đứt reactive Alpine)
+            for (let i = this.items.length - 1; i >= 0; i--) {
+                const g = this.items[i];
+                if (g.isPromotionalGift && g._giftKey && !activeGiftKeys.includes(g._giftKey)) {
+                    this.items.splice(i, 1);
+                }
+            }
         },
 
         getGiftItems() {
@@ -3272,6 +3323,7 @@ function orderFormApp() {
                 }
             } else {
                 this.items.push({
+                    _rowKey: 'gift-' + Date.now() + '-' + Math.random(),
                     id: '',
                     itemId: String(this.newPromoItem.product_id),
                     product_id: this.newPromoItem.product_id,
@@ -3360,6 +3412,7 @@ function orderFormApp() {
             this.activeProdDropdownIndex = null;
             const currentTier = this.formData.dealer_tier || 'Nguyên Giá';
             this.items.push({
+                _rowKey: 'item-' + Date.now() + '-' + Math.random(),
                 id: '',
                 itemId: '',
                 product_id: '',
@@ -3806,8 +3859,13 @@ function orderFormApp() {
                 const notices = [];
                 const appliedPolicyIds = [];
 
-                // 1. Dọn dẹp các dòng quà tặng cũ do hệ thống tự sinh (chỉ dọn nếu chưa được sửa tay)
-                this.items = this.items.filter(it => !it.isPromotionalGift || it._manualQty || it._manualGift);
+                // 1. Dọn dẹp các dòng quà tặng cũ do hệ thống tự sinh (chỉ dọn nếu chưa được sửa tay, dùng splice in-place)
+                for (let i = this.items.length - 1; i >= 0; i--) {
+                    const it = this.items[i];
+                    if (it.isPromotionalGift && !it._manualQty && !it._manualGift) {
+                        this.items.splice(i, 1);
+                    }
+                }
                 this.items.forEach(it => {
                     if (it._autoPromoGift && !it._manualGift) {
                         it.gift_quantity = 0;
@@ -3902,6 +3960,7 @@ function orderFormApp() {
                                     }
                                 } else {
                                     this.items.push({
+                                        _rowKey: 'gift-' + Date.now() + '-' + Math.random(),
                                         id: '',
                                         itemId: freeProd?.id ? String(freeProd.id) : String(item.product_id),
                                         product_id: freeProd?.id || item.product_id,
