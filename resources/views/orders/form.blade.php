@@ -1734,7 +1734,7 @@
                     </div>
 
                     <div class="flex items-center justify-between text-slate-600 pt-1">
-                        <span>Chiết khấu đơn hàng</span>
+                        <span title="Chiết khấu đơn hàng">CK</span>
                         <div class="flex items-center gap-1.5">
                             <div class="flex items-center gap-0.5">
                                 <input type="number" min="0" max="100" step="any" x-model.number="orderDiscountPercent" @input="onOrderDiscountPercentChange()" placeholder="%" class="w-12 px-1.5 py-1 bg-white border border-slate-200 rounded text-center text-xs focus:outline-none">
