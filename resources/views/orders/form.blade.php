@@ -1537,8 +1537,8 @@
                     <template x-for="(gItem, gIdx) in getGiftItems()" :key="gItem._rowKey || ('gift-m-' + gIdx)">
                         <div class="bg-white rounded-xl p-3 border border-emerald-300 shadow-2xs space-y-2">
                             <!-- Dòng 1: Ô tìm & chọn sản phẩm + Nút Xóa -->
-                            <div class="flex items-center gap-2">
-                                <div class="relative flex-1 min-w-0" @click.outside="if (activeGiftDropdownIndex === gIdx) activeGiftDropdownIndex = null">
+                            <div class="relative" @click.outside="if (activeGiftDropdownIndex === gIdx) activeGiftDropdownIndex = null">
+                                <div class="flex items-center gap-2">
                                     <input type="text"
                                            :id="'gift-product-input-' + gIdx"
                                            autocomplete="off"
@@ -1566,38 +1566,38 @@
                                                }
                                            "
                                            @keydown.escape.prevent="activeGiftDropdownIndex = null"
-                                           placeholder="Tìm mã hoặc tên SP khuyến mại (phím ↑ ↓ Enter)..."
-                                           class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:border-emerald-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors">
+                                           placeholder="Gõ mã hoặc tên SP khuyến mại..."
+                                           class="flex-1 min-w-0 h-9 px-3 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:border-emerald-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors">
 
-                                    <!-- Dropdown gợi ý sản phẩm trên mobile -->
-                                    <div x-show="activeGiftDropdownIndex === gIdx && getFilteredPromoProducts(gItem.searchQuery).length > 0"
-                                         x-cloak
-                                         class="absolute left-0 top-full mt-1 w-full max-w-[90vw] z-50 bg-white rounded-xl shadow-2xl border border-emerald-200 max-h-60 overflow-y-auto py-1 text-xs">
-                                        <template x-for="(p, pIdx) in getFilteredPromoProducts(gItem.searchQuery)" :key="'gift-opt-' + gIdx + '-' + p.id">
-                                            <div :id="'gift-opt-' + gIdx + '-' + pIdx"
-                                                 @mousedown.prevent="selectGiftProductForRow(gItem, p)"
-                                                 @mouseenter="giftHighlightIndex = pIdx"
-                                                 class="px-3 py-2 cursor-pointer flex items-center justify-between transition-colors border-b border-slate-50 last:border-0"
-                                                 :class="giftHighlightIndex === pIdx ? 'bg-emerald-100 text-emerald-950 font-bold ring-1 ring-emerald-300' : 'hover:bg-slate-50'">
-                                                <div class="min-w-0 pr-3 flex-1">
-                                                    <div class="font-bold text-slate-900 leading-snug break-words">
-                                                        <span class="text-emerald-700 font-mono mr-1 shrink-0" x-text="'[' + p.sku + ']'"></span>
-                                                        <span x-text="p.name"></span>
-                                                    </div>
-                                                    <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
-                                                        <span x-text="'ĐVT: ' + (p.unit || '')"></span>
-                                                        <span>&bull;</span>
-                                                        <span class="text-emerald-700 font-semibold" x-text="'Khả dụng: ' + formatNumber(getProductStockData(p, formData.warehouse).available) + ' ' + (p.unit || '')"></span>
-                                                    </div>
-                                                </div>
-                                                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 shrink-0">KM 0đ</span>
-                                            </div>
-                                        </template>
-                                    </div>
+                                    <button type="button" @click="removeGiftItem(gItem)" class="w-9 h-9 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-300 flex items-center justify-center transition-colors cursor-pointer shrink-0 shadow-2xs" title="Xóa hàng khuyến mại">
+                                        <i class="fa-solid fa-trash-can text-sm"></i>
+                                    </button>
                                 </div>
-                                <button type="button" @click="removeGiftItem(gItem)" class="w-8 h-8 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-300 flex items-center justify-center transition-colors cursor-pointer shrink-0" title="Xóa hàng khuyến mại">
-                                    <i class="fa-solid fa-trash-can text-xs"></i>
-                                </button>
+
+                                <!-- Dropdown gợi ý sản phẩm trên mobile (phủ trọn chiều ngang thẻ) -->
+                                <div x-show="activeGiftDropdownIndex === gIdx && getFilteredPromoProducts(gItem.searchQuery).length > 0"
+                                     x-cloak
+                                     class="absolute left-0 top-full mt-1.5 w-full z-50 bg-white rounded-xl shadow-2xl border border-emerald-300 max-h-64 overflow-y-auto py-1 text-xs divide-y divide-slate-100">
+                                    <template x-for="(p, pIdx) in getFilteredPromoProducts(gItem.searchQuery)" :key="'gift-opt-' + gIdx + '-' + p.id">
+                                        <div :id="'gift-opt-' + gIdx + '-' + pIdx"
+                                             @mousedown.prevent="selectGiftProductForRow(gItem, p)"
+                                             @mouseenter="giftHighlightIndex = pIdx"
+                                             class="px-3 py-2.5 cursor-pointer transition-colors"
+                                             :class="giftHighlightIndex === pIdx ? 'bg-emerald-100 text-emerald-950 font-bold ring-1 ring-emerald-300' : 'hover:bg-slate-50'">
+                                            <div class="font-bold text-slate-900 leading-snug break-words">
+                                                <span class="text-emerald-700 font-mono mr-1 shrink-0" x-text="'[' + p.sku + ']'"></span>
+                                                <span x-text="p.name"></span>
+                                            </div>
+                                            <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-1 flex-wrap">
+                                                <span class="whitespace-nowrap font-medium" x-text="'ĐVT: ' + (p.unit || '')"></span>
+                                                <span>&bull;</span>
+                                                <span class="text-emerald-700 font-semibold whitespace-nowrap" x-text="'Khả dụng: ' + formatNumber(getProductStockData(p, formData.warehouse).available) + ' ' + (p.unit || '')"></span>
+                                                <span>&bull;</span>
+                                                <span class="text-emerald-600 font-bold whitespace-nowrap">Đơn giá: 0đ</span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
                             </div>
 
                             <!-- Dòng 2: 2 cột rộng rãi trên mobile: ĐVT & SỐ LƯỢNG (Đơn giá 0đ đã có nhãn ở trên) -->
