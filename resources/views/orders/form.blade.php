@@ -1483,11 +1483,11 @@
             <!-- Under Table: Thêm dòng button + Shortcut tip -->
             <div class="order-under-table-actions flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
                 <div class="flex items-center gap-2 flex-wrap">
-                    <button type="button" @click="addNewRow()" class="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold text-xs rounded-xl border border-sky-200 transition-colors cursor-pointer shadow-2xs shrink-0">
+                    <button type="button" @click="addNewRow()" @mousedown.prevent class="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold text-xs rounded-xl border border-sky-200 transition-colors cursor-pointer shadow-2xs shrink-0 active:scale-95">
                         <i class="fa-solid fa-plus text-xs"></i>
                         <span>Thêm dòng sản phẩm</span>
                     </button>
-                    <button type="button" @click="addNewGiftRow()" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-300 transition-colors cursor-pointer shadow-2xs shrink-0">
+                    <button type="button" @click="addNewGiftRow()" @mousedown.prevent class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-300 transition-colors cursor-pointer shadow-2xs shrink-0 active:scale-95">
                         <i class="fa-solid fa-gift text-xs"></i>
                         <span>+ Thêm hàng khuyến mại</span>
                     </button>
@@ -1743,6 +1743,7 @@
                 <div class="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-t border-emerald-100/80">
                     <button type="button" 
                             @click="addNewGiftRow()" 
+                            @mousedown.prevent
                             class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer shadow-2xs active:scale-95 shrink-0">
                         <i class="fa-solid fa-plus text-xs"></i>
                         <span>+ Thêm dòng khuyến mại</span>
@@ -3383,6 +3384,7 @@ function orderFormApp() {
         addNewGiftRow() {
             this.showPromoSection = true;
             this.activeGiftDropdownIndex = null;
+            this.activeProdDropdownIndex = null;
 
             this.items.push({
                 _rowKey: 'gift-' + Date.now() + '-' + Math.random(),
@@ -3416,10 +3418,12 @@ function orderFormApp() {
             });
             this.calculateTotals();
             this.$nextTick(() => {
-                const promoSec = document.getElementById('promo-section');
-                if (promoSec) {
-                    promoSec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }
+                setTimeout(() => {
+                    const promoSec = document.getElementById('promo-section');
+                    if (promoSec) {
+                        promoSec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 50);
             });
         },
 
