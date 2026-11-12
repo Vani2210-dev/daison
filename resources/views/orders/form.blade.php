@@ -357,9 +357,13 @@
         box-sizing: border-box !important;
     }
 
-    /* Dòng 5: Chiết khấu & VAT */
+    /* Dòng 5: Chiết khấu & VAT (Gom nhãn và các ô nhập lên 1 hàng) */
     .order-items-table td.col-discount {
         grid-area: discount !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 0.5rem !important;
         min-width: 0 !important;
         max-width: 100% !important;
         width: 100% !important;
@@ -367,13 +371,22 @@
         box-sizing: border-box !important;
     }
     .order-items-table td.col-discount::before {
-        content: "CHIẾT KHẤU";
-        display: block;
-        font-size: 9.5px;
-        font-weight: 700;
-        color: #0284c7;
-        letter-spacing: 0.025em;
-        margin-bottom: 2px;
+        content: "CHIẾT KHẤU:";
+        display: inline-block !important;
+        font-size: 10px !important;
+        font-weight: 700 !important;
+        color: #0284c7 !important;
+        letter-spacing: 0.025em !important;
+        margin-bottom: 0 !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+    }
+    .order-items-table td.col-discount > div {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+    }
+    .order-items-table td.col-discount [x-show*="gift_quantity"] {
+        display: none !important;
     }
     .order-items-table td.col-discount .flex {
         align-items: center !important;
@@ -383,7 +396,7 @@
         box-sizing: border-box !important;
     }
     .order-items-table td.col-discount input {
-        height: 34px !important;
+        height: 32px !important;
         font-size: 12px !important;
         border-radius: 0.375rem !important;
         border-color: #cbd5e1 !important;
