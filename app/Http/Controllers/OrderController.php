@@ -2501,4 +2501,44 @@ class OrderController extends Controller
             'deletedCount' => $successCount,
         ]);
     }
+
+    /**
+     * API / Web: Lấy thông tin nhật ký thao tác và file log của đơn hàng
+     */
+    public function getOrderLogs($id)
+    {
+        $order = Order::where('id', $id)->orWhere('order_code', $id)->first();
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng!'], 404);
+        }
+
+        // 1. Đọc nội dung file log riêng của đơn hàng (storage/logs/orders/{code}.log)
+        $fileLogs = $order->getOperationLogs();
+        $rawFileLog = $order->getOperationLogsRaw();
+
+        // 2. Lấy danh sách audit_logs từ cơ sở dữ liệu
+        $auditLogs = \App\Models\AuditLog::where('target_document_code', $order->order_code)
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(function ($log) {
+                return [
+                    'id'         => $log->id,
+                    'timestamp'  => $log->timestamp ?: ($log->created_at ? $log->created_at->format('Y-m-d H:i:s') : ''),
+                    'performer'  => $log->performer_name ?: 'Hệ thống',
+                    'action'     => $log->action,
+                    'old_status' => $log->old_value,
+                    'new_status' => $log->new_value,
+                    'notes'      => $log->notes,
+                ];
+            });
+
+        return response()->json([
+            'success'      => true,
+            'order_code'   => $order->order_code,
+            'status'       => $order->status,
+            'file_logs'    => $fileLogs,
+            'raw_file_log' => $rawFileLog,
+            'audit_logs'   => $auditLogs,
+        ]);
+    }
 }

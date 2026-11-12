@@ -1260,7 +1260,7 @@
 
     <!-- Modal: Theo dõi đơn hàng (Tracking lifecycle) -->
     <div x-show="showTrackingModal" x-cloak class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-        <div @click.outside="showTrackingModal = false" class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+        <div @click.outside="showTrackingModal = false" class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold">
@@ -1275,6 +1275,17 @@
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
+
+            <!-- Cảnh báo đơn đã bị hủy -->
+            <template x-if="['Hủy', 'Đã hủy', 'Đã huỷ'].includes(activeTrackingOrder?.status)">
+                <div class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start gap-2.5 shadow-2xs">
+                    <i class="fa-solid fa-ban text-rose-600 text-sm mt-0.5 shrink-0"></i>
+                    <div class="flex-1">
+                        <div class="font-black text-rose-900">Đơn hàng này ĐÃ BỊ HỦY</div>
+                        <div class="text-[11px] text-rose-700 mt-0.5">Tiến trình đã dừng lại. Tồn kho và công nợ đại lý đã được hoàn trả theo quy định.</div>
+                    </div>
+                </div>
+            </template>
 
             <!-- Lifecycle Stepper -->
             <div class="py-2 space-y-3">
@@ -1311,6 +1322,62 @@
                 <div class="flex justify-between"><span class="text-slate-500">Kho xuất hàng:</span> <span class="font-bold text-slate-800" x-text="activeTrackingOrder?.warehouse"></span></div>
                 <div class="flex justify-between"><span class="text-slate-500">Lái xe & Phương tiện:</span> <span class="font-bold text-sky-700" x-text="(activeTrackingOrder?.driver || 'Chưa phân công') + ' (' + (activeTrackingOrder?.vehicle || 'Chưa xếp xe') + ')'"></span></div>
                 <div class="flex justify-between border-t border-slate-200 pt-1.5"><span class="text-slate-500">Tổng giá trị đơn:</span> <span class="font-black text-slate-900" x-text="formatMoney(activeTrackingOrder?.total)"></span></div>
+            </div>
+
+            <!-- Thông tin File Log & Nhật Ký Thao Tác Đơn Hàng -->
+            <div class="pt-2 border-t border-slate-100 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-waveform text-sky-600"></i>
+                        <span>Nhật ký file log chứng từ</span>
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <template x-if="rawFileLog">
+                            <button type="button" @click="showRawLog = !showRawLog" class="text-[11px] font-bold text-sky-600 hover:text-sky-800 cursor-pointer">
+                                <span x-text="showRawLog ? 'Xem dạng bảng' : 'Xem file .log gốc'"></span>
+                            </button>
+                        </template>
+                        <span class="text-[10px] text-slate-400 font-mono" x-show="trackingLogs.length > 0" x-text="trackingLogs.length + ' bản ghi'"></span>
+                    </div>
+                </div>
+
+                <!-- Loading spinner -->
+                <div x-show="isLoadingTrackingLogs" class="py-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2 bg-slate-50 rounded-xl border border-slate-100">
+                    <i class="fa-solid fa-spinner fa-spin text-sky-600"></i>
+                    <span>Đang đọc file log đơn hàng...</span>
+                </div>
+
+                <!-- Structured logs view -->
+                <div x-show="!isLoadingTrackingLogs && !showRawLog && trackingLogs.length > 0" class="space-y-2 max-h-52 overflow-y-auto pr-1">
+                    <template x-for="(log, lIdx) in trackingLogs" :key="lIdx">
+                        <div class="p-2.5 rounded-xl border border-slate-200/90 bg-slate-50/60 text-xs space-y-1">
+                            <div class="flex items-center justify-between text-[11px]">
+                                <span class="font-black text-sky-700 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-clock-rotate-left text-[10px] text-sky-500"></i>
+                                    <span x-text="log.action || 'Thao tác'"></span>
+                                </span>
+                                <span class="text-slate-400 font-mono text-[10px]" x-text="log.timestamp"></span>
+                            </div>
+                            <div class="text-[11px] text-slate-700 leading-relaxed font-medium" x-text="log.notes || log.details"></div>
+                            <div class="text-[10px] text-slate-500 flex items-center justify-between pt-0.5 border-t border-slate-200/50 mt-1">
+                                <span>Thực hiện: <strong class="text-slate-700 font-bold" x-text="log.performer"></strong></span>
+                                <span x-show="log.new_status" class="px-1.5 py-0.2 rounded font-bold text-[9px]"
+                                      :class="['Hủy', 'Đã hủy'].includes(log.new_status) ? 'bg-rose-100 text-rose-800' : 'bg-slate-200/70 text-slate-700'"
+                                      x-text="log.new_status"></span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Raw log file view -->
+                <div x-show="!isLoadingTrackingLogs && showRawLog && rawFileLog" class="p-2.5 bg-slate-900 text-slate-100 rounded-xl font-mono text-[11px] max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed select-all">
+                    <div x-text="rawFileLog"></div>
+                </div>
+
+                <!-- Empty state -->
+                <div x-show="!isLoadingTrackingLogs && trackingLogs.length === 0 && !rawFileLog" class="py-3 px-3 bg-slate-50 rounded-xl text-center text-xs text-slate-400 border border-dashed border-slate-200">
+                    Chưa có file log ghi nhận thao tác cho đơn hàng này.
+                </div>
             </div>
 
             <div class="flex items-center justify-end gap-2 pt-2">
@@ -2156,6 +2223,10 @@ function ordersIndexApp() {
         // Modal states for Tracking, Payment & Picking
         showTrackingModal: false,
         activeTrackingOrder: null,
+        trackingLogs: [],
+        rawFileLog: '',
+        isLoadingTrackingLogs: false,
+        showRawLog: false,
         showPaymentModal: false,
         activePaymentOrder: null,
         paymentSubmitting: false,
@@ -2658,19 +2729,51 @@ function ordersIndexApp() {
             this.openPrintModal(id);
         },
 
-        openTrackingModal(order) {
+        async openTrackingModal(order) {
             this.closeActionMenu();
             this.activeTrackingOrder = order;
+            this.trackingLogs = [];
+            this.rawFileLog = '';
+            this.isLoadingTrackingLogs = true;
+            this.showRawLog = false;
             this.showTrackingModal = true;
+
+            try {
+                const res = await fetch(`/orders/${order.id}/logs`);
+                const data = await res.json();
+                if (data.success) {
+                    this.trackingLogs = data.audit_logs || [];
+                    this.rawFileLog = data.raw_file_log || '';
+                }
+            } catch (e) {
+                console.error('Lỗi tải nhật ký đơn hàng:', e);
+            } finally {
+                this.isLoadingTrackingLogs = false;
+            }
+        },
+
+        getLastActiveStatus() {
+            if (!this.activeTrackingOrder) return null;
+            if (!['Hủy', 'Đã hủy', 'Đã huỷ'].includes(this.activeTrackingOrder.status)) {
+                return this.activeTrackingOrder.status;
+            }
+            if (this.trackingLogs && this.trackingLogs.length > 0) {
+                for (const log of this.trackingLogs) {
+                    if (log.old_status && !['Hủy', 'Đã hủy', 'Đã huỷ'].includes(log.old_status)) {
+                        return log.old_status;
+                    }
+                }
+            }
+            return null;
         },
 
         isStepCompleted(stepName) {
             if (!this.activeTrackingOrder) return false;
-            let current = this.activeTrackingOrder.status;
-            if (current === 'Hủy') return false;
+            let current = this.getLastActiveStatus() || this.activeTrackingOrder.status;
+            if (['Hủy', 'Đã hủy', 'Đã huỷ'].includes(current)) return false;
             if (current === 'Soạn bốc' || current === 'Kho đang soạn' || current === 'Đang bốc hàng' || current === 'Đã bốc xong') current = 'Soạn hàng';
             if (current === 'Đã duyệt' || current === 'Chờ duyệt') current = 'Chốt đơn';
-            if (current === 'Đã kiểm hàng') current = 'Kiểm hàng';
+            if (current === 'Đã kiểm hàng' || current === 'Đã kiểm xong') current = 'Kiểm hàng';
             if (current === 'Đang giao hàng') current = 'Đang vận chuyển';
             if (current === 'Giao thành công') current = 'Đã giao';
 
@@ -2679,11 +2782,12 @@ function ordersIndexApp() {
             const curIdx = orderStages.indexOf(current);
             const stepIdx = orderStages.indexOf(checkStep);
             if (curIdx === -1) return false;
-            return curIdx > stepIdx;
+            return curIdx >= stepIdx;
         },
 
         isStepCurrent(stepName) {
             if (!this.activeTrackingOrder) return false;
+            if (['Hủy', 'Đã hủy', 'Đã huỷ'].includes(this.activeTrackingOrder.status)) return false;
             const current = this.activeTrackingOrder.status;
             if (stepName === current) return true;
             if ((stepName === 'Soạn hàng' || stepName === 'Soạn bốc') && ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong'].includes(current)) return true;

@@ -66,6 +66,8 @@ Route::prefix('api')->group(function () {
     Route::post('/orders/mark-merged', [OrderController::class, 'markOrdersMerged'])->middleware('permission:orders.edit,orders.create');
     Route::get('/orders/{id}/print-data', [OrderController::class, 'getOrderPrintData'])->middleware('permission:orders.view');
     Route::get('/api/orders/{id}/print-data', [OrderController::class, 'getOrderPrintData'])->middleware('permission:orders.view');
+    Route::get('/orders/{id}/logs', [OrderController::class, 'getOrderLogs'])->middleware('permission:orders.view');
+    Route::get('/api/orders/{id}/logs', [OrderController::class, 'getOrderLogs'])->middleware('permission:orders.view');
     Route::match(['get', 'post'], '/orders/bulk-print-data', [OrderController::class, 'getBulkOrderPrintData'])->middleware('permission:orders.view');
     Route::match(['get', 'post'], '/api/orders/bulk-print-data', [OrderController::class, 'getBulkOrderPrintData'])->middleware('permission:orders.view');
     // Credit overrun approval workflow (láº­p Ä‘Æ¡n vÆ°á»£t háº¡n má»©c)
@@ -313,6 +315,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/orders/save', [OrderController::class, 'saveOrder']);
     Route::post('/inventory/check-availability', [OrderController::class, 'checkStockAvailability']);
     Route::post('/orders/update-status', [OrderController::class, 'updateOrderStatus']);
+    Route::get('/orders/{id}/logs', [OrderController::class, 'getOrderLogs'])->middleware('permission:orders.view');
 
     // Consignment Orders (Trang táº¡o Ä‘Æ¡n riĂªng & Direct endpoints)
     Route::get('/orders/consignments/create', [ConsignmentOrderController::class, 'create'])->name('orders.consignments.create')->middleware('permission:orders.create,orders.view,consignments.create,consignments.view');
