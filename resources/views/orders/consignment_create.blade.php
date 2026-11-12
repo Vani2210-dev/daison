@@ -15,7 +15,7 @@
     }
     .consignment-app-wrapper,
     main > div.space-y-4 {
-        padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+        padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px)) !important;
     }
 }
 </style>

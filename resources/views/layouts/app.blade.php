@@ -300,9 +300,9 @@
             main {
                 padding-top: 0 !important;
                 margin-top: 0 !important;
-                padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
+                padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px)) !important;
             }
-            /* Triệt tiêu padding 56px của main khi trang có thanh action bar cố định hoặc ẩn bottom nav */
+            /* Triệt tiêu padding của main khi trang có thanh action bar cố định hoặc ẩn bottom nav */
             body:has(.order-form-bottom-bar) main,
             main:has(.order-form-bottom-bar),
             body:has(.mobile-bottom-nav[style*="display: none"]) main {
@@ -318,7 +318,7 @@
                 display: flex !important;
             }
             main .pb-12, main .pb-14, main .pb-16, main .pb-20, main .pb-24, main .pb-28, main .pb-32, main .pb-36, main .pb-40, main .pb-48, main .pb-52, main .pb-64 {
-                padding-bottom: 0.5rem !important;
+                padding-bottom: 0.25rem !important;
             }
         }
 

@@ -38,7 +38,7 @@
     /* 1. Spacing & Card chính của Form */
     .order-form-app-wrapper,
     main .order-form-app-wrapper {
-        padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+        padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px)) !important;
         width: 100% !important;
         max-width: 100% !important;
         overflow-x: hidden !important;
