@@ -595,7 +595,7 @@
                      @click.outside="openDealerDropdown = false">
                     <div class="h-5 flex items-center justify-between mb-1 gap-1">
                         <label class="text-[11px] font-bold text-slate-500 tracking-wide uppercase truncate">KHÁCH HÀNG / ĐẠI LÝ</label>
-                        <span class="text-[11px] font-medium truncate max-w-[120px]" :class="formData.customer_name ? 'text-sky-600 font-semibold' : 'text-slate-400'" x-text="formData.customer_name ? (formData.customer_phone ? formData.customer_name + ' (' + formData.customer_phone + ')' : formData.customer_name) : 'Chưa chọn khách hàng'"></span>
+                        <span class="text-[11px] font-medium truncate max-w-[140px]" :class="formData.customer_name ? 'text-sky-600 font-semibold' : 'text-slate-400'" x-text="formData.customer_name ? (formData.customer_code ? formData.customer_name + ' (' + formData.customer_code + ')' : (formData.customer_phone ? formData.customer_name + ' (' + formData.customer_phone + ')' : formData.customer_name)) : 'Chưa chọn khách hàng'"></span>
                     </div>
                     <div class="flex items-center gap-2">
                         <div class="relative flex-1 min-w-0">
@@ -632,7 +632,7 @@
                                        }
                                    "
                                    @keydown.escape.prevent="openDealerDropdown = false"
-                                   placeholder="Bấm chọn hoặc gõ tìm đại lý, SĐT..." 
+                                   placeholder="Bấm chọn hoặc gõ tìm mã KH, tên đại lý, SĐT..." 
                                    class="w-full pl-9 pr-8 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer shadow-2xs hover:border-slate-400 transition-colors">
                             
                             <!-- Mũi tên dropdown -->
@@ -673,9 +673,9 @@
                                                     Chưa MST (<span x-text="(d.orders_count || 0) + '/3'"></span>)
                                                 </span>
                                             </template>
-                                            <span x-show="d.phone" class="font-mono text-slate-700 font-semibold shrink-0 whitespace-nowrap flex items-center gap-1">
-                                                <i class="fa-solid fa-phone text-[9px] text-slate-400"></i>
-                                                <span x-text="d.phone"></span>
+                                            <span x-show="d.code || d.phone" class="font-mono text-slate-700 font-semibold shrink-0 whitespace-nowrap flex items-center gap-1" :title="'Mã khách hàng: ' + (d.code || d.phone)">
+                                                <i class="fa-solid fa-id-card text-[10px] text-slate-400"></i>
+                                                <span x-text="d.code || d.phone"></span>
                                             </span>
                                         </div>
                                     </div>
@@ -751,6 +751,9 @@
                         <span class="flex items-center gap-1.5 font-semibold">
                             <i :class="(isDebtOverLimit() || isNoTaxCodeLimitReached()) ? 'fa-solid fa-triangle-exclamation text-rose-600' : 'fa-solid fa-user-check text-sky-600'"></i>
                             <span>Khách: <b class="text-slate-900" x-text="getSelectedDealer()?.name"></b></span>
+                            <template x-if="getSelectedDealer()?.code">
+                                <span class="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-slate-200 text-slate-800" x-text="getSelectedDealer()?.code"></span>
+                            </template>
                         </span>
                         <span class="text-slate-300">|</span>
                         <!-- Trạng thái Mã số thuế (MST) -->
@@ -1940,6 +1943,7 @@ function orderFormApp() {
                     picking_date: '{{ $order ? ($order->picking_date ? \Carbon\Carbon::parse($order->picking_date)->format("Y-m-d") : "") : "" }}',
                     order_type: '{{ $order ? ($order->order_type ?? "normal") : (request("order_type") ?: "normal") }}',
                     dealer_id: '{{ $order ? $order->dealer_id : "" }}',
+                    customer_code: '{{ $order && $order->dealer ? addslashes($order->dealer->code) : "" }}',
                     customer_name: '{{ $order ? addslashes($order->customer_name) : "" }}',
                     customer_phone: '{{ $order ? addslashes($order->customer_phone) : "" }}',
                     customer_address: '{{ $order ? addslashes($order->customer_address) : "" }}',
@@ -2153,6 +2157,7 @@ function orderFormApp() {
                     picking_date: '',
                     order_type: 'normal',
                     dealer_id: '',
+                    customer_code: '',
                     customer_name: '',
                     customer_phone: '',
                     customer_address: '',
@@ -2348,6 +2353,7 @@ function orderFormApp() {
             const q = keyword.toLowerCase().trim();
             return this.dealersData.filter(d => 
                 (d.name && d.name.toLowerCase().includes(q)) || 
+                (d.code && d.code.toLowerCase().includes(q)) || 
                 (d.phone && d.phone.includes(q)) ||
                 (d.address && d.address.toLowerCase().includes(q))
             );
@@ -2356,6 +2362,7 @@ function orderFormApp() {
         selectDealer(dealer) {
             if (!dealer) return;
             this.formData.dealer_id = dealer.id;
+            this.formData.customer_code = dealer.code || '';
             this.formData.customer_name = dealer.name;
             this.formData.customer_phone = dealer.phone || '';
             this.formData.customer_address = dealer.address || '';
@@ -2375,6 +2382,7 @@ function orderFormApp() {
 
         clearCustomer() {
             this.formData.dealer_id = '';
+            this.formData.customer_code = '';
             this.formData.customer_name = '';
             this.formData.customer_phone = '';
             this.formData.customer_address = '';
