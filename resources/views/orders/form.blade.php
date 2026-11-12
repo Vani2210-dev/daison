@@ -3383,18 +3383,6 @@ function orderFormApp() {
         addNewGiftRow() {
             this.showPromoSection = true;
             this.activeGiftDropdownIndex = null;
-            // Nếu đã có dòng quà tặng chưa chọn sản phẩm thì cuộn đến dòng đó
-            const existingEmpty = this.items.find(it => it.isPromotionalGift && !it.product_id);
-            if (existingEmpty) {
-                const giftIdx = this.getGiftItems().indexOf(existingEmpty);
-                this.$nextTick(() => {
-                    const el = document.getElementById('gift-product-input-' + giftIdx) || document.getElementById('gift-desk-input-' + giftIdx);
-                    if (el) {
-                        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    }
-                });
-                return;
-            }
 
             this.items.push({
                 _rowKey: 'gift-' + Date.now() + '-' + Math.random(),
@@ -3536,7 +3524,7 @@ function orderFormApp() {
             });
             this.calculateTotals();
             this.$nextTick(() => {
-                const nextIdx = this.items.length - 1;
+                const nextIdx = this.getSalesItems().length - 1;
                 const nextInput = document.getElementById('row-product-input-' + nextIdx);
                 if (nextInput) {
                     nextInput.focus();
