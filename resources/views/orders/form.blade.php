@@ -474,7 +474,7 @@
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
-        overflow: hidden !important;
+        overflow: visible !important;
     }
     #promo-section .promo-desktop-table,
     #promo-section .hidden.md\:block,
@@ -1506,7 +1506,7 @@
             <div id="promo-section" 
                  x-show="showPromoSection || getGiftItems().length > 0" 
                  x-cloak
-                 class="mt-4 rounded-xl border border-emerald-300 bg-emerald-50/40 p-3 sm:p-4 space-y-3 shadow-2xs max-w-full overflow-hidden">
+                 class="mt-4 rounded-xl border border-emerald-300 bg-emerald-50/40 p-3 sm:p-4 space-y-3 shadow-2xs max-w-full relative z-20">
                 <!-- Header -->
                 <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-emerald-200">
                     <div class="flex items-center gap-2 min-w-0">
@@ -1531,9 +1531,12 @@
                 <!-- Danh sách sản phẩm khuyến mại: Mobile Layout (phẳng, không lồng nhiều khung viền) -->
                 <div class="block md:hidden divide-y divide-emerald-200/80">
                     <template x-for="(gItem, gIdx) in getGiftItems()" :key="gItem._rowKey || ('gift-m-' + gIdx)">
-                        <div class="py-3 space-y-2.5 first:pt-1 last:pb-1">
+                        <div class="py-3 space-y-2.5 first:pt-1 last:pb-1"
+                             :class="activeGiftDropdownIndex === gIdx ? 'relative z-30' : 'relative z-10'">
                             <!-- Hàng 1: Ô tìm & chọn sản phẩm (chiếm full chiều ngang) -->
-                            <div class="relative" @click.outside="if (activeGiftDropdownIndex === gIdx) activeGiftDropdownIndex = null">
+                            <div class="relative" 
+                                 :class="activeGiftDropdownIndex === gIdx ? 'z-40' : 'z-10'"
+                                 @click.outside="if (activeGiftDropdownIndex === gIdx) activeGiftDropdownIndex = null">
                                 <input type="text"
                                        :id="'gift-product-input-' + gIdx"
                                        autocomplete="off"
