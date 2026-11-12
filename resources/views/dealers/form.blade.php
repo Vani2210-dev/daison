@@ -498,7 +498,7 @@
     <!-- ======================================================== -->
     <!-- FLOATING SAVE BUTTON (LUÔN NỔI PHÍA GÓC DƯỚI BÊN PHẢI) -->
     <!-- ======================================================== -->
-    <div class="fixed bottom-6 right-6 z-[9900] flex items-center gap-3">
+    <div class="fixed bottom-16 sm:bottom-6 right-4 sm:right-6 z-[9900] flex items-center gap-3">
         <button type="button" @click="submitForm()" :disabled="saving"
                 class="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-2xl shadow-xl shadow-emerald-600/30 transition-all flex items-center gap-2.5 cursor-pointer active:scale-95 disabled:opacity-50 border border-emerald-400/40">
             <i x-show="saving" class="fa-solid fa-spinner fa-spin text-base"></i>

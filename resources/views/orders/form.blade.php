@@ -19,6 +19,7 @@
         max-width: 100% !important;
         overflow-x: hidden !important;
         box-sizing: border-box !important;
+        padding-bottom: 0 !important; /* Gỡ bỏ padding 56px của main vì màn hình này có bottom bar riêng */
     }
     fieldset {
         min-width: 0 !important;
@@ -37,7 +38,7 @@
     /* 1. Spacing & Card chính của Form */
     .order-form-app-wrapper,
     main .order-form-app-wrapper {
-        padding-bottom: calc(75px + env(safe-area-inset-bottom, 0px)) !important;
+        padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
         width: 100% !important;
         max-width: 100% !important;
         overflow-x: hidden !important;
@@ -510,47 +511,6 @@
         backdrop-filter: blur(12px) !important;
         box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12) !important;
     }
-    .order-form-bottom-bar > div:first-child {
-        width: 100% !important;
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        padding-bottom: 0.125rem !important;
-    }
-    .order-form-bottom-bar > div:last-child {
-        width: 100% !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 0.375rem !important;
-    }
-    .order-form-bottom-bar > div:last-child > div {
-        flex: 1 1 auto !important;
-        display: flex !important;
-        gap: 0.375rem !important;
-        width: 100% !important;
-    }
-    .btn-save-print {
-        display: none !important;
-    }
-    .order-form-bottom-bar button,
-    .order-form-bottom-bar a {
-        flex: 1 1 auto !important;
-        height: 40px !important;
-        font-size: 13px !important;
-        padding: 0 0.75rem !important;
-        justify-content: center !important;
-        white-space: nowrap !important;
-    }
-    .order-form-bottom-bar button:first-child {
-        flex: 0 0 auto !important;
-        min-width: 90px !important;
-        padding: 0 0.75rem !important;
-    }
-    .order-form-bottom-bar > div:last-child > div > button {
-        flex: 1 1 auto !important;
-        width: 100% !important;
-    }
-}
     .order-form-bottom-bar > div:first-child {
         width: 100% !important;
         display: flex !important;

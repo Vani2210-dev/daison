@@ -354,7 +354,7 @@
         </div>
 
         <!-- Sticky Bottom Bar -->
-        <div class="sticky bottom-4 z-40 bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-xl flex items-center justify-between gap-4">
+        <div class="sticky bottom-16 sm:bottom-4 z-40 bg-white/95 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xl flex items-center justify-between gap-3 sm:gap-4">
             <div class="flex items-center gap-2 text-xs">
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span class="font-bold text-slate-700">Vai trò đã chọn:</span>

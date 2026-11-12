@@ -302,6 +302,12 @@
                 margin-top: 0 !important;
                 padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
             }
+            /* Triệt tiêu padding 56px của main khi trang có thanh action bar cố định hoặc ẩn bottom nav */
+            body:has(.order-form-bottom-bar) main,
+            main:has(.order-form-bottom-bar),
+            body:has(.mobile-bottom-nav[style*="display: none"]) main {
+                padding-bottom: 0 !important;
+            }
             main > div {
                 margin-top: 0 !important;
             }

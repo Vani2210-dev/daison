@@ -2,8 +2,27 @@
 
 @section('title', 'Lập Đơn Hàng Ôm Mới | ERP Đại Sơn')
 
+@push('styles')
+<style>
+@media (max-width: 768px) {
+    .mobile-bottom-nav,
+    .mobile-drawer-backdrop,
+    .mobile-drawer-sheet {
+        display: none !important;
+    }
+    main {
+        padding-bottom: 0 !important;
+    }
+    .consignment-app-wrapper,
+    main > div.space-y-4 {
+        padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+}
+</style>
+@endpush
+
 @section('content')
-<div x-data="consignmentFormApp()" x-init="init()" @keydown.window="handleGlobalKeydown($event)" class="space-y-4 pb-24">
+<div x-data="consignmentFormApp()" x-init="init()" @keydown.window="handleGlobalKeydown($event)" class="consignment-app-wrapper space-y-4 pb-24">
 
     <!-- 1. Top Bar / Title & Breadcrumbs -->
     <div class="flex items-center justify-between border-b border-slate-200 bg-slate-100/80 -mx-4 sm:-mx-6 -mt-4 px-4 sm:px-6 py-2 text-xs overflow-x-auto">
@@ -544,7 +563,7 @@
     </div>
 
     <!-- 6. Floating / Sticky Action Bar (Matching orders/form.blade.php lines 1270-1320) -->
-    <div class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 sm:px-8 py-3 shadow-lg flex items-center justify-between gap-3">
+    <div class="order-form-bottom-bar fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 sm:px-8 py-3 shadow-lg flex items-center justify-between gap-3">
         
         <!-- Left: Items count & Total -->
         <div class="flex items-center gap-3 text-xs font-bold text-slate-600">
