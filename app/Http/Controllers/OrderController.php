@@ -229,6 +229,17 @@ class OrderController extends Controller
         if ($order) {
             $oldStatus = $order->status;
 
+            // Chặn người không có quyền hủy đơn hàng
+            if (in_array($status, ['Hủy', 'Đã hủy', 'Đã huỷ'])) {
+                $authUser = auth()->user();
+                if ($authUser && !$authUser->hasAnyPermission('orders.cancel', 'all')) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Bạn không có quyền hủy đơn hàng!'
+                    ], 403);
+                }
+            }
+
             // Chặn chuyển sang "Soạn hàng" nếu kho không đủ hàng tồn thực tế / khả dụng
             if (in_array($status, ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng'])) {
                 $order->load(['items.product']);
@@ -2251,6 +2262,243 @@ class OrderController extends Controller
                 'order_list' => $orderListSummary,
                 'products' => $consolidatedList,
             ]
+        ]);
+    }
+
+    /**
+     * API / Web: Hủy đơn hàng
+     */
+    public function cancelOrder(Request $request, $id)
+    {
+        $order = Order::where('id', $id)->orWhere('order_code', $id)->first();
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng cần hủy!'], 404);
+        }
+
+        $user = auth()->user();
+        if ($user && !$user->hasAnyPermission('orders.cancel', 'all')) {
+            return response()->json(['success' => false, 'message' => 'Bạn không có quyền hủy đơn hàng!'], 403);
+        }
+
+        if (in_array($order->status, ['Hủy', 'Đã hủy', 'Đã huỷ'])) {
+            return response()->json(['success' => false, 'message' => 'Đơn hàng này đã ở trạng thái hủy trước đó.'], 422);
+        }
+
+        if (in_array($order->status, ['Đã giao', 'Giao thành công'])) {
+            return response()->json(['success' => false, 'message' => 'Đơn hàng đã giao thành công, không thể hủy. Vui lòng lập phiếu hoàn trả nếu khách trả hàng.'], 422);
+        }
+
+        $oldStatus = $order->status;
+        $reason = trim((string)($request->input('reason') ?? $request->input('notes') ?? 'Hủy đơn hàng'));
+
+        // 1. Hoàn trả tồn kho nếu đơn đã từng bị trừ tồn
+        if ($order->stock_deducted) {
+            $this->restoreOrderStock($order);
+        }
+
+        // 2. Cập nhật trạng thái đơn
+        $order->status = 'Đã hủy';
+        if ($reason) {
+            $order->notes = ($order->notes ? $order->notes . " | " : "") . "Lý do hủy: " . $reason;
+        }
+        $order->save();
+
+        // 3. Tính lại công nợ đại lý
+        $updatedDealerDebt = null;
+        if ($order->dealer_id) {
+            $dealer = Dealer::find($order->dealer_id);
+            if ($dealer) {
+                $updatedDealerDebt = $dealer->recalculateCurrentDebt();
+            }
+        }
+
+        // 4. Ghi AuditLog & lịch sử đơn hàng
+        $performerName = $user?->name ?? 'Người dùng';
+        try {
+            $order->logOperation(
+                'Hủy Đơn Hàng',
+                "Hủy đơn hàng [{$order->order_code}]. Lý do: " . ($reason ?: 'Không có ghi chú'),
+                $performerName,
+                $oldStatus,
+                'Đã hủy'
+            );
+        } catch (\Throwable $e) {}
+
+        // 5. Đồng bộ PickingSyncEvent
+        try {
+            \App\Models\PickingSyncEvent::create([
+                'order_id'            => (string) $order->id,
+                'event_type'          => 'ORDER_CANCELLED',
+                'performer_name'      => $performerName,
+                'order_status'        => 'Đã hủy',
+                'extra_data'          => [
+                    'orderId'      => (int) $order->id,
+                    'orderCode'    => $order->order_code,
+                    'oldStatus'    => $oldStatus,
+                    'newStatus'    => 'Đã hủy',
+                    'customerName' => $order->customer_name,
+                    'reason'       => $reason,
+                    'performer'    => $performerName,
+                    'modifiedAt'   => now()->format('H:i:s d/m/Y'),
+                ],
+                'created_at'          => now(),
+            ]);
+        } catch (\Throwable $e) {}
+
+        \App\Services\InventoryAvailabilityService::clearCache();
+        \App\Http\Controllers\WebViewController::clearPosProductsCache();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Đã hủy đơn hàng [{$order->order_code}] thành công!",
+            'order'   => [
+                'id'     => $order->id,
+                'code'   => $order->order_code,
+                'status' => 'Đã hủy',
+            ],
+            'dealerDebt' => $updatedDealerDebt,
+        ]);
+    }
+
+    /**
+     * API / Web: Xóa đơn hàng vĩnh viễn khỏi hệ thống
+     */
+    public function deleteOrder(Request $request, $id)
+    {
+        $order = Order::where('id', $id)->orWhere('order_code', $id)->first();
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng cần xóa!'], 404);
+        }
+
+        $user = auth()->user();
+        if ($user && !$user->hasAnyPermission('orders.delete', 'all')) {
+            return response()->json(['success' => false, 'message' => 'Bạn không có quyền xóa đơn hàng!'], 403);
+        }
+
+        $orderCode = $order->order_code;
+        $customerName = $order->customer_name;
+        $totalAmount = (float)$order->total_amount;
+        $dealerId = $order->dealer_id;
+        $performerName = $user?->name ?? 'Người dùng';
+
+        // 1. Hoàn trả tồn kho nếu đơn đã từng bị trừ tồn
+        if ($order->stock_deducted) {
+            $this->restoreOrderStock($order);
+        }
+
+        // 2. Ghi AuditLog trước khi xóa bản ghi
+        try {
+            \App\Models\AuditLog::create([
+                'timestamp'            => now()->format('Y-m-d H:i:s'),
+                'performer_name'       => $performerName,
+                'user_id'              => $user?->id,
+                'action'               => 'Xóa Đơn Hàng',
+                'module'               => 'Đơn Hàng & Bán Hàng',
+                'target_document_code' => $orderCode,
+                'field_name'           => 'Xóa chứng từ',
+                'old_value'            => $order->status,
+                'new_value'            => 'Đã xóa vĩnh viễn',
+                'notes'                => "Xóa hoàn toàn đơn hàng [{$orderCode}] của khách [{$customerName}]. Trị giá: " . number_format($totalAmount, 0, ',', '.') . " đ.",
+            ]);
+        } catch (\Throwable $e) {}
+
+        // 3. Xóa các quan hệ phụ thuộc nếu có
+        try {
+            $order->items()->delete();
+            \App\Models\DeliveryDiscrepancy::where('order_id', $order->id)->delete();
+            \App\Models\VehicleOrderTransfer::where('order_id', $order->id)->delete();
+            \App\Models\DeliveryReturn::where('order_id', $order->id)->delete();
+        } catch (\Throwable $e) {}
+
+        // 4. Xóa chính đơn hàng
+        $order->delete();
+
+        // 5. Tính toán lại công nợ đại lý
+        $updatedDealerDebt = null;
+        if ($dealerId) {
+            $dealer = Dealer::find($dealerId);
+            if ($dealer) {
+                $updatedDealerDebt = $dealer->recalculateCurrentDebt();
+            }
+        }
+
+        \App\Services\InventoryAvailabilityService::clearCache();
+        \App\Http\Controllers\WebViewController::clearPosProductsCache();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Đã xóa vĩnh viễn đơn hàng [{$orderCode}] thành công!",
+            'order_id' => $id,
+            'dealerDebt' => $updatedDealerDebt,
+        ]);
+    }
+
+    /**
+     * API / Web: Xóa hàng loạt đơn hàng
+     */
+    public function bulkDeleteOrders(Request $request)
+    {
+        $ids = $request->input('order_ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 đơn hàng để xóa!'], 400);
+        }
+
+        $user = auth()->user();
+        if ($user && !$user->hasAnyPermission('orders.delete', 'all')) {
+            return response()->json(['success' => false, 'message' => 'Bạn không có quyền xóa đơn hàng!'], 403);
+        }
+
+        $successCount = 0;
+        foreach ($ids as $id) {
+            $order = Order::where('id', $id)->orWhere('order_code', $id)->first();
+            if (!$order) continue;
+
+            if ($order->stock_deducted) {
+                $this->restoreOrderStock($order);
+            }
+
+            $orderCode = $order->order_code;
+            $dealerId = $order->dealer_id;
+
+            try {
+                \App\Models\AuditLog::create([
+                    'timestamp'            => now()->format('Y-m-d H:i:s'),
+                    'performer_name'       => $user?->name ?? 'Người dùng',
+                    'user_id'              => $user?->id,
+                    'action'               => 'Xóa Đơn Hàng Hàng Loạt',
+                    'module'               => 'Đơn Hàng & Bán Hàng',
+                    'target_document_code' => $orderCode,
+                    'field_name'           => 'Xóa chứng từ',
+                    'old_value'            => $order->status,
+                    'new_value'            => 'Đã xóa vĩnh viễn',
+                    'notes'                => "Xóa đơn hàng [{$orderCode}] trong tác vụ xóa hàng loạt.",
+                ]);
+            } catch (\Throwable $e) {}
+
+            try {
+                $order->items()->delete();
+                \App\Models\DeliveryDiscrepancy::where('order_id', $order->id)->delete();
+                \App\Models\VehicleOrderTransfer::where('order_id', $order->id)->delete();
+                \App\Models\DeliveryReturn::where('order_id', $order->id)->delete();
+            } catch (\Throwable $e) {}
+
+            $order->delete();
+
+            if ($dealerId) {
+                $dealer = Dealer::find($dealerId);
+                if ($dealer) $dealer->recalculateCurrentDebt();
+            }
+
+            $successCount++;
+        }
+
+        \App\Services\InventoryAvailabilityService::clearCache();
+        \App\Http\Controllers\WebViewController::clearPosProductsCache();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Đã xóa vĩnh viễn {$successCount} đơn hàng thành công!",
+            'deletedCount' => $successCount,
         ]);
     }
 }

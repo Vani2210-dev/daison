@@ -413,6 +413,7 @@ const PERM_DICT = {
     'orders.edit': { name: 'Sửa Đơn Hàng', desc: 'Chỉnh sửa mặt hàng, số lượng và trần chiết khấu' },
     'orders.approve': { name: 'Duyệt Đơn Bán', desc: 'Kế toán/Quản lý chốt duyệt đơn đủ điều kiện xuất kho' },
     'orders.cancel': { name: 'Hủy Đơn Hàng', desc: 'Hủy đơn hàng chưa xuất kho khi khách hủy yêu cầu' },
+    'orders.delete': { name: 'Xóa Đơn Hàng', desc: 'Xóa hoàn toàn đơn hàng khỏi hệ thống' },
     'orders.status': { name: 'Đổi Trạng Thái', desc: 'Chuyển trạng thái đơn sang kho soạn, giao hàng, hoàn thành' },
     'orders.export': { name: 'In Phiếu & Excel', desc: 'In phiếu bán hàng, phiếu giao hàng và xuất excel' },
     'quotation.view': { name: 'Xem Báo Giá', desc: 'Tra cứu danh sách bảng báo giá đã lập' },

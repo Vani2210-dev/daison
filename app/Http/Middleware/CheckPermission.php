@@ -100,6 +100,7 @@ class CheckPermission
             'orders.edit'           => 'Chỉnh Sửa Đơn Hàng',
             'orders.approve'        => 'Phê Duyệt Đơn Hàng',
             'orders.cancel'         => 'Hủy Đơn Hàng',
+            'orders.delete'         => 'Xóa Đơn Hàng',
             'orders.status'         => 'Cập Nhật Trạng Thái Đơn Hàng',
             'orders.export'         => 'In & Xuất Đơn Hàng',
             'quotation.view'        => 'Danh Sách Báo Giá',

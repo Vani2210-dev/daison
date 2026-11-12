@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 namespace Database\Seeders;
 
@@ -20,6 +20,7 @@ class PermissionSeeder extends Seeder
             ['slug' => 'orders.edit', 'name' => 'Chỉnh sửa đơn hàng & trần chiết khấu', 'module' => 'orders', 'category' => 'Bán hàng', 'action' => 'edit'],
             ['slug' => 'orders.approve', 'name' => 'Phê duyệt đơn hàng xuất bán', 'module' => 'orders', 'category' => 'Bán hàng', 'action' => 'approve'],
             ['slug' => 'orders.cancel', 'name' => 'Hủy đơn hàng', 'module' => 'orders', 'category' => 'Bán hàng', 'action' => 'cancel'],
+            ['slug' => 'orders.delete', 'name' => 'Xóa đơn hàng vĩnh viễn', 'module' => 'orders', 'category' => 'Bán hàng', 'action' => 'delete'],
             ['slug' => 'orders.status', 'name' => 'Cập nhật trạng thái đơn (kho/xe)', 'module' => 'orders', 'category' => 'Bán hàng', 'action' => 'status'],
             ['slug' => 'orders.export', 'name' => 'In phiếu bán hàng & Xuất Excel', 'module' => 'orders', 'category' => 'Bán hàng', 'action' => 'export'],
 

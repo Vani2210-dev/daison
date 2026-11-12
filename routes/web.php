@@ -54,6 +54,14 @@ Route::prefix('api')->group(function () {
     Route::post('/inventory/check-availability', [OrderController::class, 'checkStockAvailability']);
     Route::post('/orders/update-status', [OrderController::class, 'updateOrderStatus'])->middleware('permission:orders.status,orders.approve,orders.edit,inv_picking.pick,inv_picking.qc,delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
     Route::post('/api/orders/update-status', [OrderController::class, 'updateOrderStatus'])->middleware('permission:orders.status,orders.approve,orders.edit,inv_picking.pick,inv_picking.qc,delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
+    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelOrder'])->middleware('permission:orders.cancel');
+    Route::post('/api/orders/{id}/cancel', [OrderController::class, 'cancelOrder'])->middleware('permission:orders.cancel');
+    Route::delete('/orders/{id}', [OrderController::class, 'deleteOrder'])->middleware('permission:orders.delete');
+    Route::post('/orders/{id}/delete', [OrderController::class, 'deleteOrder'])->middleware('permission:orders.delete');
+    Route::delete('/api/orders/{id}', [OrderController::class, 'deleteOrder'])->middleware('permission:orders.delete');
+    Route::post('/api/orders/{id}/delete', [OrderController::class, 'deleteOrder'])->middleware('permission:orders.delete');
+    Route::post('/orders/bulk-delete', [OrderController::class, 'bulkDeleteOrders'])->middleware('permission:orders.delete');
+    Route::post('/api/orders/bulk-delete', [OrderController::class, 'bulkDeleteOrders'])->middleware('permission:orders.delete');
     Route::get('/orders/pending-debts-and-borrows', [OrderController::class, 'getPendingDebtsAndBorrows'])->middleware('permission:orders.view,orders.create,orders.edit');
     Route::post('/orders/mark-merged', [OrderController::class, 'markOrdersMerged'])->middleware('permission:orders.edit,orders.create');
     Route::get('/orders/{id}/print-data', [OrderController::class, 'getOrderPrintData'])->middleware('permission:orders.view');
@@ -401,6 +409,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/delivery/orders/pending-credit-overrides', [DeliveryController::class, 'getPendingCreditOverrides']);
     Route::post('/orders/update-status', [OrderController::class, 'updateOrderStatus'])->middleware('permission:orders.status,orders.approve,orders.edit,inv_picking.pick,inv_picking.qc,delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
     Route::post('/api/orders/update-status', [OrderController::class, 'updateOrderStatus'])->middleware('permission:orders.status,orders.approve,orders.edit,inv_picking.pick,inv_picking.qc,delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
+    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelOrder'])->middleware('permission:orders.cancel');
+    Route::post('/api/orders/{id}/cancel', [OrderController::class, 'cancelOrder'])->middleware('permission:orders.cancel');
+    Route::delete('/orders/{id}', [OrderController::class, 'deleteOrder'])->middleware('permission:orders.delete');
+    Route::post('/orders/{id}/delete', [OrderController::class, 'deleteOrder'])->middleware('permission:orders.delete');
+    Route::delete('/api/orders/{id}', [OrderController::class, 'deleteOrder'])->middleware('permission:orders.delete');
+    Route::post('/api/orders/{id}/delete', [OrderController::class, 'deleteOrder'])->middleware('permission:orders.delete');
+    Route::post('/orders/bulk-delete', [OrderController::class, 'bulkDeleteOrders'])->middleware('permission:orders.delete');
+    Route::post('/api/orders/bulk-delete', [OrderController::class, 'bulkDeleteOrders'])->middleware('permission:orders.delete');
 
     // Inventory Picking & Checking (Soáº¡n Ä‘Æ¡n & Kiá»ƒm hĂ ng xuáº¥t kho)
     Route::get('/inventory/picking', [PickingSyncController::class, 'pickingView'])->name('inventory.picking')->middleware('permission:inv_picking.view,inv_qc.view');

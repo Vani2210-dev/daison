@@ -25,7 +25,7 @@ class RoleSeeder extends Seeder
                 'name' => 'Kế Toán Bán Hàng',
                 'description' => 'Quản lý đơn hàng, xuất bán, duyệt công nợ đại lý và thu chi bán hàng',
                 'permissions' => [
-                    'orders.view', 'orders.create', 'orders.edit', 'orders.approve', 'orders.cancel', 'orders.status', 'orders.export',
+                    'orders.view', 'orders.create', 'orders.edit', 'orders.approve', 'orders.cancel', 'orders.delete', 'orders.status', 'orders.export',
                     'quotation.view', 'quotation.create', 'quotation.edit', 'quotation.convert', 'quotation.export',
                     'returns.view', 'returns.create', 'returns.approve', 'returns.cancel',
                     'dealers.view', 'dealers.create', 'dealers.edit', 'dealers.export',

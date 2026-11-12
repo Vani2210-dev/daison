@@ -849,6 +849,12 @@
                         <span class="w-2 h-2 rounded-full bg-rose-500"></span>
                         <span>Hủy các đơn đã chọn</span>
                     </button>
+                    @if(auth()->user()->hasAnyPermission('orders.delete', 'all'))
+                    <button type="button" @click="bulkDeleteOrders(); openBulkStatus = false" class="w-full text-left px-3.5 py-2 hover:bg-rose-100 flex items-center gap-2 font-bold text-rose-700 cursor-pointer">
+                        <i class="fa-solid fa-trash-can text-rose-600 text-xs"></i>
+                        <span>Xóa các đơn đã chọn</span>
+                    </button>
+                    @endif
                 </div>
             </div>
         </div>
@@ -1227,6 +1233,27 @@
                     <i class="fa-regular fa-credit-card text-slate-500 w-5 text-center text-sm"></i>
                     <span class="font-medium">Nhập thanh toán</span>
                 </button>
+
+                <!-- Divider -->
+                <div class="border-t border-slate-100 my-1"></div>
+
+                <!-- 10. Hủy đơn hàng -->
+                @if(auth()->user()->hasAnyPermission('orders.cancel', 'all'))
+                <template x-if="!['Hủy', 'Đã hủy', 'Đã huỷ', 'Đã giao', 'Giao thành công'].includes(activeActionOrder?.status)">
+                    <button type="button" @click="cancelOrder(activeActionOrder)" class="w-full text-left px-3.5 py-2 hover:bg-amber-50 flex items-center gap-3 text-amber-700 transition-colors font-semibold cursor-pointer">
+                        <i class="fa-solid fa-ban text-amber-600 w-5 text-center text-sm"></i>
+                        <span>Hủy đơn hàng</span>
+                    </button>
+                </template>
+                @endif
+
+                <!-- 11. Xóa đơn hàng -->
+                @if(auth()->user()->hasAnyPermission('orders.delete', 'all'))
+                <button type="button" @click="deleteOrder(activeActionOrder)" class="w-full text-left px-3.5 py-2 hover:bg-rose-50 flex items-center gap-3 text-rose-600 transition-colors font-bold cursor-pointer">
+                    <i class="fa-solid fa-trash-can text-rose-500 w-5 text-center text-sm"></i>
+                    <span>Xóa đơn hàng</span>
+                </button>
+                @endif
             </div>
         </template>
     </div>
@@ -2524,6 +2551,105 @@ function ordersIndexApp() {
                 }
             } catch (e) {
                 alert('Lỗi kết nối máy chủ.');
+            }
+        },
+
+        async cancelOrder(order) {
+            if (!order) return;
+            const id = order.id;
+            const code = order.code || id;
+            this.closeActionMenu();
+
+            const reason = prompt(`Nhập lý do hủy đơn hàng [${code}]:`, 'Khách hủy đơn');
+            if (reason === null) return;
+
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const res = await fetch(`/orders/${id}/cancel`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token || '' 
+                    },
+                    body: JSON.stringify({ reason: reason.trim() || 'Hủy đơn hàng' })
+                });
+                const data = await res.json();
+                if (data.success || res.ok) {
+                    alert(data.message || `Đã hủy đơn hàng [${code}] thành công!`);
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Hủy đơn hàng thất bại.');
+                }
+            } catch (e) {
+                alert('Lỗi kết nối máy chủ khi hủy đơn hàng.');
+            }
+        },
+
+        async deleteOrder(order) {
+            if (!order) return;
+            const id = order.id;
+            const code = order.code || id;
+            this.closeActionMenu();
+
+            if (!confirm(`⚠️ CẢNH BÁO QUAN TRỌNG:\n\nBạn có chắc chắn muốn XÓA VĨNH VIỄN đơn hàng [${code}] khỏi hệ thống?\n\n- Toàn bộ sản phẩm trong đơn sẽ bị xóa.\n- Nếu đơn đã trừ tồn kho, số lượng sẽ được tự động hoàn lại kho.\n- Công nợ đại lý liên quan sẽ được tự động tính toán lại.\n\nThao tác này KHÔNG THỂ HOÀN TÁC!`)) {
+                return;
+            }
+
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const res = await fetch(`/orders/${id}`, {
+                    method: 'DELETE',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token || '' 
+                    }
+                });
+                const data = await res.json();
+                if (data.success || res.ok) {
+                    alert(data.message || `Đã xóa vĩnh viễn đơn hàng [${code}]!`);
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Xóa đơn hàng thất bại.');
+                }
+            } catch (e) {
+                alert('Lỗi kết nối máy chủ khi xóa đơn hàng.');
+            }
+        },
+
+        async bulkDeleteOrders() {
+            if (!this.selectedIds || this.selectedIds.length === 0) {
+                alert('Vui lòng tích chọn ít nhất một đơn hàng cần xóa!');
+                return;
+            }
+            if (!confirm(`⚠️ CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN ${this.selectedIds.length} đơn hàng đã chọn khỏi hệ thống?\n\nThao tác này KHÔNG THỂ HOÀN TÁC!`)) {
+                return;
+            }
+
+            this.isBulkProcessing = true;
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const res = await fetch('/orders/bulk-delete', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token || '' 
+                    },
+                    body: JSON.stringify({ order_ids: this.selectedIds })
+                });
+                const data = await res.json();
+                if (data.success || res.ok) {
+                    alert(data.message || `Đã xóa thành công ${this.selectedIds.length} đơn hàng!`);
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Xóa hàng loạt thất bại.');
+                }
+            } catch (e) {
+                alert('Lỗi kết nối máy chủ khi xóa hàng loạt.');
+            } finally {
+                this.isBulkProcessing = false;
             }
         },
 
