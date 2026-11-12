@@ -10,6 +10,23 @@
    => Tuyệt đối KHÔNG xung đột hay làm thay đổi giao diện Desktop (> 768px).
    ========================================================================== */
 @media (max-width: 768px) {
+    /* Khóa chặt toàn bộ trang theo chiều ngang, tuyệt đối không cho phép overflow / nhảy layout */
+    html, body {
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+    }
+    main {
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+    }
+    fieldset {
+        min-width: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
     /* Ẩn hoàn toàn thanh bottom navigation chung của ERP khi ở trong màn hình lên đơn / sửa đơn để không che nút Lưu */
     .mobile-bottom-nav,
     .mobile-drawer-backdrop,
@@ -21,6 +38,7 @@
     .order-form-app-wrapper,
     main .order-form-app-wrapper {
         padding-bottom: calc(75px + env(safe-area-inset-bottom, 0px)) !important;
+        width: 100% !important;
         max-width: 100% !important;
         overflow-x: hidden !important;
         box-sizing: border-box !important;
@@ -29,6 +47,7 @@
         padding: 0.875rem 0.75rem !important;
         border-radius: 1rem !important;
         gap: 1rem !important;
+        width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
         overflow-x: hidden !important;
@@ -87,7 +106,14 @@
     .order-items-table-container {
         border: none !important;
         background: transparent !important;
-        overflow: visible !important;
+        overflow: hidden !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    .order-items-table {
+        table-layout: fixed !important;
+        width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
     }
@@ -103,7 +129,7 @@
     }
     .order-items-table tr.order-item-row {
         display: grid !important;
-        grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.5fr) minmax(0, 2.3fr) !important;
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr) minmax(0, 1.4fr) !important;
         grid-template-areas:
             "stt . action"
             "product product product"
@@ -123,7 +149,6 @@
         margin-bottom: 0.625rem !important;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
         position: relative !important;
-        overflow: hidden !important;
     }
     .order-items-table tr.order-item-row:last-child {
         margin-bottom: 0 !important;
@@ -155,6 +180,7 @@
         display: flex !important;
         align-items: center !important;
         justify-content: flex-end !important;
+        justify-self: end !important;
     }
     .order-items-table td.col-actions button {
         width: 28px !important;
@@ -170,21 +196,28 @@
         grid-area: product !important;
         width: 100% !important;
         min-width: 0 !important;
+        max-width: 100% !important;
         padding-top: 0.25rem !important;
         border-top: 1px dashed #f1f5f9 !important;
+        box-sizing: border-box !important;
     }
     .order-items-table td.col-product input.product-search-input {
         height: 38px !important;
+        width: 100% !important;
+        max-width: 100% !important;
         font-size: 13px !important;
         font-weight: 700 !important;
         border-radius: 0.5rem !important;
         border-color: #cbd5e1 !important;
+        box-sizing: border-box !important;
     }
 
     /* Dòng 3: ĐVT, Số lượng & Đơn giá (Gom gọn trên 1 hàng) */
     .order-items-table td.col-unit {
         grid-area: unit !important;
         min-width: 0 !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
     .order-items-table td.col-unit::before {
         content: "ĐƠN VỊ TÍNH";
@@ -198,17 +231,22 @@
     .order-items-table td.col-unit select {
         height: 36px !important;
         width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
         font-size: 12px !important;
         font-weight: 700 !important;
         border-radius: 0.5rem !important;
         border: 1px solid #cbd5e1 !important;
         padding-left: 0.35rem !important;
         padding-right: 0.35rem !important;
+        box-sizing: border-box !important;
     }
 
     .order-items-table td.col-qty {
         grid-area: qty !important;
         min-width: 0 !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
     .order-items-table td.col-qty::before {
         content: "SỐ LƯỢNG";
@@ -223,6 +261,8 @@
     .order-items-table td.col-qty input {
         height: 36px !important;
         width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
         border: 1px solid #cbd5e1 !important;
         border-radius: 0.5rem !important;
         font-size: 13.5px !important;
@@ -231,11 +271,14 @@
         background: #ffffff !important;
         box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
         padding: 0 0.25rem !important;
+        box-sizing: border-box !important;
     }
 
     .order-items-table td.col-price {
         grid-area: price !important;
         min-width: 0 !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
     .order-items-table td.col-price::before {
         content: "ĐƠN GIÁ (Đ)";
@@ -250,6 +293,8 @@
     .order-items-table td.col-price input {
         height: 36px !important;
         width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
         font-size: 12.5px !important;
         font-weight: 800 !important;
         border-radius: 0.5rem !important;
@@ -257,6 +302,7 @@
         text-align: right !important;
         padding-left: 0.35rem !important;
         padding-right: 0.35rem !important;
+        box-sizing: border-box !important;
     }
 
     /* Ẩn triệt để các dòng quà tặng khỏi bảng sản phẩm chính, hoàn toàn không chiếm layout */
@@ -281,7 +327,9 @@
         grid-area: policy !important;
         min-width: 0 !important;
         max-width: 100% !important;
+        width: 100% !important;
         overflow: hidden !important;
+        box-sizing: border-box !important;
     }
     .order-items-table td.col-policy::before {
         content: "CHÍNH SÁCH";
@@ -314,7 +362,9 @@
         grid-area: discount !important;
         min-width: 0 !important;
         max-width: 100% !important;
+        width: 100% !important;
         overflow: hidden !important;
+        box-sizing: border-box !important;
     }
     .order-items-table td.col-discount::before {
         content: "CHIẾT KHẤU";
@@ -329,6 +379,8 @@
         align-items: center !important;
         min-width: 0 !important;
         max-width: 100% !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
     .order-items-table td.col-discount input {
         height: 34px !important;
@@ -352,6 +404,7 @@
         border-top: 1px dashed #f1f5f9 !important;
         min-width: 0 !important;
         max-width: 100% !important;
+        box-sizing: border-box !important;
     }
     .order-items-table td.col-picking::before {
         content: "TIẾN ĐỘ BỐC HÀNG: ";
@@ -373,6 +426,8 @@
         margin-top: 0.2rem !important;
         min-width: 0 !important;
         max-width: 100% !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
     .order-items-table td.col-amount::before {
         content: "THÀNH TIỀN:";
@@ -401,7 +456,34 @@
         display: none !important; /* Ẩn gợi ý phím tắt trên điện thoại */
     }
 
-    /* 6. Thanh Footer Thao Tác Cố Định (Sticky Bottom Bar) */
+    /* 6. Khối Hàng Khuyến Mại trên mobile: Triệt để ẩn bảng desktop và fit gọn gàng 100% */
+    #promo-section {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+    #promo-section .promo-desktop-table,
+    #promo-section .hidden.md\:block,
+    #promo-section table {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        max-width: 0 !important;
+        max-height: 0 !important;
+        overflow: hidden !important;
+        visibility: hidden !important;
+        position: absolute !important;
+        pointer-events: none !important;
+    }
+    #promo-section input,
+    #promo-section select {
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* 7. Thanh Footer Thao Tác Cố Định (Sticky Bottom Bar) */
     .order-form-bottom-bar {
         position: fixed !important;
         bottom: 0 !important;
@@ -415,6 +497,47 @@
         backdrop-filter: blur(12px) !important;
         box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12) !important;
     }
+    .order-form-bottom-bar > div:first-child {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding-bottom: 0.125rem !important;
+    }
+    .order-form-bottom-bar > div:last-child {
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.375rem !important;
+    }
+    .order-form-bottom-bar > div:last-child > div {
+        flex: 1 1 auto !important;
+        display: flex !important;
+        gap: 0.375rem !important;
+        width: 100% !important;
+    }
+    .btn-save-print {
+        display: none !important;
+    }
+    .order-form-bottom-bar button,
+    .order-form-bottom-bar a {
+        flex: 1 1 auto !important;
+        height: 40px !important;
+        font-size: 13px !important;
+        padding: 0 0.75rem !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
+    }
+    .order-form-bottom-bar button:first-child {
+        flex: 0 0 auto !important;
+        min-width: 90px !important;
+        padding: 0 0.75rem !important;
+    }
+    .order-form-bottom-bar > div:last-child > div > button {
+        flex: 1 1 auto !important;
+        width: 100% !important;
+    }
+}
     .order-form-bottom-bar > div:first-child {
         width: 100% !important;
         display: flex !important;
@@ -1085,10 +1208,9 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 font-medium">
-                        <template x-for="(item, index) in items" :key="item._rowKey || (item._rowKey = 'it-' + (item.item_id_db || item.id || index) + '-' + Math.random())">
-                            <tr x-show="!item.isPromotionalGift" 
-                                class="order-item-row hover:bg-slate-50/60 transition-colors" 
-                                :class="(activeProdDropdownIndex === index ? 'relative z-30 ' : '') + (item.isPromotionalGift ? 'is-promo-gift hidden !hidden' : '')">
+                        <template x-for="(item, index) in getSalesItems()" :key="item._rowKey || (item._rowKey = 'it-' + (item.item_id_db || item.id || index) + '-' + Math.random())">
+                            <tr class="order-item-row hover:bg-slate-50/60 transition-colors" 
+                                :class="activeProdDropdownIndex === index ? 'relative z-30 ' : ''">
                                 <!-- STT + Checkbox -->
                                 <td class="col-stt py-2 px-3 text-center">
                                     <div class="flex items-center justify-center gap-1.5">
@@ -1099,26 +1221,6 @@
 
                                 <!-- Tên / Mã SP Input với Menu gợi ý điều khiển bằng phím mũi tên Lên/Xuống + Enter -->
                                 <td class="col-product py-2 px-3 relative" :class="activeProdDropdownIndex === index ? 'z-30' : ''">
-                                    <!-- Nếu là hàng tặng kèm khuyến mại -->
-                                    <template x-if="item.isPromotionalGift">
-                                        <div class="py-1">
-                                            <div class="flex items-center gap-2">
-                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 font-black text-[10px] tracking-wide shrink-0">
-                                                    <i class="fa-solid fa-gift text-emerald-600"></i>
-                                                    <span>TẶNG KÈM 0đ</span>
-                                                </span>
-                                                <span class="font-bold text-slate-900 text-xs" x-text="item.name"></span>
-                                            </div>
-                                            <div class="text-[10px] text-slate-500 mt-1 flex items-center gap-2">
-                                                <span class="font-mono text-sky-600 font-semibold" x-text="'[' + item.sku + ']'"></span>
-                                                <span>&bull;</span>
-                                                <span class="text-amber-700 font-bold" x-text="item.appliedTierPolicy"></span>
-                                            </div>
-                                        </div>
-                                    </template>
-
-                                    <!-- Nếu là hàng bán thông thường -->
-                                    <template x-if="!item.isPromotionalGift">
                                     <div class="relative" @click.outside="if (activeProdDropdownIndex === index) activeProdDropdownIndex = null">
                                         <input type="text"
                                                autocomplete="off"
@@ -1130,7 +1232,7 @@
                                                @input="activeProdDropdownIndex = index; prodHighlightIndex = 0"
                                                @keydown.down.prevent="
                                                    activeProdDropdownIndex = index;
-                                                   const prods = getFilteredProducts(item.searchQuery, index);
+                                                   const prods = getFilteredProducts(item.searchQuery, getItemIndex(item));
                                                    prodHighlightIndex = Math.min(prodHighlightIndex + 1, prods.length - 1);
                                                    scrollProdIntoView(index, prodHighlightIndex);
                                                "
@@ -1140,9 +1242,9 @@
                                                "
                                                @keydown.enter.prevent="
                                                    if (activeProdDropdownIndex === index) {
-                                                       const prods = getFilteredProducts(item.searchQuery, index);
+                                                       const prods = getFilteredProducts(item.searchQuery, getItemIndex(item));
                                                        if (prods.length > 0 && prods[prodHighlightIndex]) {
-                                                           selectProductForRow(index, prods[prodHighlightIndex]);
+                                                           selectProductForRow(getItemIndex(item), prods[prodHighlightIndex]);
                                                            activeProdDropdownIndex = null;
                                                            $nextTick(() => {
                                                                const qtyInput = document.getElementById('row-qty-input-' + index);
@@ -1159,13 +1261,13 @@
                                                class="product-search-input w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:border-sky-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors">
 
                                         <!-- Menu Dropdown gợi ý sản phẩm -->
-                                        <div x-show="activeProdDropdownIndex === index && getFilteredProducts(item.searchQuery, index).length > 0" 
+                                        <div x-show="activeProdDropdownIndex === index && getFilteredProducts(item.searchQuery, getItemIndex(item)).length > 0" 
                                              x-cloak 
                                              class="order-product-dropdown absolute left-0 top-full mt-1 w-[460px] max-w-[90vw] z-50 bg-white rounded-xl shadow-2xl border border-slate-200 max-h-60 overflow-y-auto py-1 text-xs">
-                                            <template x-for="(p, pIdx) in getFilteredProducts(item.searchQuery, index)" :key="p.id">
+                                            <template x-for="(p, pIdx) in getFilteredProducts(item.searchQuery, getItemIndex(item))" :key="p.id">
                                                 <div :id="'prod-opt-' + index + '-' + pIdx"
-                                                     @mousedown.prevent="selectProductForRow(index, p); activeProdDropdownIndex = null; $nextTick(() => { const q = document.getElementById('row-qty-input-' + index); if(q) { q.focus(); q.select(); } })"
-                                                     @click="selectProductForRow(index, p); activeProdDropdownIndex = null; $nextTick(() => { const q = document.getElementById('row-qty-input-' + index); if(q) { q.focus(); q.select(); } })"
+                                                     @mousedown.prevent="selectProductForRow(getItemIndex(item), p); activeProdDropdownIndex = null; $nextTick(() => { const q = document.getElementById('row-qty-input-' + index); if(q) { q.focus(); q.select(); } })"
+                                                     @click="selectProductForRow(getItemIndex(item), p); activeProdDropdownIndex = null; $nextTick(() => { const q = document.getElementById('row-qty-input-' + index); if(q) { q.focus(); q.select(); } })"
                                                      @mouseenter="prodHighlightIndex = pIdx"
                                                      class="px-3 py-2 cursor-pointer flex items-center justify-between transition-colors border-b border-slate-50 last:border-0"
                                                      :class="prodHighlightIndex === pIdx ? 'bg-sky-100 text-sky-950 font-bold ring-1 ring-sky-300' : 'hover:bg-slate-50'">
@@ -1220,96 +1322,66 @@
                                             </span>
                                         </template>
                                     </div>
-                                    </template>
                                 </td>
 
                                 <!-- ĐVT (Luôn cho phép chọn ĐVT và ĐV quy đổi của từng sản phẩm) -->
                                 <td class="col-unit py-2 px-2 text-center align-top">
-                                    <template x-if="!item.isPromotionalGift">
-                                        <select x-model="item.unit" 
-                                                @change="onItemUnitChange(index)" 
-                                                class="w-full px-1.5 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-xs text-center font-bold text-slate-800 focus:outline-none cursor-pointer transition-colors shadow-2xs">
-                                            <template x-for="u in getItemUnits(item)" :key="u">
-                                                <option :value="u" x-text="u" :selected="item.unit === u"></option>
-                                            </template>
-                                        </select>
-                                    </template>
-                                    <template x-if="item.isPromotionalGift">
-                                        <span class="inline-block py-1.5 px-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-lg border border-slate-200" x-text="item.unit || 'cây'"></span>
-                                    </template>
+                                    <select x-model="item.unit" 
+                                            @change="onItemUnitChange(getItemIndex(item))" 
+                                            class="w-full px-1.5 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-xs text-center font-bold text-slate-800 focus:outline-none cursor-pointer transition-colors shadow-2xs">
+                                        <template x-for="u in getItemUnits(item)" :key="u">
+                                            <option :value="u" x-text="u" :selected="item.unit === u"></option>
+                                        </template>
+                                    </select>
                                 </td>
 
                                 <!-- Đơn giá (Hỗ trợ phím ↑ ↓ để tăng/giảm giá) -->
                                 <td class="col-price py-2 px-2 text-right align-top">
-                                    <template x-if="!item.isPromotionalGift">
-                                        <div class="relative">
-                                            <input type="text" 
-                                                   inputmode="numeric" 
-                                                   :id="'row-price-input-' + index"
-                                                   autocomplete="off"
-                                                   x-money="item.unitPrice" 
-                                                   @input="item.price_type = 'Tùy chỉnh'; updateLineTotal(index)" 
-                                                   @keydown.up.prevent="increasePrice(index)"
-                                                   @keydown.down.prevent="decreasePrice(index)"
-                                                   title="Phím ↑ tăng giá, phím ↓ giảm giá"
-                                                   class="w-full px-2 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-right font-bold text-xs text-slate-900 focus:outline-none shadow-2xs transition-colors">
-                                        </div>
-                                    </template>
-                                    <template x-if="item.isPromotionalGift">
-                                        <div class="py-1.5 text-right font-black text-emerald-600 text-xs">
-                                            0 đ
-                                        </div>
-                                    </template>
+                                    <div class="relative">
+                                        <input type="text" 
+                                               inputmode="numeric" 
+                                               :id="'row-price-input-' + index"
+                                               autocomplete="off"
+                                               x-money="item.unitPrice" 
+                                               @input="item.price_type = 'Tùy chỉnh'; updateLineTotal(getItemIndex(item))" 
+                                               @keydown.up.prevent="increasePrice(getItemIndex(item))"
+                                               @keydown.down.prevent="decreasePrice(getItemIndex(item))"
+                                               title="Phím ↑ tăng giá, phím ↓ giảm giá"
+                                               class="w-full px-2 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-right font-bold text-xs text-slate-900 focus:outline-none shadow-2xs transition-colors">
+                                    </div>
                                 </td>
 
                                 <!-- Số lượng (Hỗ trợ phím ↑ ↓ và bộ nút bấm +/-) -->
                                 <td class="col-qty py-2 px-2 text-center align-top">
-                                    <template x-if="!item.isPromotionalGift">
-                                        <div class="relative">
-                                            <div class="flex items-center">
-                                                <input type="text" inputmode="decimal" 
-                                                       :id="'row-qty-input-' + index"
-                                                       autocomplete="off"
-                                                       x-number="item.quantity" 
-                                                       @input="updateLineTotal(index)" 
-                                                       @keydown.up.prevent="increaseQty(index)"
-                                                       @keydown.down.prevent="decreaseQty(index)"
-                                                       @keydown.enter.prevent="addNewRow()"
-                                                       title="Phím ↑ tăng SL, phím ↓ giảm SL"
-                                                       :class="getItemStockStatus(item) === 'danger' ? 'bg-rose-50 border-2 border-rose-500 text-rose-800 ring-2 ring-rose-200 font-black' : (getItemStockStatus(item) === 'warning' ? 'bg-amber-50 border-2 border-amber-500 text-amber-900 ring-2 ring-amber-200 font-black' : 'bg-white border border-slate-300 text-slate-900 font-bold hover:border-slate-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-200')"
-                                                       class="w-full h-7 px-1 text-center text-xs shadow-2xs outline-none transition-all rounded min-w-[32px]">
-                                            </div>
-                                            
-                                            <!-- Cảnh báo thiếu tồn kho dưới ô số lượng -->
-                                            <div x-show="getItemStockStatus(item) !== 'ok'" x-cloak class="mt-1 text-[10px] font-bold flex items-center justify-center gap-0.5 leading-tight"
-                                                 :class="getItemStockStatus(item) === 'danger' ? 'text-rose-600' : 'text-amber-700'">
-                                                <i class="fa-solid fa-triangle-exclamation text-[9px]"></i>
-                                                <span x-text="getItemStockStatus(item) === 'danger' ? 'Thiếu kho: ' + formatNumber(getItemOverStockQty(item)) : 'Lẹm giữ: ' + formatNumber(getItemOverStockQty(item))"></span>
-                                            </div>
+                                    <div class="relative">
+                                        <div class="flex items-center">
+                                            <input type="text" inputmode="decimal" 
+                                                   :id="'row-qty-input-' + index"
+                                                   autocomplete="off"
+                                                   x-number="item.quantity" 
+                                                   @input="updateLineTotal(getItemIndex(item))" 
+                                                   @keydown.up.prevent="increaseQty(getItemIndex(item))"
+                                                   @keydown.down.prevent="decreaseQty(getItemIndex(item))"
+                                                   @keydown.enter.prevent="addNewRow()"
+                                                   title="Phím ↑ tăng SL, phím ↓ giảm SL"
+                                                   :class="getItemStockStatus(item) === 'danger' ? 'bg-rose-50 border-2 border-rose-500 text-rose-800 ring-2 ring-rose-200 font-black' : (getItemStockStatus(item) === 'warning' ? 'bg-amber-50 border-2 border-amber-500 text-amber-900 ring-2 ring-amber-200 font-black' : 'bg-white border border-slate-300 text-slate-900 font-bold hover:border-slate-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-200')"
+                                                   class="w-full h-7 px-1 text-center text-xs shadow-2xs outline-none transition-all rounded min-w-[32px]">
                                         </div>
-                                    </template>
-                                    <template x-if="item.isPromotionalGift">
-                                        <div class="relative">
-                                            <div>
-                                                <input type="text" inputmode="decimal" 
-                                                       :id="'row-qty-input-' + index"
-                                                       autocomplete="off"
-                                                       x-number="item.quantity" 
-                                                       @input="item._manualQty = true; updateLineTotal(index)" 
-                                                       @keydown.up.prevent="increaseQty(index)"
-                                                       @keydown.down.prevent="decreaseQty(index)"
-                                                       title="Số lượng quà tặng (có thể sửa)"
-                                                       class="w-full h-7 px-1 text-center text-xs shadow-2xs outline-none transition-all rounded min-w-[32px] bg-emerald-50 border border-emerald-400 text-emerald-900 font-black">
-                                            </div>
+                                        
+                                        <!-- Cảnh báo thiếu tồn kho dưới ô số lượng -->
+                                        <div x-show="getItemStockStatus(item) !== 'ok'" x-cloak class="mt-1 text-[10px] font-bold flex items-center justify-center gap-0.5 leading-tight"
+                                             :class="getItemStockStatus(item) === 'danger' ? 'text-rose-600' : 'text-amber-700'">
+                                            <i class="fa-solid fa-triangle-exclamation text-[9px]"></i>
+                                            <span x-text="getItemStockStatus(item) === 'danger' ? 'Thiếu kho: ' + formatNumber(getItemOverStockQty(item)) : 'Lẹm giữ: ' + formatNumber(getItemOverStockQty(item))"></span>
                                         </div>
-                                    </template>
+                                    </div>
                                 </td>
 
                                 <!-- Cột Chọn Chính Sách Áp Dụng -->
                                 <td class="col-policy py-2 px-2 text-center align-top bg-sky-50/20 border-x border-slate-200">
                                     <div class="relative">
                                         <select x-model="item.policy_id" 
-                                                @change="onItemPolicyChange(index)" 
+                                                @change="onItemPolicyChange(getItemIndex(item))" 
                                                 class="w-full px-2 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none transition-colors shadow-2xs truncate cursor-pointer"
                                                 :title="item.appliedPolicyName || 'Chọn chính sách áp dụng'">
                                             <option value="">-- Mặc định --</option>
@@ -1329,77 +1401,65 @@
 
                                 <!-- Tiền chiết khấu (% mỗi dòng hoặc VNĐ) -->
                                 <td class="col-discount py-2 px-2 bg-sky-50/30 border-x border-slate-200 align-top">
-                                    <template x-if="!item.isPromotionalGift">
-                                        <div>
-                                            <div class="flex items-center gap-1.5 justify-between">
-                                                <!-- Ô nhập % -->
-                                                <div class="flex items-center gap-0.5 shrink-0">
-                                                    <input type="number" min="0" max="100" step="any" 
-                                                           x-model.number="item.discount_percent" 
-                                                           autocomplete="off"
-                                                           @input="onLineDiscountPercentChange(index)" 
-                                                           placeholder="%" 
-                                                           title="Tỷ lệ chiết khấu (%)"
-                                                           class="w-11 px-1 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded text-center text-xs font-semibold focus:outline-none shadow-2xs transition-colors">
-                                                    <span class="text-[10px] text-slate-400 font-bold">%</span>
-                                                </div>
-                                                <!-- Ô nhập Tiền Chiết Khấu (VNĐ) -->
-                                                <div class="flex items-center gap-0.5 flex-1 min-w-0">
-                                                    <input type="text" inputmode="numeric" 
-                                                           x-money="item.discount_amount" 
-                                                           autocomplete="off"
-                                                           @input="onLineDiscountAmountChange(index)" 
-                                                           placeholder="0" 
-                                                           title="Số tiền chiết khấu (đ)"
-                                                           class="w-full px-1.5 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded text-right text-xs font-mono font-bold text-slate-800 focus:outline-none shadow-2xs transition-colors">
-                                                    <span class="text-[10px] text-slate-400 font-bold shrink-0">đ</span>
-                                                </div>
+                                    <div>
+                                        <div class="flex items-center gap-1.5 justify-between">
+                                            <!-- Ô nhập % -->
+                                            <div class="flex items-center gap-0.5 shrink-0">
+                                                <input type="number" min="0" max="100" step="any" 
+                                                       x-model.number="item.discount_percent" 
+                                                       autocomplete="off"
+                                                       @input="onLineDiscountPercentChange(getItemIndex(item))" 
+                                                       placeholder="%" 
+                                                       title="Tỷ lệ chiết khấu (%)"
+                                                       class="w-11 px-1 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded text-center text-xs font-semibold focus:outline-none shadow-2xs transition-colors">
+                                                <span class="text-[10px] text-slate-400 font-bold">%</span>
                                             </div>
-                                            <div x-show="Number(item.gift_quantity) > 0" class="mt-0.5 text-[9px] text-emerald-600 font-semibold truncate text-right" title="Dòng này có quà tặng kèm">
-                                                <i class="fa-solid fa-gift text-[8px]"></i> Quà tặng: <span x-text="item.gift_quantity"></span>
+                                            <!-- Ô nhập Tiền Chiết Khấu (VNĐ) -->
+                                            <div class="flex items-center gap-0.5 flex-1 min-w-0">
+                                                <input type="text" inputmode="numeric" 
+                                                       x-money="item.discount_amount" 
+                                                       autocomplete="off"
+                                                       @input="onLineDiscountAmountChange(getItemIndex(item))" 
+                                                       placeholder="0" 
+                                                       title="Số tiền chiết khấu (đ)"
+                                                       class="w-full px-1.5 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded text-right text-xs font-mono font-bold text-slate-800 focus:outline-none shadow-2xs transition-colors">
+                                                <span class="text-[10px] text-slate-400 font-bold shrink-0">đ</span>
                                             </div>
                                         </div>
-                                    </template>
-                                    <template x-if="item.isPromotionalGift">
-                                        <div class="py-1.5 text-center text-slate-400 text-xs italic font-medium">0 đ</div>
-                                    </template>
+                                        <div x-show="Number(item.gift_quantity) > 0" class="mt-0.5 text-[9px] text-emerald-600 font-semibold truncate text-right" title="Dòng này có quà tặng kèm">
+                                            <i class="fa-solid fa-gift text-[8px]"></i> Quà tặng: <span x-text="item.gift_quantity"></span>
+                                        </div>
+                                    </div>
                                 </td>
-
-
 
                                 <!-- Cột SL Bốc: chỉ render khi đang ở giai đoạn soạn hàng -->
                                 <template x-if="isPickingStage()">
                                     <td class="col-picking py-2 px-2 text-center align-top bg-orange-50/20 border-x border-slate-200">
-                                        <template x-if="!item.isPromotionalGift">
-                                            <div>
-                                                <div class="font-black text-sm font-mono"
-                                                     :class="Number(item.picked_qty||0) <= 0 ? 'text-slate-400' :
-                                                             Number(item.picked_qty||0) >= Number(item.quantity||0)+Number(item.gift_quantity||0) ? 'text-emerald-600' :
-                                                             'text-orange-600'"
-                                                     x-text="Number(item.picked_qty||0) > 0 ? item.picked_qty : '—'"></div>
-                                                <div class="text-[9px] text-slate-400 mt-0.5"
-                                                     x-show="Number(item.picked_qty||0) > 0"
-                                                     x-text="'/' + (Number(item.quantity||0)+Number(item.gift_quantity||0)) + ' ' + (item.unit||'')"></div>
-                                                <!-- Badge Thiếu -->
-                                                <template x-if="isItemShortage(item)">
-                                                    <button type="button"
-                                                            @click="openShortageModal(item, index)"
-                                                            class="mt-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-rose-100 hover:bg-rose-200 text-rose-700 font-black text-[9px] border border-rose-300 cursor-pointer transition-colors">
-                                                        <i class="fa-solid fa-scissors text-[8px]"></i>
-                                                        <span>Thiếu <span x-text="getShortageQty(item)"></span></span>
-                                                    </button>
-                                                </template>
-                                            </div>
-                                        </template>
-                                        <template x-if="item.isPromotionalGift">
-                                            <span class="text-slate-300 text-xs">—</span>
-                                        </template>
+                                        <div>
+                                            <div class="font-black text-sm font-mono"
+                                                 :class="Number(item.picked_qty||0) <= 0 ? 'text-slate-400' :
+                                                         Number(item.picked_qty||0) >= Number(item.quantity||0)+Number(item.gift_quantity||0) ? 'text-emerald-600' :
+                                                         'text-orange-600'"
+                                                 x-text="Number(item.picked_qty||0) > 0 ? item.picked_qty : '—'"></div>
+                                            <div class="text-[9px] text-slate-400 mt-0.5"
+                                                 x-show="Number(item.picked_qty||0) > 0"
+                                                 x-text="'/' + (Number(item.quantity||0)+Number(item.gift_quantity||0)) + ' ' + (item.unit||'')"></div>
+                                            <!-- Badge Thiếu -->
+                                            <template x-if="isItemShortage(item)">
+                                                <button type="button"
+                                                        @click="openShortageModal(item, getItemIndex(item))"
+                                                        class="mt-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-rose-100 hover:bg-rose-200 text-rose-700 font-black text-[9px] border border-rose-300 cursor-pointer transition-colors">
+                                                    <i class="fa-solid fa-scissors text-[8px]"></i>
+                                                    <span>Thiếu <span x-text="getShortageQty(item)"></span></span>
+                                                </button>
+                                            </template>
+                                        </div>
                                     </td>
                                 </template>
 
                                 <!-- Thành tiền -->
                                 <td class="col-amount py-2 px-3 text-right align-top">
-                                    <span class="font-bold text-xs block" :class="item.isPromotionalGift ? 'text-emerald-700' : 'text-slate-900'" x-text="formatNumber(item.amount) + ' đ'"></span>
+                                    <span class="font-bold text-xs block text-slate-900" x-text="formatNumber(item.amount) + ' đ'"></span>
                                     <!-- Hiển thị thiếu hàng dưới thành tiền khi có -->
                                     <template x-if="isItemShortage(item)">
                                         <div class="mt-0.5 text-[9px] text-rose-600 font-bold flex items-center justify-end gap-0.5">
@@ -1411,7 +1471,7 @@
 
                                 <!-- Nút Xóa -->
                                 <td class="col-actions py-2 px-2 text-center">
-                                    <button type="button" @click="removeItem(index)" class="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer" title="Xóa dòng">
+                                    <button type="button" @click="removeItem(item)" class="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer" title="Xóa dòng">
                                         <i class="fa-solid fa-trash-can text-xs"></i>
                                     </button>
                                 </td>
@@ -1593,7 +1653,7 @@
                     </div>
 
                     <!-- Desktop Table -->
-                    <div class="hidden md:block overflow-x-auto rounded-lg border border-emerald-200 bg-white">
+                    <div class="promo-desktop-table hidden md:block overflow-x-auto rounded-lg border border-emerald-200 bg-white">
                         <table class="w-full text-left border-collapse text-xs">
                             <thead class="bg-emerald-100/70 text-emerald-950 font-bold uppercase text-[10px] tracking-wider">
                                 <tr>
@@ -3248,6 +3308,14 @@ function orderFormApp() {
             }
         },
 
+        getSalesItems() {
+            return (this.items || []).filter(it => !it.isPromotionalGift);
+        },
+
+        getItemIndex(item) {
+            return this.items.indexOf(item);
+        },
+
         getGiftItems() {
             return (this.items || []).filter(it => it.isPromotionalGift && Number(it.quantity) > 0);
         },
@@ -3445,11 +3513,14 @@ function orderFormApp() {
             });
         },
 
-        removeItem(index) {
+        removeItem(indexOrItem) {
+            let index = typeof indexOrItem === 'number' ? indexOrItem : this.items.indexOf(indexOrItem);
+            if (index === -1) return;
             const currentTier = this.formData.dealer_tier || 'Nguyên Giá';
-            if (this.items.length <= 1) {
+            const salesCount = this.getSalesItems().length;
+            if (salesCount <= 1 && !this.items[index]?.isPromotionalGift) {
                 // Keep 1 clean row if last is cleared
-                this.items = [{
+                this.items[index] = {
                     id: '',
                     itemId: '',
                     product_id: '',
@@ -3470,10 +3541,11 @@ function orderFormApp() {
                     price_type: currentTier,
                     amount: 0,
                     checked: true,
-                }];
+                };
             } else {
                 this.items.splice(index, 1);
             }
+            this.recalculatePromotionalGifts();
             this.calculateTotals();
         },
 
