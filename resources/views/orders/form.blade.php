@@ -1489,7 +1489,7 @@
                     </button>
                     <button type="button" @click="addNewGiftRow()" @mousedown.prevent class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-300 transition-colors cursor-pointer shadow-2xs shrink-0 active:scale-95">
                         <i class="fa-solid fa-gift text-xs"></i>
-                        <span>+ Thêm hàng khuyến mại</span>
+                        <span>Hàng tặng</span>
                     </button>
                 </div>
                 <div class="text-[11px] text-slate-500 font-medium flex items-center gap-1.5 flex-wrap">
@@ -1518,10 +1518,6 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
-                        <span class="hidden sm:inline-flex text-[11px] text-emerald-700 font-semibold italic items-center gap-1">
-                            <i class="fa-solid fa-circle-check text-[10px]"></i>
-                            <span>Đơn giá: 0đ (Xuất kho không thu tiền)</span>
-                        </span>
                         <button type="button" 
                                 x-show="getGiftItems().length === 0" 
                                 @click="showPromoSection = false" 
@@ -1736,21 +1732,18 @@
                 <!-- Empty state hint khi chưa có hàng khuyến mại -->
                 <div x-show="getGiftItems().length === 0" class="py-3 px-4 text-center text-xs text-emerald-700 italic bg-white/70 rounded-xl border border-dashed border-emerald-200">
                     <i class="fa-solid fa-gift mr-1 text-emerald-500"></i>
-                    <span>Chưa có sản phẩm khuyến mại nào. Bấm nút <b>+ Thêm dòng khuyến mại</b> bên dưới để thêm hàng.</span>
+                    <span>Chưa có sản phẩm tặng nào. Bấm nút <b>Hàng tặng</b> bên dưới để thêm hàng.</span>
                 </div>
 
-                <!-- Nút Thêm dòng khuyến mại phía dưới -->
-                <div class="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-t border-emerald-100/80">
+                <!-- Nút Hàng tặng phía dưới -->
+                <div class="pt-2 flex items-center justify-start border-t border-emerald-100/80">
                     <button type="button" 
                             @click="addNewGiftRow()" 
                             @mousedown.prevent
                             class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer shadow-2xs active:scale-95 shrink-0">
                         <i class="fa-solid fa-plus text-xs"></i>
-                        <span>+ Thêm dòng khuyến mại</span>
+                        <span>Hàng tặng</span>
                     </button>
-                    <span class="text-[11px] text-emerald-700 font-semibold italic text-center sm:text-right">
-                        <i class="fa-solid fa-circle-check text-[10px] mr-0.5"></i> Đơn giá: 0đ (Xuất kho không thu tiền)
-                    </span>
                 </div>
             </div>
         </div>
