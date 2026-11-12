@@ -456,6 +456,8 @@
                 'item_id_db' => (string) $it->id,
                 'checked' => true,
                 'isPromotionalGift' => $isGift,
+                '_manualGift' => $isGift,
+                '_manualQty' => $isGift,
             ];
         }
     } else {
@@ -1380,10 +1382,16 @@
 
             <!-- Under Table: Thêm dòng button + Shortcut tip -->
             <div class="order-under-table-actions flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
-                <button type="button" @click="addNewRow()" class="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold text-xs rounded-xl border border-sky-200 transition-colors cursor-pointer shadow-2xs">
-                    <i class="fa-solid fa-plus text-xs"></i>
-                    <span>Thêm dòng</span>
-                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" @click="addNewRow()" class="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold text-xs rounded-xl border border-sky-200 transition-colors cursor-pointer shadow-2xs">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                        <span>Thêm dòng sản phẩm</span>
+                    </button>
+                    <button type="button" @click="focusPromoInput()" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-300 transition-colors cursor-pointer shadow-2xs">
+                        <i class="fa-solid fa-gift text-xs"></i>
+                        <span>+ Thêm hàng khuyến mại</span>
+                    </button>
+                </div>
                 <div class="text-[11px] text-slate-500 font-medium flex items-center gap-1.5">
                     <span class="text-slate-400">Mẹo:</span>
                     <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">F8</kbd> / <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">Ctrl+Enter</kbd> thêm dòng
@@ -1394,70 +1402,212 @@
                 </div>
             </div>
 
-            <!-- DANH SÁCH HÀNG TẶNG KÈM / KHUYẾN MẠI (CHỈ HIỆN THỊ KHI CÓ HÀNG TẶNG) -->
-            <div x-show="getGiftItems().length > 0" x-cloak class="mt-4 rounded-xl border border-emerald-300 bg-linear-to-br from-emerald-50/70 via-white to-emerald-50/40 p-3.5 space-y-2.5 shadow-2xs">
-                <div class="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-emerald-200">
+            <!-- KHỐI NHẬP & QUẢN LÝ HÀNG KHUYẾN MẠI / TẶNG KÈM -->
+            <div id="promo-section" class="mt-4 rounded-xl border border-emerald-300 bg-linear-to-br from-emerald-50/70 via-white to-emerald-50/40 p-3.5 space-y-3 shadow-2xs">
+                <!-- Header -->
+                <div class="flex items-center justify-between gap-2 flex-wrap pb-2.5 border-b border-emerald-200">
                     <div class="flex items-center gap-2">
                         <span class="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs shadow-2xs font-bold">
                             <i class="fa-solid fa-gift"></i>
                         </span>
-                        <span class="font-bold text-emerald-900 text-xs uppercase tracking-wide">Danh Sách Hàng Tặng Kèm / Khuyến Mại</span>
+                        <span class="font-bold text-emerald-900 text-xs uppercase tracking-wide">Hàng Khuyến Mại / Quà Tặng Kèm (Đơn giá 0đ)</span>
                         <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300" x-text="getGiftItems().length + ' sản phẩm tặng'"></span>
                     </div>
                     <span class="text-[11px] text-emerald-700 font-semibold italic flex items-center gap-1">
                         <i class="fa-solid fa-circle-check text-[10px]"></i>
-                        <span>Đơn giá: 0đ (Hưởng theo chính sách khuyến mại)</span>
+                        <span>Đơn giá: 0đ (Xuất kho không thu tiền)</span>
                     </span>
                 </div>
 
-                <!-- Dạng Card cho Mobile -->
-                <div class="block md:hidden space-y-2">
-                    <template x-for="(gItem, gIdx) in getGiftItems()" :key="'gift-mob-' + gIdx">
-                        <div class="bg-white rounded-lg p-2.5 border border-emerald-200 shadow-2xs flex items-center justify-between gap-3">
-                            <div class="min-w-0">
-                                <div class="font-bold text-slate-900 text-xs truncate">
-                                    <span class="text-emerald-700 font-mono mr-1" x-text="'[' + gItem.sku + ']'"></span>
-                                    <span x-text="gItem.name"></span>
+                <!-- Ô Nhập Hàng Khuyến Mại -->
+                <div class="bg-white rounded-xl border border-emerald-200 p-2.5 shadow-2xs">
+                    <div class="text-[11px] font-bold text-emerald-800 mb-1.5 flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-plus text-emerald-600"></i>
+                        <span>Nhập hàng khuyến mại tặng kèm:</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                        <!-- Ô tìm sản phẩm tặng -->
+                        <div class="sm:col-span-6 relative" @click.outside="activePromoDropdown = false">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                            <input type="text"
+                                   id="promo-product-search-input"
+                                   autocomplete="off"
+                                   autocorrect="off"
+                                   spellcheck="false"
+                                   x-model="newPromoItem.searchQuery"
+                                   @focus="activePromoDropdown = true; promoHighlightIndex = 0"
+                                   @input="activePromoDropdown = true; promoHighlightIndex = 0"
+                                   @keydown.down.prevent="
+                                       activePromoDropdown = true;
+                                       const prods = getFilteredPromoProducts(newPromoItem.searchQuery);
+                                       promoHighlightIndex = Math.min(promoHighlightIndex + 1, prods.length - 1);
+                                       scrollPromoIntoView(promoHighlightIndex);
+                                   "
+                                   @keydown.up.prevent="
+                                       promoHighlightIndex = Math.max(promoHighlightIndex - 1, 0);
+                                       scrollPromoIntoView(promoHighlightIndex);
+                                   "
+                                   @keydown.enter.prevent="
+                                       if (activePromoDropdown) {
+                                           const prods = getFilteredPromoProducts(newPromoItem.searchQuery);
+                                           if (prods.length > 0 && prods[promoHighlightIndex]) {
+                                               selectPromoProduct(prods[promoHighlightIndex]);
+                                           }
+                                       } else if (newPromoItem.product_id) {
+                                           addManualGiftItem();
+                                       }
+                                   "
+                                   @keydown.escape.prevent="activePromoDropdown = false"
+                                   placeholder="Gõ mã hoặc tên sản phẩm khuyến mại cần tặng..."
+                                   class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-emerald-200 rounded-lg text-xs font-semibold focus:border-emerald-500 focus:bg-white focus:outline-none transition-colors">
+
+                            <!-- Dropdown gợi ý sản phẩm khuyến mại -->
+                            <div x-show="activePromoDropdown && getFilteredPromoProducts(newPromoItem.searchQuery).length > 0"
+                                 x-cloak
+                                 class="absolute left-0 top-full mt-1 w-full sm:w-[460px] z-50 bg-white rounded-xl shadow-2xl border border-emerald-200 max-h-56 overflow-y-auto py-1 text-xs">
+                                <div class="px-3 py-1 bg-emerald-50/60 border-b border-emerald-100 text-[10px] font-bold text-emerald-800 uppercase tracking-wider flex items-center justify-between">
+                                    <span>Chọn sản phẩm tặng (<span x-text="getFilteredPromoProducts(newPromoItem.searchQuery).length"></span>)</span>
+                                    <span class="text-emerald-600 font-normal lowercase">dùng phím &uarr; &darr; &bull; Enter chọn</span>
                                 </div>
-                                <div class="text-[10px] text-emerald-700 font-medium mt-0.5" x-text="gItem.appliedTierPolicy || 'Theo chính sách khuyến mại'"></div>
-                            </div>
-                            <div class="text-right shrink-0">
-                                <div class="text-xs font-black text-emerald-700" x-text="gItem.quantity + ' ' + (gItem.unit || 'cái')"></div>
-                                <div class="text-[10px] text-slate-400 font-bold">0 đ</div>
+                                <template x-for="(p, pIdx) in getFilteredPromoProducts(newPromoItem.searchQuery)" :key="'promo-p-' + p.id">
+                                    <div :id="'promo-opt-' + pIdx"
+                                         @mousedown.prevent="selectPromoProduct(p)"
+                                         @mouseenter="promoHighlightIndex = pIdx"
+                                         class="px-3 py-2 cursor-pointer flex items-center justify-between transition-colors border-b border-slate-50 last:border-0"
+                                         :class="promoHighlightIndex === pIdx ? 'bg-emerald-100 text-emerald-950 font-bold ring-1 ring-emerald-300' : 'hover:bg-emerald-50/50'">
+                                        <div class="min-w-0 pr-2">
+                                            <div class="font-bold text-slate-900 truncate">
+                                                <span class="text-emerald-700 font-mono mr-1" x-text="'[' + p.sku + ']'"></span>
+                                                <span x-text="p.name"></span>
+                                            </div>
+                                            <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                                <span x-text="'ĐVT: ' + (p.unit || 'cái')"></span>
+                                                <span>&bull;</span>
+                                                <span class="text-emerald-700 font-semibold" x-text="'Khả dụng: ' + formatNumber(getProductStockData(p, formData.warehouse).available) + ' ' + (p.unit || '')"></span>
+                                            </div>
+                                        </div>
+                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 shrink-0">Tặng 0đ</span>
+                                    </div>
+                                </template>
                             </div>
                         </div>
-                    </template>
+
+                        <!-- Số lượng tặng -->
+                        <div class="sm:col-span-2">
+                            <input type="number"
+                                   id="promo-qty-input"
+                                   x-model.number="newPromoItem.quantity"
+                                   min="1"
+                                   placeholder="Số lượng"
+                                   @keydown.enter.prevent="addManualGiftItem()"
+                                   class="w-full px-2 py-1.5 bg-slate-50 border border-emerald-200 rounded-lg text-xs font-black text-center text-emerald-800 focus:border-emerald-500 focus:bg-white focus:outline-none transition-colors"
+                                   title="Số lượng tặng">
+                        </div>
+
+                        <!-- ĐVT -->
+                        <div class="sm:col-span-1">
+                            <span class="block w-full py-1.5 px-1 bg-emerald-50 text-emerald-900 font-bold text-xs text-center rounded-lg border border-emerald-200 truncate" x-text="newPromoItem.unit || 'ĐVT'"></span>
+                        </div>
+
+                        <!-- Ghi chú / Lý do khuyến mại -->
+                        <div class="sm:col-span-3 flex items-center gap-1.5">
+                            <input type="text"
+                                   x-model="newPromoItem.policyName"
+                                   placeholder="Lý do KM / Tặng kèm..."
+                                   @keydown.enter.prevent="addManualGiftItem()"
+                                   class="flex-1 min-w-0 px-2 py-1.5 bg-slate-50 border border-emerald-200 rounded-lg text-xs font-medium focus:border-emerald-500 focus:bg-white focus:outline-none transition-colors"
+                                   title="Lý do hoặc tên chương trình khuyến mại">
+                            <button type="button"
+                                    @click="addManualGiftItem()"
+                                    class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shrink-0 shadow-2xs flex items-center gap-1">
+                                <i class="fa-solid fa-plus text-[10px]"></i>
+                                <span class="hidden sm:inline">Thêm</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Dạng Bảng cho Desktop -->
-                <div class="hidden md:block overflow-x-auto rounded-lg border border-emerald-200 bg-white">
-                    <table class="w-full text-left border-collapse text-xs">
-                        <thead class="bg-emerald-100/70 text-emerald-950 font-bold uppercase text-[10px] tracking-wider">
-                            <tr>
-                                <th class="py-2 px-3 text-center w-12">STT</th>
-                                <th class="py-2 px-3">TÊN / MÃ SẢN PHẨM QUÀ TẶNG</th>
-                                <th class="py-2 px-2 text-center w-24">ĐVT</th>
-                                <th class="py-2 px-2 text-center w-32">SỐ LƯỢNG TẶNG</th>
-                                <th class="py-2 px-3 text-right w-28">ĐƠN GIÁ</th>
-                                <th class="py-2 px-3 text-left w-64">CHÍNH SÁCH ÁP DỤNG</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-emerald-100 font-medium text-slate-800">
-                            <template x-for="(gItem, gIdx) in getGiftItems()" :key="'gift-desk-' + gIdx">
-                                <tr class="hover:bg-emerald-50/50 transition-colors">
-                                    <td class="py-2 px-3 text-center font-bold text-emerald-700" x-text="gIdx + 1"></td>
-                                    <td class="py-2 px-3 font-bold text-slate-900">
-                                        <span class="text-emerald-700 font-mono mr-1.5" x-text="'[' + gItem.sku + ']'"></span>
+                <!-- Bảng danh sách hàng khuyến mại đã thêm (hoặc từ chính sách tự động) -->
+                <div x-show="getGiftItems().length > 0">
+                    <!-- Mobile Cards -->
+                    <div class="block md:hidden space-y-2">
+                        <template x-for="(gItem, gIdx) in getGiftItems()" :key="'gift-mob-' + gIdx">
+                            <div class="bg-white rounded-lg p-2.5 border border-emerald-200 shadow-2xs flex items-center justify-between gap-3">
+                                <div class="min-w-0">
+                                    <div class="font-bold text-slate-900 text-xs truncate">
+                                        <span class="text-emerald-700 font-mono mr-1" x-text="'[' + gItem.sku + ']'"></span>
                                         <span x-text="gItem.name"></span>
-                                    </td>
-                                    <td class="py-2 px-2 text-center font-bold text-slate-700" x-text="gItem.unit || 'cái'"></td>
-                                    <td class="py-2 px-2 text-center font-black text-emerald-700 text-sm" x-text="gItem.quantity"></td>
-                                    <td class="py-2 px-3 text-right font-black text-emerald-600">0 đ</td>
-                                    <td class="py-2 px-3 text-slate-600 text-[11px] font-semibold" x-text="gItem.appliedTierPolicy || 'Tặng theo chính sách'"></td>
+                                    </div>
+                                    <div class="text-[10px] text-emerald-700 font-medium mt-0.5" x-text="gItem.appliedTierPolicy || 'Hàng khuyến mại'"></div>
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <input type="number"
+                                           x-model.number="gItem.quantity"
+                                           @input="gItem._manualQty = true; calculateTotals()"
+                                           min="1"
+                                           class="w-14 px-1 py-1 text-center font-black text-emerald-700 bg-emerald-50 border border-emerald-300 rounded text-xs">
+                                    <span class="text-xs font-bold text-slate-600" x-text="gItem.unit || 'cái'"></span>
+                                    <button type="button" @click="removeGiftItem(gItem)" class="text-rose-500 hover:text-rose-700 p-1 cursor-pointer" title="Xóa hàng tặng">
+                                        <i class="fa-solid fa-trash-can text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Desktop Table -->
+                    <div class="hidden md:block overflow-x-auto rounded-lg border border-emerald-200 bg-white">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead class="bg-emerald-100/70 text-emerald-950 font-bold uppercase text-[10px] tracking-wider">
+                                <tr>
+                                    <th class="py-2 px-3 text-center w-12">STT</th>
+                                    <th class="py-2 px-3">TÊN / MÃ SẢN PHẨM KHUYẾN MẠI</th>
+                                    <th class="py-2 px-2 text-center w-24">ĐVT</th>
+                                    <th class="py-2 px-2 text-center w-28">SL TẶNG</th>
+                                    <th class="py-2 px-3 text-right w-24">ĐƠN GIÁ</th>
+                                    <th class="py-2 px-3 text-right w-24">THÀNH TIỀN</th>
+                                    <th class="py-2 px-3 text-left">LÝ DO / CHÍNH SÁCH</th>
+                                    <th class="py-2 px-2 text-center w-12">XÓA</th>
                                 </tr>
-                            </template>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody class="divide-y divide-emerald-100 font-medium text-slate-800">
+                                <template x-for="(gItem, gIdx) in getGiftItems()" :key="'gift-desk-' + gIdx">
+                                    <tr class="hover:bg-emerald-50/50 transition-colors">
+                                        <td class="py-2 px-3 text-center font-bold text-emerald-700" x-text="gIdx + 1"></td>
+                                        <td class="py-2 px-3 font-bold text-slate-900">
+                                            <span class="text-emerald-700 font-mono mr-1.5" x-text="'[' + gItem.sku + ']'"></span>
+                                            <span x-text="gItem.name"></span>
+                                        </td>
+                                        <td class="py-2 px-2 text-center font-bold text-slate-700" x-text="gItem.unit || 'cái'"></td>
+                                        <td class="py-1.5 px-2 text-center">
+                                            <input type="number"
+                                                   x-model.number="gItem.quantity"
+                                                   @input="gItem._manualQty = true; calculateTotals()"
+                                                   min="1"
+                                                   class="w-16 px-1.5 py-1 text-center font-black text-emerald-700 bg-emerald-50/60 border border-emerald-300 rounded-lg text-xs focus:bg-white focus:outline-none">
+                                        </td>
+                                        <td class="py-2 px-3 text-right font-black text-emerald-600">0 đ</td>
+                                        <td class="py-2 px-3 text-right font-black text-emerald-600">0 đ</td>
+                                        <td class="py-2 px-3 text-slate-600 text-[11px] font-semibold" x-text="gItem.appliedTierPolicy || 'Hàng khuyến mại'"></td>
+                                        <td class="py-2 px-2 text-center">
+                                            <button type="button"
+                                                    @click="removeGiftItem(gItem)"
+                                                    class="w-6 h-6 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded flex items-center justify-center transition-colors cursor-pointer mx-auto"
+                                                    title="Xóa hàng khuyến mại này">
+                                                <i class="fa-solid fa-trash-can text-xs"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Empty state hint -->
+                <div x-show="getGiftItems().length === 0" class="py-2.5 px-3 text-center text-xs text-emerald-700/80 italic bg-white/70 rounded-lg border border-dashed border-emerald-200">
+                    <i class="fa-solid fa-gift mr-1 text-emerald-500"></i>
+                    <span>Chưa có sản phẩm khuyến mại nào. Sử dụng ô nhập ở trên để thêm hàng tặng kèm (0đ) cho đơn hàng.</span>
                 </div>
             </div>
         </div>
@@ -1919,6 +2069,17 @@ function orderFormApp() {
         _manualOrderDiscount: false,
         activeProdDropdownIndex: null,
         prodHighlightIndex: 0,
+        newPromoItem: {
+            product_id: '',
+            sku: '',
+            name: '',
+            searchQuery: '',
+            unit: '',
+            quantity: 1,
+            policyName: 'Hàng khuyến mại',
+        },
+        activePromoDropdown: false,
+        promoHighlightIndex: 0,
         bulkDiscountPercent: '',
         originalOrderTotal: {{ $order ? (float)$order->total_amount : 0 }},
         isOriginalOrderInDebt: {{ ($order && !in_array($order->status, ['Báo giá', 'Bản nháp', 'Hủy', 'Đã hủy'])) ? 'true' : 'false' }},
@@ -3048,6 +3209,131 @@ function orderFormApp() {
             return (this.items || []).filter(it => it.isPromotionalGift && Number(it.quantity) > 0);
         },
 
+        getFilteredPromoProducts(query) {
+            if (!query || query.trim() === '') {
+                return this.productsCatalog ? this.productsCatalog.slice(0, 30) : [];
+            }
+            const q = query.toLowerCase().trim();
+            return (this.productsCatalog || []).filter(p => 
+                (p.name && p.name.toLowerCase().includes(q)) || 
+                (p.sku && p.sku.toLowerCase().includes(q))
+            ).slice(0, 30);
+        },
+
+        selectPromoProduct(p) {
+            if (!p) return;
+            this.newPromoItem.product_id = p.id;
+            this.newPromoItem.sku = p.sku;
+            this.newPromoItem.name = p.name;
+            this.newPromoItem.searchQuery = '[' + p.sku + '] ' + p.name;
+            this.newPromoItem.unit = p.unit || 'cái';
+            this.activePromoDropdown = false;
+            this.$nextTick(() => {
+                const qtyInput = document.getElementById('promo-qty-input');
+                if (qtyInput) {
+                    qtyInput.focus();
+                    qtyInput.select();
+                }
+            });
+        },
+
+        scrollPromoIntoView(idx) {
+            this.$nextTick(() => {
+                const el = document.getElementById('promo-opt-' + idx);
+                if (el) el.scrollIntoView({ block: 'nearest' });
+            });
+        },
+
+        addManualGiftItem() {
+            if (!this.newPromoItem.product_id) {
+                alert('Vui lòng chọn sản phẩm khuyến mại trước khi bấm Thêm!');
+                return;
+            }
+            const qty = Number(this.newPromoItem.quantity) || 1;
+            if (qty <= 0) {
+                alert('Số lượng tặng phải lớn hơn 0!');
+                return;
+            }
+            const prod = this.getProduct(this.newPromoItem.product_id);
+            const pSku = prod?.sku || this.newPromoItem.sku || '';
+            const pName = prod?.name || this.newPromoItem.name || '';
+            const pUnit = this.newPromoItem.unit || prod?.unit || 'cái';
+            const policyDesc = (this.newPromoItem.policyName || '').trim() || 'Hàng khuyến mại';
+
+            // Kiểm tra xem sản phẩm KM này đã có trong danh sách quà tặng chưa, nếu có thì cộng dồn số lượng
+            const existing = this.items.find(it => it.isPromotionalGift && it.product_id == this.newPromoItem.product_id);
+            if (existing) {
+                existing.quantity = (Number(existing.quantity) || 0) + qty;
+                existing.gift_quantity = existing.quantity;
+                existing._manualGift = true;
+                existing._manualQty = true;
+                if (policyDesc && policyDesc !== 'Hàng khuyến mại') {
+                    existing.appliedTierPolicy = policyDesc;
+                }
+            } else {
+                this.items.push({
+                    id: '',
+                    itemId: String(this.newPromoItem.product_id),
+                    product_id: this.newPromoItem.product_id,
+                    sku: pSku,
+                    name: pName,
+                    searchQuery: pName,
+                    unit: pUnit,
+                    quantity: qty,
+                    gift_quantity: qty,
+                    unitPrice: 0,
+                    originalPrice: Number(prod?.base_price || prod?.cost_price || 0),
+                    costPrice: Number(prod?.cost_price || 0),
+                    discount_percent: 0,
+                    discount_amount: 0,
+                    vat_percent: 0,
+                    vat_amount: 0,
+                    appliedTierPolicy: policyDesc,
+                    price_type: policyDesc,
+                    amount: 0,
+                    picked_qty: 0,
+                    shortage_reason: '',
+                    item_status: '',
+                    item_id_db: '',
+                    checked: true,
+                    isPromotionalGift: true,
+                    _manualGift: true,
+                    _manualQty: true,
+                });
+            }
+
+            // Reset ô nhập
+            this.newPromoItem = {
+                product_id: '',
+                sku: '',
+                name: '',
+                searchQuery: '',
+                unit: '',
+                quantity: 1,
+                policyName: 'Hàng khuyến mại',
+            };
+            this.activePromoDropdown = false;
+            this.calculateTotals();
+        },
+
+        removeGiftItem(gItem) {
+            const idx = this.items.indexOf(gItem);
+            if (idx !== -1) {
+                this.items.splice(idx, 1);
+                this.calculateTotals();
+            }
+        },
+
+        focusPromoInput() {
+            this.$nextTick(() => {
+                const el = document.getElementById('promo-product-search-input');
+                if (el) {
+                    el.focus();
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        },
+
         onItemPriceTypeChange(index) {
             const item = this.items[index];
             if (!item || !item.product_id) return;
@@ -3521,7 +3807,7 @@ function orderFormApp() {
                 const appliedPolicyIds = [];
 
                 // 1. Dọn dẹp các dòng quà tặng cũ do hệ thống tự sinh (chỉ dọn nếu chưa được sửa tay)
-                this.items = this.items.filter(it => !it.isPromotionalGift || it._manualQty);
+                this.items = this.items.filter(it => !it.isPromotionalGift || it._manualQty || it._manualGift);
                 this.items.forEach(it => {
                     if (it._autoPromoGift && !it._manualGift) {
                         it.gift_quantity = 0;
