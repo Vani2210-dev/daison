@@ -1300,28 +1300,6 @@
                                             </template>
                                         </div>
                                     </div>
-                                    <!-- Hiển thị tồn kho khả dụng dưới ô tìm sản phẩm -->
-                                    <div x-show="item.product_id" x-cloak class="mt-1 flex items-center gap-1.5 text-[10px] flex-wrap">
-                                        <span class="text-slate-400 font-medium" x-text="'Kho [' + (formData.warehouse ? formData.warehouse.replace(/\s*\(.*?\)/, '') : '') + ']:'"></span>
-                                        <span class="font-bold font-mono px-1 py-0.2 rounded" 
-                                              :class="getItemStockStatus(item) === 'ok' ? 'bg-emerald-100 text-emerald-800' : (getItemStockStatus(item) === 'warning' ? 'bg-amber-100 text-amber-900 font-black ring-1 ring-amber-300' : 'bg-rose-100 text-rose-800 font-black ring-1 ring-rose-300')" 
-                                              x-text="'Khả dụng: ' + formatNumber(getItemAvailableStockInUnit(item)) + ' ' + (item.unit || '')"></span>
-                                        <span class="text-slate-400 font-mono text-[9px]" x-text="'(Kho: ' + formatNumber(getItemOnHandStockInUnit(item)) + (getItemReservedStockInUnit(item) > 0 ? ' | Đang giữ: ' + formatNumber(getItemReservedStockInUnit(item)) : '') + ')'"></span>
-                                        <span class="text-slate-300">&bull;</span>
-                                        <span class="text-slate-400 font-medium" x-text="'Tổng toàn cty: ' + formatNumber(item.unit === getProduct(item.product_id)?.conversion_unit ? (isConvUnitLarger(getProduct(item.product_id)) ? (Math.round(Number(getProduct(item.product_id)?.stock_quantity || 0) / (Number(getProduct(item.product_id)?.conversion_rate) || 1) * 100) / 100) : Math.round(Number(getProduct(item.product_id)?.stock_quantity || 0) * (Number(getProduct(item.product_id)?.conversion_rate) || 1))) : Number(getProduct(item.product_id)?.stock_quantity || 0)) + ' ' + (item.unit || '')"></span>
-                                        <template x-if="getItemStockStatus(item) === 'warning'">
-                                            <span class="px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold text-[9px] flex items-center gap-0.5 border border-amber-300" title="Kho còn hàng thực tế nhưng đã bị giữ bởi các đơn hàng khác chưa xuất">
-                                                <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
-                                                <span>Lẹm hàng đơn khác</span>
-                                            </span>
-                                        </template>
-                                        <template x-if="getItemStockStatus(item) === 'danger'">
-                                            <span class="px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 font-bold text-[9px] flex items-center gap-0.5 border border-rose-300" title="Vượt quá tổng tồn kho thực tế hiện có">
-                                                <i class="fa-solid fa-circle-exclamation text-rose-600"></i>
-                                                <span>Vượt tồn kho thực tế</span>
-                                            </span>
-                                        </template>
-                                    </div>
                                 </td>
 
                                 <!-- ĐVT (Luôn cho phép chọn ĐVT và ĐV quy đổi của từng sản phẩm) -->
