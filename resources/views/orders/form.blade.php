@@ -1482,31 +1482,50 @@
             </div>
 
             <!-- KHỐI NHẬP & QUẢN LÝ HÀNG KHUYẾN MẠI / TẶNG KÈM -->
-            <div id="promo-section" class="mt-4 rounded-xl border border-emerald-300 bg-linear-to-br from-emerald-50/70 via-white to-emerald-50/40 p-3.5 space-y-3 shadow-2xs max-w-full overflow-hidden">
+            <div id="promo-section" 
+                 x-show="showPromoSection || getGiftItems().length > 0" 
+                 x-cloak
+                 class="mt-4 rounded-xl border border-emerald-300 bg-gradient-to-br from-emerald-50/70 via-white to-emerald-50/40 p-3 sm:p-4 space-y-3 shadow-2xs max-w-full overflow-hidden">
                 <!-- Header -->
-                <div class="flex items-center justify-between gap-2 flex-wrap pb-2.5 border-b border-emerald-200">
-                    <div class="flex items-center gap-2 flex-wrap min-w-0">
+                <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-emerald-200">
+                    <div class="flex items-center gap-2 min-w-0">
                         <span class="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs shadow-2xs font-bold shrink-0">
                             <i class="fa-solid fa-gift"></i>
                         </span>
-                        <span class="font-bold text-emerald-900 text-xs uppercase tracking-wide truncate max-w-[220px] sm:max-w-none">Hàng Khuyến Mại / Quà Tặng Kèm (Đơn giá 0đ)</span>
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0" x-text="getGiftItems().length + ' sản phẩm tặng'"></span>
+                        <div class="min-w-0">
+                            <span class="font-bold text-emerald-900 text-xs uppercase tracking-wide">Hàng khuyến mại / Quà tặng (0đ)</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0" x-text="getGiftItems().length + ' SP tặng'"></span>
                     </div>
-                    <span class="text-[11px] text-emerald-700 font-semibold italic flex items-center gap-1 shrink-0">
-                        <i class="fa-solid fa-circle-check text-[10px]"></i>
-                        <span>Đơn giá: 0đ (Xuất kho không thu tiền)</span>
-                    </span>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="hidden sm:inline-flex text-[11px] text-emerald-700 font-semibold italic items-center gap-1">
+                            <i class="fa-solid fa-circle-check text-[10px]"></i>
+                            <span>Đơn giá: 0đ (Xuất kho không thu tiền)</span>
+                        </span>
+                        <button type="button" 
+                                x-show="getGiftItems().length === 0" 
+                                @click="showPromoSection = false" 
+                                class="text-slate-400 hover:text-slate-600 px-2 py-0.5 text-xs font-bold cursor-pointer rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-1" title="Đóng ô nhập khuyến mại">
+                            <i class="fa-solid fa-xmark text-sm"></i>
+                            <span class="text-[11px]">Đóng</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Ô Nhập Hàng Khuyến Mại -->
-                <div class="bg-white rounded-xl border border-emerald-200 p-2.5 shadow-2xs">
-                    <div class="text-[11px] font-bold text-emerald-800 mb-1.5 flex items-center gap-1.5">
-                        <i class="fa-solid fa-circle-plus text-emerald-600"></i>
-                        <span>Nhập hàng khuyến mại tặng kèm:</span>
+                <div class="bg-white rounded-xl border border-emerald-200 p-2.5 sm:p-3 shadow-2xs">
+                    <div class="text-[11px] font-bold text-emerald-800 mb-2 flex items-center justify-between">
+                        <div class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-plus text-emerald-600"></i>
+                            <span>Nhập hàng khuyến mại tặng kèm:</span>
+                        </div>
+                        <span class="text-[10px] text-emerald-600 italic font-medium sm:hidden">Xuất kho 0đ</span>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
-                        <!-- Ô tìm sản phẩm tặng -->
-                        <div class="sm:col-span-6 relative" @click.outside="activePromoDropdown = false">
+
+                    <!-- Layout: Mobile 2 hàng gọn gàng, Desktop 1 hàng ngang -->
+                    <div class="flex flex-col sm:grid sm:grid-cols-12 gap-2 items-stretch sm:items-center">
+                        <!-- Hàng 1 trên Mobile / Col-span-5 trên Desktop: Tìm sản phẩm -->
+                        <div class="w-full sm:col-span-5 relative" @click.outside="activePromoDropdown = false">
                             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
                             <input type="text"
                                    id="promo-product-search-input"
@@ -1537,7 +1556,7 @@
                                        }
                                    "
                                    @keydown.escape.prevent="activePromoDropdown = false"
-                                   placeholder="Gõ mã hoặc tên sản phẩm khuyến mại cần tặng..."
+                                   placeholder="Gõ mã hoặc tên sản phẩm khuyến mại..."
                                    class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-emerald-200 rounded-lg text-xs font-semibold focus:border-emerald-500 focus:bg-white focus:outline-none transition-colors">
 
                             <!-- Dropdown gợi ý sản phẩm khuyến mại -->
@@ -1567,35 +1586,39 @@
                             </div>
                         </div>
 
-                        <!-- Số lượng tặng -->
-                        <div class="sm:col-span-2">
-                            <input type="number"
-                                   id="promo-qty-input"
-                                   x-model.number="newPromoItem.quantity"
-                                   min="1"
-                                   placeholder="Số lượng"
-                                   @keydown.enter.prevent="addManualGiftItem()"
-                                   class="w-full px-2 py-1.5 bg-slate-50 border border-emerald-200 rounded-lg text-xs font-black text-center text-emerald-800 focus:border-emerald-500 focus:bg-white focus:outline-none transition-colors"
-                                   title="Số lượng tặng">
-                        </div>
+                        <!-- Hàng 2 trên Mobile (flex gom gọn trên 1 dòng duy nhất): SL + ĐVT + Lý do + Nút Thêm -->
+                        <!-- Trên Desktop: sm:col-span-7 -->
+                        <div class="w-full sm:col-span-7 flex items-center gap-1.5">
+                            <!-- Số lượng tặng -->
+                            <div class="w-14 shrink-0" title="Số lượng">
+                                <input type="number"
+                                       id="promo-qty-input"
+                                       x-model.number="newPromoItem.quantity"
+                                       min="1"
+                                       placeholder="SL"
+                                       @keydown.enter.prevent="addManualGiftItem()"
+                                       class="w-full px-1.5 py-1.5 bg-slate-50 border border-emerald-200 rounded-lg text-xs font-black text-center text-emerald-800 focus:border-emerald-500 focus:bg-white focus:outline-none transition-colors">
+                            </div>
 
-                        <!-- ĐVT -->
-                        <div class="sm:col-span-1">
-                            <span class="block w-full py-1.5 px-1 bg-emerald-50 text-emerald-900 font-bold text-xs text-center rounded-lg border border-emerald-200 truncate" x-text="newPromoItem.unit || 'ĐVT'"></span>
-                        </div>
+                            <!-- ĐVT -->
+                            <div class="w-14 shrink-0" title="Đơn vị tính">
+                                <span class="block w-full py-1.5 px-1 bg-emerald-50 text-emerald-900 font-bold text-xs text-center rounded-lg border border-emerald-200 truncate" x-text="newPromoItem.unit || 'ĐVT'"></span>
+                            </div>
 
-                        <!-- Ghi chú / Lý do khuyến mại -->
-                        <div class="sm:col-span-3 flex items-center gap-1.5">
-                            <input type="text"
-                                   x-model="newPromoItem.policyName"
-                                   placeholder="Lý do KM / Tặng kèm..."
-                                   @keydown.enter.prevent="addManualGiftItem()"
-                                   class="flex-1 min-w-0 px-2 py-1.5 bg-slate-50 border border-emerald-200 rounded-lg text-xs font-medium focus:border-emerald-500 focus:bg-white focus:outline-none transition-colors"
-                                   title="Lý do hoặc tên chương trình khuyến mại">
+                            <!-- Lý do KM / Ghi chú -->
+                            <div class="flex-1 min-w-0" title="Lý do khuyến mại">
+                                <input type="text"
+                                       x-model="newPromoItem.policyName"
+                                       placeholder="Lý do KM..."
+                                       @keydown.enter.prevent="addManualGiftItem()"
+                                       class="w-full px-2 py-1.5 bg-slate-50 border border-emerald-200 rounded-lg text-xs font-medium focus:border-emerald-500 focus:bg-white focus:outline-none transition-colors truncate">
+                            </div>
+
+                            <!-- Nút Thêm -->
                             <button type="button"
                                     @click="addManualGiftItem()"
-                                    class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shrink-0 shadow-2xs flex items-center gap-1">
-                                <i class="fa-solid fa-plus text-[10px]"></i>
+                                    class="h-[34px] px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shrink-0 shadow-2xs flex items-center justify-center gap-1 active:scale-95">
+                                <i class="fa-solid fa-plus text-xs"></i>
                                 <span class="hidden sm:inline">Thêm</span>
                             </button>
                         </div>
@@ -1604,25 +1627,25 @@
 
                 <!-- Bảng danh sách hàng khuyến mại đã thêm (hoặc từ chính sách tự động) -->
                 <div x-show="getGiftItems().length > 0">
-                    <!-- Mobile Cards -->
+                    <!-- Mobile Cards: Hiển thị trọn vẹn tên SP, số lượng nổi bật -->
                     <div class="block md:hidden space-y-2">
                         <template x-for="(gItem, gIdx) in getGiftItems()" :key="'gift-mob-' + gIdx">
-                            <div class="bg-white rounded-lg p-2.5 border border-emerald-200 shadow-2xs flex items-center justify-between gap-3">
-                                <div class="min-w-0">
-                                    <div class="font-bold text-slate-900 text-xs truncate">
+                            <div class="bg-white rounded-xl p-2.5 sm:p-3 border border-emerald-200 shadow-2xs flex items-center justify-between gap-2.5">
+                                <div class="min-w-0 flex-1">
+                                    <div class="font-bold text-slate-900 text-xs leading-snug break-words">
                                         <span class="text-emerald-700 font-mono mr-1" x-text="'[' + gItem.sku + ']'"></span>
                                         <span x-text="gItem.name"></span>
                                     </div>
-                                    <div class="text-[10px] text-emerald-700 font-medium mt-0.5" x-text="gItem.appliedTierPolicy || 'Hàng khuyến mại'"></div>
+                                    <div class="text-[10px] text-emerald-800 font-semibold mt-0.5 break-words" x-text="gItem.appliedTierPolicy || 'Hàng khuyến mại'"></div>
                                 </div>
-                                <div class="flex items-center gap-2 shrink-0">
+                                <div class="flex items-center gap-1.5 shrink-0">
                                     <input type="number"
                                            x-model.number="gItem.quantity"
                                            @input="gItem._manualQty = true; calculateTotals()"
                                            min="1"
-                                           class="w-14 px-1 py-1 text-center font-black text-emerald-700 bg-emerald-50 border border-emerald-300 rounded text-xs">
-                                    <span class="text-xs font-bold text-slate-600" x-text="gItem.unit || 'cái'"></span>
-                                    <button type="button" @click="removeGiftItem(gItem)" class="text-rose-500 hover:text-rose-700 p-1 cursor-pointer" title="Xóa hàng tặng">
+                                           class="w-12 h-8 px-1 text-center font-black text-emerald-800 bg-emerald-50 border border-emerald-300 rounded-lg text-xs">
+                                    <span class="text-xs font-bold text-slate-600 min-w-[28px] text-center" x-text="gItem.unit || 'cái'"></span>
+                                    <button type="button" @click="removeGiftItem(gItem)" class="w-7 h-7 flex items-center justify-center text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors" title="Xóa hàng tặng">
                                         <i class="fa-solid fa-trash-can text-xs"></i>
                                     </button>
                                 </div>
@@ -2144,6 +2167,7 @@ function orderFormApp() {
         _manualOrderDiscount: false,
         activeProdDropdownIndex: null,
         prodHighlightIndex: 0,
+        showPromoSection: false,
         newPromoItem: {
             product_id: '',
             sku: '',
@@ -3410,11 +3434,15 @@ function orderFormApp() {
             const idx = this.items.indexOf(gItem);
             if (idx !== -1) {
                 this.items.splice(idx, 1);
+                if (this.getGiftItems().length === 0) {
+                    this.showPromoSection = false;
+                }
                 this.calculateTotals();
             }
         },
 
         focusPromoInput() {
+            this.showPromoSection = true;
             this.$nextTick(() => {
                 const el = document.getElementById('promo-product-search-input');
                 if (el) {
