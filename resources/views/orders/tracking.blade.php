@@ -325,39 +325,8 @@
                     </div>
                 @endif
             </div>
-
-            <!-- 2. Card: Nội dung File Log chứng từ riêng (storage/logs/orders/{code}.log) -->
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 space-y-3" x-data="{ copied: false }">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
-                    <div>
-                        <h3 class="font-black text-slate-800 text-sm sm:text-base flex items-center gap-2">
-                            <i class="fa-solid fa-terminal text-slate-700"></i>
-                            <span>Nội dung File Log chứng từ (.log)</span>
-                        </h3>
-                        <p class="text-xs text-slate-400 mt-0.5 font-mono">storage/logs/orders/{{ $order->order_code }}.log</p>
-                    </div>
-
-                    @if(!empty($rawFileLog))
-                        <button type="button" 
-                                @click="navigator.clipboard.writeText($refs.rawLogContent.innerText); copied = true; setTimeout(() => copied = false, 2000)"
-                                class="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer">
-                            <i :class="copied ? 'fa-solid fa-check text-emerald-600' : 'fa-regular fa-copy text-slate-500'"></i>
-                            <span x-text="copied ? 'Đã sao chép!' : 'Sao chép log'"></span>
-                        </button>
-                    @endif
-                </div>
-
-                @if(empty($rawFileLog))
-                    <div class="p-6 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                        Chưa tìm thấy file log riêng biệt cho đơn hàng này trên máy chủ.
-                    </div>
-                @else
-                    <div class="relative rounded-2xl bg-slate-900 border border-slate-800 text-slate-200 p-4 font-mono text-xs leading-relaxed overflow-x-auto max-h-80 overflow-y-auto select-all shadow-inner">
-                        <pre x-ref="rawLogContent" class="whitespace-pre-wrap">{{ $rawFileLog }}</pre>
-                    </div>
-                @endif
-            </div>
         </div>
     </div>
 </div>
 @endsection
+
