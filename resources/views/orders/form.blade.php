@@ -588,8 +588,8 @@
                 'quantity' => $qty > 0 ? $qty : 1,
                 'gift_quantity' => $giftQty,
                 'unitPrice' => $price,
-                'originalPrice' => (float) ($it->original_price ?? $price),
-                'costPrice' => (float) ($it->cost_price ?? 0),
+                'originalPrice' => (float) ($it->original_price > 0 && ($it->original_price != $it->cost_price || !$it->product?->price) ? $it->original_price : ($it->product?->price ?: ($it->original_price ?: $price))),
+                'costPrice' => (float) ($it->cost_price ?? ($it->product?->cost_price ?? 0)),
                 'discount_percent' => (float) ($it->discount_percent ?? 0),
                 'discount_amount' => (float) ($it->discount_amount ?? 0),
                 'vat_percent' => 0,
@@ -2351,7 +2351,7 @@ function orderFormApp() {
                         quantity: qty,
                         gift_quantity: 0,
                         unitPrice: price,
-                        originalPrice: Number(prod.cost_price || 0),
+                        originalPrice: Number(prod.price > 0 ? prod.price : (prod.cost_price || 0)),
                         costPrice: Number(prod.cost_price || 0),
                         discount_percent: 0,
                         discount_amount: 0,
@@ -2947,7 +2947,7 @@ function orderFormApp() {
             const prod = this.getProduct(item.product_id);
             if (!prod) return;
 
-            item.unitPrice = this.getProductPrice(prod, item.unit);
+            item.unitPrice = this.getProductPrice(prod, item.unit, this.getEffectiveTierName(item));
             this.updateLineTotal(index);
         },
 
@@ -3060,15 +3060,20 @@ function orderFormApp() {
                 }
             }
 
-            // 3. Fallback: giá nhập + 10%
+            // 3. Ưu tiên Giá bán niêm yết của sản phẩm (p.price)
             if (isConv && Number(p.conversion_price) > 0) {
                 return Number(p.conversion_price);
             }
-            const baseCost = Number(p.cost_price || 0) * 1.1;
-            if (isConv) {
-                return calcConv(baseCost);
+            if (Number(p.price) > 0) {
+                return isConv ? calcConv(p.price) : Number(p.price);
             }
-            return Math.round(baseCost);
+
+            // 4. Fallback cuối cùng nếu sản phẩm chưa cài giá bán (p.price <= 0)
+            const baseCost = Number(p.cost_price || 0);
+            if (baseCost > 0) {
+                return isConv ? calcConv(baseCost) : baseCost;
+            }
+            return 0;
         },
 
         selectProductForRow(index, p) {
@@ -3082,7 +3087,9 @@ function orderFormApp() {
             item.searchQuery = p.name;
             item.unit = p.unit || 'cái';
 
-            item.originalPrice = Number(p.cost_price || 0);
+            // Giá niêm yết / giá bán gốc (lấy giá bán p.price, không lấy giá vốn)
+            const sellPrice = Number(p.price) > 0 ? Number(p.price) : (Number(p.cost_price) || 0);
+            item.originalPrice = sellPrice;
             item.costPrice = Number(p.cost_price || 0);
 
             // Không tính VAT
@@ -3396,7 +3403,8 @@ function orderFormApp() {
             item.searchQuery = p.name;
             item.unit = p.unit || 'cái';
             item.unitPrice = 0;
-            item.originalPrice = Number(p.base_price || p.cost_price || 0);
+            const sellPrice = Number(p.price) > 0 ? Number(p.price) : (Number(p.base_price) || Number(p.cost_price) || 0);
+            item.originalPrice = sellPrice;
             item.costPrice = Number(p.cost_price || 0);
             item.amount = 0;
             item.isPromotionalGift = true;

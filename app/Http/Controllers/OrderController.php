@@ -1002,6 +1002,13 @@ class OrderController extends Controller
                 $checkedAt = $it['checkedAt'] ?? ($it['checked_at'] ?? ($oldItem?->checked_at ?? null));
                 $checkNotes = $it['checkNotes'] ?? ($it['check_notes'] ?? ($oldItem?->check_notes ?? null));
 
+                $prodObj = ($prodId && isset($prod) && $prod?->id == $prodId) ? $prod : ($prodId ? \App\Models\Product::find($prodId) : null);
+                $actualCost = (float) ($it['costPrice'] ?? ($it['cost_price'] ?? ($prodObj?->cost_price ?: ($uPrice * 0.8))));
+                $actualOrigPrice = (float) ($it['originalPrice'] ?? ($it['original_price'] ?? ($prodObj?->price ?: $uPrice)));
+                if ($actualOrigPrice == $actualCost && $prodObj?->price > 0) {
+                    $actualOrigPrice = (float)$prodObj->price;
+                }
+
                 OrderItem::create([
                     'order_id'            => $order->id,
                     'product_id'          => $prodId ?: 1,
@@ -1024,9 +1031,9 @@ class OrderController extends Controller
                     'returned_qty'        => $retQty,
                     'delivered_qty'       => $delivQty,
                     'return_reason'       => $it['returnReason'] ?? ($it['return_reason'] ?? null),
-                    'cost_price'          => (float) ($it['costPrice'] ?? ($it['cost_price'] ?? ($uPrice * 0.8))),
+                    'cost_price'          => $actualCost,
                     'unit_price'          => $uPrice,
-                    'original_price'      => (float) ($it['originalPrice'] ?? ($it['original_price'] ?? $uPrice)),
+                    'original_price'      => $actualOrigPrice,
                     'discount_percent'    => (float) ($it['discount_percent'] ?? ($it['discountPercent'] ?? 0)),
                     'discount_amount'     => (float) ($it['discount_amount'] ?? ($it['discountAmount'] ?? 0)),
                     'applied_tier_policy' => $it['appliedTierPolicy'] ?? ($it['applied_tier_policy'] ?? 'Đại lý Cấp 1'),
@@ -2012,7 +2019,10 @@ class OrderController extends Controller
             $giftQty = (float)($it->gift_quantity ?? 0);
             $totalQty = $qty + $giftQty;
 
-            $origPrice = (float)($it->original_price > 0 ? $it->original_price : ($it->unit_price > 0 ? $it->unit_price : ($it->product?->cost_price ?: 0)));
+            $prodPrice = (float)($it->product?->price ?: 0);
+            $origPrice = (float)($it->original_price > 0 && ($it->original_price != $it->cost_price || $prodPrice == 0)
+                ? $it->original_price
+                : ($prodPrice > 0 ? $prodPrice : ($it->unit_price > 0 ? $it->unit_price : ($it->product?->cost_price ?: 0))));
             $unitPrice = (float)($it->unit_price > 0 ? $it->unit_price : $origPrice);
 
             $itemSubtotal     = $origPrice * $totalQty;
