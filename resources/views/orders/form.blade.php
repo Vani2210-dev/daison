@@ -641,7 +641,7 @@
                     'vat_amount' => 0,
                     'appliedTierPolicy' => $itTier,
                     'price_type' => $itTier,
-                    'amount' => $amt > 0 ? $amt : round($qty * $price),
+                    'amount' => ($amt > 0 && abs($amt - round($qty * $price - (float)($it->discount_amount ?? 0))) < 2) ? $amt : max(0, round($qty * $price - (float)($it->discount_amount ?? 0))),
                     'picked_qty' => (float) ($it->picked_qty ?? 0),
                     'shortage_reason' => $it->shortage_reason ?? '',
                     'item_status' => $it->item_status ?? '',
@@ -4408,7 +4408,8 @@ function orderFormApp() {
                 it.vat_percent = 0;
                 it.vat_amount = 0;
 
-                rawSubtotal += Math.max(0, (qty * price) - discAmount);
+                it.amount = Math.max(0, (qty * price) - discAmount);
+                rawSubtotal += it.amount;
             });
 
             this.subtotalBeforeVat = Math.round(rawSubtotal);
