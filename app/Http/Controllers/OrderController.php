@@ -956,7 +956,32 @@ class OrderController extends Controller
                 $retQty = (float) ($it['returnedQty'] ?? ($it['returned_qty'] ?? 0));
                 $delivQty = isset($it['deliveredQty']) ? (float) $it['deliveredQty'] : (isset($it['delivered_qty']) ? (float) $it['delivered_qty'] : max(0, $qty - $retQty));
                 $uPrice = (float) ($it['unitPrice'] ?? ($it['unit_price'] ?? 0));
-                $amt = (float) ($it['amount'] ?? ($it['lineTotal'] ?? ($qty * $uPrice)));
+
+                $tierPolicy = $it['appliedTierPolicy'] ?? ($it['applied_tier_policy'] ?? 'Đại lý Cấp 1');
+                $isItemGift = !empty($it['isPromotionalGift']) 
+                    || !empty($it['is_gift'])
+                    || ($giftQty > 0 && $giftQty >= $qty)
+                    || (float)$uPrice == 0
+                    || str_contains(mb_strtolower($tierPolicy), 'khuyến mại')
+                    || str_contains(mb_strtolower($tierPolicy), 'quà tặng')
+                    || str_contains(mb_strtolower($tierPolicy), 'tặng');
+
+                $itDiscAmt = (float) ($it['discount_amount'] ?? ($it['discountAmount'] ?? 0));
+                $itDiscPct = (float) ($it['discount_percent'] ?? ($it['discountPercent'] ?? 0));
+
+                if ($isItemGift) {
+                    $uPrice = 0;
+                    $itDiscAmt = 0;
+                    $itDiscPct = 0;
+                    $amt = 0;
+                    if ($giftQty <= 0) $giftQty = $qty;
+                    $tierPolicy = 'Hàng khuyến mại';
+                } else {
+                    if ($itDiscPct > 0 && $itDiscAmt <= 0) {
+                        $itDiscAmt = round(($qty * $uPrice * $itDiscPct) / 100, 2);
+                    }
+                    $amt = max(0, round(($qty * $uPrice) - $itDiscAmt, 2));
+                }
 
                 // Resolve picking & QC fields
                 $oldItem = $existingItemsMap->get($itSku) ?? $existingItemsMap->get($it['id'] ?? '');
@@ -1003,9 +1028,9 @@ class OrderController extends Controller
                 $checkNotes = $it['checkNotes'] ?? ($it['check_notes'] ?? ($oldItem?->check_notes ?? null));
 
                 $prodObj = ($prodId && isset($prod) && $prod?->id == $prodId) ? $prod : ($prodId ? \App\Models\Product::find($prodId) : null);
-                $actualCost = (float) ($it['costPrice'] ?? ($it['cost_price'] ?? ($prodObj?->cost_price ?: ($uPrice * 0.8))));
-                $actualOrigPrice = (float) ($it['originalPrice'] ?? ($it['original_price'] ?? ($prodObj?->price ?: $uPrice)));
-                if ($actualOrigPrice == $actualCost && $prodObj?->price > 0) {
+                $actualCost = $isItemGift ? 0 : (float) ($it['costPrice'] ?? ($it['cost_price'] ?? ($prodObj?->cost_price ?: ($uPrice * 0.8))));
+                $actualOrigPrice = $isItemGift ? 0 : (float) ($it['originalPrice'] ?? ($it['original_price'] ?? ($prodObj?->price ?: $uPrice)));
+                if (!$isItemGift && $actualOrigPrice == $actualCost && $prodObj?->price > 0) {
                     $actualOrigPrice = (float)$prodObj->price;
                 }
 
@@ -1034,12 +1059,24 @@ class OrderController extends Controller
                     'cost_price'          => $actualCost,
                     'unit_price'          => $uPrice,
                     'original_price'      => $actualOrigPrice,
-                    'discount_percent'    => (float) ($it['discount_percent'] ?? ($it['discountPercent'] ?? 0)),
-                    'discount_amount'     => (float) ($it['discount_amount'] ?? ($it['discountAmount'] ?? 0)),
-                    'applied_tier_policy' => $it['appliedTierPolicy'] ?? ($it['applied_tier_policy'] ?? 'Đại lý Cấp 1'),
+                    'discount_percent'    => $itDiscPct,
+                    'discount_amount'     => $itDiscAmt,
+                    'applied_tier_policy' => $tierPolicy,
                     'amount'              => $amt,
                 ]);
             }
+
+            $order->load('items');
+            $recalculatedSubtotal = (float)$order->items->sum('amount');
+            $recalculatedDiscount = (float)($order->discount_amount ?? 0);
+            if (($order->discount_percent ?? 0) > 0 && $recalculatedDiscount <= 0 && $recalculatedSubtotal > 0) {
+                $recalculatedDiscount = round(($recalculatedSubtotal * (float)$order->discount_percent) / 100, 2);
+            }
+            $recalculatedTotal = max(0, round($recalculatedSubtotal - $recalculatedDiscount + (float)($order->tax_amount ?? 0), 2));
+            $order->subtotal = $recalculatedSubtotal;
+            $order->discount_amount = $recalculatedDiscount;
+            $order->total_amount = $recalculatedTotal;
+            $order->save();
         }
 
         // Tự động kiểm tra trạng thái đơn hàng sau khi sửa/cắt đơn

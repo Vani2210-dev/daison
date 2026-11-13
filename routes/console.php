@@ -686,6 +686,89 @@ Artisan::command('db:import-customers {file=khachhang1.xlsx : Đường dẫn fi
     return 0;
 })->purpose('Nhập danh sách khách hàng từ file khachhang1.xlsx');
 
+Artisan::command('orders:recalculate-amounts {--order= : Mã đơn hàng cụ thể cần cập nhật, ví dụ DH-2026-7762}', function () {
+    $orderCode = $this->option('order');
+    $query = \App\Models\Order::with('items');
+    if ($orderCode) {
+        $query->where('order_code', $orderCode)->orWhere('id', $orderCode);
+    }
+    $orders = $query->get();
+
+    $this->info("Bắt đầu chuẩn hóa giá, chiết khấu và tổng tiền cho {$orders->count()} đơn hàng...");
+
+    $updatedOrders = 0;
+    $updatedItems = 0;
+
+    foreach ($orders as $order) {
+        $calculatedSubtotal = 0;
+
+        foreach ($order->items as $item) {
+            $isGift = !empty($item->is_gift)
+                || ($item->gift_quantity > 0 && $item->gift_quantity >= $item->quantity)
+                || (float)$item->unit_price == 0
+                || str_contains(mb_strtolower($item->applied_tier_policy ?? ''), 'khuyến mại')
+                || str_contains(mb_strtolower($item->applied_tier_policy ?? ''), 'quà tặng')
+                || str_contains(mb_strtolower($item->applied_tier_policy ?? ''), 'tặng');
+
+            if ($isGift) {
+                $item->unit_price = 0;
+                $item->cost_price = 0;
+                $item->discount_percent = 0;
+                $item->discount_amount = 0;
+                $item->amount = 0;
+                $item->applied_tier_policy = 'Hàng khuyến mại';
+                if ($item->gift_quantity <= 0) {
+                    $item->gift_quantity = $item->quantity;
+                }
+                $item->save();
+                $updatedItems++;
+            } else {
+                $qty = (float) $item->quantity;
+                $uPrice = (float) $item->unit_price;
+                $discPct = (float) ($item->discount_percent ?? 0);
+                $discAmt = (float) ($item->discount_amount ?? 0);
+
+                if ($discPct > 0 && $discAmt <= 0) {
+                    $discAmt = round(($qty * $uPrice * $discPct) / 100, 2);
+                    $item->discount_amount = $discAmt;
+                }
+                $lineAmt = max(0, round(($qty * $uPrice) - $discAmt, 2));
+
+                $item->amount = $lineAmt;
+                $item->save();
+                $updatedItems++;
+                $calculatedSubtotal += $lineAmt;
+            }
+        }
+
+        $order->subtotal = $calculatedSubtotal;
+        $order->tax_amount = 0;
+
+        $orderDisc = (float) ($order->discount_amount ?? 0);
+        $orderDiscPct = (float) ($order->discount_percent ?? 0);
+
+        if ($orderDiscPct > 0 && $orderDisc <= 0 && $calculatedSubtotal > 0) {
+            $orderDisc = round(($calculatedSubtotal * $orderDiscPct) / 100, 2);
+            $order->discount_amount = $orderDisc;
+        }
+
+        $order->total_amount = max(0, round($calculatedSubtotal - $orderDisc, 2));
+        $order->save();
+        $updatedOrders++;
+
+        if ($order->dealer_id) {
+            $dealer = \App\Models\Dealer::find($order->dealer_id);
+            if ($dealer) {
+                $dealer->recalculateCurrentDebt();
+            }
+        }
+    }
+
+    $this->info("✅ Đã cập nhật thành công {$updatedOrders} đơn hàng và {$updatedItems} sản phẩm chi tiết.");
+    return 0;
+})->purpose('Cập nhật lại giá, chiết khấu, thành tiền từng dòng và tổng tiền các đơn hàng cho chuẩn');
+
+
 
 
 
