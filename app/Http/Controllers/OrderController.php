@@ -2067,21 +2067,23 @@ class OrderController extends Controller
             }
 
             // Regular sales item
-            $prodPrice = (float)($it->product?->price ?: 0);
-            $origPrice = (float)($it->original_price > 0 && ($it->original_price != $it->cost_price || $prodPrice == 0)
-                ? $it->original_price
-                : ($prodPrice > 0 ? $prodPrice : ($it->unit_price > 0 ? $it->unit_price : ($it->product?->cost_price ?: 0))));
-            $unitPrice = (float)($it->unit_price > 0 ? $it->unit_price : $origPrice);
+            $actualUnitPrice = (float)($it->unit_price > 0 ? $it->unit_price : ($it->original_price ?: 0));
+            $lineBase = $actualUnitPrice * $qty;
 
-            $itemSubtotal     = $origPrice * $qty;
-            $itemActualAmount = (float)($it->amount > 0 ? $it->amount : ($unitPrice * $qty));
-            $itemDiscount     = max(0, $itemSubtotal - $itemActualAmount);
+            $itemDiscPct = (float)($it->discount_percent ?? 0);
+            $itemDiscAmt = (float)($it->discount_amount ?? 0);
 
-            $subtotal         += $itemSubtotal;
-            $totalDiscount    += $itemDiscount;
+            if ($itemDiscPct > 0 && $itemDiscAmt == 0) {
+                $itemDiscAmt = round(($lineBase * $itemDiscPct) / 100);
+            } elseif ($itemDiscAmt > 0 && $itemDiscPct == 0 && $lineBase > 0) {
+                $itemDiscPct = round(($itemDiscAmt / $lineBase) * 100, 1);
+            }
+
+            $itemActualAmount = (float)($it->amount > 0 ? $it->amount : max(0, $lineBase - $itemDiscAmt));
+
+            $subtotal         += $lineBase;
+            $totalDiscount    += $itemDiscAmt;
             $totalItemsAmount += $itemActualAmount;
-
-            $actualUnitPrice = (float)($it->unit_price > 0 ? $it->unit_price : ($origPrice > 0 ? $origPrice : 0));
 
             $items[] = [
                 'tt'               => $idx++,
@@ -2095,9 +2097,9 @@ class OrderController extends Controller
                 'quantity'         => $qty,
                 'sold_quantity'    => $qty,
                 'gift_quantity'    => 0,
-                'amount'           => $itemSubtotal,
-                'discount'         => $itemDiscount,
-                'discount_percent' => ($itemSubtotal > 0 && $itemDiscount > 0 ? round(($itemDiscount / $itemSubtotal) * 100, 1) : 0),
+                'amount'           => $lineBase,
+                'discount'         => $itemDiscAmt,
+                'discount_percent' => $itemDiscPct,
                 'total'            => $itemActualAmount,
                 'customer_price'   => $actualUnitPrice,
                 'price_tier_code'  => $tierCode,

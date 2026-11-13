@@ -2763,10 +2763,10 @@ function ordersIndexApp() {
             if (it.discount_percent !== undefined && it.discount_percent !== null && Number(it.discount_percent) > 0) {
                 return Number(it.discount_percent) + '%';
             }
-            const origSubtotal = Number(it.amount || 0) || (Number(it.unit_price || 0) * Number(it.quantity || 0));
+            const lineBase = (Number(it.unit_price || 0) * Number(it.quantity || 0)) || Number(it.amount || 0);
             const disc = Number(it.discount || 0);
-            if (disc > 0 && origSubtotal > 0) {
-                return Math.round((disc / origSubtotal) * 100) + '%';
+            if (disc > 0 && lineBase > 0) {
+                return Math.round((disc / lineBase) * 100) + '%';
             }
             return '-';
         },
@@ -2911,14 +2911,37 @@ function ordersIndexApp() {
 
             let regularSummaryHtml = '';
             if (!isNoPrice) {
-                regularSummaryHtml = `
-                    <tr>
-                        <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
-                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng</td>
-                        <td style="border:1px solid #111;padding:5px 6px;"></td>
-                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(regularTotalAmount)}</td>
-                    </tr>
-                `;
+                if (Number(o.extra_discount || 0) > 0) {
+                    regularSummaryHtml = `
+                        <tr>
+                            <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng tiền hàng</td>
+                            <td style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(regularTotalAmount)}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Chiết khấu đơn</td>
+                            <td style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">-${this.formatNumber(o.extra_discount)}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng thanh toán</td>
+                            <td style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13.5px;color:#000;">${this.formatNumber(o.final_total || (regularTotalAmount - Number(o.extra_discount)))}</td>
+                        </tr>
+                    `;
+                } else {
+                    regularSummaryHtml = `
+                        <tr>
+                            <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng</td>
+                            <td style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(regularTotalAmount)}</td>
+                        </tr>
+                    `;
+                }
             } else {
                 regularSummaryHtml = `
                     <tr>

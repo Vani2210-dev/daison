@@ -666,8 +666,8 @@
                         'unitPrice' => 0,
                         'originalPrice' => (float) ($it->original_price > 0 && ($it->original_price != $it->cost_price || !$it->product?->price) ? $it->original_price : ($it->product?->price ?: ($it->original_price ?: $price))),
                         'costPrice' => (float) ($it->cost_price ?? ($it->product?->cost_price ?? 0)),
-                        'discount_percent' => 100,
-                        'discount_amount' => round($giftQty * $price),
+                        'discount_percent' => 0,
+                        'discount_amount' => 0,
                         'vat_percent' => 0,
                         'vat_amount' => 0,
                         'appliedTierPolicy' => 'TẶNG KÈM',
@@ -3484,6 +3484,8 @@ function orderFormApp() {
             const sellPrice = Number(p.price) > 0 ? Number(p.price) : (Number(p.base_price) || Number(p.cost_price) || 0);
             item.originalPrice = sellPrice;
             item.costPrice = Number(p.cost_price || 0);
+            item.discount_percent = 0;
+            item.discount_amount = 0;
             item.amount = 0;
             item.isPromotionalGift = true;
             item._manualGift = true;
@@ -5037,67 +5039,146 @@ function orderFormApp() {
 
 
 
+        convertNumberToVietnameseWords(number) {
+            const num = Math.round(Number(number) || 0);
+            if (num === 0) return 'KHÔNG ĐỒNG';
+            const digits = ['', 'MỘT', 'HAI', 'BA', 'BỐN', 'NĂM', 'SÁU', 'BẢY', 'TÁM', 'CHÍN'];
+            const units = ['', 'NGHÌN', 'TRIỆU', 'TỶ', 'NGHÌN TỶ', 'TRIỆU TỶ'];
+
+            const readThree = (n, isLastGroup) => {
+                const hundreds = Math.floor(n / 100);
+                const remainder = n % 100;
+                const tens = Math.floor(remainder / 10);
+                const ones = remainder % 10;
+                const res = [];
+
+                if (hundreds > 0 || !isLastGroup) {
+                    res.push(digits[hundreds] + ' TRĂM');
+                }
+
+                if (tens > 1) {
+                    res.push(digits[tens] + ' MƯƠI');
+                    if (ones === 1) res.push('MỐT');
+                    else if (ones === 4) res.push('TƯ');
+                    else if (ones === 5) res.push('LĂM');
+                    else if (ones > 0) res.push(digits[ones]);
+                } else if (tens === 1) {
+                    res.push('MƯỜI');
+                    if (ones === 5) res.push('LĂM');
+                    else if (ones > 0) res.push(digits[ones]);
+                } else {
+                    if (ones > 0) {
+                        if (hundreds > 0 || !isLastGroup) {
+                            res.push('LINH');
+                        }
+                        res.push(digits[ones]);
+                    }
+                }
+                return res.join(' ');
+            };
+
+            const groups = [];
+            let temp = Math.abs(num);
+            while (temp > 0) {
+                groups.push(temp % 1000);
+                temp = Math.floor(temp / 1000);
+            }
+
+            const words = [];
+            for (let i = groups.length - 1; i >= 0; i--) {
+                const g = groups[i];
+                if (g > 0) {
+                    words.push(readThree(g, i === groups.length - 1) + ' ' + units[i]);
+                }
+            }
+
+            return (words.join(' ').replace(/\s+/g, ' ').trim() + ' ĐỒNG').toUpperCase();
+        },
+
         async printCurrentOrder(mode = 'standard') {
-            let o = null;
+            let serverData = null;
             if (this.orderId) {
                 try {
                     const res = await fetch('/api/orders/' + this.orderId + '/print-data');
                     if (res.ok) {
                         const json = await res.json();
                         if (json.success && json.order) {
-                            o = json.order;
+                            serverData = json.order;
                         }
                     }
                 } catch(e) {
                     console.error('Error fetching print data:', e);
                 }
             }
-            if (!o) {
-                const subtotalVal = Number(this.subtotalBeforeVat || this.subtotal || 0);
-                const discItems = this.items.reduce((s, it) => s + (Number(it.discount_amount) || 0), 0);
-                const extraDisc = Number(this.formData.discount_amount) || 0;
-                const finalVal = Number(this.finalTotal || this.totalAmount || 0);
-                o = {
-                    order_code: this.formData.order_code || (this.orderId ? ('DH-' + this.orderId) : 'CHƯA_LƯU'),
-                    created_date: new Date().toLocaleDateString('vi-VN'),
-                    customer_display: this.formData.customer_name || 'Khách lẻ',
-                    customer_address: this.formData.customer_address || '',
-                    customer_phone: this.formData.customer_phone || '',
-                    notes: this.formData.notes || '',
-                    warehouse: this.formData.warehouse || '',
-                    payment_method: this.formData.payment_method || 'Tiền mặt',
-                    delivery_vehicle: this.formData.delivery_vehicle || '',
-                    delivery_driver: this.formData.delivery_driver || '',
-                    delivery_date: this.formData.delivery_date || '',
-                    subtotal: subtotalVal,
-                    total_discount: discItems,
-                    total_items_amount: subtotalVal,
-                    extra_discount: extraDisc,
-                    final_total: finalVal,
-                    final_total_words: '',
-                    creator_name: '{{ auth()->user()->name ?? "" }}',
-                    updater_name: '{{ auth()->user()->name ?? "" }}',
-                    delivery_status: this.formData.status || 'Chốt đơn',
-                    items: this.items.filter(it => it.product_id || it.name).map((it, idx) => ({
-                        tt: idx + 1,
-                        name: it.name,
-                        sku: it.sku,
-                        tax_name: it.tax_name || it.name,
-                        unit: it.unit,
-                        unit_price: Number(it.unitPrice) || 0,
-                        quantity: Number(it.quantity) || 0,
-                        sold_quantity: it.isPromotionalGift ? 0 : Number(it.quantity || 0),
-                        gift_quantity: it.isPromotionalGift ? Number(it.quantity || 0) : Number(it.gift_quantity || 0),
-                        amount: (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0),
-                        discount: Number(it.discount_amount) || 0,
-                        discount_percent: Number(it.discount_percent) || 0,
-                        total: Number(it.amount) || ((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0)),
-                        price_type: it.price_type || this.formData.dealer_tier,
-                        price_tier_code: it.isPromotionalGift ? 'KM' : (it.price_tier_code || ''),
-                        isPromotionalGift: it.isPromotionalGift
-                    }))
+
+            // Đồng bộ trực tiếp theo các giá trị hiển thị trên form để đảm bảo giá và chiết khấu 100% đồng nhất
+            const subtotalVal = Number(this.subtotalBeforeVat || this.subtotal || 0);
+            const discItems = this.items.filter(it => !it.isPromotionalGift).reduce((s, it) => s + (Number(it.discount_amount) || 0), 0);
+            const extraDisc = Number(this.formData.discount_amount) || 0;
+            const finalVal = Number(this.finalTotal || this.totalAmount || 0);
+
+            const formItems = this.items.filter(it => (it.product_id || it.name) && it.checked !== false);
+            const printItems = formItems.map((it, idx) => {
+                const isGift = Boolean(it.isPromotionalGift);
+                const uPrice = isGift ? 0 : (Number(it.unitPrice) || 0);
+                const q = Number(it.quantity) || 0;
+                const discAmt = isGift ? 0 : (Number(it.discount_amount) || 0);
+                const discPct = isGift ? 0 : (Number(it.discount_percent) || 0);
+                const lineBase = isGift ? 0 : (q * uPrice);
+                const lineTot = isGift ? 0 : (Number(it.amount) || Math.max(0, lineBase - discAmt));
+
+                return {
+                    tt: idx + 1,
+                    id: it.id || ('it_' + idx),
+                    sku: it.sku || '',
+                    name: it.name || '',
+                    tax_name: it.tax_name || it.name || '',
+                    unit: it.unit || '',
+                    unit_price: uPrice,
+                    sale_price: uPrice,
+                    quantity: q,
+                    sold_quantity: isGift ? 0 : q,
+                    gift_quantity: isGift ? q : Number(it.gift_quantity || 0),
+                    amount: lineBase,
+                    discount: discAmt,
+                    discount_percent: discPct,
+                    total: lineTot,
+                    price_type: isGift ? 'Hàng tặng kèm' : (it.price_type || this.formData.dealer_tier || ''),
+                    price_tier_code: isGift ? 'KM' : (it.price_tier_code || ''),
+                    isPromotionalGift: isGift,
+                    is_gift: isGift
                 };
-            }
+            });
+
+            const finalWords = (serverData && Math.round(serverData.final_total) === Math.round(finalVal) && serverData.final_total_words)
+                ? serverData.final_total_words
+                : this.convertNumberToVietnameseWords(finalVal);
+
+            const o = {
+                order_code: this.formData.order_code || serverData?.order_code || (this.orderId ? ('DH-' + this.orderId) : 'CHƯA_LƯU'),
+                created_date: serverData?.created_date || new Date().toLocaleDateString('vi-VN'),
+                customer_display: this.formData.customer_name || serverData?.customer_display || 'Khách lẻ',
+                customer_name: this.formData.customer_name || serverData?.customer_name || 'Khách lẻ',
+                customer_address: this.formData.customer_address || serverData?.customer_address || '',
+                customer_phone: this.formData.customer_phone || serverData?.customer_phone || '',
+                notes: this.formData.notes || serverData?.notes || '',
+                warehouse: this.formData.warehouse || serverData?.warehouse || '',
+                payment_method: this.formData.payment_method || serverData?.payment_method || 'Tiền mặt',
+                delivery_vehicle: this.formData.delivery_vehicle || serverData?.delivery_vehicle || '',
+                delivery_driver: this.formData.delivery_driver || serverData?.delivery_driver || '',
+                delivery_date: this.formData.delivery_date || serverData?.delivery_date || '',
+                subtotal: subtotalVal,
+                total_discount: discItems,
+                total_items_amount: subtotalVal,
+                extra_discount: extraDisc,
+                final_total: finalVal,
+                final_total_words: finalWords,
+                creator_name: serverData?.creator_name || '{{ auth()->user()->name ?? "" }}',
+                updater_name: serverData?.updater_name || '{{ auth()->user()->name ?? "" }}',
+                delivery_status: this.formData.status || serverData?.delivery_status || 'Chốt đơn',
+                items: printItems
+            };
+
             this.executePrintOrder(o, mode);
         },
 
@@ -5183,10 +5264,10 @@ function orderFormApp() {
             if (it.discount_percent !== undefined && it.discount_percent !== null && Number(it.discount_percent) > 0) {
                 return Number(it.discount_percent) + '%';
             }
-            const origSubtotal = Number(it.amount || 0) || (Number(it.unit_price || 0) * Number(it.quantity || 0));
+            const lineBase = (Number(it.unit_price || 0) * Number(it.quantity || 0)) || Number(it.amount || 0);
             const disc = Number(it.discount || 0);
-            if (disc > 0 && origSubtotal > 0) {
-                return Math.round((disc / origSubtotal) * 100) + '%';
+            if (disc > 0 && lineBase > 0) {
+                return Math.round((disc / lineBase) * 100) + '%';
             }
             return '-';
         },
@@ -5251,14 +5332,37 @@ function orderFormApp() {
 
             let regularSummaryHtml = '';
             if (!isNoPrice) {
-                regularSummaryHtml = `
-                    <tr>
-                        <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
-                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng</td>
-                        <td style="border:1px solid #111;padding:5px 6px;"></td>
-                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(regularTotalAmount)}</td>
-                    </tr>
-                `;
+                if (Number(o.extra_discount || 0) > 0) {
+                    regularSummaryHtml = `
+                        <tr>
+                            <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng tiền hàng</td>
+                            <td style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(regularTotalAmount)}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Chiết khấu đơn</td>
+                            <td style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">-${this.formatNumber(o.extra_discount)}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng thanh toán</td>
+                            <td style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13.5px;color:#000;">${this.formatNumber(o.final_total || (regularTotalAmount - Number(o.extra_discount)))}</td>
+                        </tr>
+                    `;
+                } else {
+                    regularSummaryHtml = `
+                        <tr>
+                            <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng</td>
+                            <td style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(regularTotalAmount)}</td>
+                        </tr>
+                    `;
+                }
             } else {
                 regularSummaryHtml = `
                     <tr>
@@ -5510,9 +5614,15 @@ function orderFormApp() {
 
                     <!-- Bằng Chữ & Trạng Thái -->
                     ${!isNoPrice ? `
-                        <div style="margin-top: 8px; font-size: 12.5px; line-height: 1.4;">
-                            <strong>Số tiền viết bằng chữ:</strong> 
-                            <em style="text-transform: capitalize; font-weight: bold;">${o.final_total_words || ''}</em>
+                        <div style="margin-top: 8px; font-size: 12.5px; line-height: 1.4; display: flex; justify-content: space-between; align-items: baseline;">
+                            <div>
+                                <strong>Số tiền viết bằng chữ:</strong> 
+                                <em style="text-transform: capitalize; font-weight: bold;">${o.final_total_words || ''}</em>
+                            </div>
+                            <div style="font-size: 13px;">
+                                <strong>Tổng thanh toán:</strong> 
+                                <span style="font-size: 14px; font-weight: 900; color: #111;">${this.formatNumber(o.final_total || regularTotalAmount)} đ</span>
+                            </div>
                         </div>
                     ` : ''}
 
