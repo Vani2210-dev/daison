@@ -728,7 +728,22 @@ Artisan::command('orders:recalculate-amounts {--order= : Mã đơn hàng cụ th
                 $discPct = (float) ($item->discount_percent ?? 0);
                 $discAmt = (float) ($item->discount_amount ?? 0);
 
-                if ($discPct > 0 && $discAmt <= 0) {
+                // Kiểm tra và cập nhật lại giá bán nếu đơn giá đang là giá vốn
+                $product = $item->product ?: \App\Models\Product::where('sku', $item->sku)->orWhere('name', $item->name)->first();
+                if ($product && (float)$product->price > 0) {
+                    $prodPrice = (float)$product->price;
+                    $prodCost = (float)$product->cost_price;
+                    $itemCost = (float)$item->cost_price;
+
+                    if ($uPrice == $prodCost || $uPrice == $itemCost || ($uPrice <= $prodCost && $prodPrice > 0)) {
+                        $uPrice = $prodPrice;
+                        $item->unit_price = $uPrice;
+                        $item->original_price = $prodPrice;
+                        $item->cost_price = $prodCost > 0 ? $prodCost : $itemCost;
+                    }
+                }
+
+                if ($discPct > 0) {
                     $discAmt = round(($qty * $uPrice * $discPct) / 100, 2);
                     $item->discount_amount = $discAmt;
                 }

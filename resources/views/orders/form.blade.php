@@ -572,6 +572,11 @@
             $qty = (float) $it->quantity;
             $giftQty = (float) ($it->gift_quantity ?? 0);
             $price = (float) $it->unit_price;
+            $costPrice = (float) ($it->cost_price ?? ($it->product?->cost_price ?? 0));
+            $prodPrice = (float) ($it->product?->price ?: 0);
+            if ($price > 0 && $prodPrice > 0 && ($price == $costPrice || $price == (float)($it->product?->cost_price ?? 0))) {
+                $price = $prodPrice;
+            }
             $amt = (float) $it->amount;
             $tierInput = (string) ($it->applied_tier_policy ?? '');
             $tierLower = mb_strtolower(trim($tierInput));
@@ -641,7 +646,7 @@
                     'vat_amount' => 0,
                     'appliedTierPolicy' => $itTier,
                     'price_type' => $itTier,
-                    'amount' => ($amt > 0 && abs($amt - round($qty * $price - (float)($it->discount_amount ?? 0))) < 2) ? $amt : max(0, round($qty * $price - (float)($it->discount_amount ?? 0))),
+                    'amount' => max(0, round(($qty * $price) - (float)($it->discount_amount ?? 0))),
                     'picked_qty' => (float) ($it->picked_qty ?? 0),
                     'shortage_reason' => $it->shortage_reason ?? '',
                     'item_status' => $it->item_status ?? '',
