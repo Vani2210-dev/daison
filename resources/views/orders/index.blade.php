@@ -1387,7 +1387,6 @@
                                 <th class="border border-slate-300 py-1.5 px-2 w-24 text-right">Đơn giá</th>
                                 <th class="border border-slate-300 py-1.5 px-2 w-16 text-right">C.khấu</th>
                                 <th class="border border-slate-300 py-1.5 px-2 w-24 text-right">Thành tiền</th>
-                                <th class="border border-slate-300 py-1.5 px-2 w-16 text-center">Loại giá</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1404,11 +1403,10 @@
                                     <td class="border border-slate-300 py-1.5 px-2 text-right" x-text="formatNumber(it.unit_price)"></td>
                                     <td class="border border-slate-300 py-1.5 px-2 text-right" x-text="getDiscountDisplay(it)"></td>
                                     <td class="border border-slate-300 py-1.5 px-2 text-right font-bold text-slate-900" x-text="formatNumber(it.total || it.amount)"></td>
-                                    <td class="border border-slate-300 py-1.5 px-2 text-center font-bold text-slate-700" x-text="it.price_tier_code || '---'"></td>
                                 </tr>
                             </template>
                             <tr x-show="getRegularPrintItems().length === 0">
-                                <td colspan="9" class="text-center py-3 text-slate-500 italic">Không có sản phẩm bán</td>
+                                <td colspan="8" class="text-center py-3 text-slate-500 italic">Không có sản phẩm bán</td>
                             </tr>
                         </tbody>
                         <tfoot class="bg-white font-bold text-slate-900">
@@ -1417,7 +1415,6 @@
                                 <td colspan="6" class="border border-slate-300 py-1.5 px-2"></td>
                                 <td class="border border-slate-300 py-1.5 px-2 text-right font-bold">Tổng</td>
                                 <td class="border border-slate-300 py-1.5 px-2 text-right font-black" x-text="formatNumber(getRegularItemsTotal())"></td>
-                                <td class="border border-slate-300 py-1.5 px-2"></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -1442,7 +1439,6 @@
                                     <th class="border border-slate-300 py-1.5 px-2 w-24 text-right">Đơn giá</th>
                                     <th class="border border-slate-300 py-1.5 px-2 w-16 text-right">C.khấu</th>
                                     <th class="border border-slate-300 py-1.5 px-2 w-24 text-right">Thành tiền</th>
-                                    <th class="border border-slate-300 py-1.5 px-2 w-16 text-center">Loại giá</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1459,7 +1455,6 @@
                                         <td class="border border-slate-300 py-1.5 px-2 text-right" x-text="formatNumber(it.unit_price)"></td>
                                         <td class="border border-slate-300 py-1.5 px-2 text-right" x-text="getDiscountDisplay(it)"></td>
                                         <td class="border border-slate-300 py-1.5 px-2 text-right font-bold text-slate-900" x-text="formatNumber(it.total || it.amount)"></td>
-                                        <td class="border border-slate-300 py-1.5 px-2 text-center font-bold text-slate-700" x-text="it.price_tier_code || 'KM'"></td>
                                     </tr>
                                 </template>
                             </tbody>
@@ -1469,7 +1464,6 @@
                                     <td colspan="6" class="border border-slate-300 py-1.5 px-2"></td>
                                     <td class="border border-slate-300 py-1.5 px-2 text-right font-bold">Tổng</td>
                                     <td class="border border-slate-300 py-1.5 px-2 text-right font-black" x-text="formatNumber(getGiftItemsTotal())"></td>
-                                    <td class="border border-slate-300 py-1.5 px-2"></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -2891,7 +2885,6 @@ function ordersIndexApp() {
                             <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">${prodName}${subName}</td>
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${it.unit || ''}</td>
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:13px;">${this.formatNumber(qtyVal)}</td>
-                            <td style="padding:5px 6px;border:1px solid #111;text-align:center;font-weight:bold;font-size:12px;">${it.price_tier_code || this.getPriceTierCode(it.price_type, o.dealer_tier)}</td>
                         </tr>
                     `;
                 } else {
@@ -2926,9 +2919,9 @@ function ordersIndexApp() {
             } else {
                 regularSummaryHtml = `
                     <tr>
-                        <td colspan="4" style="border:1px solid #111;padding:5px 6px;"></td>
+                        <td colspan="3" style="border:1px solid #111;padding:5px 6px;"></td>
                         <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng SL:</td>
-                        <td style="text-align:center;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(regularTotalQty)}</td>
+                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(regularTotalQty)}</td>
                     </tr>
                 `;
             }
@@ -2952,7 +2945,6 @@ function ordersIndexApp() {
                                 <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">${prodName}${subName}</td>
                                 <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${it.unit || ''}</td>
                                 <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:13px;">${this.formatNumber(qtyVal)}</td>
-                                <td style="padding:5px 6px;border:1px solid #111;text-align:center;font-weight:bold;font-size:12px;">${it.price_tier_code || 'KM'}</td>
                             </tr>
                         `;
                     } else {
@@ -2987,9 +2979,9 @@ function ordersIndexApp() {
                 } else {
                     giftSummaryHtml = `
                         <tr>
-                            <td colspan="4" style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td colspan="3" style="border:1px solid #111;padding:5px 6px;"></td>
                             <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng SL:</td>
-                            <td style="text-align:center;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(giftTotalQty)}</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(giftTotalQty)}</td>
                         </tr>
                     `;
                 }
@@ -3008,7 +3000,6 @@ function ordersIndexApp() {
                                         <th style="text-align: left; padding-left: 6px;">Tên sản phẩm</th>
                                         <th style="width: 55px;">ĐVT</th>
                                         <th style="width: 65px;">SL</th>
-                                        <th style="width: 75px;">Loại Giá</th>
                                     </tr>
                                 ` : `
                                     <tr>
@@ -3146,7 +3137,6 @@ function ordersIndexApp() {
                                         <th style="text-align: left; padding-left: 6px;">Tên sản phẩm</th>
                                         <th style="width: 55px;">ĐVT</th>
                                         <th style="width: 65px;">SL</th>
-                                        <th style="width: 75px;">Loại Giá</th>
                                     </tr>
                                 ` : `
                                     <tr>
@@ -3162,7 +3152,7 @@ function ordersIndexApp() {
                                 `}
                             </thead>
                             <tbody>
-                                ${regularTableRows || `<tr><td colspan="${isNoPrice ? 6 : 8}" style="text-align:center;padding:8px;font-style:italic;color:#666;border:1px solid #111;">Không có sản phẩm bán</td></tr>`}
+                                ${regularTableRows || `<tr><td colspan="${isNoPrice ? 5 : 8}" style="text-align:center;padding:8px;font-style:italic;color:#666;border:1px solid #111;">Không có sản phẩm bán</td></tr>`}
                                 ${regularSummaryHtml}
                             </tbody>
                         </table>

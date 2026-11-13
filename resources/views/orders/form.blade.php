@@ -573,39 +573,117 @@
             $giftQty = (float) ($it->gift_quantity ?? 0);
             $price = (float) $it->unit_price;
             $amt = (float) $it->amount;
-            $isGift = ($price == 0 && (str_contains($it->applied_tier_policy ?? '', 'TẶNG KÈM') || str_contains($it->applied_tier_policy ?? '', 'Khuyến mại')));
-            $itTier = ($it->applied_tier_policy && $it->applied_tier_policy !== 'Theo phiếu') ? $it->applied_tier_policy : $orderTier;
-            $vatPercent = 0;
-            $vatAmt = 0;
-            $initialItems[] = [
-                'id' => (string) $it->id,
-                'itemId' => (string) ($it->product_id ?? ''),
-                'product_id' => $it->product_id,
-                'sku' => $it->sku,
-                'name' => $it->name,
-                'searchQuery' => (string) $it->name,
-                'unit' => $it->unit ?? '',
-                'quantity' => $qty > 0 ? $qty : 1,
-                'gift_quantity' => $giftQty,
-                'unitPrice' => $price,
-                'originalPrice' => (float) ($it->original_price > 0 && ($it->original_price != $it->cost_price || !$it->product?->price) ? $it->original_price : ($it->product?->price ?: ($it->original_price ?: $price))),
-                'costPrice' => (float) ($it->cost_price ?? ($it->product?->cost_price ?? 0)),
-                'discount_percent' => (float) ($it->discount_percent ?? 0),
-                'discount_amount' => (float) ($it->discount_amount ?? 0),
-                'vat_percent' => 0,
-                'vat_amount' => 0,
-                'appliedTierPolicy' => $itTier,
-                'price_type' => $itTier,
-                'amount' => $amt > 0 ? $amt : round($qty * $price),
-                'picked_qty' => (float) ($it->picked_qty ?? 0),
-                'shortage_reason' => $it->shortage_reason ?? '',
-                'item_status' => $it->item_status ?? '',
-                'item_id_db' => (string) $it->id,
-                'checked' => true,
-                'isPromotionalGift' => $isGift,
-                '_manualGift' => $isGift,
-                '_manualQty' => $isGift,
-            ];
+            $tierInput = (string) ($it->applied_tier_policy ?? '');
+            $tierLower = mb_strtolower(trim($tierInput));
+            $nameLower = mb_strtolower(trim($it->name ?? ''));
+            $itTier = ($tierInput && $tierInput !== 'Theo phiếu') ? $tierInput : $orderTier;
+
+            $isPureGift = (
+                $tierInput === 'KM' ||
+                str_contains($tierLower, 'km') ||
+                str_contains($tierLower, 'khuyến mại') ||
+                str_contains($tierLower, 'khuyến mãi') ||
+                str_contains($tierLower, 'tặng') ||
+                ($price == 0 && ($qty > 0 || $giftQty > 0)) ||
+                ($qty == 0 && $giftQty > 0) ||
+                str_contains($nameLower, '[hàng tặng]') ||
+                str_contains($nameLower, '(km)') ||
+                str_contains($nameLower, 'hàng tặng')
+            );
+
+            if ($isPureGift) {
+                $initialItems[] = [
+                    'id' => (string) $it->id,
+                    'itemId' => (string) ($it->product_id ?? ''),
+                    'product_id' => $it->product_id,
+                    'sku' => $it->sku,
+                    'name' => $it->name,
+                    'searchQuery' => (string) $it->name,
+                    'unit' => $it->unit ?? '',
+                    'quantity' => $giftQty > 0 ? $giftQty : ($qty > 0 ? $qty : 1),
+                    'gift_quantity' => $giftQty > 0 ? $giftQty : ($qty > 0 ? $qty : 1),
+                    'unitPrice' => $price,
+                    'originalPrice' => (float) ($it->original_price > 0 && ($it->original_price != $it->cost_price || !$it->product?->price) ? $it->original_price : ($it->product?->price ?: ($it->original_price ?: $price))),
+                    'costPrice' => (float) ($it->cost_price ?? ($it->product?->cost_price ?? 0)),
+                    'discount_percent' => (float) ($it->discount_percent ?? ($price == 0 ? 100 : 0)),
+                    'discount_amount' => (float) ($it->discount_amount ?? 0),
+                    'vat_percent' => 0,
+                    'vat_amount' => 0,
+                    'appliedTierPolicy' => $itTier ?: 'TẶNG KÈM',
+                    'price_type' => $itTier ?: 'TẶNG KÈM',
+                    'amount' => $amt,
+                    'picked_qty' => (float) ($it->picked_qty ?? 0),
+                    'shortage_reason' => $it->shortage_reason ?? '',
+                    'item_status' => $it->item_status ?? '',
+                    'item_id_db' => (string) $it->id,
+                    'checked' => true,
+                    'isPromotionalGift' => true,
+                    '_manualGift' => true,
+                    '_manualQty' => true,
+                ];
+            } else {
+                $initialItems[] = [
+                    'id' => (string) $it->id,
+                    'itemId' => (string) ($it->product_id ?? ''),
+                    'product_id' => $it->product_id,
+                    'sku' => $it->sku,
+                    'name' => $it->name,
+                    'searchQuery' => (string) $it->name,
+                    'unit' => $it->unit ?? '',
+                    'quantity' => $qty > 0 ? $qty : 1,
+                    'gift_quantity' => 0,
+                    'unitPrice' => $price,
+                    'originalPrice' => (float) ($it->original_price > 0 && ($it->original_price != $it->cost_price || !$it->product?->price) ? $it->original_price : ($it->product?->price ?: ($it->original_price ?: $price))),
+                    'costPrice' => (float) ($it->cost_price ?? ($it->product?->cost_price ?? 0)),
+                    'discount_percent' => (float) ($it->discount_percent ?? 0),
+                    'discount_amount' => (float) ($it->discount_amount ?? 0),
+                    'vat_percent' => 0,
+                    'vat_amount' => 0,
+                    'appliedTierPolicy' => $itTier,
+                    'price_type' => $itTier,
+                    'amount' => $amt > 0 ? $amt : round($qty * $price),
+                    'picked_qty' => (float) ($it->picked_qty ?? 0),
+                    'shortage_reason' => $it->shortage_reason ?? '',
+                    'item_status' => $it->item_status ?? '',
+                    'item_id_db' => (string) $it->id,
+                    'checked' => true,
+                    'isPromotionalGift' => false,
+                    '_manualGift' => false,
+                    '_manualQty' => false,
+                ];
+
+                if ($giftQty > 0) {
+                    $initialItems[] = [
+                        'id' => (string) $it->id . '_gift',
+                        'itemId' => (string) ($it->product_id ?? ''),
+                        'product_id' => $it->product_id,
+                        'sku' => $it->sku,
+                        'name' => $it->name,
+                        'searchQuery' => (string) $it->name,
+                        'unit' => $it->unit ?? '',
+                        'quantity' => $giftQty,
+                        'gift_quantity' => $giftQty,
+                        'unitPrice' => 0,
+                        'originalPrice' => (float) ($it->original_price > 0 && ($it->original_price != $it->cost_price || !$it->product?->price) ? $it->original_price : ($it->product?->price ?: ($it->original_price ?: $price))),
+                        'costPrice' => (float) ($it->cost_price ?? ($it->product?->cost_price ?? 0)),
+                        'discount_percent' => 100,
+                        'discount_amount' => round($giftQty * $price),
+                        'vat_percent' => 0,
+                        'vat_amount' => 0,
+                        'appliedTierPolicy' => 'TẶNG KÈM',
+                        'price_type' => 'TẶNG KÈM',
+                        'amount' => 0,
+                        'picked_qty' => 0,
+                        'shortage_reason' => '',
+                        'item_status' => '',
+                        'item_id_db' => (string) $it->id . '_gift',
+                        'checked' => true,
+                        'isPromotionalGift' => true,
+                        '_manualGift' => true,
+                        '_manualQty' => true,
+                    ];
+                }
+            }
         }
     } else {
         // Start with 1 clean default row like in standard ERP form
@@ -1682,9 +1760,9 @@
                                                min="1"
                                                class="w-16 px-1.5 py-1 text-center font-black text-emerald-700 bg-emerald-50/60 border border-emerald-300 rounded-lg text-xs focus:bg-white focus:outline-none">
                                     </td>
-                                    <td class="py-2 px-3 text-right font-black text-emerald-600">0 đ</td>
-                                    <td class="py-2 px-3 text-right font-black text-emerald-600">0 đ</td>
-                                    <td class="py-2 px-3 text-slate-600 text-[11px] font-semibold" x-text="gItem.appliedTierPolicy || 'Hàng khuyến mại'"></td>
+                                    <td class="py-2 px-3 text-right font-black text-emerald-600" x-text="formatNumber(gItem.unitPrice || 0) + ' đ'"></td>
+                                    <td class="py-2 px-3 text-right font-black text-emerald-600" x-text="formatNumber(gItem.amount || 0) + ' đ'"></td>
+                                    <td class="py-2 px-3 text-slate-600 text-[11px] font-semibold" x-text="gItem.appliedTierPolicy || gItem.price_type || 'Hàng khuyến mại'"></td>
                                     <td class="py-2 px-2 text-center">
                                         <button type="button" @click="removeGiftItem(gItem)" class="w-6 h-6 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded flex items-center justify-center transition-colors cursor-pointer mx-auto" title="Xóa hàng khuyến mại">
                                             <i class="fa-solid fa-trash-can text-xs"></i>
@@ -2249,13 +2327,17 @@ function orderFormApp() {
                 if (!it._rowKey) {
                     it._rowKey = 'it-' + (it.item_id_db || it.id || idx) + '-' + Math.random();
                 }
-                if (!it.price_type || it.price_type === 'Theo phiếu') {
+                if (!it.isPromotionalGift && (!it.price_type || it.price_type === 'Theo phiếu')) {
                     it.price_type = topTier;
                     it.appliedTierPolicy = topTier;
                 }
                 it.vat_percent = 0;
                 it.vat_amount = 0;
             });
+
+            if (this.getGiftItems().length > 0) {
+                this.showPromoSection = true;
+            }
 
             this.recalculatePromotionalGifts();
             this.calculateTotals();
@@ -5000,7 +5082,7 @@ function orderFormApp() {
                     creator_name: '{{ auth()->user()->name ?? "" }}',
                     updater_name: '{{ auth()->user()->name ?? "" }}',
                     delivery_status: this.formData.status || 'Chốt đơn',
-                    items: this.items.filter(it => it.product_id).map((it, idx) => ({
+                    items: this.items.filter(it => it.product_id || it.name).map((it, idx) => ({
                         tt: idx + 1,
                         name: it.name,
                         sku: it.sku,
@@ -5008,14 +5090,87 @@ function orderFormApp() {
                         unit: it.unit,
                         unit_price: Number(it.unitPrice) || 0,
                         quantity: Number(it.quantity) || 0,
+                        sold_quantity: it.isPromotionalGift ? 0 : Number(it.quantity || 0),
+                        gift_quantity: it.isPromotionalGift ? Number(it.quantity || 0) : Number(it.gift_quantity || 0),
                         amount: (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0),
                         discount: Number(it.discount_amount) || 0,
+                        discount_percent: Number(it.discount_percent) || 0,
                         total: Number(it.amount) || ((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0)),
-                        price_type: it.price_type || this.formData.dealer_tier
+                        price_type: it.price_type || this.formData.dealer_tier,
+                        price_tier_code: it.isPromotionalGift ? 'KM' : (it.price_tier_code || ''),
+                        isPromotionalGift: it.isPromotionalGift
                     }))
                 };
             }
             this.executePrintOrder(o, mode);
+        },
+
+        isGiftItem(it) {
+            if (!it) return false;
+            if (it.price_tier_code === 'KM') return true;
+            const pt = (it.price_type || it.appliedTierPolicy || it.applied_tier_policy || '').toLowerCase();
+            if (pt.includes('km') || pt.includes('khuyến mại') || pt.includes('khuyến mãi') || pt.includes('tặng')) return true;
+            if (it.isPromotionalGift || it.is_gift) return true;
+            if (Number(it.unit_price ?? it.unitPrice) === 0) return true;
+            if (Number(it.gift_quantity) > 0 && Number(it.sold_quantity ?? it.quantity ?? 0) === 0) return true;
+            const name = (it.name || '').toLowerCase();
+            if (name.includes('[hàng tặng]') || name.includes('(km)') || name.includes('hàng tặng')) return true;
+            return false;
+        },
+
+        getRegularPrintItems(order = null) {
+            const o = order || this.formData;
+            if (!o || !o.items) return [];
+            const regular = [];
+            o.items.forEach(it => {
+                if (!this.isGiftItem(it)) {
+                    regular.push({
+                        ...it,
+                        display_quantity: (it.sold_quantity !== undefined && it.sold_quantity !== null && Number(it.sold_quantity) > 0)
+                            ? Number(it.sold_quantity)
+                            : Number(it.quantity || 1)
+                    });
+                }
+            });
+            return regular;
+        },
+
+        getGiftPrintItems(order = null) {
+            const o = order || this.formData;
+            if (!o || !o.items) return [];
+            const gifts = [];
+            o.items.forEach(it => {
+                if (this.isGiftItem(it)) {
+                    gifts.push({
+                        ...it,
+                        display_quantity: (it.gift_quantity !== undefined && it.gift_quantity !== null && Number(it.gift_quantity) > 0)
+                            ? Number(it.gift_quantity)
+                            : (it.sold_quantity !== undefined && it.sold_quantity !== null && Number(it.sold_quantity) > 0 ? Number(it.sold_quantity) : Number(it.quantity || 1))
+                    });
+                } else if (Number(it.gift_quantity) > 0) {
+                    gifts.push({
+                        ...it,
+                        id: (it.id ? it.id + '_gift' : undefined),
+                        price_tier_code: 'KM',
+                        price_type: 'Hàng tặng kèm',
+                        display_quantity: Number(it.gift_quantity),
+                        unit_price: Number(it.unit_price ?? it.unitPrice) || 0,
+                        discount_percent: 100,
+                        discount: (Number(it.unit_price ?? it.unitPrice) || 0) * Number(it.gift_quantity),
+                        total: 0,
+                        amount: 0
+                    });
+                }
+            });
+            return gifts;
+        },
+
+        getRegularItemsTotal(order = null) {
+            return this.getRegularPrintItems(order).reduce((sum, it) => sum + Number(it.total || it.amount || 0), 0);
+        },
+
+        getGiftItemsTotal(order = null) {
+            return this.getGiftPrintItems(order).reduce((sum, it) => sum + Number(it.total || it.amount || 0), 0);
         },
 
         getDiscountDisplay(it) {
@@ -5040,7 +5195,7 @@ function orderFormApp() {
             let subTitle = 'HÓA ĐƠN BÁN LẺ & GIAO HÀNG';
             if (mode === 'no_price') {
                 title = 'PHIẾU XUẤT KHO - SOẠN HÀNG';
-                subTitle = 'DÀNH CHO BỘ PHẬN KHO & BỐC XẾP (KHÔNG TIÊU ĐỀ)';
+                subTitle = 'DÀNH CHO BỘ PHẬN KHO & BỐC XẾP (KHÔNG HIỂN THỊ ĐƠN GIÁ, KHÔNG TIÊU ĐỀ)';
             } else if (mode === 'no_price_with_header') {
                 title = 'PHIẾU GIAO NHẬN HÀNG HÓA';
                 subTitle = 'BIÊN BẢN BÀN GIAO & ĐỐI CHIẾU SỐ LƯỢNG HÀNG HÓA';
@@ -5049,31 +5204,35 @@ function orderFormApp() {
                 subTitle = 'BẢNG KÊ CHI TIẾT HÀNG HÓA THEO TÊN HÓA ĐƠN GTGT';
             }
 
-            let tableRows = '';
-            (o.items || []).forEach((it, idx) => {
+            const regularItems = this.getRegularPrintItems(o);
+            const giftItems = this.getGiftPrintItems(o);
+            const hasGifts = giftItems.length > 0;
+
+            let regularTableRows = '';
+            regularItems.forEach((it, idx) => {
                 const prodName = isTaxName ? (it.tax_name || it.name) : it.name;
                 const subName = (!isTaxName && it.tax_name && it.tax_name !== it.name) ? `<div style="font-size:10.5px;color:#555;font-style:italic;">${it.tax_name}</div>` : '';
                 const discText = this.getDiscountDisplay(it);
+                const qtyVal = it.display_quantity ?? it.sold_quantity ?? it.quantity;
                 
                 if (isNoPrice) {
-                    tableRows += `
+                    regularTableRows += `
                         <tr>
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${idx + 1}</td>
                             <td style="padding:5px 6px;border:1px solid #111;text-align:left;font-family:monospace;">${it.sku || ''}</td>
                             <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">${prodName}${subName}</td>
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${it.unit || ''}</td>
-                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:13px;">${this.formatNumber(it.quantity)}</td>
-                            <td style="padding:5px 6px;border:1px solid #111;text-align:center;font-weight:bold;font-size:12px;">${this.getPriceTierCode(it.price_tier_code || it.price_type, o.dealer_tier)}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:13px;">${this.formatNumber(qtyVal)}</td>
                         </tr>
                     `;
                 } else {
-                    tableRows += `
+                    regularTableRows += `
                         <tr>
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${idx + 1}</td>
                             <td style="padding:5px 6px;border:1px solid #111;text-align:left;font-family:monospace;">${it.sku || ''}</td>
                             <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">${prodName}${subName}</td>
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${it.unit || ''}</td>
-                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:12.5px;">${this.formatNumber(it.quantity)}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:12.5px;">${this.formatNumber(qtyVal)}</td>
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${this.formatNumber(it.unit_price)}</td>
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${discText}</td>
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;">${this.formatNumber(it.total || it.amount)}</td>
@@ -5082,23 +5241,123 @@ function orderFormApp() {
                 }
             });
 
-            let summaryHtml = '';
+            const regularTotalAmount = this.getRegularItemsTotal(o);
+            const regularTotalQty = regularItems.reduce((s, it) => s + Number(it.display_quantity ?? it.sold_quantity ?? it.quantity ?? 0), 0);
+
+            let regularSummaryHtml = '';
             if (!isNoPrice) {
-                summaryHtml = `
+                regularSummaryHtml = `
                     <tr>
                         <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
                         <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng</td>
                         <td style="border:1px solid #111;padding:5px 6px;"></td>
-                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(o.final_total || o.total_items_amount)}</td>
+                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(regularTotalAmount)}</td>
                     </tr>
                 `;
             } else {
-                summaryHtml = `
+                regularSummaryHtml = `
                     <tr>
-                        <td colspan="4" style="border:1px solid #111;padding:5px 6px;"></td>
+                        <td colspan="3" style="border:1px solid #111;padding:5px 6px;"></td>
                         <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng SL:</td>
-                        <td style="text-align:center;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber((o.items || []).reduce((s, it) => s + Number(it.quantity || 0), 0))}</td>
+                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(regularTotalQty)}</td>
                     </tr>
+                `;
+            }
+
+            let giftTableHtml = '';
+            let giftTotalAmount = 0;
+            let giftTotalQty = 0;
+            if (hasGifts) {
+                let giftTableRows = '';
+                giftItems.forEach((it, idx) => {
+                    const prodName = isTaxName ? (it.tax_name || it.name) : it.name;
+                    const subName = (!isTaxName && it.tax_name && it.tax_name !== it.name) ? `<div style="font-size:10.5px;color:#555;font-style:italic;">${it.tax_name}</div>` : '';
+                    const discText = this.getDiscountDisplay(it);
+                    const qtyVal = it.display_quantity ?? it.gift_quantity ?? it.quantity;
+
+                    if (isNoPrice) {
+                        giftTableRows += `
+                            <tr>
+                                <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${idx + 1}</td>
+                                <td style="padding:5px 6px;border:1px solid #111;text-align:left;font-family:monospace;">${it.sku || ''}</td>
+                                <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">${prodName}${subName}</td>
+                                <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${it.unit || ''}</td>
+                                <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:13px;">${this.formatNumber(qtyVal)}</td>
+                            </tr>
+                        `;
+                    } else {
+                        giftTableRows += `
+                            <tr>
+                                <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${idx + 1}</td>
+                                <td style="padding:5px 6px;border:1px solid #111;text-align:left;font-family:monospace;">${it.sku || ''}</td>
+                                <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">${prodName}${subName}</td>
+                                <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${it.unit || ''}</td>
+                                <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:12.5px;">${this.formatNumber(qtyVal)}</td>
+                                <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${this.formatNumber(it.unit_price)}</td>
+                                <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${discText}</td>
+                                <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;">${this.formatNumber(it.total || it.amount)}</td>
+                            </tr>
+                        `;
+                    }
+                });
+
+                giftTotalAmount = this.getGiftItemsTotal(o);
+                giftTotalQty = giftItems.reduce((s, it) => s + Number(it.display_quantity ?? it.gift_quantity ?? it.quantity ?? 0), 0);
+
+                let giftSummaryHtml = '';
+                if (!isNoPrice) {
+                    giftSummaryHtml = `
+                        <tr>
+                            <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng</td>
+                            <td style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(giftTotalAmount)}</td>
+                        </tr>
+                    `;
+                } else {
+                    giftSummaryHtml = `
+                        <tr>
+                            <td colspan="3" style="border:1px solid #111;padding:5px 6px;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng SL:</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(giftTotalQty)}</td>
+                        </tr>
+                    `;
+                }
+
+                giftTableHtml = `
+                    <div style="margin-top: 12px; page-break-inside: avoid;">
+                        <div style="font-size: 12px; font-weight: bold; text-transform: uppercase; background-color: #dfdfdf; padding: 4px 8px; border: 1px solid #111; border-bottom: none; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                            Hàng tặng
+                        </div>
+                        <table class="product-table" style="margin-top: 0; width: 100%; border-collapse: collapse;">
+                            <thead>
+                                ${isNoPrice ? `
+                                    <tr>
+                                        <th style="width: 35px;">TT</th>
+                                        <th style="width: 95px; text-align: left; padding-left: 6px;">Mã SP</th>
+                                        <th style="text-align: left; padding-left: 6px;">Tên sản phẩm</th>
+                                        <th style="width: 55px;">ĐVT</th>
+                                        <th style="width: 65px;">SL</th>
+                                    </tr>
+                                ` : `
+                                    <tr>
+                                        <th style="width: 35px;">TT</th>
+                                        <th style="width: 95px; text-align: left; padding-left: 6px;">Mã SP</th>
+                                        <th style="text-align: left; padding-left: 6px;">Tên sản phẩm</th>
+                                        <th style="width: 55px;">ĐVT</th>
+                                        <th style="width: 50px;">SL</th>
+                                        <th style="width: 90px;">Đơn giá</th>
+                                        <th style="width: 70px;">C.khấu</th>
+                                        <th style="width: 100px;">Thành tiền</th>
+                                    </tr>
+                                `}
+                            </thead>
+                            <tbody>
+                                ${giftTableRows}
+                                ${giftSummaryHtml}
+                            </tbody>
+                        </table>
+                    </div>
                 `;
             }
 
@@ -5157,8 +5416,17 @@ function orderFormApp() {
                     <table style="width: 100%; border: none; border-bottom: 2px solid #1b4a8c; padding-bottom: 6px; margin-bottom: 12px; border-collapse: collapse;">
                         <tr>
                             <td style="width: 65%; vertical-align: top; border: none; padding: 0; text-align: left;">
-                                <div style="font-size: 14.5px; font-weight: bold; color: #1b4a8c; text-transform: uppercase; letter-spacing: 0.5px;">${this.companySetting?.company_name || 'HỆ THỐNG PHÂN PHỐI ĐẠI SƠN'}</div>
-                                <div style="font-size: 11px; color: #444; font-weight: bold; text-transform: uppercase; margin-top: 1px;">${this.companySetting?.tax_name || this.companySetting?.company_name || ''}</div>
+                                <table style="border: none; border-collapse: collapse; margin-bottom: 2px;">
+                                    <tr>
+                                        <td style="border: none; padding: 0 10px 0 0; vertical-align: middle;">
+                                            <img src="/images/logo.png" alt="Logo Đại Sơn" style="height: 52px; width: auto; display: block; -webkit-print-color-adjust: exact; print-color-adjust: exact;" onerror="this.style.display='none'">
+                                        </td>
+                                        <td style="border: none; padding: 0; vertical-align: middle;">
+                                            <div style="font-size: 14.5px; font-weight: bold; color: #1b4a8c; text-transform: uppercase; letter-spacing: 0.5px;">${this.companySetting?.company_name || 'HỆ THỐNG PHÂN PHỐI ĐẠI SƠN'}</div>
+                                            <div style="font-size: 11px; color: #444; font-weight: bold; text-transform: uppercase; margin-top: 1px;">${this.companySetting?.tax_name || this.companySetting?.company_name || ''}</div>
+                                        </td>
+                                    </tr>
+                                </table>
                                 <div style="font-size: 11.5px; color: #333; margin-top: 3px; line-height: 1.4;">
                                     ${this.companySetting?.address ? `<div><strong>Địa chỉ:</strong> ${this.companySetting.address}</div>` : ''}
                                     ${(this.companySetting?.hotline || this.companySetting?.phone) ? `<div><strong>Hotline / Zalo:</strong> ${this.companySetting.hotline || this.companySetting.phone} ${this.companySetting?.email ? `&nbsp;|&nbsp; <strong>Email:</strong> ${this.companySetting.email}` : ''}</div>` : ''}
@@ -5241,36 +5509,43 @@ function orderFormApp() {
                         </tr>
                     </table>
 
-                    <!-- Bảng Danh Sách Hàng Hóa -->
-                    <table class="product-table">
-                        <thead>
-                            ${isNoPrice ? `
-                                <tr>
-                                    <th style="width: 35px;">TT</th>
-                                    <th style="width: 95px; text-align: left; padding-left: 6px;">Mã SP</th>
-                                    <th style="text-align: left; padding-left: 6px;">Tên sản phẩm</th>
-                                    <th style="width: 55px;">ĐVT</th>
-                                    <th style="width: 65px;">SL</th>
-                                    <th style="width: 75px;">Loại Giá</th>
-                                </tr>
-                            ` : `
-                                <tr>
-                                    <th style="width: 35px;">TT</th>
-                                    <th style="width: 95px; text-align: left; padding-left: 6px;">Mã SP</th>
-                                    <th style="text-align: left; padding-left: 6px;">Tên sản phẩm</th>
-                                    <th style="width: 55px;">ĐVT</th>
-                                    <th style="width: 50px;">SL</th>
-                                    <th style="width: 90px;">Đơn giá</th>
-                                    <th style="width: 70px;">C.khấu</th>
-                                    <th style="width: 100px;">Thành tiền</th>
-                                </tr>
-                            `}
-                        </thead>
-                        <tbody>
-                            ${tableRows}
-                            ${summaryHtml}
-                        </tbody>
-                    </table>
+                    <!-- Bảng 1: Danh Sách Sản Phẩm -->
+                    <div style="page-break-inside: avoid;">
+                        <div style="font-size: 12px; font-weight: bold; text-transform: uppercase; background-color: #dfdfdf; padding: 4px 8px; border: 1px solid #111; border-bottom: none; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                            Danh sách sản phẩm
+                        </div>
+                        <table class="product-table" style="margin-top: 0; width: 100%; border-collapse: collapse;">
+                            <thead>
+                                ${isNoPrice ? `
+                                    <tr>
+                                        <th style="width: 35px;">TT</th>
+                                        <th style="width: 95px; text-align: left; padding-left: 6px;">Mã SP</th>
+                                        <th style="text-align: left; padding-left: 6px;">Tên sản phẩm</th>
+                                        <th style="width: 55px;">ĐVT</th>
+                                        <th style="width: 65px;">SL</th>
+                                    </tr>
+                                ` : `
+                                    <tr>
+                                        <th style="width: 35px;">TT</th>
+                                        <th style="width: 95px; text-align: left; padding-left: 6px;">Mã SP</th>
+                                        <th style="text-align: left; padding-left: 6px;">Tên sản phẩm</th>
+                                        <th style="width: 55px;">ĐVT</th>
+                                        <th style="width: 50px;">SL</th>
+                                        <th style="width: 90px;">Đơn giá</th>
+                                        <th style="width: 70px;">C.khấu</th>
+                                        <th style="width: 100px;">Thành tiền</th>
+                                    </tr>
+                                `}
+                            </thead>
+                            <tbody>
+                                ${regularTableRows || `<tr><td colspan="${isNoPrice ? 5 : 8}" style="text-align:center;padding:8px;font-style:italic;color:#666;border:1px solid #111;">Không có sản phẩm bán</td></tr>`}
+                                ${regularSummaryHtml}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Bảng 2: Hàng Tặng (nếu có) -->
+                    ${giftTableHtml}
 
                     <!-- Bằng Chữ & Trạng Thái -->
                     ${!isNoPrice ? `
