@@ -2017,27 +2017,69 @@ class OrderController extends Controller
         foreach ($order->items as $it) {
             $qty     = (float)($it->quantity ?? 0);
             $giftQty = (float)($it->gift_quantity ?? 0);
-            $totalQty = $qty + $giftQty;
-
-            $prodPrice = (float)($it->product?->price ?: 0);
-            $origPrice = (float)($it->original_price > 0 && ($it->original_price != $it->cost_price || $prodPrice == 0)
-                ? $it->original_price
-                : ($prodPrice > 0 ? $prodPrice : ($it->unit_price > 0 ? $it->unit_price : ($it->product?->cost_price ?: 0))));
-            $unitPrice = (float)($it->unit_price > 0 ? $it->unit_price : $origPrice);
-
-            $itemSubtotal     = $origPrice * $totalQty;
-            $itemActualAmount = (float)($it->amount > 0 ? $it->amount : ($unitPrice * $qty));
-            $itemDiscount     = max(0, $itemSubtotal - $itemActualAmount);
-
-            $subtotal         += $itemSubtotal;
-            $totalDiscount    += $itemDiscount;
-            $totalItemsAmount += $itemActualAmount;
 
             $rawTierInput = ($it->applied_tier_policy === 'Theo phiếu' || empty($it->applied_tier_policy))
                 ? ($dealer?->tier ?: 'Nguyên Giá')
                 : $it->applied_tier_policy;
 
             $tierCode = $resolveTierCode($rawTierInput);
+            $tierLower = mb_strtolower(trim($rawTierInput));
+            $nameLower = mb_strtolower(trim($it->name ?? ''));
+
+            $isPureGift = (
+                $tierCode === 'KM' ||
+                str_contains($tierLower, 'km') ||
+                str_contains($tierLower, 'khuyến mại') ||
+                str_contains($tierLower, 'khuyến mãi') ||
+                str_contains($tierLower, 'tặng') ||
+                ((float)$it->unit_price == 0 && (float)$it->amount == 0) ||
+                ($qty == 0 && $giftQty > 0) ||
+                str_contains($nameLower, '[hàng tặng]') ||
+                str_contains($nameLower, '(km)') ||
+                str_contains($nameLower, 'hàng tặng')
+            );
+
+            if ($isPureGift) {
+                $actualGiftQty = $giftQty > 0 ? $giftQty : ($qty > 0 ? $qty : 1);
+                $items[] = [
+                    'tt'               => $idx++,
+                    'id'               => $it->id,
+                    'sku'              => $it->sku,
+                    'name'             => $it->name,
+                    'tax_name'         => $it->product?->tax_name ?: ($it->name),
+                    'unit'             => $it->unit ?: 'Cây',
+                    'unit_price'       => 0,
+                    'sale_price'       => 0,
+                    'quantity'         => $actualGiftQty,
+                    'sold_quantity'    => 0,
+                    'gift_quantity'    => $actualGiftQty,
+                    'amount'           => 0,
+                    'discount'         => 0,
+                    'discount_percent' => 0,
+                    'total'            => 0,
+                    'customer_price'   => 0,
+                    'price_tier_code'  => 'KM',
+                    'price_type'       => $it->applied_tier_policy ?: 'Hàng khuyến mại',
+                    'is_gift'          => true,
+                    'isPromotionalGift'=> true,
+                ];
+                continue;
+            }
+
+            // Regular sales item
+            $prodPrice = (float)($it->product?->price ?: 0);
+            $origPrice = (float)($it->original_price > 0 && ($it->original_price != $it->cost_price || $prodPrice == 0)
+                ? $it->original_price
+                : ($prodPrice > 0 ? $prodPrice : ($it->unit_price > 0 ? $it->unit_price : ($it->product?->cost_price ?: 0))));
+            $unitPrice = (float)($it->unit_price > 0 ? $it->unit_price : $origPrice);
+
+            $itemSubtotal     = $origPrice * $qty;
+            $itemActualAmount = (float)($it->amount > 0 ? $it->amount : ($unitPrice * $qty));
+            $itemDiscount     = max(0, $itemSubtotal - $itemActualAmount);
+
+            $subtotal         += $itemSubtotal;
+            $totalDiscount    += $itemDiscount;
+            $totalItemsAmount += $itemActualAmount;
 
             $actualUnitPrice = (float)($it->unit_price > 0 ? $it->unit_price : ($origPrice > 0 ? $origPrice : 0));
 
@@ -2050,9 +2092,9 @@ class OrderController extends Controller
                 'unit'             => $it->unit ?: 'Cây',
                 'unit_price'       => $actualUnitPrice,
                 'sale_price'       => $actualUnitPrice,
-                'quantity'         => $totalQty,
+                'quantity'         => $qty,
                 'sold_quantity'    => $qty,
-                'gift_quantity'    => $giftQty,
+                'gift_quantity'    => 0,
                 'amount'           => $itemSubtotal,
                 'discount'         => $itemDiscount,
                 'discount_percent' => ($itemSubtotal > 0 && $itemDiscount > 0 ? round(($itemDiscount / $itemSubtotal) * 100, 1) : 0),
@@ -2062,7 +2104,34 @@ class OrderController extends Controller
                 'price_type'       => ($it->applied_tier_policy === 'Theo phiếu' || empty($it->applied_tier_policy))
                     ? ('Theo phiếu (' . ($dealer?->tier ?: 'Nguyên Giá') . ')')
                     : $it->applied_tier_policy,
+                'is_gift'          => false,
+                'isPromotionalGift'=> false,
             ];
+
+            if ($giftQty > 0) {
+                $items[] = [
+                    'tt'               => $idx++,
+                    'id'               => $it->id . '_gift',
+                    'sku'              => $it->sku,
+                    'name'             => $it->name,
+                    'tax_name'         => $it->product?->tax_name ?: ($it->name),
+                    'unit'             => $it->unit ?: 'Cây',
+                    'unit_price'       => 0,
+                    'sale_price'       => 0,
+                    'quantity'         => $giftQty,
+                    'sold_quantity'    => 0,
+                    'gift_quantity'    => $giftQty,
+                    'amount'           => 0,
+                    'discount'         => 0,
+                    'discount_percent' => 0,
+                    'total'            => 0,
+                    'customer_price'   => 0,
+                    'price_tier_code'  => 'KM',
+                    'price_type'       => 'Hàng tặng kèm',
+                    'is_gift'          => true,
+                    'isPromotionalGift'=> true,
+                ];
+            }
         }
 
         $extraDiscount = (float)($order->discount_amount ?? 0);

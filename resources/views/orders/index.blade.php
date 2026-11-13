@@ -1436,9 +1436,6 @@
                                     <th class="border border-slate-300 py-1.5 px-2 text-left">Tên sản phẩm</th>
                                     <th class="border border-slate-300 py-1.5 px-2 w-16 text-center">ĐVT</th>
                                     <th class="border border-slate-300 py-1.5 px-2 w-14 text-right">SL</th>
-                                    <th class="border border-slate-300 py-1.5 px-2 w-24 text-right">Đơn giá</th>
-                                    <th class="border border-slate-300 py-1.5 px-2 w-16 text-right">C.khấu</th>
-                                    <th class="border border-slate-300 py-1.5 px-2 w-24 text-right">Thành tiền</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1452,18 +1449,14 @@
                                         </td>
                                         <td class="border border-slate-300 py-1.5 px-2 text-center" x-text="it.unit"></td>
                                         <td class="border border-slate-300 py-1.5 px-2 text-right font-semibold" x-text="formatNumber(it.display_quantity ?? it.gift_quantity ?? it.quantity)"></td>
-                                        <td class="border border-slate-300 py-1.5 px-2 text-right" x-text="formatNumber(it.unit_price)"></td>
-                                        <td class="border border-slate-300 py-1.5 px-2 text-right" x-text="getDiscountDisplay(it)"></td>
-                                        <td class="border border-slate-300 py-1.5 px-2 text-right font-bold text-slate-900" x-text="formatNumber(it.total || it.amount)"></td>
                                     </tr>
                                 </template>
                             </tbody>
                             <tfoot class="bg-white font-bold text-slate-900">
                                 <!-- Dòng Tổng Hàng Tặng -->
                                 <tr class="border-b border-slate-300">
-                                    <td colspan="6" class="border border-slate-300 py-1.5 px-2"></td>
-                                    <td class="border border-slate-300 py-1.5 px-2 text-right font-bold">Tổng</td>
-                                    <td class="border border-slate-300 py-1.5 px-2 text-right font-black" x-text="formatNumber(getGiftItemsTotal())"></td>
+                                    <td colspan="4" class="border border-slate-300 py-1.5 px-2 text-right font-bold">Tổng SL hàng tặng</td>
+                                    <td class="border border-slate-300 py-1.5 px-2 text-right font-black" x-text="formatNumber(getGiftItemsTotalQty())"></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -2818,7 +2811,12 @@ function ordersIndexApp() {
                         ...it,
                         display_quantity: (it.gift_quantity !== undefined && it.gift_quantity !== null && Number(it.gift_quantity) > 0)
                             ? Number(it.gift_quantity)
-                            : (it.sold_quantity !== undefined && it.sold_quantity !== null && Number(it.sold_quantity) > 0 ? Number(it.sold_quantity) : Number(it.quantity || 1))
+                            : (it.sold_quantity !== undefined && it.sold_quantity !== null && Number(it.sold_quantity) > 0 ? Number(it.sold_quantity) : Number(it.quantity || 1)),
+                        unit_price: 0,
+                        discount_percent: 0,
+                        discount: 0,
+                        total: 0,
+                        amount: 0
                     });
                 } else if (Number(it.gift_quantity) > 0) {
                     gifts.push({
@@ -2827,9 +2825,9 @@ function ordersIndexApp() {
                         price_tier_code: 'KM',
                         price_type: 'Hàng tặng kèm',
                         display_quantity: Number(it.gift_quantity),
-                        unit_price: Number(it.unit_price) || 0,
-                        discount_percent: 100,
-                        discount: (Number(it.unit_price) || 0) * Number(it.gift_quantity),
+                        unit_price: 0,
+                        discount_percent: 0,
+                        discount: 0,
                         total: 0,
                         amount: 0
                     });
@@ -2846,6 +2844,11 @@ function ordersIndexApp() {
         getGiftItemsTotal(order = null) {
             const items = this.getGiftPrintItems(order);
             return items.reduce((sum, it) => sum + Number(it.total ?? it.amount ?? 0), 0);
+        },
+
+        getGiftItemsTotalQty(order = null) {
+            const items = this.getGiftPrintItems(order);
+            return items.reduce((sum, it) => sum + Number(it.display_quantity ?? it.gift_quantity ?? it.quantity ?? 0), 0);
         },
 
         buildSingleOrderContentHtml(o, mode) {
@@ -2927,64 +2930,33 @@ function ordersIndexApp() {
             }
 
             let giftTableHtml = '';
-            let giftTotalAmount = 0;
             let giftTotalQty = 0;
             if (hasGifts) {
                 let giftTableRows = '';
                 giftItems.forEach((it, idx) => {
                     const prodName = isTaxName ? (it.tax_name || it.name) : it.name;
                     const subName = (!isTaxName && it.tax_name && it.tax_name !== it.name) ? `<div style="font-size:10.5px;color:#555;font-style:italic;">${it.tax_name}</div>` : '';
-                    const discText = this.getDiscountDisplay(it);
                     const qtyVal = it.display_quantity ?? it.gift_quantity ?? it.quantity;
 
-                    if (isNoPrice) {
-                        giftTableRows += `
-                            <tr>
-                                <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${idx + 1}</td>
-                                <td style="padding:5px 6px;border:1px solid #111;text-align:left;font-family:monospace;">${it.sku || ''}</td>
-                                <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">${prodName}${subName}</td>
-                                <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${it.unit || ''}</td>
-                                <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:13px;">${this.formatNumber(qtyVal)}</td>
-                            </tr>
-                        `;
-                    } else {
-                        giftTableRows += `
-                            <tr>
-                                <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${idx + 1}</td>
-                                <td style="padding:5px 6px;border:1px solid #111;text-align:left;font-family:monospace;">${it.sku || ''}</td>
-                                <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">${prodName}${subName}</td>
-                                <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${it.unit || ''}</td>
-                                <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:12.5px;">${this.formatNumber(qtyVal)}</td>
-                                <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${this.formatNumber(it.unit_price)}</td>
-                                <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${discText}</td>
-                                <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;">${this.formatNumber(it.total || it.amount)}</td>
-                            </tr>
-                        `;
-                    }
+                    giftTableRows += `
+                        <tr>
+                            <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${idx + 1}</td>
+                            <td style="padding:5px 6px;border:1px solid #111;text-align:left;font-family:monospace;">${it.sku || ''}</td>
+                            <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">${prodName}${subName}</td>
+                            <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${it.unit || ''}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:13px;">${this.formatNumber(qtyVal)}</td>
+                        </tr>
+                    `;
                 });
 
-                giftTotalAmount = this.getGiftItemsTotal(o);
                 giftTotalQty = giftItems.reduce((s, it) => s + Number(it.display_quantity ?? it.gift_quantity ?? it.quantity ?? 0), 0);
 
-                let giftSummaryHtml = '';
-                if (!isNoPrice) {
-                    giftSummaryHtml = `
-                        <tr>
-                            <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng</td>
-                            <td style="border:1px solid #111;padding:5px 6px;"></td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(giftTotalAmount)}</td>
-                        </tr>
-                    `;
-                } else {
-                    giftSummaryHtml = `
-                        <tr>
-                            <td colspan="3" style="border:1px solid #111;padding:5px 6px;"></td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng SL:</td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(giftTotalQty)}</td>
-                        </tr>
-                    `;
-                }
+                const giftSummaryHtml = `
+                    <tr>
+                        <td colspan="4" style="border:1px solid #111;padding:5px 6px;text-align:right;font-weight:bold;">Tổng SL hàng tặng:</td>
+                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(giftTotalQty)}</td>
+                    </tr>
+                `;
 
                 giftTableHtml = `
                     <div style="margin-top: 12px; page-break-inside: avoid;">
@@ -2993,26 +2965,13 @@ function ordersIndexApp() {
                         </div>
                         <table class="product-table" style="margin-top: 0; width: 100%; border-collapse: collapse;">
                             <thead>
-                                ${isNoPrice ? `
-                                    <tr>
-                                        <th style="width: 35px;">TT</th>
-                                        <th style="width: 95px; text-align: left; padding-left: 6px;">Mã SP</th>
-                                        <th style="text-align: left; padding-left: 6px;">Tên sản phẩm</th>
-                                        <th style="width: 55px;">ĐVT</th>
-                                        <th style="width: 65px;">SL</th>
-                                    </tr>
-                                ` : `
-                                    <tr>
-                                        <th style="width: 35px;">TT</th>
-                                        <th style="width: 95px; text-align: left; padding-left: 6px;">Mã SP</th>
-                                        <th style="text-align: left; padding-left: 6px;">Tên sản phẩm</th>
-                                        <th style="width: 55px;">ĐVT</th>
-                                        <th style="width: 50px;">SL</th>
-                                        <th style="width: 90px;">Đơn giá</th>
-                                        <th style="width: 70px;">C.khấu</th>
-                                        <th style="width: 100px;">Thành tiền</th>
-                                    </tr>
-                                `}
+                                <tr>
+                                    <th style="width: 35px;">TT</th>
+                                    <th style="width: 95px; text-align: left; padding-left: 6px;">Mã SP</th>
+                                    <th style="text-align: left; padding-left: 6px;">Tên sản phẩm</th>
+                                    <th style="width: 55px;">ĐVT</th>
+                                    <th style="width: 65px;">SL</th>
+                                </tr>
                             </thead>
                             <tbody>
                                 ${giftTableRows}
