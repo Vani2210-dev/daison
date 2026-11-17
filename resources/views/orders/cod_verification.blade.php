@@ -270,6 +270,18 @@
                             <div class="line-clamp-2 text-xs">
                                 {{ $h->notes ?: '—' }}
                             </div>
+                            @php
+                                $hDocs = is_array($h->documents) ? $h->documents : (json_decode($h->documents, true) ?: []);
+                            @endphp
+                            @if(!empty($hDocs))
+                                <div class="mt-1.5">
+                                    <button type="button" @click="openDocsModal({{ json_encode($h) }})"
+                                            class="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[10.5px] border border-indigo-200 inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs">
+                                        <i class="fa-solid fa-paperclip text-indigo-500"></i>
+                                        <span>{{ count($hDocs) }} ảnh/file chứng từ</span>
+                                    </button>
+                                </div>
+                            @endif
                             @if($isRejected && $h->rejected_reason)
                                 <div class="text-[10px] text-rose-700 bg-rose-50 border border-rose-200 p-1.5 rounded-lg mt-1 font-medium">
                                     <strong>Lý do từ chối:</strong> {{ $h->rejected_reason }}
@@ -401,6 +413,39 @@
                     </p>
                 </div>
 
+                <!-- Hình ảnh & File chứng từ Lái xe đính kèm -->
+                <template x-if="activeHandover && activeHandover.documents && activeHandover.documents.length > 0">
+                    <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                        <div class="flex items-center justify-between text-xs font-bold text-slate-800">
+                            <span class="flex items-center gap-1.5 text-indigo-900">
+                                <i class="fa-solid fa-paperclip text-indigo-600"></i>
+                                <span>Hình ảnh & File chứng từ do Lái xe đính kèm:</span>
+                            </span>
+                            <span class="text-[11px] font-bold text-indigo-700" x-text="activeHandover.documents.length + ' tệp'"></span>
+                        </div>
+                        <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1 max-h-44 overflow-y-auto pr-1">
+                            <template x-for="(doc, idx) in activeHandover.documents" :key="idx">
+                                <div class="relative group rounded-xl overflow-hidden border border-slate-200 bg-white aspect-square shadow-2xs flex flex-col items-center justify-center p-1 hover:border-indigo-400 transition-colors">
+                                    <template x-if="isImageDoc(doc)">
+                                        <img :src="getDocUrl(doc)" class="w-full h-full object-cover cursor-pointer rounded-lg hover:opacity-90 transition-opacity"
+                                             @click="viewDocPreview(doc)" alt="Chứng từ">
+                                    </template>
+                                    <template x-if="!isImageDoc(doc)">
+                                        <a :href="getDocUrl(doc)" target="_blank" class="w-full h-full flex flex-col items-center justify-center text-center p-1.5 cursor-pointer hover:bg-slate-50 transition-colors no-underline">
+                                            <i class="fa-solid text-2xl mb-1" :class="getDocIcon(doc)"></i>
+                                            <div class="text-[9.5px] font-bold text-slate-700 truncate w-full" x-text="getDocName(doc)"></div>
+                                            <div class="text-[8.5px] text-slate-400 font-mono" x-show="doc.size" x-text="(doc.size / 1024).toFixed(0) + ' KB'"></div>
+                                        </a>
+                                    </template>
+                                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/60 text-white text-[9px] py-0.5 text-center font-bold" x-show="isImageDoc(doc)">
+                                        Ảnh <span x-text="idx + 1"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
                 <!-- Notes -->
                 <div class="space-y-1.5">
                     <label class="font-bold text-slate-700 block">Ghi chú xác nhận của Kế toán:</label>
@@ -524,6 +569,38 @@
                 </table>
             </div>
 
+            <!-- Hình ảnh & File chứng từ Lái xe đính kèm trong chi tiết -->
+            <template x-if="activeHandover && activeHandover.documents && activeHandover.documents.length > 0">
+                <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 shrink-0">
+                    <div class="flex items-center justify-between text-xs font-bold text-slate-800">
+                        <span class="flex items-center gap-1.5 text-indigo-900">
+                            <i class="fa-solid fa-paperclip text-indigo-600"></i>
+                            <span>Hình ảnh & File chứng từ bàn giao (bảng kê tiền / phiếu nộp / sao kê):</span>
+                        </span>
+                        <span class="text-[11px] font-bold text-indigo-700" x-text="activeHandover.documents.length + ' tệp'"></span>
+                    </div>
+                    <div class="grid grid-cols-4 sm:grid-cols-6 gap-2 pt-1 max-h-36 overflow-y-auto pr-1">
+                        <template x-for="(doc, idx) in activeHandover.documents" :key="idx">
+                            <div class="relative group rounded-xl overflow-hidden border border-slate-200 bg-white aspect-square shadow-2xs flex flex-col items-center justify-center p-1 hover:border-indigo-400 transition-colors">
+                                <template x-if="isImageDoc(doc)">
+                                    <img :src="getDocUrl(doc)" class="w-full h-full object-cover cursor-pointer rounded-lg hover:opacity-90 transition-opacity"
+                                         @click="viewDocPreview(doc)" alt="Chứng từ">
+                                </template>
+                                <template x-if="!isImageDoc(doc)">
+                                    <a :href="getDocUrl(doc)" target="_blank" class="w-full h-full flex flex-col items-center justify-center text-center p-1 cursor-pointer hover:bg-slate-50 transition-colors no-underline">
+                                        <i class="fa-solid text-xl mb-1" :class="getDocIcon(doc)"></i>
+                                        <div class="text-[9px] font-bold text-slate-700 truncate w-full" x-text="getDocName(doc)"></div>
+                                    </a>
+                                </template>
+                                <div class="absolute bottom-0 inset-x-0 bg-slate-900/60 text-white text-[8.5px] py-0.5 text-center font-bold" x-show="isImageDoc(doc)">
+                                    Ảnh <span x-text="idx + 1"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
             <div class="flex items-center justify-between pt-3 border-t border-slate-100 text-xs shrink-0">
                 <div class="text-slate-600">
                     Tổng số: <strong class="font-bold text-slate-900" x-text="(activeHandover?.order_codes?.length || 0) + ' đơn hàng'"></strong>
@@ -532,6 +609,19 @@
                     Đóng
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal 4: Xem trước ảnh phóng to (Lightbox) -->
+    <div x-show="showDocPreviewModal" x-cloak
+         class="fixed inset-0 z-[12000] bg-black/90 backdrop-blur-md flex items-center justify-center p-3"
+         @click="showDocPreviewModal = false">
+        <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center" @click.stop>
+            <button type="button" @click="showDocPreviewModal = false"
+                    class="absolute -top-10 right-0 text-white/80 hover:text-white text-3xl font-bold cursor-pointer">
+                &times;
+            </button>
+            <img :src="previewDocUrl" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl border border-white/20">
         </div>
     </div>
 
@@ -557,6 +647,8 @@ function codVerificationApp() {
         showApproveModal: false,
         showRejectModal: false,
         showOrderDetailsModal: false,
+        showDocPreviewModal: false,
+        previewDocUrl: null,
         isSubmitting: false,
 
         approveForm: {
@@ -566,6 +658,55 @@ function codVerificationApp() {
 
         rejectForm: {
             reason: ''
+        },
+
+        isImageDoc(doc) {
+            if (!doc) return false;
+            if (typeof doc === 'object') {
+                if (doc.is_image !== undefined) return !!doc.is_image;
+                if (doc.type && doc.type.startsWith('image/')) return true;
+                const name = doc.name || doc.url || '';
+                return /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(name);
+            }
+            if (typeof doc === 'string') {
+                if (doc.startsWith('data:image/')) return true;
+                return /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(doc);
+            }
+            return false;
+        },
+
+        getDocUrl(doc) {
+            if (!doc) return '';
+            return typeof doc === 'object' ? (doc.data || doc.url || '') : doc;
+        },
+
+        getDocName(doc, fallback = 'Tập tin') {
+            if (!doc) return fallback;
+            if (typeof doc === 'object' && doc.name) return doc.name;
+            if (typeof doc === 'string') {
+                if (doc.startsWith('data:')) return fallback;
+                return doc.split('/').pop() || fallback;
+            }
+            return fallback;
+        },
+
+        getDocIcon(doc) {
+            const name = (this.getDocName(doc) || '').toLowerCase();
+            const type = (typeof doc === 'object' ? (doc.type || '') : '').toLowerCase();
+            if (name.endsWith('.pdf') || type.includes('pdf')) return 'fa-file-pdf text-rose-500';
+            if (name.endsWith('.doc') || name.endsWith('.docx') || type.includes('word')) return 'fa-file-word text-blue-500';
+            if (name.endsWith('.xls') || name.endsWith('.xlsx') || type.includes('excel') || type.includes('sheet')) return 'fa-file-excel text-emerald-500';
+            return 'fa-file-lines text-slate-500';
+        },
+
+        viewDocPreview(docOrUrl) {
+            this.previewDocUrl = this.getDocUrl(docOrUrl);
+            this.showDocPreviewModal = true;
+        },
+
+        openDocsModal(handover) {
+            this.activeHandover = handover;
+            this.showOrderDetailsModal = true;
         },
 
         formatNumber(val) {

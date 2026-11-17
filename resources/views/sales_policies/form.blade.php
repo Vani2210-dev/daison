@@ -31,7 +31,7 @@
             <button type="button" @click="submitForm()" :disabled="isSaving" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95">
                 <i x-show="isSaving" class="fa-solid fa-spinner fa-spin"></i>
                 <i x-show="!isSaving" class="fa-solid fa-floppy-disk"></i>
-                <span x-text="isSaving ? 'Đang lưu...' : '{{ $policy ? 'Lưu Cập Nhật (F9)' : 'Xác Nhận Tạo Mới (F9)' }}'"></span>
+                <span><span x-text="isSaving ? 'Đang lưu...' : '{{ $policy ? 'Lưu Cập Nhật' : 'Xác Nhận Tạo Mới' }}'"></span><span class="shortcut-hint hidden md:inline" x-show="!isSaving"> (F9)</span></span>
             </button>
         </div>
     </div>
@@ -788,18 +788,18 @@
 
         <!-- Bottom Action Buttons -->
         <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between gap-3">
-            <div class="text-[11px] text-slate-400">
+            <div class="shortcut-hint hidden md:block text-[11px] text-slate-400">
                 <i class="fa-solid fa-circle-info text-sky-500 mr-1"></i>
                 Nhấn phím <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">F9</kbd> để lưu nhanh chính sách bán hàng.
             </div>
-            <div class="flex items-center gap-2.5">
+            <div class="flex items-center gap-2.5 ml-auto">
                 <a href="{{ url('/cat_sales_policies') }}" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all">
                     Hủy Bỏ
                 </a>
                 <button type="submit" :disabled="isSaving" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95">
                     <i x-show="isSaving" class="fa-solid fa-spinner fa-spin"></i>
                     <i x-show="!isSaving" class="fa-solid fa-floppy-disk"></i>
-                    <span x-text="isSaving ? 'Đang lưu...' : '{{ $policy ? 'Lưu Cập Nhật Chính Sách (F9)' : 'Tạo Mới Chính Sách (F9)' }}'"></span>
+                    <span><span x-text="isSaving ? 'Đang lưu...' : '{{ $policy ? 'Lưu Cập Nhật Chính Sách' : 'Tạo Mới Chính Sách' }}'"></span><span class="shortcut-hint hidden md:inline" x-show="!isSaving"> (F9)</span></span>
                 </button>
             </div>
         </div>

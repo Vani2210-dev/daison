@@ -22,6 +22,7 @@ class DriverCashHandover extends Model
         'order_codes',
         'order_count',
         'notes',
+        'documents',
         'receipt_code',
         'status',
         'approved_at',
@@ -39,6 +40,7 @@ class DriverCashHandover extends Model
         'handover_amount'     => 'decimal:2',
         'order_codes'         => 'array',
         'order_receipt_codes' => 'array',
+        'documents'           => 'array',
         'approved_at'         => 'datetime',
         'rejected_at'         => 'datetime',
     ];

@@ -133,7 +133,7 @@
                         <label class="font-bold text-slate-800 block">Kho nhập lại hàng:</label>
                         <select x-model="orderReturnForm.warehouseId"
                                 class="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-xs text-slate-900 focus:outline-none focus:border-amber-500 bg-white shadow-2xs">
-                            <template x-for="wh in warehouses" :key="wh.id">
+                            <template x-for="wh in (companyWarehouses && companyWarehouses.length ? companyWarehouses : warehouses)" :key="wh.id">
                                 <option :value="wh.id" x-text="wh.name"></option>
                             </template>
                         </select>

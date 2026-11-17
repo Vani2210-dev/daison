@@ -1422,6 +1422,8 @@ class PickingSyncController extends Controller
 
             \Illuminate\Support\Facades\DB::commit();
 
+            \App\Http\Controllers\OrderController::refreshAvailabilityCache();
+
             return response()->json([
                 'success'           => true,
                 'message'           => 'Đã phân bổ hàng trên xe thành công! ' . (count($createdBackorders) > 0 ? 'Đã tự động tạo ' . count($createdBackorders) . ' đơn giao sau.' : ''),

@@ -201,8 +201,9 @@ class BackorderService
 
             DB::commit();
 
-            // Xóa cache danh mục sản phẩm
-            InventoryAvailabilityService::clearCache();
+            // Đồng bộ reserved_quantity và xóa cache danh mục sản phẩm
+            InventoryAvailabilityService::recalculateAndSyncDatabase();
+            \App\Http\Controllers\WebViewController::clearPosProductsCache();
 
             return [
                 'success'        => true,

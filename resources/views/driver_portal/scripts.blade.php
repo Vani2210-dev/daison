@@ -327,7 +327,25 @@ function deliveryExecutionApp() {
         },
         accountants: rawData.accountants || [],
         warehouseStaff: rawData.warehouseStaff || [],
-        warehouses: rawData.warehouses || [],
+        warehouses: (rawData.warehouses || []).filter(w => {
+            const name = (w.name || '').toLowerCase();
+            const type = (w.type || '').toLowerCase();
+            const code = (w.code || '').toLowerCase();
+            return !type.includes('hàng ôm') && !type.includes('xe') &&
+                   !name.includes('hàng ôm') && !name.includes('kho xe') &&
+                   !code.startsWith('kho-om-') && !code.startsWith('kho-xe-');
+        }),
+
+        get companyWarehouses() {
+            return (this.warehouses || []).filter(w => {
+                const name = (w.name || '').toLowerCase();
+                const type = (w.type || '').toLowerCase();
+                const code = (w.code || '').toLowerCase();
+                return !type.includes('hàng ôm') && !type.includes('xe') &&
+                       !name.includes('hàng ôm') && !name.includes('kho xe') &&
+                       !code.startsWith('kho-om-') && !code.startsWith('kho-xe-');
+            });
+        },
 
         // Hàng kho nhân sự quản lý xe
         showHoldingStockModal: false,
@@ -645,7 +663,8 @@ function deliveryExecutionApp() {
             amount: 0,
             accountantId: '',
             accountantName: '',
-            notes: ''
+            notes: '',
+            documents: []
         },
 
         // Form state for warehouse intake (bắt buộc chọn người xác nhận)
@@ -653,7 +672,8 @@ function deliveryExecutionApp() {
             intakeUserId: '',
             intakeUserName: '',
             warehouseId: {{ $warehouses->first()->id ?? 4 }},
-            notes: ''
+            notes: '',
+            documents: []
         },
 
         // Form state for fail delivery
@@ -1381,20 +1401,23 @@ function deliveryExecutionApp() {
             if (!files || files.length === 0) return;
 
             Array.from(files).forEach(file => {
-                if (!file.type.startsWith('image/')) {
-                    alert('Vui lòng chỉ chọn tệp hình ảnh (JPG, PNG, WebP)!');
+                if (file.size > 20 * 1024 * 1024) {
+                    alert(`Tệp ${file.name} vượt quá dung lượng cho phép (20MB)!`);
                     return;
                 }
-                if (file.size > 10 * 1024 * 1024) {
-                    alert(`Ảnh ${file.name} vượt quá dung lượng cho phép (10MB)!`);
-                    return;
-                }
+                const isImg = file.type.startsWith('image/');
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     if (!this.debtHandoverForm.documents) {
                         this.debtHandoverForm.documents = [];
                     }
-                    this.debtHandoverForm.documents.push(e.target.result);
+                    this.debtHandoverForm.documents.push({
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        data: e.target.result,
+                        is_image: isImg
+                    });
                 };
                 reader.readAsDataURL(file);
             });
@@ -1407,9 +1430,67 @@ function deliveryExecutionApp() {
             }
         },
 
-        viewDocPreview(url) {
-            this.previewDocUrl = url;
+        isImageDoc(doc) {
+            if (!doc) return false;
+            if (typeof doc === 'object') {
+                if (doc.is_image !== undefined) return !!doc.is_image;
+                if (doc.type && doc.type.startsWith('image/')) return true;
+                const name = doc.name || doc.url || '';
+                return /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(name);
+            }
+            if (typeof doc === 'string') {
+                if (doc.startsWith('data:image/')) return true;
+                return /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(doc);
+            }
+            return false;
+        },
+
+        getDocUrl(doc) {
+            if (!doc) return '';
+            return typeof doc === 'object' ? (doc.data || doc.url || '') : doc;
+        },
+
+        getDocName(doc, fallback = 'Tập tin') {
+            if (!doc) return fallback;
+            if (typeof doc === 'object' && doc.name) return doc.name;
+            if (typeof doc === 'string') {
+                if (doc.startsWith('data:')) return fallback;
+                return doc.split('/').pop() || fallback;
+            }
+            return fallback;
+        },
+
+        getDocIcon(doc) {
+            const name = (this.getDocName(doc) || '').toLowerCase();
+            const type = (typeof doc === 'object' ? (doc.type || '') : '').toLowerCase();
+            if (name.endsWith('.pdf') || type.includes('pdf')) return 'fa-file-pdf text-rose-500';
+            if (name.endsWith('.doc') || name.endsWith('.docx') || type.includes('word')) return 'fa-file-word text-blue-500';
+            if (name.endsWith('.xls') || name.endsWith('.xlsx') || type.includes('excel') || type.includes('sheet')) return 'fa-file-excel text-emerald-500';
+            return 'fa-file-lines text-slate-500';
+        },
+
+        viewDocPreview(docOrUrl) {
+            this.previewDocUrl = this.getDocUrl(docOrUrl);
             this.showDocPreviewModal = true;
+        },
+
+        viewOrOpenDoc(doc) {
+            const url = this.getDocUrl(doc);
+            if (this.isImageDoc(doc)) {
+                this.previewDocUrl = url;
+                this.showDocPreviewModal = true;
+            } else if (url) {
+                const w = window.open();
+                if (w) {
+                    if (url.startsWith('data:')) {
+                        w.document.write(`<iframe src="${url}" frameborder="0" style="border:0; top:0; left:0; bottom:0; right:0; width:100%; height:100%;" allowfullscreen></iframe>`);
+                    } else {
+                        w.location.href = url;
+                    }
+                } else {
+                    window.location.href = url;
+                }
+            }
         },
 
         openDebtHandoverModal(specificOrder = null) {
@@ -1501,12 +1582,47 @@ function deliveryExecutionApp() {
         // ─── Gửi Bàn Giao Tiền COD Cho Kế Toán Duyệt ─────────────
         openHandoverModal() {
             this.codApprovalForm.amount = this.cashInHand;
+            this.codApprovalForm.documents = [];
             this.codApprovalForm.notes = 'Bàn giao nộp tiền COD cuối chuyến xe cho Kế toán kiểm đếm.';
             if (this.accountants.length > 0 && !this.codApprovalForm.accountantId) {
                 this.codApprovalForm.accountantId = this.accountants[0].id;
                 this.codApprovalForm.accountantName = this.accountants[0].name;
             }
             this.showCodApprovalModal = true;
+        },
+
+        handleCodDocUpload(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            Array.from(files).forEach(file => {
+                if (file.size > 20 * 1024 * 1024) {
+                    alert(`Tệp ${file.name} vượt quá dung lượng cho phép (20MB)!`);
+                    return;
+                }
+                const isImg = file.type.startsWith('image/');
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    if (!this.codApprovalForm.documents) {
+                        this.codApprovalForm.documents = [];
+                    }
+                    this.codApprovalForm.documents.push({
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        data: e.target.result,
+                        is_image: isImg
+                    });
+                };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        },
+
+        removeCodDoc(index) {
+            if (this.codApprovalForm.documents) {
+                this.codApprovalForm.documents.splice(index, 1);
+            }
         },
 
         async confirmSettleCash() {
@@ -1519,7 +1635,7 @@ function deliveryExecutionApp() {
                 .filter(o => ['Đã giao', 'Giao thành công'].includes(o.status))
                 .map(o => o.order_code);
 
-            const confirmMsg = `Xác nhận gửi biên bản nộp tiền ${this.formatNumber(this.codApprovalForm.amount)} đ cho Kế toán [${this.codApprovalForm.accountantName}] kiểm đếm và duyệt?`;
+            const confirmMsg = `Xác nhận gửi biên bản nộp tiền ${this.formatNumber(this.codApprovalForm.amount)} đ kèm ${this.codApprovalForm.documents?.length || 0} ảnh/file chứng từ cho Kế toán [${this.codApprovalForm.accountantName}] kiểm đếm và duyệt?`;
             if (!confirm(confirmMsg)) {
                 return;
             }
@@ -1537,7 +1653,8 @@ function deliveryExecutionApp() {
                         amount: this.codApprovalForm.amount,
                         handoverAmount: this.codApprovalForm.amount,
                         orderCodes: completedCodes,
-                        notes: this.codApprovalForm.notes
+                        notes: this.codApprovalForm.notes,
+                        documents: this.codApprovalForm.documents
                     })
                 });
                 if (ok && data?.success) {
@@ -1663,6 +1780,40 @@ function deliveryExecutionApp() {
             }
         },
 
+        handleIntakeDocUpload(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            Array.from(files).forEach(file => {
+                if (file.size > 20 * 1024 * 1024) {
+                    alert(`Tệp ${file.name} vượt quá dung lượng cho phép (20MB)!`);
+                    return;
+                }
+                const isImg = file.type.startsWith('image/');
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    if (!this.intakeForm.documents) {
+                        this.intakeForm.documents = [];
+                    }
+                    this.intakeForm.documents.push({
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        data: e.target.result,
+                        is_image: isImg
+                    });
+                };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        },
+
+        removeIntakeDoc(index) {
+            if (this.intakeForm.documents) {
+                this.intakeForm.documents.splice(index, 1);
+            }
+        },
+
         async confirmIntakeAllReturns() {
             if (this.returnsList.length === 0) {
                 alert('Không có phiếu hàng hoàn trả nào trên xe.');
@@ -1673,7 +1824,7 @@ function deliveryExecutionApp() {
                 return;
             }
 
-            const confirmMsg = `Xác nhận gửi biên bản bàn giao ${this.returnsList.length} phiếu hàng hoàn trả (${this.formatNumber(this.returnsTotalAmount)} đ) cho Thủ kho [${this.intakeForm.intakeUserName}] kiểm đếm và duyệt nhập kho?`;
+            const confirmMsg = `Xác nhận gửi biên bản bàn giao ${this.returnsList.length} phiếu hàng hoàn trả (${this.formatNumber(this.returnsTotalAmount)} đ) kèm ${this.intakeForm.documents?.length || 0} tệp ảnh/file cho Thủ kho [${this.intakeForm.intakeUserName}] kiểm đếm và duyệt nhập kho?`;
             if (!confirm(confirmMsg)) {
                 return;
             }
@@ -1690,7 +1841,8 @@ function deliveryExecutionApp() {
                         intakeUserId: this.intakeForm.intakeUserId,
                         intakeUserName: this.intakeForm.intakeUserName,
                         warehouseId: this.intakeForm.warehouseId,
-                        notes: this.intakeForm.notes
+                        notes: this.intakeForm.notes,
+                        documents: this.intakeForm.documents
                     })
                 });
                 if (ok && data?.success) {

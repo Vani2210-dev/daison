@@ -512,6 +512,73 @@
                                class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-700 focus:bg-white focus:outline-none focus:border-purple-500">
                     </div>
                 </div>
+
+                <!-- Đính kèm ảnh & file chứng từ bàn giao hàng hóa -->
+                <div class="space-y-2 pt-2 border-t border-slate-100">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-[11px] font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                            <i class="fa-solid fa-paperclip text-indigo-600"></i>
+                            <span>Hình ảnh & File chứng từ bàn giao (ảnh biên bản ký nhận, ảnh hàng giao, v.v.):</span>
+                        </label>
+                        <span class="text-[11px] font-bold text-indigo-700"
+                              x-text="(confirmForm.documents ? confirmForm.documents.length : 0) + ' tệp đã chọn'"></span>
+                    </div>
+
+                    <!-- Hidden file inputs -->
+                    <input type="file" x-ref="deliveryCameraInput" accept="image/*" capture="environment" class="hidden"
+                           @change="handleDeliveryDocUpload($event)">
+                    <input type="file" x-ref="deliveryFileInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" multiple class="hidden"
+                           @change="handleDeliveryDocUpload($event)">
+
+                    <!-- Upload buttons -->
+                    <div class="flex items-center gap-2">
+                        <button type="button" @click="$refs.deliveryCameraInput.click()"
+                                class="flex-1 py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer">
+                            <i class="fa-solid fa-camera"></i>
+                            <span>Chụp Ảnh Ngay</span>
+                        </button>
+                        <button type="button" @click="$refs.deliveryFileInput.click()"
+                                class="flex-1 py-2 px-3 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer">
+                            <i class="fa-solid fa-folder-open text-amber-500"></i>
+                            <span>Tải Ảnh / File (PDF, Excel...)</span>
+                        </button>
+                    </div>
+
+                    <!-- Preview Grid -->
+                    <template x-if="confirmForm.documents && confirmForm.documents.length > 0">
+                        <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
+                            <template x-for="(doc, idx) in confirmForm.documents" :key="idx">
+                                <div class="relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-50 aspect-square shadow-2xs flex flex-col items-center justify-center p-1">
+                                    <template x-if="isImageDoc(doc)">
+                                        <img :src="getDocUrl(doc)" class="w-full h-full object-cover cursor-pointer rounded-lg"
+                                             @click="viewDocPreview(doc)" alt="Chứng từ">
+                                    </template>
+                                    <template x-if="!isImageDoc(doc)">
+                                        <div class="w-full h-full flex flex-col items-center justify-center text-center p-1.5 cursor-pointer hover:bg-white transition-colors"
+                                             @click="viewOrOpenDoc(doc)">
+                                            <i class="fa-solid text-2xl mb-1" :class="getDocIcon(doc)"></i>
+                                            <div class="text-[9.5px] font-bold text-slate-700 truncate w-full" x-text="getDocName(doc)"></div>
+                                            <div class="text-[8.5px] text-slate-400 font-mono" x-show="doc.size" x-text="(doc.size / 1024).toFixed(0) + ' KB'"></div>
+                                        </div>
+                                    </template>
+                                    <button type="button" @click.stop="removeDeliveryDoc(idx)"
+                                            class="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 text-white text-xs flex items-center justify-center hover:bg-rose-700 shadow-md cursor-pointer transition-transform group-hover:scale-110">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/60 text-white text-[9px] py-0.5 text-center font-bold" x-show="isImageDoc(doc)">
+                                        Ảnh <span x-text="idx + 1"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template x-if="!confirmForm.documents || confirmForm.documents.length === 0">
+                        <div class="p-2.5 rounded-xl border border-dashed border-slate-300 text-center text-slate-400 text-[11px] bg-slate-50/50">
+                            Chưa có chứng từ đính kèm (Ảnh biên bản giao nhận, phiếu ký nhận hoặc file đối soát).
+                        </div>
+                    </template>
+                </div>
             </div>
 
         </div>
@@ -1597,6 +1664,19 @@
         </div>
     </div>
 
+    <!-- Modal xem trước ảnh chứng từ phóng to (Lightbox) -->
+    <div x-show="showDocPreviewModal" x-cloak
+         class="fixed inset-0 z-[12000] bg-black/90 backdrop-blur-md flex items-center justify-center p-3"
+         @click="showDocPreviewModal = false">
+        <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center" @click.stop>
+            <button type="button" @click="showDocPreviewModal = false"
+                    class="absolute -top-10 right-0 text-white/80 hover:text-white text-3xl font-bold cursor-pointer">
+                &times;
+            </button>
+            <img :src="previewDocUrl" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl border border-white/20">
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -1635,6 +1715,105 @@ function deliveryConfirmPage() {
         showFailModal: false,
         failReason: 'Khách hẹn giao lại vào ngày mai',
         failNotes: '',
+        showDocPreviewModal: false,
+        previewDocUrl: null,
+
+        handleDeliveryDocUpload(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            Array.from(files).forEach(file => {
+                if (file.size > 20 * 1024 * 1024) {
+                    alert(`Tệp ${file.name} vượt quá dung lượng cho phép (20MB)!`);
+                    return;
+                }
+                const isImg = file.type.startsWith('image/');
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    if (!this.confirmForm.documents) {
+                        this.confirmForm.documents = [];
+                    }
+                    this.confirmForm.documents.push({
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        data: e.target.result,
+                        is_image: isImg
+                    });
+                };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        },
+
+        removeDeliveryDoc(index) {
+            if (this.confirmForm.documents) {
+                this.confirmForm.documents.splice(index, 1);
+            }
+        },
+
+        isImageDoc(doc) {
+            if (!doc) return false;
+            if (typeof doc === 'object') {
+                if (doc.is_image !== undefined) return !!doc.is_image;
+                if (doc.type && doc.type.startsWith('image/')) return true;
+                const name = doc.name || doc.url || '';
+                return /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(name);
+            }
+            if (typeof doc === 'string') {
+                if (doc.startsWith('data:image/')) return true;
+                return /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(doc);
+            }
+            return false;
+        },
+
+        getDocUrl(doc) {
+            if (!doc) return '';
+            return typeof doc === 'object' ? (doc.data || doc.url || '') : doc;
+        },
+
+        getDocName(doc, fallback = 'Tập tin') {
+            if (!doc) return fallback;
+            if (typeof doc === 'object' && doc.name) return doc.name;
+            if (typeof doc === 'string') {
+                if (doc.startsWith('data:')) return fallback;
+                return doc.split('/').pop() || fallback;
+            }
+            return fallback;
+        },
+
+        getDocIcon(doc) {
+            const name = (this.getDocName(doc) || '').toLowerCase();
+            const type = (typeof doc === 'object' ? (doc.type || '') : '').toLowerCase();
+            if (name.endsWith('.pdf') || type.includes('pdf')) return 'fa-file-pdf text-rose-500';
+            if (name.endsWith('.doc') || name.endsWith('.docx') || type.includes('word')) return 'fa-file-word text-blue-500';
+            if (name.endsWith('.xls') || name.endsWith('.xlsx') || type.includes('excel') || type.includes('sheet')) return 'fa-file-excel text-emerald-500';
+            return 'fa-file-lines text-slate-500';
+        },
+
+        viewDocPreview(docOrUrl) {
+            this.previewDocUrl = this.getDocUrl(docOrUrl);
+            this.showDocPreviewModal = true;
+        },
+
+        viewOrOpenDoc(doc) {
+            const url = this.getDocUrl(doc);
+            if (this.isImageDoc(doc)) {
+                this.previewDocUrl = url;
+                this.showDocPreviewModal = true;
+            } else if (url) {
+                const w = window.open();
+                if (w) {
+                    if (url.startsWith('data:')) {
+                        w.document.write(`<iframe src="${url}" frameborder="0" style="border:0; top:0; left:0; bottom:0; right:0; width:100%; height:100%;" allowfullscreen></iframe>`);
+                    } else {
+                        w.location.href = url;
+                    }
+                } else {
+                    window.location.href = url;
+                }
+            }
+        },
 
         // --- Tồn Kho Hàng Ôm & Bán Hàng Trực Tiếp ---
         employeeWarehouses: @json($employeeWarehouses ?? []),
@@ -1667,6 +1846,7 @@ function deliveryConfirmPage() {
             combinedBank: 0,
             combinedDebt: 0,
             handoverToUserId: '',
+            documents: [],
             items: []
         },
 
@@ -2257,6 +2437,7 @@ function deliveryConfirmPage() {
                     combinedBank: isComb ? Number(this.confirmForm.combinedBank || 0) : 0,
                     combinedDebt: isComb ? Number(this.confirmForm.combinedDebt || 0) : 0,
                     handoverToUserId: this.confirmForm.handoverToUserId || null,
+                    documents: this.confirmForm.documents || [],
                 };
 
                 const res = await fetch('/delivery/complete-order', {

@@ -10,6 +10,36 @@ use Illuminate\Http\Request;
 class OrderController extends Controller
 {
     /**
+     * Order statuses where physical goods have left the warehouse and must be deducted from on-hand stock.
+     */
+    public const EXPORTED_STOCK_STATUSES = [
+        'Đang vận chuyển',
+        'Đang giao hàng',
+        'Đã giao',
+        'Giao thành công',
+        'Đã giao hàng',
+        'Hoàn tất',
+        'Đã quyết toán',
+        'Không thành công',
+        'Giao không thành công',
+        'Giao thất bại',
+        'Chờ thủ kho duyệt hoàn',
+        'Chờ nhập kho lại',
+    ];
+
+    /**
+     * Order statuses that release any held/deducted inventory back to warehouse availability.
+     */
+    public const RELEASED_STOCK_STATUSES = [
+        'Báo giá',
+        'Bản nháp',
+        'Từ chối hạn mức',
+        'Hủy',
+        'Đã hủy',
+        'Đã huỷ',
+        'Đã hoàn kho',
+    ];
+    /**
      * Bootstrap data for SPA initial load
      */
     public function getBootstrapData()
@@ -353,15 +383,8 @@ class OrderController extends Controller
 
             $order->save();
 
-            // Quản lý trừ / hoàn tồn kho tự động theo quy trình Chốt đơn & Hủy đơn
-            $isFinalizedStatus = !in_array($status, ['Báo giá', 'Bản nháp', 'Chờ duyệt', 'Chờ kế toán duyệt', 'Hủy', 'Đã hủy', 'Đã huỷ']);
-            $isCancelledStatus = in_array($status, ['Hủy', 'Đã hủy', 'Đã huỷ']);
-
-            if ($isFinalizedStatus && !$order->stock_deducted) {
-                $this->deductOrderStock($order);
-            } elseif ($isCancelledStatus && $order->stock_deducted) {
-                $this->restoreOrderStock($order);
-            }
+            // Chỉ trừ tồn kho thực tế khi đơn thực sự xuất kho/vận chuyển; trước đó chỉ giữ tồn khả dụng
+            $this->syncStockForStatus($order, $oldStatus);
 
             try {
                 // Ghi vào file log riêng của đơn hàng và AuditLog
@@ -422,8 +445,6 @@ class OrderController extends Controller
                         'notes'              => $log->notes,
                     ];
                 });
-
-            \App\Services\InventoryAvailabilityService::clearCache();
 
             return response()->json([
                 'success' => true,
@@ -916,6 +937,11 @@ class OrderController extends Controller
             }
         }
 
+        // Nếu đơn đã xuất kho thực tế trước đó và đang sửa mặt hàng hoặc đổi kho xuất, hoàn tồn kho cũ trước khi lưu lại
+        if ($order && $order->stock_deducted && in_array($oldStatus, self::EXPORTED_STOCK_STATUSES, true) && ((is_array($items) && count($items) > 0) || ($orderAttributes['warehouse'] !== $order->warehouse))) {
+            $this->restoreOrderStock($order);
+        }
+
         if ($order) {
             $order->update($orderAttributes);
         } else {
@@ -1267,16 +1293,6 @@ class OrderController extends Controller
             }
         }
 
-        // Quản lý trừ / hoàn tồn kho tự động theo quy trình Chốt đơn & Hủy đơn
-        $isFinalizedStatus = !in_array($order->status, ['Báo giá', 'Bản nháp', 'Chờ duyệt', 'Chờ kế toán duyệt', 'Hủy', 'Đã hủy', 'Đã huỷ']);
-        $isCancelledStatus = in_array($order->status, ['Hủy', 'Đã hủy', 'Đã huỷ']);
-
-        if ($isFinalizedStatus && !$order->stock_deducted) {
-            $this->deductOrderStock($order);
-        } elseif ($isCancelledStatus && $order->stock_deducted) {
-            $this->restoreOrderStock($order);
-        }
-
         // Tự động tính toán lại công nợ đại lý
         $updatedDealerDebt = null;
         if ($order->dealer_id) {
@@ -1447,7 +1463,8 @@ class OrderController extends Controller
         }
         // ===== END CREDIT OVERRUN DETECTION =====
 
-        \App\Http\Controllers\WebViewController::clearPosProductsCache();
+        // Chỉ trừ tồn kho thực tế khi đơn chuyển sang trạng thái xuất kho/giao vận; trước đó chỉ tạm giữ tồn khả dụng
+        $this->syncStockForStatus($order, $oldStatus);
 
         return response()->json([
             'success'        => true,
@@ -1581,6 +1598,8 @@ class OrderController extends Controller
             if ($dealerObj) $updatedDealerDebt = $dealerObj->recalculateCurrentDebt();
         }
 
+        self::refreshAvailabilityCache();
+
         return response()->json([
             'success'         => true,
             'message'         => $responseMsg,
@@ -1595,7 +1614,37 @@ class OrderController extends Controller
     }
 
     /**
-     * Deduct stock for order items when order is finalized (Chốt đơn)
+     * Refresh persisted reserved quantities in DB and clear POS catalog availability cache.
+     */
+    public static function refreshAvailabilityCache(): void
+    {
+        \App\Services\InventoryAvailabilityService::recalculateAndSyncDatabase();
+        \App\Http\Controllers\WebViewController::clearPosProductsCache();
+    }
+
+    /**
+     * Keep physical stock_quantity and reserved_quantity consistent with the order lifecycle:
+     * pre-export orders only reserve available stock, while dispatched/delivered orders deduct on-hand stock.
+     */
+    public function syncStockForStatus(Order $order, ?string $oldStatus = null, bool $syncAvailability = true): void
+    {
+        $isExported = in_array($order->status, self::EXPORTED_STOCK_STATUSES, true);
+        $isReleased = in_array($order->status, self::RELEASED_STOCK_STATUSES, true);
+        $wasExported = $oldStatus !== null && in_array($oldStatus, self::EXPORTED_STOCK_STATUSES, true);
+
+        if ($isExported && !$order->stock_deducted) {
+            $this->deductOrderStock($order);
+        } elseif (($isReleased || ($wasExported && !$isExported)) && $order->stock_deducted) {
+            $this->restoreOrderStock($order);
+        }
+
+        if ($syncAvailability) {
+            self::refreshAvailabilityCache();
+        }
+    }
+
+    /**
+     * Deduct stock for order items when order physically leaves the warehouse (Đang vận chuyển / Đã giao)
      */
     public function deductOrderStock(Order $order)
     {
@@ -1613,7 +1662,7 @@ class OrderController extends Controller
             $targetWarehouse = \App\Models\Warehouse::first();
         }
 
-        $order->loadMissing('items');
+        $order->load('items');
         foreach ($order->items as $item) {
             $qty = (float) $item->quantity;
             if ($qty <= 0) continue;
@@ -1721,7 +1770,7 @@ class OrderController extends Controller
             $targetWarehouse = \App\Models\Warehouse::first();
         }
 
-        $order->loadMissing('items');
+        $order->load('items');
         foreach ($order->items as $item) {
             $qty = (float) $item->quantity;
             if ($qty <= 0) continue;
@@ -1929,7 +1978,7 @@ class OrderController extends Controller
     public static function convertNumberToVietnameseWords($number): string
     {
         $number = (float)$number;
-        if ($number == 0) return 'KHÔNG ĐỒNG';
+        if ($number == 0) return 'KHÔNG VIỆT NAM ĐỒNG';
 
         $digits = ['', 'MỘT', 'HAI', 'BA', 'BỐN', 'NĂM', 'SÁU', 'BẢY', 'TÁM', 'CHÍN'];
         $units = ['', 'NGHÌN', 'TRIỆU', 'TỶ', 'NGHÌN TỶ', 'TRIỆU TỶ'];
@@ -1982,7 +2031,7 @@ class OrderController extends Controller
             }
         }
 
-        $res = trim(preg_replace('/\s+/', ' ', implode(' ', $words))) . ' ĐỒNG';
+        $res = trim(preg_replace('/\s+/', ' ', implode(' ', $words))) . ' VIỆT NAM ĐỒNG';
         return mb_strtoupper($res, 'UTF-8');
     }
 
@@ -2177,6 +2226,7 @@ class OrderController extends Controller
         $finalTotal = (float)($order->total_amount > 0 ? $order->total_amount : max(0, $totalItemsAmount - $extraDiscount));
 
         $orderCreatorName = $order->order_creator ?: ($order->creator?->name ?: ($order->salesRep?->name ?: ''));
+        $salesRepName = $order->salesRep?->name ?: ($dealer?->salesRep?->name ?: $orderCreatorName);
         
         $latestAudit = \Illuminate\Support\Facades\DB::table('audit_logs')
             ->where('target_document_code', $order->order_code)
@@ -2204,6 +2254,7 @@ class OrderController extends Controller
             'delivery_driver'       => $order->assignedDriver?->name ?: '',
             'delivery_vehicle'      => $order->assigned_vehicle_plate ?: '',
             'delivery_date'         => $order->delivery_date ? \Carbon\Carbon::parse($order->delivery_date)->format('d/m/Y') : '',
+            'sales_rep_name'        => $salesRepName,
             'creator_name'          => $orderCreatorName,
             'updater_name'          => $updaterName,
             'subtotal'              => (float)($order->subtotal > 0 ? $order->subtotal : ($subtotal > 0 ? $subtotal : $totalItemsAmount)),
@@ -2221,7 +2272,7 @@ class OrderController extends Controller
      */
     public function getOrderPrintData($id)
     {
-        $order = Order::with(['items.product.category', 'dealer', 'creator', 'assignedDriver', 'warehouseStaff', 'salesRep'])
+        $order = Order::with(['items.product.category', 'dealer.salesRep', 'creator', 'assignedDriver', 'warehouseStaff', 'salesRep'])
             ->where('id', $id)
             ->orWhere('order_code', $id)
             ->first();
@@ -2252,7 +2303,7 @@ class OrderController extends Controller
             return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 đơn hàng!'], 400);
         }
 
-        $orders = Order::with(['items.product.category', 'dealer', 'creator', 'assignedDriver', 'warehouseStaff', 'salesRep'])
+        $orders = Order::with(['items.product.category', 'dealer.salesRep', 'creator', 'assignedDriver', 'warehouseStaff', 'salesRep'])
             ->whereIn('id', $orderIds)
             ->orWhereIn('order_code', $orderIds)
             ->get();
@@ -2463,8 +2514,7 @@ class OrderController extends Controller
             ]);
         } catch (\Throwable $e) {}
 
-        \App\Services\InventoryAvailabilityService::clearCache();
-        \App\Http\Controllers\WebViewController::clearPosProductsCache();
+        self::refreshAvailabilityCache();
 
         return response()->json([
             'success' => true,
@@ -2540,8 +2590,7 @@ class OrderController extends Controller
             }
         }
 
-        \App\Services\InventoryAvailabilityService::clearCache();
-        \App\Http\Controllers\WebViewController::clearPosProductsCache();
+        self::refreshAvailabilityCache();
 
         return response()->json([
             'success' => true,
@@ -2610,8 +2659,7 @@ class OrderController extends Controller
             $successCount++;
         }
 
-        \App\Services\InventoryAvailabilityService::clearCache();
-        \App\Http\Controllers\WebViewController::clearPosProductsCache();
+        self::refreshAvailabilityCache();
 
         return response()->json([
             'success' => true,

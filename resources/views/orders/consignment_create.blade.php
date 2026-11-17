@@ -40,7 +40,7 @@
         </div>
 
         <div class="flex items-center gap-3">
-            <div class="text-xs text-slate-500 hidden sm:flex items-center gap-1.5">
+            <div class="shortcut-hint text-xs text-slate-500 hidden md:flex items-center gap-1.5">
                 <span>Phím tắt:</span>
                 <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">F8</kbd>
                 <span>Thêm dòng</span>
@@ -53,7 +53,7 @@
             </div>
             <button type="button" @click="confirmClose()" class="text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 cursor-pointer">
                 <i class="fa-solid fa-xmark"></i>
-                <span>Đóng (Esc)</span>
+                <span>Đóng<span class="shortcut-hint hidden md:inline"> (Esc)</span></span>
             </button>
         </div>
     </div>
@@ -193,7 +193,8 @@
                                            }
                                        "
                                        @keydown.escape.prevent="closeStaffDropdown()"
-                                       placeholder="🔍 Gõ tên, mã NV hoặc SĐT để tìm (phím ↑ ↓ Enter)..."
+                                       placeholder="🔍 Gõ tên, mã NV hoặc SĐT để tìm..."
+                                       :placeholder="isMobileViewport ? '🔍 Gõ tên, mã NV hoặc SĐT để tìm...' : '🔍 Gõ tên, mã NV hoặc SĐT để tìm (phím ↑ ↓ Enter)...'"
                                        class="w-full pl-9 pr-14 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors">
 
                                 <!-- Nút xóa & mũi tên dropdown -->
@@ -368,7 +369,8 @@
                                                        }
                                                    "
                                                    @keydown.escape.prevent="activeProdDropdownIndex = null"
-                                                   placeholder="Tìm mã hoặc tên sản phẩm (phím ↑ ↓ Enter)..." 
+                                                   placeholder="Tìm mã hoặc tên sản phẩm..." 
+                                                   :placeholder="isMobileViewport ? 'Tìm mã hoặc tên sản phẩm...' : 'Tìm mã hoặc tên sản phẩm (phím ↑ ↓ Enter)...'" 
                                                    class="w-full pl-3 pr-8 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:border-sky-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors">
 
                                             <!-- Nút xóa nhanh để tìm lại -->
@@ -484,9 +486,9 @@
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
                 <button type="button" @click="addNewRow()" class="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold text-xs rounded-xl border border-sky-200 transition-colors cursor-pointer shadow-2xs">
                     <i class="fa-solid fa-plus text-xs"></i>
-                    <span>Thêm dòng (F8)</span>
+                    <span>Thêm dòng<span class="shortcut-hint hidden md:inline"> (F8)</span></span>
                 </button>
-                <div class="text-[11px] text-slate-500 font-medium flex items-center gap-1.5">
+                <div class="shortcut-hint text-[11px] text-slate-500 font-medium hidden md:flex items-center gap-1.5">
                     <span class="text-slate-400">Mẹo:</span>
                     <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">F8</kbd> thêm dòng
                     <span class="text-slate-300">&bull;</span>
@@ -581,7 +583,7 @@
         <div class="flex items-center gap-2.5">
             <button type="button" @click="confirmClose()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer">
                 <i class="fa-solid fa-arrow-left text-xs"></i>
-                <span>Đóng (Esc)</span>
+                <span>Đóng<span class="shortcut-hint hidden md:inline"> (Esc)</span></span>
             </button>
 
             <button type="button" 
@@ -590,7 +592,7 @@
                     class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-black text-xs rounded-xl shadow-md shadow-amber-600/20 transition-all flex items-center gap-2 cursor-pointer">
                 <i class="fa-solid fa-spinner fa-spin text-xs" x-show="submitting" style="display: none;"></i>
                 <i class="fa-solid fa-check text-xs" x-show="!submitting"></i>
-                <span x-text="submitting ? 'Đang lưu đơn...' : '{{ $isAccountant ? 'Lưu & Duyệt bốc hàng (F9)' : 'Gửi đơn chờ duyệt (F9)' }}'"></span>
+                <span><span x-text="submitting ? 'Đang lưu đơn...' : '{{ $isAccountant ? 'Lưu & Duyệt bốc hàng' : 'Gửi đơn chờ duyệt' }}'"></span><span class="shortcut-hint hidden md:inline" x-show="!submitting"> (F9)</span></span>
             </button>
         </div>
     </div>
@@ -603,6 +605,7 @@ function consignmentFormApp() {
     return {
         submitting: false,
         errorMessage: '',
+        isMobileViewport: typeof window !== 'undefined' ? window.innerWidth <= 768 : false,
         isAccountant: {{ $isAccountant ? 'true' : 'false' }},
         currentUser: @json($currentUser),
         staffList: @json($staff),
@@ -644,6 +647,9 @@ function consignmentFormApp() {
         ],
 
         init() {
+            window.addEventListener('resize', () => {
+                this.isMobileViewport = window.innerWidth <= 768;
+            });
             if (this.formData.staff_id) {
                 const found = (this.staffList || []).find(s => s.id == this.formData.staff_id);
                 if (found) {

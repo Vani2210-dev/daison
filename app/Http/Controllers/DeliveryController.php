@@ -211,6 +211,148 @@ class DeliveryController extends Controller
     }
 
     /**
+     * Xử lý file/ảnh chứng từ đính kèm (multipart file hoặc base64 / URL đã có)
+     */
+    protected function handleUploadedDocuments(Request $request, string $subfolder = 'handovers', string $field = 'documents'): array
+    {
+        $savedItems = [];
+        $uploadDir = public_path('uploads/' . $subfolder);
+        if (!\Illuminate\Support\Facades\File::exists($uploadDir)) {
+            \Illuminate\Support\Facades\File::makeDirectory($uploadDir, 0755, true);
+        }
+
+        // 1. Xử lý file multipart từ form
+        $files = $request->file($field) ?: ($request->file('files') ?: []);
+        if ($files && !is_array($files)) {
+            $files = [$files];
+        }
+        foreach ($files as $file) {
+            if ($file && $file->isValid()) {
+                $origName = $file->getClientOriginalName();
+                $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+                $size = $file->getSize();
+                $mime = $file->getMimeType() ?: 'application/octet-stream';
+                $filename = 'doc_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                $file->move($uploadDir, $filename);
+                $url = '/uploads/' . $subfolder . '/' . $filename;
+                $savedItems[] = [
+                    'url'  => $url,
+                    'name' => $origName,
+                    'size' => $size,
+                    'type' => $mime,
+                ];
+            }
+        }
+
+        // 2. Xử lý Base64 hoặc mảng JSON payload
+        $raw = [];
+        if ($request->getContent()) {
+            $raw = json_decode($request->getContent(), true) ?: [];
+        }
+        $docs = $request->input($field) ?? ($raw[$field] ?? ($request->input('files') ?? ($raw['files'] ?? [])));
+        if (is_string($docs)) {
+            $decoded = json_decode($docs, true);
+            $docs = is_array($decoded) ? $decoded : [$docs];
+        }
+
+        if (is_array($docs)) {
+            foreach ($docs as $doc) {
+                // Trường hợp doc là object { url, name, size, type, data }
+                if (is_array($doc)) {
+                    $itemUrl = $doc['url'] ?? null;
+                    $itemData = $doc['data'] ?? ($doc['base64'] ?? null);
+                    $itemName = $doc['name'] ?? null;
+                    $itemSize = $doc['size'] ?? 0;
+                    $itemType = $doc['type'] ?? '';
+
+                    if ($itemData && str_starts_with($itemData, 'data:')) {
+                        $parts = explode(',', $itemData, 2);
+                        if (count($parts) === 2) {
+                            $meta = $parts[0];
+                            $data = base64_decode($parts[1]);
+                            $ext = 'jpg';
+                            if (str_contains($meta, 'image/png')) $ext = 'png';
+                            elseif (str_contains($meta, 'image/webp')) $ext = 'webp';
+                            elseif (str_contains($meta, 'image/gif')) $ext = 'gif';
+                            elseif (str_contains($meta, 'pdf')) $ext = 'pdf';
+                            elseif (str_contains($meta, 'wordprocessingml') || str_contains($meta, 'msword')) $ext = 'docx';
+                            elseif (str_contains($meta, 'spreadsheetml') || str_contains($meta, 'ms-excel')) $ext = 'xlsx';
+
+                            if ($itemName && str_contains($itemName, '.')) {
+                                $ext = strtolower(pathinfo($itemName, PATHINFO_EXTENSION)) ?: $ext;
+                            }
+                            $filename = 'doc_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                            file_put_contents($uploadDir . DIRECTORY_SEPARATOR . $filename, $data);
+                            $savedItems[] = [
+                                'url'  => '/uploads/' . $subfolder . '/' . $filename,
+                                'name' => $itemName ?: $filename,
+                                'size' => strlen($data),
+                                'type' => $itemType ?: $meta,
+                            ];
+                            continue;
+                        }
+                    } elseif ($itemUrl && (str_starts_with($itemUrl, '/uploads/') || str_starts_with($itemUrl, 'http'))) {
+                        $savedItems[] = [
+                            'url'  => $itemUrl,
+                            'name' => $itemName ?: basename($itemUrl),
+                            'size' => $itemSize,
+                            'type' => $itemType,
+                        ];
+                        continue;
+                    }
+                }
+
+                // Trường hợp doc là string
+                if (is_string($doc) && !empty($doc)) {
+                    if (str_starts_with($doc, 'data:')) {
+                        $parts = explode(',', $doc, 2);
+                        if (count($parts) === 2) {
+                            $meta = $parts[0];
+                            $data = base64_decode($parts[1]);
+                            $ext = 'jpg';
+                            if (str_contains($meta, 'image/png')) $ext = 'png';
+                            elseif (str_contains($meta, 'image/webp')) $ext = 'webp';
+                            elseif (str_contains($meta, 'image/gif')) $ext = 'gif';
+                            elseif (str_contains($meta, 'pdf')) $ext = 'pdf';
+                            elseif (str_contains($meta, 'wordprocessingml') || str_contains($meta, 'msword')) $ext = 'docx';
+                            elseif (str_contains($meta, 'spreadsheetml') || str_contains($meta, 'ms-excel')) $ext = 'xlsx';
+
+                            $filename = 'doc_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                            file_put_contents($uploadDir . DIRECTORY_SEPARATOR . $filename, $data);
+                            $savedItems[] = [
+                                'url'  => '/uploads/' . $subfolder . '/' . $filename,
+                                'name' => $filename,
+                                'size' => strlen($data),
+                                'type' => $meta,
+                            ];
+                        }
+                    } elseif (str_starts_with($doc, '/uploads/') || str_starts_with($doc, 'http')) {
+                        $savedItems[] = [
+                            'url'  => $doc,
+                            'name' => basename($doc),
+                            'size' => 0,
+                            'type' => '',
+                        ];
+                    }
+                }
+            }
+        }
+
+        // Loại bỏ trùng lặp theo url
+        $unique = [];
+        $result = [];
+        foreach ($savedItems as $item) {
+            $u = $item['url'];
+            if (!isset($unique[$u])) {
+                $unique[$u] = true;
+                $result[] = $item;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * Bootstrap data for Driver Cash Handovers in SPA
      */
     public function getDriverCashHandoversBootstrapData()
@@ -233,6 +375,7 @@ class DeliveryController extends Controller
                     'orderCodes'        => is_array($h->order_codes) ? $h->order_codes : (!empty($h->order_codes) ? (json_decode($h->order_codes, true) ?: []) : []),
                     'orderCount'        => (int) $h->order_count,
                     'notes'             => $h->notes,
+                    'documents'         => is_array($h->documents) ? $h->documents : (!empty($h->documents) ? (json_decode($h->documents, true) ?: []) : []),
                     'receiptCode'       => $h->receipt_code,
                     'status'            => $h->status,
                     'timestamp'         => $h->created_at ? $h->created_at->format('H:i d/m/Y') : date('H:i d/m/Y'),
@@ -316,6 +459,12 @@ class DeliveryController extends Controller
         $notes = $data['notes'] ?? ($existingHandover?->notes ?? '');
         $rejectedReason = $data['rejectedReason'] ?? '';
 
+        // Xử lý tệp đính kèm / hình ảnh chứng từ bàn giao tiền
+        $documents = $this->handleUploadedDocuments($request, 'cash_handovers', 'documents');
+        if (empty($documents) && $existingHandover && !empty($existingHandover->documents)) {
+            $documents = is_array($existingHandover->documents) ? $existingHandover->documents : (json_decode($existingHandover->documents, true) ?: []);
+        }
+
         // TRƯỜNG HỢP 1: Lái xe gửi bàn giao tiền chờ kế toán duyệt
         if ($action === 'submit' || $action === 'pending') {
             if (!empty($orderCodes) && is_array($orderCodes)) {
@@ -339,6 +488,7 @@ class DeliveryController extends Controller
                     'order_codes'         => $orderCodes,
                     'order_count'         => count($orderCodes),
                     'notes'               => $notes,
+                    'documents'           => $documents,
                     'status'              => 'Chờ kế toán duyệt',
                 ]
             );
@@ -808,17 +958,19 @@ class DeliveryController extends Controller
             }
             $veh->save();
 
-            // Nếu xe xuất bến, tự động cập nhật các đơn hàng chưa giao trên xe sang trạng thái "Đang vận chuyển"
+            // Nếu xe xuất bến, tự động cập nhật các đơn hàng chưa giao trên xe sang trạng thái "Đang vận chuyển" và trừ tồn kho thực tế
             $updatedOrderCodes = [];
             if ($isDeparting) {
                 $assignedOrders = \App\Models\Order::where('assigned_vehicle_plate', $veh->plate_number)
                     ->whereNotIn('status', ['Đã giao', 'Giao thành công', 'Đã quyết toán', 'Đã hủy', 'Giao không thành công', 'Giao thất bại'])
                     ->get();
 
+                $orderCtrl = app(\App\Http\Controllers\OrderController::class);
                 foreach ($assignedOrders as $ord) {
                     $oldStatus = $ord->status;
                     $ord->status = 'Đang vận chuyển';
                     $ord->save();
+                    $orderCtrl->syncStockForStatus($ord, $oldStatus, false);
                     $updatedOrderCodes[] = $ord->order_code;
 
                     try {
@@ -835,6 +987,10 @@ class DeliveryController extends Controller
                             'notes'                => "Xe {$veh->plate_number} xuất bến lúc {$veh->departure_time}. Đơn hàng chuyển sang Đang vận chuyển.",
                         ]);
                     } catch (\Throwable $e) {}
+                }
+
+                if (!empty($updatedOrderCodes)) {
+                    \App\Http\Controllers\OrderController::refreshAvailabilityCache();
                 }
             }
 
@@ -1203,6 +1359,7 @@ class DeliveryController extends Controller
                     'status'              => $r->status,
                     'timestamp'           => $r->created_at ? $r->created_at->format('H:i d/m/Y') : date('H:i d/m/Y'),
                     'notes'               => $r->notes,
+                    'documents'           => is_array($r->documents) ? $r->documents : (!empty($r->documents) ? (json_decode($r->documents, true) ?: []) : []),
                     'items'               => $r->items->map(function ($it) {
                         return [
                             'sku'         => $it->sku,
@@ -1385,12 +1542,16 @@ class DeliveryController extends Controller
 
         // TRƯỜNG HỢP 1: Lái xe gửi yêu cầu bàn giao hàng hoàn trả cho thủ kho duyệt
         if ($action === 'submit' || $action === 'pending') {
+            $documents = $this->handleUploadedDocuments($request, 'return_handovers', 'documents');
+
             foreach ($slips as $returnSlip) {
+                $slipDocs = !empty($documents) ? $documents : ($returnSlip->documents ?: []);
                 $returnSlip->update([
                     'status'              => 'Chờ thủ kho duyệt nhập',
                     'intake_by_user_id'   => $intakeUserId,
                     'intake_warehouse_id' => $warehouseId,
                     'notes'               => !empty($data['notes']) ? $data['notes'] : $returnSlip->notes,
+                    'documents'           => $slipDocs,
                 ]);
 
                 try {
@@ -1566,20 +1727,7 @@ class DeliveryController extends Controller
                     $order->save();
 
                     // Reset trạng thái bốc/kiểm của các sản phẩm trong đơn
-                    foreach ($order->items as $it) {
-                        $it->is_picked = false;
-                        $it->picked_qty = 0;
-                        $it->is_checked = false;
-                        $it->checked_qty = 0;
-                        $it->checked_by = null;
-                        $it->checked_at = null;
-                        $it->assigned_staff = null;
-                        $it->assigned_staff_list = [];
-                        $it->item_status = 'Chờ bốc';
-                        $it->shortage_reported = false;
-                        $it->shortage_reason = null;
-                        $it->save();
-                    }
+                    $this->resetOrderItemsPickingState($order);
 
                     if ($order->dealer_id) {
                         \App\Models\Dealer::find($order->dealer_id)?->recalculateCurrentDebt();
@@ -1609,6 +1757,8 @@ class DeliveryController extends Controller
                 }
             }
         }
+
+        \App\Http\Controllers\OrderController::refreshAvailabilityCache();
 
         return response()->json([
             'success'        => true,
@@ -1846,8 +1996,8 @@ class DeliveryController extends Controller
               ->whereYear('intake_at', now()->year);
         })->sum('returned_qty');
 
-        $warehouses = \App\Models\Warehouse::all();
-        $physicalWarehouses = \App\Models\Warehouse::whereNotIn('type', ['Kho hàng ôm', 'Kho xe lưu động'])->where('is_active', true)->get();
+        $warehouses = \App\Models\Warehouse::companyWarehouses()->get()->unique('name')->values();
+        $physicalWarehouses = $warehouses;
         $warehouseStaff = \App\Models\User::where(function($q) {
             $q->whereIn('department', ['Warehouse', 'Kho', 'Kho vận', 'Vận hành', 'Executive', 'Ban Giám Đốc'])
               ->orWhereHas('roles', function($rq) {
@@ -1883,8 +2033,8 @@ class DeliveryController extends Controller
         \App\Models\Warehouse::syncEmployeeWarehouses();
         \App\Models\ConsignmentOrder::syncAllHoldingStocks();
 
-        $warehouses = \App\Models\Warehouse::all();
-        $physicalWarehouses = \App\Models\Warehouse::whereNotIn('type', ['Kho hàng ôm', 'Kho xe lưu động'])->where('is_active', true)->get();
+        $warehouses = \App\Models\Warehouse::companyWarehouses()->get()->unique('name')->values();
+        $physicalWarehouses = $warehouses;
         $warehouseStaff = \App\Models\User::where(function($q) {
             $q->whereIn('department', ['Warehouse', 'Kho', 'Kho vận', 'Vận hành', 'Executive', 'Ban Giám Đốc'])
               ->orWhereHas('roles', function($rq) {
@@ -2334,20 +2484,7 @@ class DeliveryController extends Controller
         }
 
         // 3. Reset các sản phẩm trong đơn để lần sau giao bốc kiểm lại từ đầu
-        foreach ($order->items as $it) {
-            $it->is_picked = false;
-            $it->picked_qty = 0;
-            $it->is_checked = false;
-            $it->checked_qty = 0;
-            $it->checked_by = null;
-            $it->checked_at = null;
-            $it->assigned_staff = null;
-            $it->assigned_staff_list = [];
-            $it->item_status = 'Chờ bốc';
-            $it->shortage_reported = false;
-            $it->shortage_reason = null;
-            $it->save();
-        }
+        $this->resetOrderItemsPickingState($order);
 
         // 4. Cập nhật lại công nợ nếu có
         if ($order->dealer_id) {
@@ -2394,6 +2531,8 @@ class DeliveryController extends Controller
                 );
             } catch (\Throwable $e) {}
         }
+
+        \App\Http\Controllers\OrderController::refreshAvailabilityCache();
 
         return response()->json([
             'success' => true,
@@ -2454,10 +2593,12 @@ class DeliveryController extends Controller
         }
 
         $updatedOrders = [];
+        $orderCtrl = app(\App\Http\Controllers\OrderController::class);
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
             foreach ($orders as $order) {
                 $oldPlate = $order->assigned_vehicle_plate;
+                $oldStatus = $order->status;
 
                 if (empty($targetVehiclePlate)) {
                     // Rút đơn khỏi xe về hàng chờ
@@ -2467,6 +2608,7 @@ class DeliveryController extends Controller
                         $order->status = 'Đã bốc xong';
                     }
                     $order->save();
+                    $orderCtrl->syncStockForStatus($order, $oldStatus, false);
 
                     // Ghi nhật ký thao tác đơn hàng vào file log riêng và AuditLog
                     $order->logOperation(
@@ -2490,6 +2632,7 @@ class DeliveryController extends Controller
                     $order->failed_delivery_reason = null;
                     $order->failed_delivery_note = null;
                     $order->save();
+                    $orderCtrl->syncStockForStatus($order, $oldStatus, false);
 
                     // Ghi nhật ký thao tác đơn hàng vào file log riêng và AuditLog
                     $order->logOperation(
@@ -2514,6 +2657,8 @@ class DeliveryController extends Controller
             \Illuminate\Support\Facades\DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Lỗi khi lưu điều phối: ' . $ex->getMessage()], 500);
         }
+
+        \App\Http\Controllers\OrderController::refreshAvailabilityCache();
 
         $count = count($updatedOrders);
         $msg = empty($targetVehiclePlate)
@@ -2793,6 +2938,7 @@ class DeliveryController extends Controller
                     'intakeWarehouseId'   => $r->intake_warehouse_id,
                     'timestamp'           => $r->created_at ? $r->created_at->format('H:i d/m/Y') : date('H:i d/m/Y'),
                     'notes'               => $r->notes,
+                    'documents'           => is_array($r->documents) ? $r->documents : (!empty($r->documents) ? (json_decode($r->documents, true) ?: []) : []),
                     'items'               => $r->items->map(function ($it) {
                         return [
                             'id'          => $it->id,
@@ -2816,7 +2962,7 @@ class DeliveryController extends Controller
             ->get();
 
         $routes = DeliveryRoute::all();
-        $warehouses = \App\Models\Warehouse::where('is_active', true)->get();
+        $warehouses = \App\Models\Warehouse::companyWarehouses()->get()->unique('name')->values();
 
         // Đồng bộ và tải kho hàng ôm của nhân sự quản lý xe
         \App\Models\Warehouse::syncEmployeeWarehouses();
@@ -3103,11 +3249,19 @@ class DeliveryController extends Controller
         $vehicle->departure_time = $now;
         $vehicle->save();
 
-        Order::where('assigned_vehicle_plate', $plate)
+        $ordersToDepart = Order::with('items')
+            ->where('assigned_vehicle_plate', $plate)
             ->whereIn('status', ['Đã kiểm hàng', 'Đã kiểm', 'Sẵn sàng xuất xe', 'Kho đã xuất đủ', 'Đã bốc xong'])
-            ->update([
-                'status' => 'Đang vận chuyển'
-            ]);
+            ->get();
+
+        $orderCtrl = app(\App\Http\Controllers\OrderController::class);
+        foreach ($ordersToDepart as $ord) {
+            $oldOrdStatus = $ord->status;
+            $ord->status = 'Đang vận chuyển';
+            $ord->save();
+            $orderCtrl->syncStockForStatus($ord, $oldOrdStatus, false);
+        }
+        \App\Http\Controllers\OrderController::refreshAvailabilityCache();
 
         try {
             \App\Models\AuditLog::create([
@@ -3138,10 +3292,12 @@ class DeliveryController extends Controller
     {
         $order = Order::with(['items.product', 'dealer'])->where('id', $id)->orWhere('order_code', $id)->firstOrFail();
 
-        // Đảm bảo đơn hàng khi vào luồng giao nhận thực tế sẽ ở trạng thái "Đang vận chuyển"
+        // Đảm bảo đơn hàng khi vào luồng giao nhận thực tế sẽ ở trạng thái "Đang vận chuyển" và trừ tồn kho thực tế
         if (in_array($order->status, ['Đã kiểm hàng', 'Đã kiểm', 'Sẵn sàng xuất xe', 'Kho đã xuất đủ', 'Đã bốc xong'])) {
+            $oldOrderStatus = $order->status;
             $order->status = 'Đang vận chuyển';
             $order->save();
+            app(\App\Http\Controllers\OrderController::class)->syncStockForStatus($order, $oldOrderStatus);
         }
 
         $dealer = $order->dealer;
@@ -3378,6 +3534,7 @@ class DeliveryController extends Controller
         }
 
         // Cập nhật trạng thái đơn hàng & thanh toán
+        $oldOrderStatus = $order->status;
         $finalOrderAmount = max(0, (float)$order->total_amount - $totalReturned);
         $order->status = 'Đã giao';
 
@@ -3591,6 +3748,20 @@ class DeliveryController extends Controller
             }
         }
 
+        $order->recipient_name = $recipientName;
+        if ($deliveryNotes && empty($order->notes)) {
+            $order->notes = $deliveryNotes;
+        } elseif ($deliveryNotes && !str_contains($order->notes, $deliveryNotes)) {
+            $order->notes = $order->notes . ' | ' . $deliveryNotes;
+        }
+
+        // Xử lý tệp đính kèm / hình ảnh chứng từ giao hàng & biên bản bàn giao
+        $deliveryDocs = $this->handleUploadedDocuments($request, 'delivery_handovers', 'documents');
+        if (!empty($deliveryDocs)) {
+            $existingDocs = is_array($order->delivery_documents) ? $order->delivery_documents : (json_decode($order->delivery_documents, true) ?: []);
+            $order->delivery_documents = array_merge($existingDocs, $deliveryDocs);
+        }
+
         $logDetails = "Người nhận: {$recipientName}. " .
             ($hasReturns ? "Có trả hàng: " . number_format($totalReturned, 0, ',', '.') . " đ. " : "Đã giao đủ 100%. ") .
             ($isCombined
@@ -3602,6 +3773,8 @@ class DeliveryController extends Controller
             ($deliveryNotes ? "Ghi chú tài xế: {$deliveryNotes}" : "");
 
         $order->save();
+
+        app(\App\Http\Controllers\OrderController::class)->syncStockForStatus($order, $oldOrderStatus);
 
         $order->logOperation(
             'Giao Hàng Thành Công',
@@ -4015,20 +4188,7 @@ class DeliveryController extends Controller
             );
 
             // RESET TOÀN BỘ SẢN PHẨM TRONG ĐƠN: Bắt buộc kho bốc & kiểm lại lần sau
-            foreach ($order->items as $it) {
-                $it->is_picked = false;
-                $it->picked_qty = 0;
-                $it->is_checked = false;
-                $it->checked_qty = 0;
-                $it->checked_by = null;
-                $it->checked_at = null;
-                $it->assigned_staff = null;
-                $it->assigned_staff_list = [];
-                $it->item_status = 'Chờ bốc';
-                $it->shortage_reported = false;
-                $it->shortage_reason = null;
-                $it->save();
-            }
+            $this->resetOrderItemsPickingState($order);
 
             try {
                 \App\Models\AuditLog::create([
@@ -4061,6 +4221,8 @@ class DeliveryController extends Controller
                     'created_at'          => now(),
                 ]);
             } catch (\Throwable $e) {}
+
+            \App\Http\Controllers\OrderController::refreshAvailabilityCache();
 
             return response()->json([
                 'success' => true,
@@ -4151,28 +4313,13 @@ class DeliveryController extends Controller
         $order->assigned_driver_id = null;
         $order->failed_delivery_reason = null;
 
-        // Trừ lại tồn kho nếu đơn đang ở trạng thái chưa trừ kho
-        if (!$order->stock_deducted) {
-            app(\App\Http\Controllers\OrderController::class)->deductOrderStock($order);
-        }
+        // Chờ bốc chưa xuất kho thực tế: không trừ tồn kho ngay, hệ thống sẽ giữ tồn khả dụng tới khi xuất bến
 
         // Đảm bảo toàn bộ sản phẩm ở trạng thái Chờ bốc, chưa kiểm
-        foreach ($order->items as $it) {
-            $it->is_picked = false;
-            $it->picked_qty = 0;
-            $it->is_checked = false;
-            $it->checked_qty = 0;
-            $it->checked_by = null;
-            $it->checked_at = null;
-            $it->assigned_staff = null;
-            $it->assigned_staff_list = [];
-            $it->item_status = 'Chờ bốc';
-            $it->shortage_reported = false;
-            $it->shortage_reason = null;
-            $it->save();
-        }
+        $this->resetOrderItemsPickingState($order);
 
         $order->save();
+        \App\Http\Controllers\OrderController::refreshAvailabilityCache();
         $order->logOperation(
             'Kích Hoạt Giao Lại Đơn',
             "Kích hoạt giao lại đơn từ trạng thái [{$oldStatus}]. Đơn hàng chuyển sang 'Chờ bốc' để nhân viên kho bốc và kiểm hàng lại từ đầu.",
@@ -4932,6 +5079,26 @@ class DeliveryController extends Controller
             'success'   => true,
             'transfers' => $transfers,
         ]);
+    }
+
+    /**
+     * Reset per-item picking/QC flags when returning an order to the warehouse or queueing redelivery.
+     */
+    private function resetOrderItemsPickingState(Order $order): void
+    {
+        foreach ($order->items as $it) {
+            $it->is_picked = false;
+            $it->picked_qty = 0;
+            $it->is_checked = false;
+            $it->checked_qty = 0;
+            $it->checked_by = null;
+            $it->checked_at = null;
+            $it->assigned_staff = null;
+            $it->assigned_staff_list = [];
+            $it->item_status = 'Chờ bốc';
+            $it->shortage_reason = null;
+            $it->save();
+        }
     }
 }
 

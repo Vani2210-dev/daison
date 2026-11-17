@@ -86,15 +86,49 @@ class DebtHandoverController extends Controller
 
         // 2. Xử lý chuỗi Base64 hoặc đường dẫn đã có (JSON payload)
         $raw = json_decode($request->getContent(), true) ?: [];
-        $docs = $request->input('documents') ?? ($raw['documents'] ?? []);
+        $docs = $request->input('documents') ?? ($raw['documents'] ?? ($request->input('files') ?? ($raw['files'] ?? [])));
         if (is_string($docs)) {
             $decoded = json_decode($docs, true);
             $docs = is_array($decoded) ? $decoded : [$docs];
         }
         if (is_array($docs)) {
             foreach ($docs as $doc) {
-                if (is_string($doc)) {
-                    if (str_starts_with($doc, 'data:image/')) {
+                // Trường hợp doc là mảng/object { url, name, data, base64 }
+                if (is_array($doc)) {
+                    $itemUrl = $doc['url'] ?? null;
+                    $itemData = $doc['data'] ?? ($doc['base64'] ?? null);
+                    $itemName = $doc['name'] ?? null;
+
+                    if ($itemData && str_starts_with($itemData, 'data:')) {
+                        $parts = explode(',', $itemData, 2);
+                        if (count($parts) === 2) {
+                            $meta = $parts[0];
+                            $data = base64_decode($parts[1]);
+                            $ext = 'jpg';
+                            if (str_contains($meta, 'image/png')) $ext = 'png';
+                            elseif (str_contains($meta, 'image/webp')) $ext = 'webp';
+                            elseif (str_contains($meta, 'image/gif')) $ext = 'gif';
+                            elseif (str_contains($meta, 'pdf')) $ext = 'pdf';
+                            elseif (str_contains($meta, 'wordprocessingml') || str_contains($meta, 'msword')) $ext = 'docx';
+                            elseif (str_contains($meta, 'spreadsheetml') || str_contains($meta, 'ms-excel')) $ext = 'xlsx';
+
+                            if ($itemName && str_contains($itemName, '.')) {
+                                $ext = strtolower(pathinfo($itemName, PATHINFO_EXTENSION)) ?: $ext;
+                            }
+                            $filename = 'doc_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                            file_put_contents($uploadDir . DIRECTORY_SEPARATOR . $filename, $data);
+                            $savedPaths[] = '/uploads/debt_handovers/' . $filename;
+                            continue;
+                        }
+                    } elseif ($itemUrl && (str_starts_with($itemUrl, '/uploads/') || str_starts_with($itemUrl, 'http'))) {
+                        $savedPaths[] = $itemUrl;
+                        continue;
+                    }
+                }
+
+                // Trường hợp doc là chuỗi string
+                if (is_string($doc) && !empty($doc)) {
+                    if (str_starts_with($doc, 'data:')) {
                         $parts = explode(',', $doc, 2);
                         if (count($parts) === 2) {
                             $meta = $parts[0];
@@ -103,6 +137,9 @@ class DebtHandoverController extends Controller
                             if (str_contains($meta, 'image/png')) $ext = 'png';
                             elseif (str_contains($meta, 'image/webp')) $ext = 'webp';
                             elseif (str_contains($meta, 'image/gif')) $ext = 'gif';
+                            elseif (str_contains($meta, 'pdf')) $ext = 'pdf';
+                            elseif (str_contains($meta, 'wordprocessingml') || str_contains($meta, 'msword')) $ext = 'docx';
+                            elseif (str_contains($meta, 'spreadsheetml') || str_contains($meta, 'ms-excel')) $ext = 'xlsx';
 
                             $filename = 'doc_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
                             file_put_contents($uploadDir . DIRECTORY_SEPARATOR . $filename, $data);

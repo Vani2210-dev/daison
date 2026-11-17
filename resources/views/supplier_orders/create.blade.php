@@ -55,7 +55,7 @@ input[type=number] {
         </div>
 
         <div class="flex items-center gap-2 flex-wrap">
-            <button type="button" @click="showShortcutsModal = true" class="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer" title="Xem danh sách phím tắt (F1 hoặc ?)">
+            <button type="button" @click="showShortcutsModal = true" class="shortcut-hint hidden md:flex px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold rounded-xl text-xs transition-all items-center gap-1.5 shadow-2xs cursor-pointer" title="Xem danh sách phím tắt (F1 hoặc ?)">
                 <i class="fa-regular fa-keyboard text-amber-600"></i>
                 <span>Phím tắt <kbd class="px-1.5 py-0.5 bg-amber-100/80 border border-amber-300 rounded text-[10px] text-amber-900 font-mono">F1</kbd></span>
             </button>
@@ -257,7 +257,8 @@ input[type=number] {
                                                        }
                                                    "
                                                    @keydown.escape.prevent="activeProdDropdownIndex = null"
-                                                   placeholder="Tìm mã hoặc tên sản phẩm (phím ↑ ↓ Enter hoặc gõ tự do)..." 
+                                                   placeholder="Tìm mã hoặc tên sản phẩm..." 
+                                                   :placeholder="isMobileViewport ? 'Tìm mã hoặc tên sản phẩm...' : 'Tìm mã hoặc tên sản phẩm (phím ↑ ↓ Enter hoặc gõ tự do)...'" 
                                                    class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors pr-7">
 
                                             <button type="button" 
@@ -688,6 +689,7 @@ function supplierOrderCreateApp() {
     return {
         saving: false,
         showShortcutsModal: false,
+        isMobileViewport: typeof window !== 'undefined' ? window.innerWidth <= 768 : false,
         activeProdDropdownIndex: null,
         prodHighlightIndex: 0,
 
@@ -719,6 +721,9 @@ function supplierOrderCreateApp() {
         },
 
         init() {
+            window.addEventListener('resize', () => {
+                this.isMobileViewport = window.innerWidth <= 768;
+            });
             if (this.formData.supplier_id) {
                 this.onSupplierChange();
             }

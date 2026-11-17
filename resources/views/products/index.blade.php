@@ -278,6 +278,11 @@
                             <td class="py-3 px-3 text-right font-mono whitespace-nowrap">
                                 <div class="flex flex-col items-end">
                                     <span :class="Number(item.stock_quantity || 0) <= Number(item.min_stock_alert || 0) && Number(item.min_stock_alert || 0) > 0 ? 'text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-bold' : (Number(item.max_stock_alert) > 0 && Number(item.stock_quantity || 0) > Number(item.max_stock_alert) ? 'text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 font-bold' : 'text-slate-900 font-bold')" x-text="formatNumber(item.stock_quantity || 0)"></span>
+                                    <template x-if="Number(item.reserved_quantity || 0) > 0">
+                                        <div class="text-[10px] font-semibold mt-0.5 flex items-center justify-end gap-1">
+                                            <span class="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/70" :title="'Tạm giữ cho đơn hàng chưa xuất kho: ' + formatNumber(item.reserved_quantity)">Khả dụng: <span x-text="formatNumber(Math.max(0, Number(item.stock_quantity || 0) - Number(item.reserved_quantity || 0)))"></span></span>
+                                        </div>
+                                    </template>
                                     <div class="text-[10px] text-slate-400 font-normal mt-0.5 flex items-center justify-end gap-1">
                                         <span :class="Number(item.min_stock_alert || 0) > 0 ? 'text-amber-700 font-medium' : 'text-slate-400'" title="Định mức tồn tối thiểu">Min: <span x-text="formatNumber(item.min_stock_alert || 0)"></span></span>
                                         <template x-if="item.max_stock_alert !== null && item.max_stock_alert !== undefined && item.max_stock_alert !== ''">

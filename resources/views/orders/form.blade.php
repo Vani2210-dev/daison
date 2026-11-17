@@ -64,8 +64,10 @@
         display: none;
     }
     .order-form-top-tabs kbd,
-    .order-form-title-bar .text-xs.text-slate-500.flex {
-        display: none !important; /* Ẩn phím tắt F2/Esc trên màn hình cảm ứng */
+    .order-form-title-bar .text-xs.text-slate-500.flex,
+    .shortcut-hint,
+    kbd {
+        display: none !important; /* Ẩn toàn bộ chú thích phím tắt trên mobile */
     }
     .order-form-title-bar h1 {
         font-size: 1.25rem !important;
@@ -389,17 +391,45 @@
     .order-items-table td.col-discount [x-show*="gift_quantity"] {
         display: none !important;
     }
-    .order-items-table td.col-discount .flex {
+    .order-items-table td.col-discount > div > .flex {
+        display: flex !important;
         align-items: center !important;
+        justify-content: space-between !important;
+        gap: 0.375rem !important;
         min-width: 0 !important;
         max-width: 100% !important;
         width: 100% !important;
         box-sizing: border-box !important;
     }
+    .order-items-table td.col-discount > div > .flex > div:first-child {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.2rem !important;
+        flex: 0 0 auto !important;
+        width: auto !important;
+    }
+    .order-items-table td.col-discount > div > .flex > div:first-child input {
+        width: 56px !important;
+        flex: 0 0 auto !important;
+    }
+    .order-items-table td.col-discount > div > .flex > div:last-child {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.25rem !important;
+        flex: 1 1 0% !important;
+        width: auto !important;
+        min-width: 0 !important;
+    }
+    .order-items-table td.col-discount > div > .flex > div:last-child input {
+        width: 100% !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+    }
     .order-items-table td.col-discount input {
-        height: 32px !important;
-        font-size: 12px !important;
-        border-radius: 0.375rem !important;
+        height: 36px !important;
+        min-height: 36px !important;
+        font-size: 12.5px !important;
+        border-radius: 0.5rem !important;
         border-color: #cbd5e1 !important;
         min-width: 0 !important;
         max-width: 100% !important;
@@ -775,7 +805,7 @@
                     Quản lý đơn hàng theo quy trình: Chốt đơn &bull; Soạn hàng &bull; Đang vận chuyển &bull; Đã giao &bull; Hủy
                 </p>
             </div>
-            <div class="hidden sm:flex text-xs text-slate-500 items-center gap-1.5 shrink-0">
+            <div class="shortcut-hint hidden md:flex text-xs text-slate-500 items-center gap-1.5 shrink-0">
                 <span>Phím tắt:</span>
                 <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">F9</kbd>
                 <span>Lưu đơn</span>
@@ -878,7 +908,7 @@
                             <div x-show="openDealerDropdown" x-cloak class="order-customer-dropdown absolute left-0 top-full mt-1.5 z-50 bg-white rounded-xl shadow-2xl border border-slate-200 max-h-72 overflow-y-auto py-1 text-xs w-[440px] max-w-[92vw] min-w-full">
                                 <div class="px-3 py-1.5 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
                                     <span>Chọn khách hàng / đại lý có sẵn ({{ count($dealers) }})</span>
-                                    <span class="text-sky-600 font-normal lowercase hidden sm:inline">dùng phím &uarr; &darr; &bull; Enter chọn</span>
+                                    <span class="shortcut-hint text-sky-600 font-normal lowercase hidden md:inline">dùng phím &uarr; &darr; &bull; Enter chọn</span>
                                 </div>
                                 <template x-for="(d, dIdx) in filteredDealers(dealerSearch)" :key="d.id">
                                     <div :id="'dealer-opt-' + dIdx"
@@ -1276,15 +1306,15 @@
                             <tr class="order-item-row hover:bg-slate-50/60 transition-colors" 
                                 :class="activeProdDropdownIndex === index ? 'relative z-30 ' : ''">
                                 <!-- STT + Checkbox -->
-                                <td class="col-stt py-2 px-3 text-center">
-                                    <div class="flex items-center justify-center gap-1.5">
+                                <td class="col-stt py-2 px-3 text-center align-top">
+                                    <div class="h-8 flex items-center justify-center gap-1.5">
                                         <input type="checkbox" x-model="item.checked" @change="calculateTotals()" class="rounded text-sky-600 focus:ring-0 cursor-pointer">
                                         <span class="font-bold text-slate-700" x-text="index + 1"></span>
                                     </div>
                                 </td>
 
                                 <!-- Tên / Mã SP Input với Menu gợi ý điều khiển bằng phím mũi tên Lên/Xuống + Enter -->
-                                <td class="col-product py-2 px-3 relative" :class="activeProdDropdownIndex === index ? 'z-30' : ''">
+                                <td class="col-product py-2 px-3 relative align-top" :class="activeProdDropdownIndex === index ? 'z-30' : ''">
                                     <div class="relative" @click.outside="if (activeProdDropdownIndex === index) activeProdDropdownIndex = null">
                                         <input type="text"
                                                autocomplete="off"
@@ -1321,8 +1351,9 @@
                                                    }
                                                "
                                                @keydown.escape.prevent="activeProdDropdownIndex = null"
-                                               placeholder="Tìm mã hoặc tên sản phẩm (phím ↑ ↓ Enter)..." 
-                                               class="product-search-input w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:border-sky-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors">
+                                               placeholder="Tìm mã hoặc tên sản phẩm..." 
+                                               :placeholder="isMobileViewport ? 'Tìm mã hoặc tên sản phẩm...' : 'Tìm mã hoặc tên sản phẩm (phím ↑ ↓ Enter)...'" 
+                                               class="product-search-input w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:border-sky-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors">
 
                                         <!-- Menu Dropdown gợi ý sản phẩm -->
                                         <div x-show="activeProdDropdownIndex === index && getFilteredProducts(item.searchQuery, getItemIndex(item)).length > 0" 
@@ -1370,7 +1401,7 @@
                                 <td class="col-unit py-2 px-2 text-center align-top">
                                     <select x-model="item.unit" 
                                             @change="onItemUnitChange(getItemIndex(item))" 
-                                            class="w-full px-1.5 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-xs text-center font-bold text-slate-800 focus:outline-none cursor-pointer transition-colors shadow-2xs">
+                                            class="w-full h-8 px-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-xs text-center font-bold text-slate-800 focus:outline-none cursor-pointer transition-colors shadow-2xs">
                                         <template x-for="u in getItemUnits(item)" :key="u">
                                             <option :value="u" x-text="u" :selected="item.unit === u"></option>
                                         </template>
@@ -1389,7 +1420,7 @@
                                                @keydown.up.prevent="increasePrice(getItemIndex(item))"
                                                @keydown.down.prevent="decreasePrice(getItemIndex(item))"
                                                title="Phím ↑ tăng giá, phím ↓ giảm giá"
-                                               class="w-full px-2 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-right font-bold text-xs text-slate-900 focus:outline-none shadow-2xs transition-colors">
+                                               class="w-full h-8 px-2 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-right font-bold text-xs text-slate-900 focus:outline-none shadow-2xs transition-colors">
                                     </div>
                                 </td>
 
@@ -1407,7 +1438,7 @@
                                                    @keydown.enter.prevent="addNewRow()"
                                                    title="Phím ↑ tăng SL, phím ↓ giảm SL"
                                                    :class="getItemStockStatus(item) === 'danger' ? 'bg-rose-50 border-2 border-rose-500 text-rose-800 ring-2 ring-rose-200 font-black' : (getItemStockStatus(item) === 'warning' ? 'bg-amber-50 border-2 border-amber-500 text-amber-900 ring-2 ring-amber-200 font-black' : 'bg-white border border-slate-300 text-slate-900 font-bold hover:border-slate-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-200')"
-                                                   class="w-full h-7 px-1 text-center text-xs shadow-2xs outline-none transition-all rounded min-w-[32px]">
+                                                   class="w-full h-8 px-1 text-center text-xs shadow-2xs outline-none transition-all rounded-lg min-w-[32px]">
                                         </div>
                                         
                                         <!-- Cảnh báo thiếu tồn kho dưới ô số lượng -->
@@ -1424,7 +1455,7 @@
                                     <div class="relative">
                                         <select x-model="item.policy_id" 
                                                 @change="onItemPolicyChange(getItemIndex(item))" 
-                                                class="w-full px-2 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none transition-colors shadow-2xs truncate cursor-pointer"
+                                                class="w-full h-8 px-2 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none transition-colors shadow-2xs truncate cursor-pointer"
                                                 :title="item.appliedPolicyName || 'Chọn chính sách áp dụng'">
                                             <option value="">-- Mặc định --</option>
                                             <template x-for="p in getApplicablePoliciesForItem(item)" :key="p.id">
@@ -1433,11 +1464,9 @@
                                                         x-text="p.name"></option>
                                             </template>
                                         </select>
-                                        <div class="min-h-[14px]">
-                                            <template x-if="item.policy_id && getPolicySummaryText(item)">
-                                                <div class="mt-0.5 text-[9px] text-emerald-700 font-bold truncate text-center" x-text="getPolicySummaryText(item)"></div>
-                                            </template>
-                                        </div>
+                                        <template x-if="item.policy_id && getPolicySummaryText(item)">
+                                            <div class="mt-0.5 text-[9px] text-emerald-700 font-bold truncate text-center" x-text="getPolicySummaryText(item)"></div>
+                                        </template>
                                     </div>
                                 </td>
 
@@ -1453,7 +1482,7 @@
                                                        @input="onLineDiscountPercentChange(getItemIndex(item))" 
                                                        placeholder="%" 
                                                        title="Tỷ lệ chiết khấu (%)"
-                                                       class="w-16 px-1.5 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded text-center text-xs font-semibold focus:outline-none shadow-2xs transition-colors">
+                                                       class="w-16 h-8 px-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-center text-xs font-semibold focus:outline-none shadow-2xs transition-colors">
                                                 <span class="text-[10px] text-slate-400 font-bold">%</span>
                                             </div>
                                             <!-- Ô nhập Tiền Chiết Khấu (VNĐ) -->
@@ -1464,7 +1493,7 @@
                                                        @input="onLineDiscountAmountChange(getItemIndex(item))" 
                                                        placeholder="0" 
                                                        title="Số tiền chiết khấu (đ)"
-                                                       class="w-full px-1.5 py-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded text-right text-xs font-mono font-bold text-slate-800 focus:outline-none shadow-2xs transition-colors">
+                                                       class="w-full h-8 px-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-right text-xs font-mono font-bold text-slate-800 focus:outline-none shadow-2xs transition-colors">
                                                 <span class="text-[10px] text-slate-400 font-bold shrink-0">đ</span>
                                             </div>
                                         </div>
@@ -1501,7 +1530,7 @@
 
                                 <!-- Thành tiền -->
                                 <td class="col-amount py-2 px-3 text-right align-top">
-                                    <span class="font-bold text-xs block text-slate-900" x-text="formatNumber(item.amount) + ' đ'"></span>
+                                    <div class="h-8 flex items-center justify-end font-bold text-xs text-slate-900 whitespace-nowrap" x-text="formatNumber(item.amount) + ' đ'"></div>
                                     <!-- Hiển thị thiếu hàng dưới thành tiền khi có -->
                                     <template x-if="isItemShortage(item)">
                                         <div class="mt-0.5 text-[9px] text-rose-600 font-bold flex items-center justify-end gap-0.5">
@@ -1512,8 +1541,8 @@
                                 </td>
 
                                 <!-- Nút Xóa -->
-                                <td class="col-actions py-2 px-2 text-center">
-                                    <button type="button" @click="removeItem(item)" class="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer" title="Xóa dòng">
+                                <td class="col-actions py-2 px-2 text-center align-top">
+                                    <button type="button" @click="removeItem(item)" class="mx-auto w-8 h-8 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer" title="Xóa dòng">
                                         <i class="fa-solid fa-trash-can text-xs"></i>
                                     </button>
                                 </td>
@@ -1535,7 +1564,7 @@
                         <span>Hàng tặng</span>
                     </button>
                 </div>
-                <div class="text-[11px] text-slate-500 font-medium flex items-center gap-1.5 flex-wrap">
+                <div class="shortcut-hint hidden md:flex text-[11px] text-slate-500 font-medium items-center gap-1.5 flex-wrap">
                     <span class="text-slate-400">Mẹo:</span>
                     <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">F8</kbd> / <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">Ctrl+Enter</kbd> thêm dòng
                     <span class="text-slate-300">&bull;</span>
@@ -1718,7 +1747,8 @@
                                                    }
                                                "
                                                @keydown.escape.prevent="activeGiftDropdownIndex = null"
-                                               placeholder="Tìm mã hoặc tên sản phẩm khuyến mại (phím ↑ ↓ Enter)..."
+                                               placeholder="Tìm mã hoặc tên sản phẩm khuyến mại..."
+                                               :placeholder="isMobileViewport ? 'Tìm mã hoặc tên sản phẩm khuyến mại...' : 'Tìm mã hoặc tên sản phẩm khuyến mại (phím ↑ ↓ Enter)...'"
                                                class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:border-emerald-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors">
                                         
                                         <!-- Dropdown gợi ý trên desktop -->
@@ -1812,16 +1842,16 @@
                         <span class="font-bold text-slate-800" x-text="formatNumber(subtotalBeforeVat) + ' đ'"></span>
                     </div>
 
-                    <div class="flex items-center justify-between text-slate-600 pt-1">
-                        <span title="Chiết khấu đơn hàng">CK</span>
-                        <div class="flex items-center gap-1.5">
-                            <div class="flex items-center gap-0.5">
-                                <input type="number" min="0" max="100" step="any" x-model.number="orderDiscountPercent" @input="onOrderDiscountPercentChange()" placeholder="%" class="w-16 sm:w-20 px-2 py-1 bg-white border border-slate-200 rounded text-center text-xs focus:outline-none font-semibold">
-                                <span class="text-[10px] text-slate-400">%</span>
+                    <div class="flex items-center justify-between gap-2 text-slate-600 pt-1">
+                        <span class="shrink-0" title="Chiết khấu đơn hàng">CK</span>
+                        <div class="flex items-center justify-end gap-1.5 min-w-0 flex-1 sm:flex-initial">
+                            <div class="flex items-center gap-0.5 shrink-0">
+                                <input type="number" min="0" max="100" step="any" x-model.number="orderDiscountPercent" @input="onOrderDiscountPercentChange()" placeholder="%" class="w-14 sm:w-20 px-1.5 sm:px-2 py-1 bg-white border border-slate-200 rounded text-center text-xs focus:outline-none font-semibold">
+                                <span class="text-[10px] text-slate-400 shrink-0">%</span>
                             </div>
-                            <div class="flex items-center gap-1">
-                                <input type="text" inputmode="numeric" x-money="formData.discount_amount" @input="onOrderDiscountAmountChange()" placeholder="Tiền CK" class="w-28 px-2 py-1 bg-white border border-slate-200 rounded text-right text-xs font-bold focus:border-sky-500 focus:outline-none">
-                                <span class="text-slate-400">đ</span>
+                            <div class="flex items-center gap-1 min-w-0 flex-1 sm:flex-initial">
+                                <input type="text" inputmode="numeric" x-money="formData.discount_amount" @input="onOrderDiscountAmountChange()" placeholder="Tiền CK" class="w-full sm:w-28 min-w-0 px-2 py-1 bg-white border border-slate-200 rounded text-right text-xs font-bold focus:border-sky-500 focus:outline-none">
+                                <span class="text-slate-400 shrink-0">đ</span>
                             </div>
                         </div>
                     </div>
@@ -1992,7 +2022,7 @@
         <div class="flex items-center gap-2.5">
             <button type="button" @click="confirmClose()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer">
                 <i class="fa-solid fa-arrow-left text-xs"></i>
-                <span>Đóng (Esc)</span>
+                <span>Đóng<span class="shortcut-hint hidden md:inline"> (Esc)</span></span>
             </button>
 
             <!-- Readonly Mode Actions -->
@@ -2033,7 +2063,7 @@
                             class="btn-save-print hidden sm:inline-flex px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
                             :title="isNoTaxCodeLimitReached() ? 'Chặn lên đơn: Khách hàng chưa có MST và đã đạt 3 đơn' : ((formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0) ? 'Không thể lưu: Hết tồn kho khả dụng' : 'Lưu đơn và in chứng từ (Ctrl+F9)')">
                         <i class="fa-solid fa-print"></i>
-                        <span>Lưu & In (Ctrl+F9)</span>
+                        <span>Lưu & In<span class="shortcut-hint hidden md:inline"> (Ctrl+F9)</span></span>
                     </button>
                     <button type="button" @click="submitOrder(false)" 
                             :disabled="saving || isNoTaxCodeLimitReached() || (formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0)" 
@@ -2043,7 +2073,7 @@
                         <i class="fa-solid fa-ban" x-show="!saving && (isNoTaxCodeLimitReached() || (formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0))"></i>
                         <i class="fa-solid fa-floppy-disk" x-show="!saving && !isNoTaxCodeLimitReached() && (formData.order_type === 'backorder' || formData.status === 'Giao sau' || getOverStockItems().length === 0)"></i>
                         <i class="fa-solid fa-circle-notch fa-spin" x-show="saving" x-cloak></i>
-                        <span x-text="saving ? 'Đang lưu...' : (isNoTaxCodeLimitReached() ? 'Chặn: Cần MST (đã 3 đơn)' : ((formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0) ? 'Hết tồn khả dụng (' + getOverStockItems().length + ' SP)' : 'Lưu (F9)'))"></span>
+                        <span><span x-text="saving ? 'Đang lưu...' : (isNoTaxCodeLimitReached() ? 'Chặn: Cần MST (đã 3 đơn)' : ((formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0) ? 'Hết tồn khả dụng (' + getOverStockItems().length + ' SP)' : 'Lưu'))"></span><span class="shortcut-hint hidden md:inline" x-show="!saving && !isNoTaxCodeLimitReached() && (formData.order_type === 'backorder' || formData.status === 'Giao sau' || getOverStockItems().length === 0)"> (F9)</span></span>
                     </button>
                 </div>
             </template>
@@ -2302,6 +2332,7 @@ function orderFormApp() {
                     discount_amount: {{ $order ? (float)$order->discount_amount : 0 }},
                     tax_amount: {{ $order ? (float)$order->tax_amount : 0 }},
                     shortage_reported: {{ ($order && $order->shortage_reported) ? 'true' : 'false' }},
+                    sales_rep_name: '{{ $order ? addslashes($order->salesRep?->name ?: ($order->dealer?->salesRep?->name ?: ($order->order_creator ?: ($order->creator?->name ?: "")))) : addslashes(auth()->user()->name ?? "") }}',
                 },
                 items: @json($initialItems)
             }
@@ -2318,8 +2349,12 @@ function orderFormApp() {
         totalAmount: 0,
         formData: {},
         items: [],
+        isMobileViewport: typeof window !== 'undefined' ? window.innerWidth <= 768 : false,
 
         init() {
+            window.addEventListener('resize', () => {
+                this.isMobileViewport = window.innerWidth <= 768;
+            });
             this.syncCurrentTicket();
             
             // Đồng bộ loại giá phía trên với phía dưới sản phẩm và VAT theo cài đặt sản phẩm
@@ -3119,20 +3154,15 @@ function orderFormApp() {
                     }
                     return Number(ngTier.price);
                 }
-
-                const fallbackTier = p.price_tiers.find(t => Number(t.price) > 0);
-                if (fallbackTier) {
-                    if (isConv) {
-                        return Number(fallbackTier.conversion_price) > 0 ? Number(fallbackTier.conversion_price) : calcConv(fallbackTier.price);
-                    }
-                    return Number(fallbackTier.price);
-                }
+                // Không khớp loại giá nào -> dùng giá bán niêm yết (p.price) ở bước 3,
+                // KHÔNG lấy bảng giá đầu tiên (thường là giá Cấp 1 / NPP = giá vốn)
             }
 
-            // 2. Object format: { c1, c2, retail, ... }
-            if (p.price_tiers && typeof p.price_tiers === 'object') {
-                let key = 'c1';
-                if (cleanChosen.includes('cấp 2') || cleanChosen.includes('c2')) key = 'c2';
+            // 2. Object format: { c1, c2, retail, ... } (chỉ dùng khi khớp rõ ràng)
+            if (p.price_tiers && typeof p.price_tiers === 'object' && !Array.isArray(p.price_tiers)) {
+                let key = null;
+                if (cleanChosen.includes('cấp 1') || cleanChosen.includes('c1')) key = 'c1';
+                else if (cleanChosen.includes('cấp 2') || cleanChosen.includes('c2')) key = 'c2';
                 else if (cleanChosen.includes('bán lẻ') || cleanChosen.includes('retail')) key = 'retail';
                 else if (cleanChosen.includes('dự án') || cleanChosen.includes('project')) key = 'project';
                 else if (cleanChosen.includes('thợ') || cleanChosen.includes('mechanic')) key = 'mechanic';
@@ -4728,7 +4758,7 @@ function orderFormApp() {
             this.updateLineTotal(index);
             this.calculateTotals();
             this.shortageModal.show = false;
-            alert('Đã cắt số lượng [' + (item.name || '') + '] xuống còn ' + picked + ' ' + (item.unit || '') + '.\n\nNhớ bấm "Lưu (F9)" để xác nhận!');
+            alert('Đã cắt số lượng [' + (item.name || '') + '] xuống còn ' + picked + ' ' + (item.unit || '') + '.\n\nNhớ bấm "' + (this.isMobileViewport ? 'Lưu' : 'Lưu (F9)') + '" để xác nhận!');
         },
 
         // ─── Cắt TẤT CẢ sản phẩm thiếu theo SL kho đã bốc (CẮT TỔNG) ───
@@ -4762,7 +4792,7 @@ function orderFormApp() {
 
             this.calculateTotals();
             if (this.shortageModal) this.shortageModal.show = false;
-            alert('✅ ĐÃ CẮT TỔNG ' + count + ' SẢN PHẨM THIẾU!\n\nSố lượng đã được chỉnh về đúng số kho đã bốc.\nVui lòng kiểm tra lại tổng tiền và bấm nút "LƯU (F9)" để lưu thay đổi.');
+            alert('✅ ĐÃ CẮT TỔNG ' + count + ' SẢN PHẨM THIẾU!\n\nSố lượng đã được chỉnh về đúng số kho đã bốc.\nVui lòng kiểm tra lại tổng tiền và bấm nút "' + (this.isMobileViewport ? 'LƯU' : 'LƯU (F9)') + '" để lưu thay đổi.');
         },
 
         // ─── Tạo đơn nợ hàng mới cho 1 món đơn lẻ ─────────────────
@@ -5047,7 +5077,7 @@ function orderFormApp() {
 
         convertNumberToVietnameseWords(number) {
             const num = Math.round(Number(number) || 0);
-            if (num === 0) return 'KHÔNG ĐỒNG';
+            if (num === 0) return 'KHÔNG VIỆT NAM ĐỒNG';
             const digits = ['', 'MỘT', 'HAI', 'BA', 'BỐN', 'NĂM', 'SÁU', 'BẢY', 'TÁM', 'CHÍN'];
             const units = ['', 'NGHÌN', 'TRIỆU', 'TỶ', 'NGHÌN TỶ', 'TRIỆU TỶ'];
 
@@ -5098,7 +5128,7 @@ function orderFormApp() {
                 }
             }
 
-            return (words.join(' ').replace(/\s+/g, ' ').trim() + ' ĐỒNG').toUpperCase();
+            return (words.join(' ').replace(/\s+/g, ' ').trim() + ' VIỆT NAM ĐỒNG').toUpperCase();
         },
 
         async printCurrentOrder(mode = 'standard') {
@@ -5179,6 +5209,7 @@ function orderFormApp() {
                 extra_discount: extraDisc,
                 final_total: finalVal,
                 final_total_words: finalWords,
+                sales_rep_name: serverData?.sales_rep_name || this.formData.sales_rep_name || serverData?.creator_name || '{{ auth()->user()->name ?? "" }}',
                 creator_name: serverData?.creator_name || '{{ auth()->user()->name ?? "" }}',
                 updater_name: serverData?.updater_name || '{{ auth()->user()->name ?? "" }}',
                 delivery_status: this.formData.status || serverData?.delivery_status || 'Chốt đơn',
@@ -5278,6 +5309,22 @@ function orderFormApp() {
             return '-';
         },
 
+        getDiscountAmountValue(it) {
+            if (!it) return 0;
+            let disc = Number(it.discount ?? it.discount_amount ?? 0);
+            if (disc <= 0 && Number(it.discount_percent || 0) > 0) {
+                const qty = Number(it.display_quantity ?? it.sold_quantity ?? it.quantity ?? 0);
+                const base = Number(it.amount || (Number(it.unit_price || 0) * qty) || 0);
+                disc = Math.round((base * Number(it.discount_percent)) / 100);
+            }
+            return Math.max(0, Math.round(disc));
+        },
+
+        getDiscountAmountDisplay(it) {
+            const amt = this.getDiscountAmountValue(it);
+            return amt > 0 ? this.formatNumber(amt) : '-';
+        },
+
         executePrintOrder(o, mode = 'standard') {
             const isNoPrice = (mode === 'no_price' || mode === 'no_price_with_header');
             const isTaxName = (mode === 'tax_name');
@@ -5305,13 +5352,14 @@ function orderFormApp() {
                 const prodName = isTaxName ? (it.tax_name || it.name) : it.name;
                 const subName = (!isTaxName && it.tax_name && it.tax_name !== it.name) ? `<div style="font-size:10.5px;color:#555;font-style:italic;">${it.tax_name}</div>` : '';
                 const discText = this.getDiscountDisplay(it);
+                const discAmtText = this.getDiscountAmountDisplay(it);
                 const qtyVal = it.display_quantity ?? it.sold_quantity ?? it.quantity;
                 
                 if (isNoPrice) {
                     regularTableRows += `
                         <tr>
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${idx + 1}</td>
-                            <td style="padding:5px 6px;border:1px solid #111;text-align:left;font-family:monospace;">${it.sku || ''}</td>
+                            <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">${it.sku || ''}</td>
                             <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">${prodName}${subName}</td>
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${it.unit || ''}</td>
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:13px;">${this.formatNumber(qtyVal)}</td>
@@ -5321,13 +5369,14 @@ function orderFormApp() {
                     regularTableRows += `
                         <tr>
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${idx + 1}</td>
-                            <td style="padding:5px 6px;border:1px solid #111;text-align:left;font-family:monospace;">${it.sku || ''}</td>
+                            <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">${it.sku || ''}</td>
                             <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">${prodName}${subName}</td>
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${it.unit || ''}</td>
-                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:12.5px;">${this.formatNumber(qtyVal)}</td>
-                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${this.formatNumber(it.unit_price)}</td>
-                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${discText}</td>
-                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;">${this.formatNumber(it.total || it.amount)}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:12.5px;white-space:nowrap;">${this.formatNumber(qtyVal)}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;white-space:nowrap;">${this.formatNumber(it.unit_price)}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;white-space:nowrap;">${discText}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;white-space:nowrap;">${discAmtText}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;white-space:nowrap;">${this.formatNumber(it.total || it.amount)}</td>
                         </tr>
                     `;
                 }
@@ -5341,40 +5390,31 @@ function orderFormApp() {
                 if (Number(o.extra_discount || 0) > 0) {
                     regularSummaryHtml = `
                         <tr>
-                            <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng tiền hàng</td>
-                            <td style="border:1px solid #111;padding:5px 6px;"></td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(regularTotalAmount)}</td>
+                            <td colspan="8" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Tổng tiền hàng</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;white-space:nowrap;">${this.formatNumber(regularTotalAmount)} VND</td>
                         </tr>
                         <tr>
-                            <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Chiết khấu đơn</td>
-                            <td style="border:1px solid #111;padding:5px 6px;"></td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">-${this.formatNumber(o.extra_discount)}</td>
+                            <td colspan="8" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Chiết khấu đơn</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;white-space:nowrap;">-${this.formatNumber(o.extra_discount)} VND</td>
                         </tr>
                         <tr>
-                            <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng thanh toán</td>
-                            <td style="border:1px solid #111;padding:5px 6px;"></td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13.5px;color:#000;">${this.formatNumber(o.final_total || (regularTotalAmount - Number(o.extra_discount)))}</td>
+                            <td colspan="8" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">Tổng thanh toán</td>
+                            <td style="text-align:right;font-weight:900;padding:5px 6px;border:1px solid #111;font-size:13.5px;color:#000;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">${this.formatNumber(o.final_total || Math.max(0, regularTotalAmount - Number(o.extra_discount)))} VND</td>
                         </tr>
                     `;
                 } else {
                     regularSummaryHtml = `
                         <tr>
-                            <td colspan="5" style="border:1px solid #111;padding:5px 6px;"></td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng</td>
-                            <td style="border:1px solid #111;padding:5px 6px;"></td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(regularTotalAmount)}</td>
+                            <td colspan="8" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">Tổng thanh toán</td>
+                            <td style="text-align:right;font-weight:900;padding:5px 6px;border:1px solid #111;font-size:13px;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">${this.formatNumber(o.final_total || regularTotalAmount)} VND</td>
                         </tr>
                     `;
                 }
             } else {
                 regularSummaryHtml = `
                     <tr>
-                        <td colspan="3" style="border:1px solid #111;padding:5px 6px;"></td>
-                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">Tổng SL:</td>
-                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;">${this.formatNumber(regularTotalQty)}</td>
+                        <td colspan="4" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Tổng SL:</td>
+                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;white-space:nowrap;">${this.formatNumber(regularTotalQty)}</td>
                     </tr>
                 `;
             }
@@ -5391,7 +5431,7 @@ function orderFormApp() {
                     giftTableRows += `
                         <tr>
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${idx + 1}</td>
-                            <td style="padding:5px 6px;border:1px solid #111;text-align:left;font-family:monospace;">${it.sku || ''}</td>
+                            <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">${it.sku || ''}</td>
                             <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">${prodName}${subName}</td>
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${it.unit || ''}</td>
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:13px;">${this.formatNumber(qtyVal)}</td>
@@ -5560,8 +5600,12 @@ function orderFormApp() {
                             <td style="width: 40%; vertical-align: top; border: none; padding: 0 0 0 12px; border-left: 1px dashed #bbb;">
                                 <table style="width: 100%; border: none; border-collapse: collapse;">
                                     <tr>
-                                        <td style="width: 105px; border: none; padding: 2px 0; font-weight: bold; color: #333; white-space: nowrap;">Kho xuất hàng:</td>
+                                        <td style="width: 118px; border: none; padding: 2px 0; font-weight: bold; color: #333; white-space: nowrap;">Kho xuất hàng:</td>
                                         <td style="border: none; padding: 2px 0;"><strong>${o.warehouse || '---'}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border: none; padding: 2px 0; font-weight: bold; color: #333; white-space: nowrap;">Nhân viên bán hàng:</td>
+                                        <td style="border: none; padding: 2px 0;"><strong>${o.sales_rep_name || o.creator_name || '---'}</strong></td>
                                     </tr>
                                     <tr>
                                         <td style="border: none; padding: 2px 0; font-weight: bold; color: #333; white-space: nowrap;">Hình thức TT:</td>
@@ -5597,19 +5641,20 @@ function orderFormApp() {
                                     </tr>
                                 ` : `
                                     <tr>
-                                        <th style="width: 35px;">TT</th>
-                                        <th style="width: 95px; text-align: left; padding-left: 6px;">Mã SP</th>
+                                        <th style="width: 34px;">TT</th>
+                                        <th style="width: 82px; text-align: left; padding-left: 6px;">Mã SP</th>
                                         <th style="text-align: left; padding-left: 6px;">Tên sản phẩm</th>
-                                        <th style="width: 55px;">ĐVT</th>
-                                        <th style="width: 50px;">SL</th>
-                                        <th style="width: 90px;">Đơn giá</th>
-                                        <th style="width: 70px;">C.khấu</th>
-                                        <th style="width: 100px;">Thành tiền</th>
+                                        <th style="width: 48px;">ĐVT</th>
+                                        <th style="width: 44px;">SL</th>
+                                        <th style="width: 82px;">Đơn giá</th>
+                                        <th style="width: 56px;">C.khấu</th>
+                                        <th style="width: 80px;">Tiền CK</th>
+                                        <th style="width: 96px;">Thành tiền</th>
                                     </tr>
                                 `}
                             </thead>
                             <tbody>
-                                ${regularTableRows || `<tr><td colspan="${isNoPrice ? 5 : 8}" style="text-align:center;padding:8px;font-style:italic;color:#666;border:1px solid #111;">Không có sản phẩm bán</td></tr>`}
+                                ${regularTableRows || `<tr><td colspan="${isNoPrice ? 5 : 9}" style="text-align:center;padding:8px;font-style:italic;color:#666;border:1px solid #111;">Không có sản phẩm bán</td></tr>`}
                                 ${regularSummaryHtml}
                             </tbody>
                         </table>
@@ -5620,14 +5665,14 @@ function orderFormApp() {
 
                     <!-- Bằng Chữ & Trạng Thái -->
                     ${!isNoPrice ? `
-                        <div style="margin-top: 8px; font-size: 12.5px; line-height: 1.4; display: flex; justify-content: space-between; align-items: baseline;">
-                            <div>
-                                <strong>Số tiền viết bằng chữ:</strong> 
-                                <em style="text-transform: capitalize; font-weight: bold;">${o.final_total_words || ''}</em>
+                        <div style="margin-top: 8px; font-size: 12.5px; line-height: 1.55;">
+                            <div style="margin-bottom: 2px;">
+                                <strong>Tổng tiền thanh toán (bằng số):</strong>
+                                <span style="font-size: 14px; font-weight: 900; color: #111; margin-left: 4px;">${this.formatNumber(o.final_total || regularTotalAmount)} VND</span>
                             </div>
-                            <div style="font-size: 13px;">
-                                <strong>Tổng thanh toán:</strong> 
-                                <span style="font-size: 14px; font-weight: 900; color: #111;">${this.formatNumber(o.final_total || regularTotalAmount)} đ</span>
+                            <div>
+                                <strong>Tổng tiền thanh toán (bằng chữ):</strong>
+                                <em style="text-transform: capitalize; font-weight: bold; margin-left: 4px;">${o.final_total_words || ''}</em>
                             </div>
                         </div>
                     ` : ''}
@@ -5674,18 +5719,7 @@ function orderFormApp() {
                 </html>
             `;
 
-            const printWin = window.open('', '_blank');
-            if (!printWin) {
-                alert('Trình duyệt đang chặn cửa sổ bật lên. Vui lòng cho phép pop-up để in.');
-                return;
-            }
-            printWin.document.open();
-            printWin.document.write(printHtml);
-            printWin.document.close();
-            printWin.focus();
-            setTimeout(() => {
-                printWin.print();
-            }, 400);
+            window.printHtmlInline(printHtml, `${title} - ${o.order_code}`);
         },
 
         getPriceTierCode(val, defaultTier = '') {

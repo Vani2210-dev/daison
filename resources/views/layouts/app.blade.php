@@ -317,6 +317,10 @@
             .mobile-bottom-nav {
                 display: flex !important;
             }
+            kbd,
+            .shortcut-hint {
+                display: none !important;
+            }
             main .pb-12, main .pb-14, main .pb-16, main .pb-20, main .pb-24, main .pb-28, main .pb-32, main .pb-36, main .pb-40, main .pb-48, main .pb-52, main .pb-64 {
                 padding-bottom: 0.25rem !important;
             }
@@ -1796,7 +1800,7 @@
             }
 
             window.addEventListener('mouseup', endDrag);
-        })();
+    })();
     </script>
 
     <!-- ====================================================================
@@ -2394,6 +2398,90 @@
         document.head.appendChild(style);
 
     })();
+    </script>
+
+    <script>
+        /* ─── Shared inline iframe printer (no new browser tab / popup) ───── */
+        window.printHtmlInline = function (printHtml, docTitle = '') {
+            const existing = document.getElementById('__erp_inline_print_frame');
+            if (existing) {
+                existing.remove();
+            }
+
+            const iframe = document.createElement('iframe');
+            iframe.id = '__erp_inline_print_frame';
+            iframe.setAttribute('aria-hidden', 'true');
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            iframe.style.opacity = '0';
+            iframe.style.pointerEvents = 'none';
+            document.body.appendChild(iframe);
+
+            const frameDoc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+            if (!frameDoc) {
+                alert('Không thể khởi tạo khung in trực tiếp trên trình duyệt.');
+                return;
+            }
+
+            frameDoc.open();
+            frameDoc.write(printHtml);
+            frameDoc.close();
+
+            const prevTitle = document.title;
+            let printed = false;
+            const triggerPrint = () => {
+                if (printed) return;
+                printed = true;
+                const win = iframe.contentWindow;
+                if (!win) return;
+
+                if (docTitle) {
+                    document.title = docTitle;
+                }
+
+                const restoreTitle = () => {
+                    if (docTitle && document.title === docTitle) {
+                        document.title = prevTitle;
+                    }
+                };
+                win.addEventListener('afterprint', restoreTitle, { once: true });
+                window.addEventListener('afterprint', restoreTitle, { once: true });
+
+                try {
+                    win.focus();
+                    win.print();
+                } finally {
+                    setTimeout(restoreTitle, 1500);
+                }
+            };
+
+            const imgs = Array.from(frameDoc.images || []);
+            if (imgs.length === 0) {
+                setTimeout(triggerPrint, 100);
+                return;
+            }
+
+            let remaining = imgs.length;
+            const onImgDone = () => {
+                remaining -= 1;
+                if (remaining <= 0) {
+                    setTimeout(triggerPrint, 80);
+                }
+            };
+            imgs.forEach((img) => {
+                if (img.complete) {
+                    onImgDone();
+                } else {
+                    img.addEventListener('load', onImgDone, { once: true });
+                    img.addEventListener('error', onImgDone, { once: true });
+                }
+            });
+            setTimeout(triggerPrint, 600);
+        };
     </script>
 
     @include('layouts.notifications')

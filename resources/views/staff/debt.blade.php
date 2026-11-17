@@ -663,6 +663,73 @@
                     </label>
                     <textarea x-model="handoverForm.notes" rows="2" placeholder="VD: Bàn giao nợ sau khi giao hàng, khách hẹn thanh toán cho Sale vào ngày 15/10..." class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500"></textarea>
                 </div>
+
+                <!-- Đính kèm ảnh & file chứng từ bàn giao nợ -->
+                <div class="space-y-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div class="flex items-center justify-between">
+                        <label class="font-bold text-slate-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-paperclip text-sky-600"></i>
+                            <span>Hình ảnh & File chứng từ (phiếu giao / chữ ký khách):</span>
+                        </label>
+                        <span class="text-[11px] font-bold text-sky-700"
+                              x-text="(handoverForm.documents ? handoverForm.documents.length : 0) + ' tệp đã chọn'"></span>
+                    </div>
+
+                    <!-- Hidden file inputs -->
+                    <input type="file" x-ref="staffCameraInput" accept="image/*" capture="environment" class="hidden"
+                           @change="handleHandoverDocUpload($event)">
+                    <input type="file" x-ref="staffFileInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" multiple class="hidden"
+                           @change="handleHandoverDocUpload($event)">
+
+                    <!-- Upload buttons -->
+                    <div class="flex items-center gap-2">
+                        <button type="button" @click="$refs.staffCameraInput.click()"
+                                class="flex-1 py-1.5 px-3 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer">
+                            <i class="fa-solid fa-camera"></i>
+                            <span>Chụp Ảnh Ngay</span>
+                        </button>
+                        <button type="button" @click="$refs.staffFileInput.click()"
+                                class="flex-1 py-1.5 px-3 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer">
+                            <i class="fa-solid fa-folder-open text-amber-500"></i>
+                            <span>Tải Ảnh / File (PDF, Excel...)</span>
+                        </button>
+                    </div>
+
+                    <!-- Preview Grid -->
+                    <template x-if="handoverForm.documents && handoverForm.documents.length > 0">
+                        <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1 max-h-40 overflow-y-auto pr-1">
+                            <template x-for="(doc, idx) in handoverForm.documents" :key="idx">
+                                <div class="relative group rounded-lg overflow-hidden border border-slate-200 bg-white aspect-square shadow-2xs flex flex-col items-center justify-center p-1">
+                                    <template x-if="isImageDoc(doc)">
+                                        <img :src="getDocUrl(doc)" class="w-full h-full object-cover cursor-pointer rounded"
+                                             @click="viewDocPreview(doc)" alt="Chứng từ">
+                                    </template>
+                                    <template x-if="!isImageDoc(doc)">
+                                        <div class="w-full h-full flex flex-col items-center justify-center text-center p-1 cursor-pointer hover:bg-slate-50 transition-colors"
+                                             @click="viewOrOpenDoc(doc)">
+                                            <i class="fa-solid text-xl mb-1" :class="getDocIcon(doc)"></i>
+                                            <div class="text-[9px] font-bold text-slate-700 truncate w-full" x-text="getDocName(doc)"></div>
+                                            <div class="text-[8px] text-slate-400 font-mono" x-show="doc.size" x-text="(doc.size / 1024).toFixed(0) + ' KB'"></div>
+                                        </div>
+                                    </template>
+                                    <button type="button" @click.stop="removeHandoverDoc(idx)"
+                                            class="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-600 text-white text-[10px] flex items-center justify-center hover:bg-rose-700 shadow-md cursor-pointer transition-transform group-hover:scale-110">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/60 text-white text-[8.5px] py-0.5 text-center font-bold" x-show="isImageDoc(doc)">
+                                        Ảnh <span x-text="idx + 1"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template x-if="!handoverForm.documents || handoverForm.documents.length === 0">
+                        <div class="p-2 rounded-lg border border-dashed border-slate-300 text-center text-slate-400 text-[11px] bg-white">
+                            Chưa có chứng từ đính kèm (Ảnh phiếu giao hàng, chữ ký hoặc file đối soát).
+                        </div>
+                    </template>
+                </div>
             </div>
 
             <div class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2 text-xs">
@@ -737,7 +804,8 @@ function staffDebtApp() {
             order_code: '',
             to_user_id: '',
             amount: '',
-            notes: ''
+            notes: '',
+            documents: []
         },
         orderSearchQuery: '',
         userSearchQuery: '',
@@ -765,12 +833,110 @@ function staffDebtApp() {
                 order_code: '',
                 to_user_id: '',
                 amount: '',
-                notes: ''
+                notes: '',
+                documents: []
             };
             this.orderSearchQuery = '';
             this.userSearchQuery = '';
             this.showOrderDropdown = false;
             this.showUserDropdown = false;
+        },
+
+        handleHandoverDocUpload(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            Array.from(files).forEach(file => {
+                if (file.size > 20 * 1024 * 1024) {
+                    alert(`Tệp ${file.name} vượt quá dung lượng cho phép (20MB)!`);
+                    return;
+                }
+                const isImg = file.type.startsWith('image/');
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    if (!this.handoverForm.documents) {
+                        this.handoverForm.documents = [];
+                    }
+                    this.handoverForm.documents.push({
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        data: e.target.result,
+                        is_image: isImg
+                    });
+                };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        },
+
+        removeHandoverDoc(index) {
+            if (this.handoverForm.documents) {
+                this.handoverForm.documents.splice(index, 1);
+            }
+        },
+
+        isImageDoc(doc) {
+            if (!doc) return false;
+            if (typeof doc === 'object') {
+                if (doc.is_image !== undefined) return !!doc.is_image;
+                if (doc.type && doc.type.startsWith('image/')) return true;
+                const name = doc.name || doc.url || '';
+                return /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(name);
+            }
+            if (typeof doc === 'string') {
+                if (doc.startsWith('data:image/')) return true;
+                return /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(doc);
+            }
+            return false;
+        },
+
+        getDocUrl(doc) {
+            if (!doc) return '';
+            return typeof doc === 'object' ? (doc.data || doc.url || '') : doc;
+        },
+
+        getDocName(doc, fallback = 'Tập tin') {
+            if (!doc) return fallback;
+            if (typeof doc === 'object' && doc.name) return doc.name;
+            if (typeof doc === 'string') {
+                if (doc.startsWith('data:')) return fallback;
+                return doc.split('/').pop() || fallback;
+            }
+            return fallback;
+        },
+
+        getDocIcon(doc) {
+            const name = (this.getDocName(doc) || '').toLowerCase();
+            const type = (typeof doc === 'object' ? (doc.type || '') : '').toLowerCase();
+            if (name.endsWith('.pdf') || type.includes('pdf')) return 'fa-file-pdf text-rose-500';
+            if (name.endsWith('.doc') || name.endsWith('.docx') || type.includes('word')) return 'fa-file-word text-blue-500';
+            if (name.endsWith('.xls') || name.endsWith('.xlsx') || type.includes('excel') || type.includes('sheet')) return 'fa-file-excel text-emerald-500';
+            return 'fa-file-lines text-slate-500';
+        },
+
+        viewDocPreview(docOrUrl) {
+            this.previewDocUrl = this.getDocUrl(docOrUrl);
+            this.showDocPreviewModal = true;
+        },
+
+        viewOrOpenDoc(doc) {
+            const url = this.getDocUrl(doc);
+            if (this.isImageDoc(doc)) {
+                this.previewDocUrl = url;
+                this.showDocPreviewModal = true;
+            } else if (url) {
+                const w = window.open();
+                if (w) {
+                    if (url.startsWith('data:')) {
+                        w.document.write(`<iframe src="${url}" frameborder="0" style="border:0; top:0; left:0; bottom:0; right:0; width:100%; height:100%;" allowfullscreen></iframe>`);
+                    } else {
+                        w.location.href = url;
+                    }
+                } else {
+                    window.location.href = url;
+                }
+            }
         },
 
         getOrderById(id) {
@@ -1043,22 +1209,32 @@ function staffDebtApp() {
                     </div>
                 </div>
 
-                <!-- Danh sách chứng từ ảnh đính kèm -->
+                <!-- Danh sách chứng từ ảnh / file đính kèm -->
                 <div>
                     <label class="block font-bold text-slate-800 mb-1.5 flex items-center justify-between">
                         <span class="flex items-center gap-1.5 text-sky-900">
-                            <i class="fa-solid fa-images text-sky-600"></i>
-                            <span>Chứng từ ảnh đính kèm (Phiếu giao / Chữ ký khách):</span>
+                            <i class="fa-solid fa-paperclip text-sky-600"></i>
+                            <span>Chứng từ ảnh / file đính kèm (Phiếu giao / Chữ ký khách):</span>
                         </span>
-                        <span class="text-[10.5px] font-bold text-sky-700" x-text="(forwardData.documents?.length || 0) + ' ảnh'"></span>
+                        <span class="text-[10.5px] font-bold text-sky-700" x-text="(forwardData.documents?.length || 0) + ' tệp'"></span>
                     </label>
                     <template x-if="forwardData.documents && forwardData.documents.length > 0">
-                        <div class="grid grid-cols-3 gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200">
+                        <div class="grid grid-cols-3 gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200 max-h-48 overflow-y-auto pr-1">
                             <template x-for="(doc, idx) in forwardData.documents" :key="idx">
-                                <div class="relative group rounded-lg overflow-hidden border border-slate-300 aspect-square shadow-2xs">
-                                    <img :src="doc" class="w-full h-full object-cover cursor-pointer hover:opacity-90"
-                                         @click="viewDocPreview(doc)" title="Bấm để xem ảnh to">
-                                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/60 text-white text-[9px] py-0.5 text-center font-bold">
+                                <div class="relative group rounded-lg overflow-hidden border border-slate-300 bg-white aspect-square shadow-2xs flex flex-col items-center justify-center p-1">
+                                    <template x-if="isImageDoc(doc)">
+                                        <img :src="getDocUrl(doc)" class="w-full h-full object-cover cursor-pointer hover:opacity-90 rounded"
+                                             @click="viewDocPreview(doc)" title="Bấm để xem ảnh to">
+                                    </template>
+                                    <template x-if="!isImageDoc(doc)">
+                                        <div class="w-full h-full flex flex-col items-center justify-center text-center p-1 cursor-pointer hover:bg-slate-50 transition-colors"
+                                             @click="viewOrOpenDoc(doc)">
+                                            <i class="fa-solid text-xl mb-1" :class="getDocIcon(doc)"></i>
+                                            <div class="text-[9px] font-bold text-slate-700 truncate w-full" x-text="getDocName(doc)"></div>
+                                            <div class="text-[8px] text-slate-400 font-mono" x-show="doc.size" x-text="(doc.size / 1024).toFixed(0) + ' KB'"></div>
+                                        </div>
+                                    </template>
+                                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/60 text-white text-[8.5px] py-0.5 text-center font-bold" x-show="isImageDoc(doc)">
                                         Ảnh <span x-text="idx + 1"></span>
                                     </div>
                                 </div>
@@ -1067,7 +1243,7 @@ function staffDebtApp() {
                     </template>
                     <template x-if="!forwardData.documents || forwardData.documents.length === 0">
                         <div class="p-3 rounded-xl border border-dashed border-slate-300 text-center text-slate-400 text-xs">
-                            Không có ảnh chứng từ đính kèm
+                            Không có ảnh/file chứng từ đính kèm
                         </div>
                     </template>
                 </div>

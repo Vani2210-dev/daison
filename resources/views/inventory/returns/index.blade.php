@@ -157,6 +157,17 @@
                             <div class="text-[11px] text-slate-400 mt-0.5">
                                 <i class="fa-regular fa-clock text-[10px] mr-1"></i>{{ $r->created_at ? $r->created_at->format('H:i d/m/Y') : '---' }}
                             </div>
+                            @php
+                                $rDocs = is_array($r->documents) ? $r->documents : (is_string($r->documents) ? json_decode($r->documents, true) : []);
+                            @endphp
+                            @if(!empty($rDocs))
+                                <div class="mt-1">
+                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                        <i class="fa-solid fa-paperclip text-[9px]"></i>
+                                        <span>{{ count($rDocs) }} ảnh/chứng từ</span>
+                                    </span>
+                                </div>
+                            @endif
                         </td>
 
                         <td class="py-3.5 px-3">
@@ -337,6 +348,40 @@
                         </template>
                     </div>
                 </div>
+
+                <!-- Danh sách chứng từ / hình ảnh đính kèm -->
+                <template x-if="getDocList(activeReturn).length > 0">
+                    <div class="border border-slate-200 rounded-xl overflow-hidden bg-white">
+                        <div class="bg-rose-50/70 p-2.5 font-bold text-[11px] text-rose-900 border-b border-slate-200 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-paperclip text-rose-600"></i>
+                                <span>Hình ảnh & Chứng từ lái xe bàn giao:</span>
+                            </span>
+                            <span class="font-mono text-rose-700 font-bold" x-text="getDocList(activeReturn).length + ' tệp'"></span>
+                        </div>
+                        <div class="p-2.5 grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-44 overflow-y-auto">
+                            <template x-for="(doc, idx) in getDocList(activeReturn)" :key="idx">
+                                <div class="relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-50 aspect-square shadow-2xs flex flex-col items-center justify-center p-1">
+                                    <template x-if="isImageDoc(doc)">
+                                        <img :src="getDocUrl(doc)" class="w-full h-full object-cover cursor-pointer rounded-lg hover:opacity-90 transition-opacity"
+                                             @click="viewDocPreview(doc)" alt="Chứng từ">
+                                    </template>
+                                    <template x-if="!isImageDoc(doc)">
+                                        <div class="w-full h-full flex flex-col items-center justify-center text-center p-1 cursor-pointer hover:bg-white transition-colors"
+                                             @click="viewOrOpenDoc(doc)">
+                                            <i class="fa-solid text-xl mb-1" :class="getDocIcon(doc)"></i>
+                                            <div class="text-[9px] font-bold text-slate-700 truncate w-full" x-text="getDocName(doc)"></div>
+                                            <div class="text-[8px] text-slate-400 font-mono" x-show="doc.size" x-text="(doc.size / 1024).toFixed(0) + ' KB'"></div>
+                                        </div>
+                                    </template>
+                                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/60 text-white text-[9px] py-0.5 text-center font-bold" x-show="isImageDoc(doc)">
+                                        Ảnh <span x-text="idx + 1"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
             </div>
 
             <div class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2 text-xs shrink-0">
@@ -445,6 +490,40 @@
                         <div class="mt-1" x-text="activeReturn?.notes"></div>
                     </div>
                 </template>
+
+                <!-- Chứng từ đính kèm chi tiết -->
+                <template x-if="getDocList(activeReturn).length > 0">
+                    <div class="border border-slate-200 rounded-xl overflow-hidden bg-white">
+                        <div class="bg-rose-50/70 p-2.5 font-bold text-[11px] text-rose-900 border-b border-slate-200 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-paperclip text-rose-600"></i>
+                                <span>Hình ảnh & Chứng từ hoàn hàng:</span>
+                            </span>
+                            <span class="font-mono text-rose-700 font-bold" x-text="getDocList(activeReturn).length + ' tệp'"></span>
+                        </div>
+                        <div class="p-3 grid grid-cols-3 sm:grid-cols-4 gap-2.5 max-h-48 overflow-y-auto">
+                            <template x-for="(doc, idx) in getDocList(activeReturn)" :key="idx">
+                                <div class="relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-50 aspect-square shadow-2xs flex flex-col items-center justify-center p-1">
+                                    <template x-if="isImageDoc(doc)">
+                                        <img :src="getDocUrl(doc)" class="w-full h-full object-cover cursor-pointer rounded-lg hover:opacity-90 transition-opacity"
+                                             @click="viewDocPreview(doc)" alt="Chứng từ">
+                                    </template>
+                                    <template x-if="!isImageDoc(doc)">
+                                        <div class="w-full h-full flex flex-col items-center justify-center text-center p-1 cursor-pointer hover:bg-white transition-colors"
+                                             @click="viewOrOpenDoc(doc)">
+                                            <i class="fa-solid text-xl mb-1" :class="getDocIcon(doc)"></i>
+                                            <div class="text-[9px] font-bold text-slate-700 truncate w-full" x-text="getDocName(doc)"></div>
+                                            <div class="text-[8px] text-slate-400 font-mono" x-show="doc.size" x-text="(doc.size / 1024).toFixed(0) + ' KB'"></div>
+                                        </div>
+                                    </template>
+                                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/60 text-white text-[9px] py-0.5 text-center font-bold" x-show="isImageDoc(doc)">
+                                        Ảnh <span x-text="idx + 1"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
             </div>
 
             <div class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs shrink-0">
@@ -532,6 +611,21 @@
         </div>
     </div>
 
+    <!-- ==================== LIGHTBOX XEM ẢNH CHỨNG TỪ ==================== -->
+    <div x-show="showDocPreviewModal" x-cloak class="fixed inset-0 z-[11000] bg-black/80 flex items-center justify-center p-4" @click="showDocPreviewModal = false">
+        <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center" @click.stop>
+            <button type="button" @click="showDocPreviewModal = false" class="absolute -top-10 right-0 text-white hover:text-slate-300 text-2xl font-bold cursor-pointer">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <img :src="previewDocUrl" class="max-h-[85vh] max-w-full rounded-2xl shadow-2xl object-contain bg-white">
+            <div class="mt-2 text-center text-xs text-white/90">
+                <a :href="previewDocUrl" target="_blank" download class="underline hover:text-blue-300 font-bold">
+                    <i class="fa-solid fa-download mr-1"></i>Tải ảnh gốc về máy
+                </a>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -541,6 +635,8 @@ function returnsIntakeApp() {
         showApproveModal: false,
         showRejectModal: false,
         showDetailModal: false,
+        showDocPreviewModal: false,
+        previewDocUrl: '',
 
         selectedIntakeWarehouseId: '{{ $physicalWarehouses->first()?->id ?? 1 }}',
         selectedIntakeUserId: '{{ auth()->id() }}',
@@ -674,6 +770,64 @@ function returnsIntakeApp() {
             });
 
             window.print();
+        },
+
+        getDocList(slip) {
+            if (!slip || !slip.documents) return [];
+            if (Array.isArray(slip.documents)) return slip.documents;
+            try {
+                const parsed = JSON.parse(slip.documents);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                return [];
+            }
+        },
+
+        isImageDoc(doc) {
+            if (!doc) return false;
+            const url = typeof doc === 'string' ? doc : (doc.url || '');
+            const type = (doc?.type || '').toLowerCase();
+            if (type.startsWith('image/')) return true;
+            if (url.startsWith('data:image/')) return true;
+            return /\.(jpe?g|png|gif|webp|bmp|svg)($|\?)/i.test(url);
+        },
+
+        getDocUrl(doc) {
+            if (!doc) return '';
+            return typeof doc === 'string' ? doc : (doc.url || '');
+        },
+
+        getDocName(doc) {
+            if (!doc) return 'Tệp đính kèm';
+            if (typeof doc === 'string') {
+                const parts = doc.split('/');
+                return parts[parts.length - 1] || 'Tệp đính kèm';
+            }
+            return doc.name || 'Tệp đính kèm';
+        },
+
+        getDocIcon(doc) {
+            const name = this.getDocName(doc).toLowerCase();
+            const type = (doc?.type || '').toLowerCase();
+            if (type.includes('pdf') || name.endsWith('.pdf')) return 'fa-file-pdf text-rose-500';
+            if (type.includes('word') || name.endsWith('.doc') || name.endsWith('.docx')) return 'fa-file-word text-blue-500';
+            if (type.includes('excel') || type.includes('sheet') || name.endsWith('.xls') || name.endsWith('.xlsx') || name.endsWith('.csv')) return 'fa-file-excel text-emerald-600';
+            return 'fa-file-lines text-slate-500';
+        },
+
+        viewDocPreview(doc) {
+            this.previewDocUrl = this.getDocUrl(doc);
+            this.showDocPreviewModal = true;
+        },
+
+        viewOrOpenDoc(doc) {
+            const url = this.getDocUrl(doc);
+            if (!url) return;
+            if (this.isImageDoc(doc)) {
+                this.viewDocPreview(doc);
+            } else {
+                window.open(url, '_blank');
+            }
         }
     };
 }

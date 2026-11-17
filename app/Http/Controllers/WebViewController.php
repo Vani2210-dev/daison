@@ -622,7 +622,7 @@ class WebViewController extends Controller
      */
     public function orderEdit($id)
     {
-        $order = Order::with(['items.product', 'dealer'])->findOrFail($id);
+        $order = Order::with(['items.product', 'dealer.salesRep', 'salesRep', 'creator'])->findOrFail($id);
         $dealers = Dealer::select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit', 'tax_code')
             ->withCount(['orders as orders_count' => function($q) {
                 $q->whereNotIn('status', ['Hủy', 'Đã hủy']);

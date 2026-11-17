@@ -22,6 +22,7 @@ class DeliveryReturn extends Model
         'total_returned_amount',
         'status',
         'notes',
+        'documents',
         'intake_warehouse_id',
         'intake_by_user_id',
         'intake_at',
@@ -29,6 +30,7 @@ class DeliveryReturn extends Model
 
     protected $casts = [
         'total_returned_amount' => 'decimal:2',
+        'documents'             => 'array',
         'intake_at'             => 'datetime',
     ];
 

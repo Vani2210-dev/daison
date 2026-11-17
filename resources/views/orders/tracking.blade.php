@@ -42,7 +42,7 @@
     }
 @endphp
 
-<div class="space-y-6 max-w-7xl mx-auto pb-12">
+<div class="space-y-6 max-w-7xl mx-auto pb-12" x-data="{ showLightbox: false, lightboxUrl: '' }">
     <!-- Top Navigation & Action Header -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-3">
@@ -167,6 +167,86 @@
                             {{ number_format((float)$order->total_amount, 0, ',', '.') }} đ
                         </span>
                     </div>
+                </div>
+            </div>
+
+            @php
+                $deliveryDocs = is_array($order->delivery_documents) ? $order->delivery_documents : (json_decode($order->delivery_documents, true) ?: []);
+            @endphp
+            <!-- Card: Biên bản bàn giao & Chứng từ giao hàng -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <h3 class="font-black text-slate-800 text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-file-signature text-indigo-600"></i>
+                        <span>Biên bản bàn giao & Chứng từ</span>
+                    </h3>
+                    @if(!empty($deliveryDocs))
+                        <span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold text-xs border border-indigo-200">
+                            {{ count($deliveryDocs) }} tệp đính kèm
+                        </span>
+                    @endif
+                </div>
+
+                <div class="text-xs space-y-2.5 text-slate-600">
+                    <div class="flex justify-between items-center gap-2">
+                        <span class="text-slate-400">Người ký nhận hàng:</span>
+                        <span class="font-bold text-slate-900">{{ $order->recipient_name ?: ($order->customer_name ?: 'Chưa cập nhật') }}</span>
+                    </div>
+                    <div class="flex justify-between items-center gap-2">
+                        <span class="text-slate-400">Trạng thái thanh toán:</span>
+                        <span class="font-bold text-emerald-700">{{ $order->payment_status ?: 'Chưa thanh toán' }}</span>
+                    </div>
+                    @if($order->notes)
+                        <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700">
+                            <span class="font-bold text-slate-500 block mb-0.5 text-[11px]">Ghi chú giao nhận:</span>
+                            {{ $order->notes }}
+                        </div>
+                    @endif
+
+                    @if(!empty($deliveryDocs))
+                        <div class="pt-2 border-t border-slate-100 space-y-2">
+                            <span class="font-bold text-slate-700 text-xs flex items-center gap-1.5">
+                                <i class="fa-solid fa-paperclip text-slate-400"></i>
+                                <span>Hình ảnh & tệp đính kèm:</span>
+                            </span>
+                            <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
+                                @foreach($deliveryDocs as $idx => $doc)
+                                    @php
+                                        $url = is_array($doc) ? ($doc['url'] ?? '') : $doc;
+                                        $name = is_array($doc) ? ($doc['name'] ?? basename($url)) : basename($url);
+                                        $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+                                        $isImg = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg']) || (is_array($doc) && !empty($doc['is_image']));
+                                    @endphp
+                                    <div class="relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-50 aspect-square shadow-2xs flex flex-col items-center justify-center p-1 hover:border-indigo-400 transition-colors">
+                                        @if($isImg)
+                                            <img src="{{ $url }}" class="w-full h-full object-cover cursor-pointer rounded-lg hover:opacity-90 transition-opacity"
+                                                 @click="lightboxUrl = '{{ $url }}'; showLightbox = true" alt="Chứng từ">
+                                            <div class="absolute bottom-0 inset-x-0 bg-slate-900/60 text-white text-[9px] py-0.5 text-center font-bold">
+                                                Ảnh {{ $idx + 1 }}
+                                            </div>
+                                        @else
+                                            <a href="{{ $url }}" target="_blank" class="w-full h-full flex flex-col items-center justify-center text-center p-1 cursor-pointer hover:bg-white transition-colors no-underline">
+                                                @if(str_contains($ext, 'pdf'))
+                                                    <i class="fa-solid fa-file-pdf text-2xl text-rose-500 mb-1"></i>
+                                                @elseif(in_array($ext, ['doc', 'docx']))
+                                                    <i class="fa-solid fa-file-word text-2xl text-blue-500 mb-1"></i>
+                                                @elseif(in_array($ext, ['xls', 'xlsx']))
+                                                    <i class="fa-solid fa-file-excel text-2xl text-emerald-500 mb-1"></i>
+                                                @else
+                                                    <i class="fa-solid fa-file-lines text-2xl text-slate-500 mb-1"></i>
+                                                @endif
+                                                <div class="text-[9.5px] font-bold text-slate-700 truncate w-full">{{ $name }}</div>
+                                            </a>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @else
+                        <div class="p-3 rounded-xl border border-dashed border-slate-200 text-center text-slate-400 text-xs bg-slate-50/50">
+                            Chưa có hình ảnh hoặc file biên bản bàn giao đính kèm.
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -325,6 +405,19 @@
                     </div>
                 @endif
             </div>
+        </div>
+    </div>
+
+    <!-- Modal xem trước ảnh phóng to (Lightbox) -->
+    <div x-show="showLightbox" x-cloak
+         class="fixed inset-0 z-[12000] bg-black/90 backdrop-blur-md flex items-center justify-center p-3"
+         @click="showLightbox = false">
+        <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center" @click.stop>
+            <button type="button" @click="showLightbox = false"
+                    class="absolute -top-10 right-0 text-white/80 hover:text-white text-3xl font-bold cursor-pointer">
+                &times;
+            </button>
+            <img :src="lightboxUrl" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl border border-white/20">
         </div>
     </div>
 </div>

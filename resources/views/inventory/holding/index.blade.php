@@ -1021,11 +1021,6 @@ function employeeHoldingApp() {
 
         printDispatchSlip(disp) {
             if (!disp) return;
-            const printWin = window.open('', '_blank');
-            if (!printWin) {
-                alert('Trình duyệt đang chặn cửa sổ pop-up. Vui lòng cho phép để in.');
-                return;
-            }
 
             let itemsRows = '';
             (disp.items || []).forEach((it, idx) => {
@@ -1129,11 +1124,7 @@ function employeeHoldingApp() {
                 </body>
                 </html>
             `;
-            printWin.document.open();
-            printWin.document.write(html);
-            printWin.document.close();
-            printWin.focus();
-            setTimeout(() => printWin.print(), 350);
+            window.printHtmlInline(html, `Phieu_Xuat_Kho_Om_${disp.code || ''}`);
         }
     };
 }

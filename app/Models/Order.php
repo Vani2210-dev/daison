@@ -13,6 +13,7 @@ class Order extends Model
         'order_code',
         'dealer_id',
         'customer_name',
+        'recipient_name',
         'customer_phone',
         'customer_address',
         'warehouse',
@@ -45,6 +46,7 @@ class Order extends Model
         'site_contact_name',
         'site_contact_phone',
         'notes',
+        'delivery_documents',
         'shortage_reported',
         'shortage_reported_at',
         'shortage_reported_note',
@@ -80,6 +82,7 @@ class Order extends Model
         'shortage_reported' => 'boolean',
         'has_shortage_warning' => 'boolean',
         'stock_deducted' => 'boolean',
+        'delivery_documents' => 'array',
     ];
 
     public function parentOrder()

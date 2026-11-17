@@ -31,11 +31,17 @@ class InventoryAvailabilityService
      */
     public static function getReservedQuantitiesMap(?int $excludeOrderId = null): array
     {
-        $warehouses = Warehouse::all(['id', 'name', 'code']);
+        $warehouses = Warehouse::orderBy('id')->get(['id', 'name', 'code']);
         $whNameToId = [];
         foreach ($warehouses as $wh) {
-            $whNameToId[mb_strtolower(trim($wh->name))] = $wh->id;
-            $whNameToId[mb_strtolower(trim($wh->code))] = $wh->id;
+            $nameKey = mb_strtolower(trim($wh->name));
+            if (!isset($whNameToId[$nameKey])) {
+                $whNameToId[$nameKey] = $wh->id;
+            }
+            $codeKey = mb_strtolower(trim($wh->code));
+            if (!isset($whNameToId[$codeKey])) {
+                $whNameToId[$codeKey] = $wh->id;
+            }
         }
 
         $defaultWh = $warehouses->first();
@@ -47,12 +53,26 @@ class InventoryAvailabilityService
         $totalByProduct = [];
         $orderDetails = [];
 
-        // 1. Quét các đơn bán hàng thông thường (Order)
+        // 1. Quét các đơn bán hàng thông thường (Order) chưa xuất kho thực tế
+        // Không giữ hàng cho Báo giá, Bản nháp, Từ chối hạn mức, Đã hủy, Đã hoàn kho hoặc các trạng thái đã giao
         $ordersQuery = Order::with(['items' => function($q) {
                 $q->select('id', 'order_id', 'product_id', 'sku', 'name', 'unit', 'quantity', 'gift_quantity');
             }])
             ->where('stock_deducted', false)
-            ->whereNotIn('status', ['Hủy', 'Đã hủy', 'Đã huỷ', 'Đã giao hàng', 'Hoàn tất']);
+            ->whereNotIn('status', [
+                'Báo giá',
+                'Bản nháp',
+                'Từ chối hạn mức',
+                'Hủy',
+                'Đã hủy',
+                'Đã huỷ',
+                'Đã hoàn kho',
+                'Đã giao',
+                'Giao thành công',
+                'Đã giao hàng',
+                'Hoàn tất',
+                'Đã quyết toán',
+            ]);
 
         if ($excludeOrderId) {
             $ordersQuery->where('id', '!=', $excludeOrderId);
@@ -270,10 +290,22 @@ class InventoryAvailabilityService
                 'holding_orders' => array_slice($detailList, 0, 5), // Top 5 đơn đang giữ
             ];
 
-            // Lưu theo Tên kho, Mã kho, và ID kho
-            $stockMap[$s->product_id][$wh->name] = $info;
+            // Lưu theo Mã kho, ID kho và cộng gộp an toàn theo Tên kho (tránh ghi đè nếu trùng tên kho)
             $stockMap[$s->product_id][$wh->code] = $info;
             $stockMap[$s->product_id][$wh->id]   = $info;
+            if (isset($stockMap[$s->product_id][$wh->name])) {
+                $prev = $stockMap[$s->product_id][$wh->name];
+                $mergedOnHand = round($prev['on_hand'] + $onHand, 2);
+                $mergedReserved = round($prev['reserved'] + $reserved, 2);
+                $stockMap[$s->product_id][$wh->name] = [
+                    'on_hand'        => $mergedOnHand,
+                    'reserved'       => $mergedReserved,
+                    'available'      => round(max(0, $mergedOnHand - $mergedReserved), 2),
+                    'holding_orders' => array_slice(array_merge($prev['holding_orders'] ?? [], $detailList), 0, 5),
+                ];
+            } else {
+                $stockMap[$s->product_id][$wh->name] = $info;
+            }
         }
 
         return Product::where('is_active', true)
