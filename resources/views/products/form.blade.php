@@ -102,7 +102,7 @@
                 <h2 class="text-sm font-extrabold text-slate-900">Liên Kết Phân Loại Ngành Hàng & Nhãn Hiệu Nhà Sản Xuất</h2>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                 <!-- Dropdown Phân Loại (Category) -->
                 <div>
                     <label class="block font-bold text-slate-700 mb-1.5">
@@ -139,6 +139,23 @@
                         @endforeach
                     </select>
                     <p class="text-[11px] text-slate-400 mt-1">Liên kết trực tiếp bảng Nhãn hiệu</p>
+                </div>
+
+                <!-- Dropdown Nhà Cung Cấp (Supplier) -->
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1.5">
+                        Nhà Cung Cấp
+                    </label>
+                    <select 
+                        x-model="supplier_id" 
+                        class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 cursor-pointer"
+                    >
+                        <option value="">-- Chọn nhà cung cấp --</option>
+                        @foreach($suppliers ?? [] as $sup)
+                            <option value="{{ $sup->id }}">{{ $sup->name }} ({{ $sup->code }})</option>
+                        @endforeach
+                    </select>
+                    <p class="text-[11px] text-slate-400 mt-1">Liên kết trực tiếp bảng Nhà cung cấp</p>
                 </div>
 
                 <!-- Dropdown Nhóm Nhỏ (Subcategory) -->
@@ -570,6 +587,7 @@ function productForm() {
         tax_name_manual: !!(rawProduct?.tax_name && rawProduct.tax_name !== rawProduct.name),
         category_id: rawProduct?.category_id || '',
         brand_id: rawProduct?.brand_id || '',
+        supplier_id: rawProduct?.supplier_id || '',
         subcategory_id: rawProduct?.subcategory_id || '',
         subcategory: rawProduct?.subcategory || '',
         subcategoriesList: subcategoriesList,
@@ -752,6 +770,7 @@ function productForm() {
                 tax_name: this.tax_name || this.name,
                 category_id: this.category_id,
                 brand_id: this.brand_id,
+                supplier_id: this.supplier_id || null,
                 subcategory_id: this.subcategory_id || null,
                 subcategory: this.subcategory || '',
                 unit: this.unit,

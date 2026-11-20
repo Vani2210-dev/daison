@@ -5,30 +5,6 @@
 @section('content')
 <div x-data="dealersIndexApp()" class="space-y-6 pb-20">
 
-    <!-- Flash Messages -->
-    @if(session('success'))
-        <div class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-bold flex items-center justify-between shadow-2xs">
-            <div class="flex items-center gap-2">
-                <i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i>
-                <span>{{ session('success') }}</span>
-            </div>
-            <button type="button" @click="$el.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700 cursor-pointer">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-    @endif
-    @if(session('error'))
-        <div class="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs font-bold flex items-center justify-between shadow-2xs">
-            <div class="flex items-center gap-2">
-                <i class="fa-solid fa-triangle-exclamation text-rose-600 text-sm"></i>
-                <span>{{ session('error') }}</span>
-            </div>
-            <button type="button" @click="$el.parentElement.remove()" class="text-rose-500 hover:text-rose-700 cursor-pointer">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-    @endif
-
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
         <div>

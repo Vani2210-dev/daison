@@ -124,21 +124,6 @@
                         </p>
                     </div>
 
-                    <!-- Flash messages -->
-                    @if(session('error'))
-                        <div class="p-3 bg-rose-500/15 border border-rose-500/30 text-rose-300 rounded-xl text-xs font-semibold flex items-center gap-2.5">
-                            <i class="fa-solid fa-circle-exclamation text-rose-400 shrink-0"></i>
-                            <span>{{ session('error') }}</span>
-                        </div>
-                    @endif
-
-                    @if(session('success'))
-                        <div class="p-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs font-semibold flex items-center gap-2.5">
-                            <i class="fa-solid fa-circle-check text-emerald-400 shrink-0"></i>
-                            <span>{{ session('success') }}</span>
-                        </div>
-                    @endif
-
                     <!-- Login Form -->
                     <form action="{{ url('/login') }}" method="POST" class="space-y-4">
                         @csrf
@@ -404,5 +389,6 @@
         };
     }
     </script>
+    @include('layouts.toast')
 </body>
 </html>

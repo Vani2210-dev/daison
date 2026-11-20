@@ -1058,32 +1058,6 @@
 
     <!-- MAIN BODY CONTAINER -->
     <main class="flex-1 w-full mx-auto px-2 sm:px-4 lg:px-6 py-4">
-        
-        <!-- Flash Toasts -->
-        @if(session('success'))
-            <div x-data="{ show: true }" x-show="show" class="mb-4 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between shadow-xs">
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
-                    <span>{{ session('success') }}</span>
-                </div>
-                <button type="button" @click="show = false" class="text-emerald-500 hover:text-emerald-700 cursor-pointer">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-        @endif
-
-        @if(session('error'))
-            <div x-data="{ show: true }" x-show="show" class="mb-4 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-between shadow-xs">
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-triangle-exclamation text-rose-600 text-base"></i>
-                    <span>{{ session('error') }}</span>
-                </div>
-                <button type="button" @click="show = false" class="text-rose-500 hover:text-rose-700 cursor-pointer">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-        @endif
-
         @yield('content')
     </main>
 
@@ -2534,6 +2508,7 @@
         };
     </script>
 
+    @include('layouts.toast')
     @include('layouts.notifications')
 
     @stack('scripts')
