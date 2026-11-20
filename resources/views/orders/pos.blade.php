@@ -500,14 +500,14 @@
             </div>
         </button>
 
-        <!-- Phải: Nút Thanh Toán / Vào Tạo Đơn -->
+        <!-- Phải: Nút Lên Đơn / Vào Tạo Đơn -->
         <button type="button"
                 @click="proceedToOrderCreate()"
                 :disabled="cart.length === 0"
                 class="rounded-full px-6 sm:px-8 py-3 font-black text-base sm:text-lg flex items-center justify-center gap-2 transition shadow-md select-none shrink-0 whitespace-nowrap"
                 :class="cart.length > 0 ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-700 text-white shadow-purple-600/30 cursor-pointer active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'">
-            <i class="fa-solid fa-credit-card text-base"></i>
-            <span>Thanh Toán</span>
+            <i class="fa-solid fa-file-circle-plus text-base"></i>
+            <span>Lên Đơn</span>
             <i class="fa-solid fa-chevron-right text-sm"></i>
         </button>
     </div>
