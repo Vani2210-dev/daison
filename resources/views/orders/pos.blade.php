@@ -167,7 +167,7 @@
 
                             <!-- Dòng 2: Tên sản phẩm (hiển thị đầy đủ 100% chiều ngang) -->
                             <div class="w-full min-w-0 mt-0.5">
-                                <h3 class="font-bold text-base sm:text-lg text-slate-900 leading-snug break-words group-hover:text-purple-700 transition" x-text="p.name"></h3>
+                                <h3 class="font-bold text-xl sm:text-2xl text-slate-900 leading-snug break-words group-hover:text-purple-700 transition" x-text="p.name"></h3>
                                 <template x-if="p.specification">
                                     <p class="text-xs sm:text-sm text-slate-400 mt-0.5 italic break-words" x-text="p.specification"></p>
                                 </template>
@@ -253,7 +253,7 @@
                                         <td class="py-3 px-3 text-center text-slate-400 font-mono" x-text="idx + 1"></td>
                                         <td class="py-3 px-3 font-mono font-bold text-slate-800 text-xs" x-text="p.sku"></td>
                                         <td class="py-3 px-3">
-                                            <div class="font-bold text-slate-900 group-hover:text-purple-700 transition" x-text="p.name"></div>
+                                            <div class="font-bold text-base sm:text-lg text-slate-900 group-hover:text-purple-700 transition" x-text="p.name"></div>
                                             <template x-if="p.specification">
                                                 <div class="text-xs text-slate-400 line-clamp-1 italic" x-text="p.specification"></div>
                                             </template>
@@ -389,7 +389,7 @@
                 <div class="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 hover:bg-white transition flex flex-col gap-1.5">
                     <div class="flex items-start justify-between gap-1.5">
                         <div class="flex-1 min-w-0">
-                            <div class="font-bold text-sm sm:text-base text-slate-900 break-words" x-text="item.name"></div>
+                            <div class="font-bold text-base sm:text-lg text-slate-900 break-words" x-text="item.name"></div>
                             <div class="text-xs sm:text-sm text-slate-400 flex items-center gap-1.5 mt-0.5">
                                 <span class="font-mono text-purple-700 font-bold" x-text="item.sku"></span>
                                 <span>•</span>
@@ -547,7 +547,7 @@
             <div class="p-4 sm:p-5 space-y-3 sm:space-y-4">
                 <!-- Thông tin sản phẩm -->
                 <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-                    <h4 class="font-bold text-base sm:text-lg text-slate-900 leading-snug" x-text="selectedProduct?.name"></h4>
+                    <h4 class="font-bold text-lg sm:text-xl text-slate-900 leading-snug" x-text="selectedProduct?.name"></h4>
                     <div class="flex items-center justify-between text-sm sm:text-base mt-1.5 pt-1.5 border-t border-slate-200">
                         <span class="text-slate-500">Đơn giá:</span>
                         <span class="font-black text-purple-700" x-text="formatCurrency(selectedProduct?.price) + ' / ' + (selectedProduct?.unit || 'cái')"></span>
