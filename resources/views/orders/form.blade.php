@@ -2797,61 +2797,7 @@ function orderFormApp() {
                 return isConvLarger ? Math.round(num * rate) : Math.round(num / rate);
             };
 
-            const cleanChosen = chosenTier.toLowerCase();
-
-            // 1. Array format: [{ name: 'Giá Bán lẻ', price: 100000, conversion_price: 25000 }]
-            if (Array.isArray(p.price_tiers) && p.price_tiers.length > 0) {
-                let matchedTier = p.price_tiers.find(t => t.name && t.name.trim().toLowerCase() === cleanChosen);
-                
-                if (!matchedTier) {
-                    matchedTier = p.price_tiers.find(t => {
-                        if (!t.name) return false;
-                        const tn = t.name.trim().toLowerCase();
-                        return tn.includes(cleanChosen) || cleanChosen.includes(tn);
-                    });
-                }
-
-                if (matchedTier) {
-                    if (isConv) {
-                        if (Number(matchedTier.conversion_price) > 0) {
-                            return Number(matchedTier.conversion_price);
-                        }
-                        if (Number(matchedTier.price) > 0) {
-                            return calcConv(matchedTier.price);
-                        }
-                    } else if (Number(matchedTier.price) > 0) {
-                        return Number(matchedTier.price);
-                    }
-                }
-
-                // If chosen tier price is 0, fallback to "Nguyên Giá" or positive price tier
-                const ngTier = p.price_tiers.find(t => t.name && t.name.toLowerCase().includes('nguyên giá') && Number(t.price) > 0);
-                if (ngTier) {
-                    if (isConv) {
-                        return Number(ngTier.conversion_price) > 0 ? Number(ngTier.conversion_price) : calcConv(ngTier.price);
-                    }
-                    return Number(ngTier.price);
-                }
-                // Không khớp loại giá nào -> dùng giá bán niêm yết (p.price) ở bước 3,
-                // KHÔNG lấy bảng giá đầu tiên (thường là giá Cấp 1 / NPP = giá vốn)
-            }
-
-            // 2. Object format: { c1, c2, retail, ... } (chỉ dùng khi khớp rõ ràng)
-            if (p.price_tiers && typeof p.price_tiers === 'object' && !Array.isArray(p.price_tiers)) {
-                let key = null;
-                if (cleanChosen.includes('cấp 1') || cleanChosen.includes('c1')) key = 'c1';
-                else if (cleanChosen.includes('cấp 2') || cleanChosen.includes('c2')) key = 'c2';
-                else if (cleanChosen.includes('bán lẻ') || cleanChosen.includes('retail')) key = 'retail';
-                else if (cleanChosen.includes('dự án') || cleanChosen.includes('project')) key = 'project';
-                else if (cleanChosen.includes('thợ') || cleanChosen.includes('mechanic')) key = 'mechanic';
-
-                if (p.price_tiers[key] && Number(p.price_tiers[key]) > 0) {
-                    const base = Number(p.price_tiers[key]);
-                    return isConv ? calcConv(base) : base;
-                }
-            }
-
-            // 3. Ưu tiên Giá bán niêm yết của sản phẩm (p.price)
+            // 1. Ưu tiên Giá bán của sản phẩm (p.price)
             if (isConv && Number(p.conversion_price) > 0) {
                 return Number(p.conversion_price);
             }
@@ -2859,7 +2805,7 @@ function orderFormApp() {
                 return isConv ? calcConv(p.price) : Number(p.price);
             }
 
-            // 4. Fallback cuối cùng nếu sản phẩm chưa cài giá bán (p.price <= 0)
+            // 2. Fallback nếu sản phẩm chưa cài giá bán (p.price <= 0)
             const baseCost = Number(p.cost_price || 0);
             if (baseCost > 0) {
                 return isConv ? calcConv(baseCost) : baseCost;

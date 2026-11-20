@@ -386,45 +386,23 @@
                 </div>
 
                 <form @submit.prevent="submitImportExcel()" class="p-5 space-y-4 text-xs">
-                    <!-- Quy tắc giá thông minh box -->
-                    <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-900 space-y-2">
-                        <div class="font-bold flex items-center gap-1.5 text-emerald-800">
-                            <i class="fa-solid fa-circle-check text-emerald-600"></i>
-                            <span>Quy tắc bảng giá theo đơn vị tính:</span>
-                        </div>
-                        <ul class="list-disc list-inside space-y-1 text-[11px] text-emerald-800">
-                            <li><strong>ĐVT tính và ĐV quy đổi GIỐNG NHAU:</strong> Giá áp dụng chung đồng nhất, không phân biệt đơn vị.</li>
-                            <li><strong>ĐVT tính và ĐV quy đổi KHÁC NHAU:</strong> Tự động tính và phân biệt bảng giá riêng biệt cho ĐVT cơ bản (Cây/Cuộn...) và ĐVT quy đổi (Mét...) theo tỷ lệ quy cách.</li>
-                            <li><strong>Hỗ trợ phân khúc giá & định mức tồn:</strong> Giá nhập (vốn), Nguyên giá, Cấp 1 (BC1), Cấp 2 (BC2), Cấp 3 (BC3), Khách lẻ, Thuế VAT, Tồn tối thiểu, Tồn tối đa.</li>
-                        </ul>
-                        <div class="pt-2 border-t border-emerald-200/60 space-y-2">
-                            <div class="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
-                                <i class="fa-solid fa-file-circle-check text-emerald-600"></i>
-                                <span>Tải về file Excel mẫu chuẩn (Đã có sẵn cột Tồn tối thiểu [W] & Tồn tối đa [X]):</span>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <a href="{{ url('/api/products/template-excel?type=hdpe') }}" class="flex items-center justify-between p-2.5 bg-white hover:bg-emerald-50/60 rounded-xl border border-emerald-200 shadow-2xs hover:shadow-xs transition-all group">
-                                    <div class="text-left">
-                                        <p class="font-bold text-xs text-emerald-900 group-hover:text-emerald-700 flex items-center gap-1.5">
-                                            <i class="fa-solid fa-file-excel text-emerald-600"></i>
-                                            <span>Mẫu 1: Ống HDPE (1 Đơn Vị Giá)</span>
-                                        </p>
-                                        <p class="text-[10px] text-slate-500 mt-0.5">ĐVT tính chuẩn (Mét/Cây), giá đồng nhất theo cột</p>
-                                    </div>
-                                    <i class="fa-solid fa-download text-emerald-600 text-xs ml-2"></i>
-                                </a>
-                                <a href="{{ url('/api/products/template-excel?type=pvc') }}" class="flex items-center justify-between p-2.5 bg-white hover:bg-emerald-50/60 rounded-xl border border-emerald-200 shadow-2xs hover:shadow-xs transition-all group">
-                                    <div class="text-left">
-                                        <p class="font-bold text-xs text-emerald-900 group-hover:text-emerald-700 flex items-center gap-1.5">
-                                            <i class="fa-solid fa-file-excel text-emerald-600"></i>
-                                            <span>Mẫu 2: Ống PVC (2 Đơn Vị Quy Đổi)</span>
-                                        </p>
-                                        <p class="text-[10px] text-slate-500 mt-0.5">ĐVT Chuẩn (Cây) & ĐVT Lẻ (Mét), 2 bộ cột giá riêng</p>
-                                    </div>
-                                    <i class="fa-solid fa-download text-emerald-600 text-xs ml-2"></i>
-                                </a>
-                            </div>
-                        </div>
+                    <!-- Chọn Nhà Cung Cấp trước khi tải file -->
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1.5">
+                            <i class="fa-solid fa-truck-field text-amber-600 mr-1"></i>
+                            Chọn Nhà Cung Cấp <span class="text-rose-500">*</span>
+                        </label>
+                        <select 
+                            x-model="importSupplierId"
+                            required
+                            class="w-full px-3.5 py-2.5 bg-white border border-slate-300 hover:border-emerald-500 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all cursor-pointer shadow-2xs"
+                        >
+                            <option value="">-- Vui lòng chọn Nhà Cung Cấp cho danh sách sản phẩm này --</option>
+                            <template x-for="sup in suppliersList" :key="sup.id">
+                                <option :value="sup.id" x-text="sup.name + (sup.code ? ' (' + sup.code + ')' : '')"></option>
+                            </template>
+                        </select>
+                        <p class="text-[11px] text-slate-500 mt-1">Các sản phẩm import trong file Excel sẽ được tự động gắn cho Nhà cung cấp được chọn.</p>
                     </div>
 
                     <!-- File Drag & Drop Zone -->
@@ -503,6 +481,7 @@ function productsManager() {
         selectedSupplierId: '{{ request('supplier_id') }}',
         showImportModal: false,
         isImporting: false,
+        importSupplierId: '',
         importFile: null,
         importFileName: '',
 
@@ -593,8 +572,7 @@ function productsManager() {
 
         getSellingPrice(product) {
             if (!product) return 0;
-            if (Number(product.price) > 0) return Number(product.price);
-            return this.getTierPrice(product, 'Giá Bán', 'Giá Bán lẻ', 'Bán Lẻ', 'retail_price', 'Tiêu Chuẩn', 'Nguyên Giá') || Number(product.cost_price || 0);
+            return Number(product.price || 0);
         },
 
         getSellingConversionPrice(product) {
@@ -612,36 +590,11 @@ function productsManager() {
         },
 
         getTierPrice(product, ...tierNames) {
-            if (!product) return 0;
-            const tiers = product.price_tiers || product.priceTiers;
-            if (Array.isArray(tiers)) {
-                for (const tName of tierNames) {
-                    const found = tiers.find(t => t && t.name && t.name.toLowerCase().includes(tName.toLowerCase()));
-                    if (found && Number(found.price) > 0) return Number(found.price);
-                }
-            }
-            return 0;
+            return this.getSellingPrice(product);
         },
 
         getTierConversionPrice(product, ...tierNames) {
-            if (!product) return 0;
-            const tiers = product.price_tiers || product.priceTiers;
-            if (Array.isArray(tiers)) {
-                for (const tName of tierNames) {
-                    const found = tiers.find(t => t && t.name && t.name.toLowerCase().includes(tName.toLowerCase()));
-                    if (found) {
-                        if (Number(found.conversion_price) > 0) return Number(found.conversion_price);
-                        if (Number(found.price) > 0) {
-                            const rate = Number(product.conversion_rate) || 1;
-                            if (rate <= 1) return Number(found.price);
-                            return this.isConvUnitLarger(product)
-                                ? Math.round(Number(found.price) * rate)
-                                : Number((found.price / rate).toFixed(2));
-                        }
-                    }
-                }
-            }
-            return 0;
+            return this.getSellingConversionPrice(product);
         },
 
         hasDiffPrice(stdPrice, convPrice) {
@@ -743,6 +696,11 @@ function productsManager() {
         },
 
         async submitImportExcel() {
+            if (!this.importSupplierId) {
+                Swal.fire({ icon: 'warning', title: 'Chưa chọn Nhà Cung Cấp', text: 'Vui lòng chọn Nhà Cung Cấp trước khi tải lên file Excel!' });
+                return;
+            }
+
             if (!this.importFile) {
                 Swal.fire({ icon: 'warning', title: 'Chưa chọn file', text: 'Vui lòng chọn một file Excel (.xlsx)!' });
                 return;
@@ -751,6 +709,7 @@ function productsManager() {
             this.isImporting = true;
             const formData = new FormData();
             formData.append('file', this.importFile);
+            formData.append('supplier_id', this.importSupplierId);
 
             try {
                 const response = await fetch('{{ url('/api/products/import-excel') }}', {

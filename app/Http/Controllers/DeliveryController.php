@@ -2162,7 +2162,7 @@ class DeliveryController extends Controller
             ->orderBy('name')
             ->get()
             ->map(function ($p) {
-                $p->retail_price = (float)($p->price ?: ($p->getPriceForTier('Đại lý Cấp 1') ?: ($p->getPriceForTier('Bán Lẻ') ?: $p->cost_price)));
+                $p->retail_price = (float)($p->price ?: $p->cost_price ?: 0);
                 return $p;
             });
 

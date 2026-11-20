@@ -16,10 +16,11 @@ class ProductExcelImportService
      * Import products from an XLSX file.
      *
      * @param string $filePath
+     * @param int|null $supplierId
      * @return array
      * @throws \Exception
      */
-    public function import(string $filePath): array
+    public function import(string $filePath, ?int $supplierId = null): array
     {
         if (!file_exists($filePath)) {
             throw new \Exception("File không tồn tại: {$filePath}");
@@ -126,6 +127,7 @@ class ProductExcelImportService
             elseif (str_contains($vLower, 'đvt tính') || str_contains($vLower, 'đơn vị tính') || str_contains($vLower, 'đvt cơ bản') || $vLower === 'đvt') $colMap['unit'] = $colLetter;
             elseif (str_contains($vLower, 'đv quy đổi') || str_contains($vLower, 'quy đổi') || str_contains($vLower, 'đvt lẻ') || str_contains($vLower, 'đv lẻ') || str_contains($vLower, 'đơn vị lẻ')) $colMap['conversion_unit'] = $colLetter;
             elseif (str_contains($vLower, 'quy cách') || str_contains($vLower, 'tỉ lệ quy đổi') || str_contains($vLower, 'tỷ lệ quy đổi')) $colMap['rate'] = $colLetter;
+            elseif (str_contains($vLower, 'giá bán') || $vLower === 'giá' || $vLower === 'đơn giá' || str_contains($vLower, 'giá xuất') || str_contains($vLower, 'giá tiêu chuẩn')) $colMap['selling_price'] = $colLetter;
             elseif (str_contains($vLower, 'giá nhập') && (str_contains($vLower, 'cây') || !str_contains($vLower, 'mét'))) $colMap['cost1'] = $colLetter;
             elseif (str_contains($vLower, 'nguyên giá') && (str_contains($vLower, 'cây') || !str_contains($vLower, 'mét'))) $colMap['origin1'] = $colLetter;
             elseif (str_contains($vLower, 'bc1') && (str_contains($vLower, 'cây') || !str_contains($vLower, 'mét'))) $colMap['bc1_1'] = $colLetter;
@@ -364,6 +366,10 @@ class ProductExcelImportService
                     $sellingPrice = $retail1Val > 0 ? $retail1Val : ($origin1Val > 0 ? $origin1Val : $cost1Val);
                 }
 
+                if (isset($colMap['selling_price']) && isset($cols[$colMap['selling_price']]) && is_numeric($cols[$colMap['selling_price']]) && (float)$cols[$colMap['selling_price']] > 0) {
+                    $sellingPrice = (float)$cols[$colMap['selling_price']];
+                }
+
                 $vatRate = (isset($colMap['vat_rate']) && isset($cols[$colMap['vat_rate']]) && is_numeric($cols[$colMap['vat_rate']]))
                     ? (float)$cols[$colMap['vat_rate']]
                     : 8;
@@ -395,10 +401,14 @@ class ProductExcelImportService
                     'vat_rate' => $vatRate,
                     'min_stock_alert' => $minStock,
                     'max_stock_alert' => $maxStock,
-                    'price_tiers' => $priceTiers,
+                    'price_tiers' => null,
                     'location' => 'Kho Tổng',
                     'is_active' => true,
                 ];
+
+                if ($supplierId) {
+                    $data['supplier_id'] = $supplierId;
+                }
 
                 $product = Product::where('sku', $sku)->first();
                 if ($product) {

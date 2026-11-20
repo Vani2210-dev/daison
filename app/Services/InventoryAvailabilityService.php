@@ -348,7 +348,7 @@ class InventoryAvailabilityService
                     'conversion_price' => (float)$p->conversion_price,
                     'cost_price'       => (float)$p->cost_price,
                     'price'            => (float)$p->price,
-                    'price_tiers'      => $p->price_tiers,
+                    'price_tiers'      => null,
                     'vat_rate'         => (float)$p->vat_rate,
                     // Tồn tổng toàn công ty
                     'stock_quantity'   => round($totalOnHand, 2),

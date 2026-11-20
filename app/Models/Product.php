@@ -141,44 +141,19 @@ class Product extends Model
     }
 
     /**
-     * Lấy giá bán theo tên phân khúc cụ thể (vd: "Đại lý Cấp 1", "Bán Lẻ", "Dự Án")
+     * Lấy giá bán sản phẩm
      */
-    public function getPriceForTier(string $tierName, float $defaultPrice = 0): float
+    public function getPriceForTier(string $tierName = '', float $defaultPrice = 0): float
     {
-        if (empty($this->price_tiers) || !is_array($this->price_tiers)) {
-            return $defaultPrice;
-        }
-
-        foreach ($this->price_tiers as $tier) {
-            if (strcasecmp($tier['name'] ?? '', $tierName) === 0) {
-                return (float) ($tier['price'] ?? $defaultPrice);
-            }
-        }
-
-        return $defaultPrice;
+        return (float) ($this->price ?: $defaultPrice);
     }
 
     /**
-     * Cập nhật hoặc thêm mới một phân khúc giá trong cột price_tiers (JSON)
+     * Cập nhật giá bán sản phẩm
      */
     public function setPriceForTier(string $tierName, float $price): self
     {
-        $tiers = $this->price_tiers ?? [];
-        $found = false;
-
-        foreach ($tiers as &$tier) {
-            if (strcasecmp($tier['name'] ?? '', $tierName) === 0) {
-                $tier['price'] = $price;
-                $found = true;
-                break;
-            }
-        }
-
-        if (!$found) {
-            $tiers[] = ['name' => $tierName, 'price' => $price];
-        }
-
-        $this->price_tiers = $tiers;
+        $this->price = $price;
         return $this;
     }
 

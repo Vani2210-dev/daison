@@ -34,20 +34,8 @@
         ->get()
         ->map(function ($p) {
             $costPrice = (float)($p->cost_price ?? $p->latest_cost_price ?? 0);
-            $tiers = is_array($p->price_tiers) ? $p->price_tiers : json_decode($p->price_tiers, true);
-
+            $retailPrice = (float)($p->price ?: $costPrice);
             $consignmentPrice = $costPrice;
-            $retailPrice = $costPrice;
-
-            if (!empty($tiers) && is_array($tiers)) {
-                if (isset($tiers[0]['price']) && (float)$tiers[0]['price'] > 0) {
-                    $consignmentPrice = (float)$tiers[0]['price'];
-                }
-                $lastTier = end($tiers);
-                if (isset($lastTier['price']) && (float)$lastTier['price'] > 0) {
-                    $retailPrice = (float)$lastTier['price'];
-                }
-            }
 
             return [
                 'id'             => $p->id,

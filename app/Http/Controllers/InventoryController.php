@@ -20,16 +20,8 @@ class InventoryController extends Controller
     public function getInventoryBootstrapData()
     {
         return Product::accessibleBy()->with(['category', 'brand', 'supplier'])->get()->map(function ($p) {
-            $priceTiers = $p->price_tiers ?? [];
-            $dealerPrice = $p->getPriceForTier('Đại lý Cấp 1', 0);
-            $retailPrice = $p->getPriceForTier('Bán Lẻ', 0);
-
-            if ($dealerPrice == 0 && !empty($priceTiers)) {
-                $dealerPrice = (float) ($priceTiers[0]['price'] ?? 0);
-            }
-            if ($retailPrice == 0 && !empty($priceTiers)) {
-                $retailPrice = (float) ($priceTiers[count($priceTiers) - 1]['price'] ?? 0);
-            }
+            $dealerPrice = (float) ($p->price ?: $p->cost_price ?: 0);
+            $retailPrice = (float) ($p->price ?: $p->cost_price ?: 0);
 
             $stock = (float) $p->stock_quantity;
             $warehouses = \App\Models\Warehouse::all();
@@ -275,11 +267,10 @@ class InventoryController extends Controller
             'conversion_unit'   => $request->input('conversionUnit'),
             'conversion_rate'   => (float) ($request->input('conversionRate') ?: 1),
             'conversion_price'  => (float) ($request->input('conversionPrice') ?: 0),
-            'cost_price'        => (float) ($request->input('costPrice') ?: 0),
-            'dealer_price'      => (float) ($request->input('dealerPrice') ?: 0),
-            'retail_price'      => (float) ($request->input('retailPrice') ?: 0),
+            'cost_price'        => (float) ($request->input('costPrice') ?: ($request->input('cost_price') ?: 0)),
+            'price'             => (float) ($request->input('retailPrice') ?: ($request->input('price') ?: 0)),
             'vat_rate'          => (float) ($request->input('vatRate') ?: 0),
-            'price_tiers'       => $priceTiers,
+            'price_tiers'       => null,
             'stock_quantity'    => (float) ($request->input('stockQuantity') ?: 0),
             'min_stock_alert'   => (float) ($request->input('minStockAlert') ?: 10),
             'location'          => $request->input('location') ?: 'Kho Tổng',

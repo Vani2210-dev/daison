@@ -210,14 +210,6 @@ class WebViewController extends Controller
             $convPrice = (float)round($convPrice);
         }
 
-        // Tự động duy trì cấu trúc price_tiers chuẩn để tương thích với các module đơn hàng, POS, ký gửi
-        $formattedPriceTiers = [
-            ['name' => 'Giá Bán', 'price' => $price, 'conversion_price' => $convPrice],
-            ['name' => 'Giá Bán lẻ', 'price' => $price, 'conversion_price' => $convPrice],
-            ['name' => 'Giá Đại lý Cấp 1', 'price' => $price, 'conversion_price' => $convPrice],
-            ['name' => 'Nguyên Giá', 'price' => $price, 'conversion_price' => $convPrice],
-        ];
-
         $data = [
             'sku' => trim($request->input('sku')),
             'name' => trim($request->input('name')),
@@ -235,7 +227,7 @@ class WebViewController extends Controller
             'price' => $price,
             'conversion_price' => $convPrice,
             'vat_rate' => (float)$request->input('vat_rate', 10),
-            'price_tiers' => $formattedPriceTiers,
+            'price_tiers' => null,
             'stock_quantity' => (float)$request->input('stock_quantity', 0),
             'min_stock_alert' => (float)$request->input('min_stock_alert', 10),
             'max_stock_alert' => $request->filled('max_stock_alert') ? (float)$request->input('max_stock_alert') : null,
@@ -334,6 +326,7 @@ class WebViewController extends Controller
     {
         $request->validate([
             'file' => 'required|file|max:20480',
+            'supplier_id' => 'nullable|integer|exists:suppliers,id',
         ]);
 
         try {
@@ -346,7 +339,8 @@ class WebViewController extends Controller
                 ], 422);
             }
 
-            $result = $importService->import($file->getRealPath());
+            $supplierId = $request->filled('supplier_id') ? (int)$request->input('supplier_id') : null;
+            $result = $importService->import($file->getRealPath(), $supplierId);
 
             return response()->json($result);
         } catch (\Exception $e) {
@@ -1921,6 +1915,7 @@ class WebViewController extends Controller
     {
         $request->validate([
             'file' => 'required|file|max:20480',
+            'supplier_id' => 'nullable|integer|exists:suppliers,id',
         ]);
 
         try {
@@ -1933,7 +1928,8 @@ class WebViewController extends Controller
                 ], 422);
             }
 
-            $result = $importService->import($file->getRealPath());
+            $supplierId = $request->filled('supplier_id') ? (int)$request->input('supplier_id') : null;
+            $result = $importService->import($file->getRealPath(), $supplierId);
 
             return response()->json($result);
         } catch (\Exception $e) {

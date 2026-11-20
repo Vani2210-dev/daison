@@ -532,20 +532,6 @@ function productForm() {
 
     // Initial price & conversion price
     let initPrice = Number(rawProduct?.price || 0);
-    if (!initPrice && rawProduct?.price_tiers) {
-        const tiers = Array.isArray(rawProduct.price_tiers) 
-            ? rawProduct.price_tiers 
-            : (typeof rawProduct.price_tiers === 'string' ? JSON.parse(rawProduct.price_tiers || '[]') : []);
-        if (Array.isArray(tiers) && tiers.length > 0) {
-            const retailTier = tiers.find(t => t.name && (t.name.toLowerCase().includes('bán lẻ') || t.name.toLowerCase().includes('tiêu chuẩn')));
-            if (retailTier && Number(retailTier.price) > 0) {
-                initPrice = Number(retailTier.price);
-            } else {
-                const posTier = tiers.find(t => Number(t.price) > 0);
-                if (posTier) initPrice = Number(posTier.price);
-            }
-        }
-    }
 
     let initConversionPrice = Number(rawProduct?.conversion_price || 0);
     if (!initConversionPrice && initPrice > 0 && Number(rawProduct?.conversion_rate) > 1) {
