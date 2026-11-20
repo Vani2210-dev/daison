@@ -95,14 +95,14 @@
             </div>
         </div>
 
-        <!-- 2. LIÊN KẾT PHÂN LOẠI & THƯƠNG HIỆU -->
+        <!-- 2. LIÊN KẾT PHÂN LOẠI & NHÀ CUNG CẤP -->
         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
             <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
                 <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">2</div>
-                <h2 class="text-sm font-extrabold text-slate-900">Liên Kết Phân Loại Ngành Hàng & Nhãn Hiệu Nhà Sản Xuất</h2>
+                <h2 class="text-sm font-extrabold text-slate-900">Liên Kết Phân Loại Ngành Hàng & Nhà Cung Cấp</h2>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                 <!-- Dropdown Phân Loại (Category) -->
                 <div>
                     <label class="block font-bold text-slate-700 mb-1.5">
@@ -122,32 +122,14 @@
                     <p class="text-[11px] text-slate-400 mt-1">Liên kết trực tiếp bảng Phân loại</p>
                 </div>
 
-                <!-- Dropdown Thương Hiệu (Brand) -->
-                <div>
-                    <label class="block font-bold text-slate-700 mb-1.5">
-                        Thương Hiệu / Nhà Sản Xuất <span class="text-rose-500">*</span>
-                    </label>
-                    <select 
-                        x-model="brand_id" 
-                        required 
-                        @change="onBrandChange()"
-                        class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 cursor-pointer"
-                    >
-                        <option value="">-- Chọn thương hiệu sản xuất --</option>
-                        @foreach($brands as $b)
-                            <option value="{{ $b->id }}">{{ $b->name }} ({{ $b->country ?? 'Việt Nam' }})</option>
-                        @endforeach
-                    </select>
-                    <p class="text-[11px] text-slate-400 mt-1">Liên kết trực tiếp bảng Nhãn hiệu</p>
-                </div>
-
                 <!-- Dropdown Nhà Cung Cấp (Supplier) -->
                 <div>
                     <label class="block font-bold text-slate-700 mb-1.5">
-                        Nhà Cung Cấp
+                        Nhà Cung Cấp <span class="text-rose-500">*</span>
                     </label>
                     <select 
                         x-model="supplier_id" 
+                        required
                         class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 cursor-pointer"
                     >
                         <option value="">-- Chọn nhà cung cấp --</option>
@@ -173,7 +155,7 @@
                             <option :value="sub.id" x-text="sub.name + (sub.code ? (' - ' + sub.code) : '')"></option>
                         </template>
                     </select>
-                    <p class="text-[11px] text-slate-400 mt-1">Lọc tự động theo Loại & Thương hiệu</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Lọc tự động theo Phân loại</p>
                 </div>
             </div>
         </div>
@@ -572,7 +554,7 @@ function productForm() {
         tax_name: rawProduct?.tax_name || rawProduct?.name || '',
         tax_name_manual: !!(rawProduct?.tax_name && rawProduct.tax_name !== rawProduct.name),
         category_id: rawProduct?.category_id || '',
-        brand_id: rawProduct?.brand_id || '',
+        brand_id: null,
         supplier_id: rawProduct?.supplier_id || '',
         subcategory_id: rawProduct?.subcategory_id || '',
         subcategory: rawProduct?.subcategory || '',
@@ -594,11 +576,9 @@ function productForm() {
         isSaving: false,
 
         get filteredSubcategories() {
-            if (!this.category_id && !this.brand_id) return this.subcategoriesList;
+            if (!this.category_id) return this.subcategoriesList;
             return this.subcategoriesList.filter(s => {
-                const matchCat = !this.category_id || s.category_id == this.category_id;
-                const matchBrand = !this.brand_id || !s.brand_id || s.brand_id == this.brand_id;
-                return matchCat && matchBrand;
+                return !this.category_id || s.category_id == this.category_id;
             });
         },
 
@@ -627,16 +607,6 @@ function productForm() {
             if (this.subcategory_id) {
                 const sub = this.subcategoriesList.find(s => s.id == this.subcategory_id);
                 if (sub && sub.category_id != this.category_id) {
-                    this.subcategory_id = '';
-                    this.subcategory = '';
-                }
-            }
-        },
-
-        onBrandChange() {
-            if (this.subcategory_id) {
-                const sub = this.subcategoriesList.find(s => s.id == this.subcategory_id);
-                if (sub && sub.brand_id && sub.brand_id != this.brand_id) {
                     this.subcategory_id = '';
                     this.subcategory = '';
                 }
@@ -728,8 +698,8 @@ function productForm() {
                 Swal.fire({ icon: 'warning', title: 'Thiếu thông tin', text: 'Vui lòng chọn Phân loại ngành hàng!' });
                 return;
             }
-            if (!this.brand_id) {
-                Swal.fire({ icon: 'warning', title: 'Thiếu thông tin', text: 'Vui lòng chọn Thương hiệu sản xuất!' });
+            if (!this.supplier_id) {
+                Swal.fire({ icon: 'warning', title: 'Thiếu thông tin', text: 'Vui lòng chọn Nhà cung cấp!' });
                 return;
             }
             if (!this.unit.trim()) {
@@ -755,7 +725,7 @@ function productForm() {
                 name: this.name,
                 tax_name: this.tax_name || this.name,
                 category_id: this.category_id,
-                brand_id: this.brand_id,
+                brand_id: null,
                 supplier_id: this.supplier_id || null,
                 subcategory_id: this.subcategory_id || null,
                 subcategory: this.subcategory || '',

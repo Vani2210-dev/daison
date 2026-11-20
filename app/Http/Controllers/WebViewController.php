@@ -82,7 +82,7 @@ class WebViewController extends Controller
      */
     public function products(Request $request)
     {
-        $query = Product::accessibleBy()->with(['category', 'brand', 'supplier']);
+        $query = Product::accessibleBy()->with(['category', 'supplier']);
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -97,17 +97,13 @@ class WebViewController extends Controller
             $query->where('category_id', $catId);
         }
 
-        if ($brandId = $request->input('brand_id')) {
-            $query->where('brand_id', $brandId);
-        }
-
         if ($supplierId = $request->input('supplier_id')) {
             $query->where('supplier_id', $supplierId);
         }
 
         $products = $query->latest('id')->paginate(20)->withQueryString();
         $categories = Category::orderBy('name')->get();
-        $brands = Brand::orderBy('name')->get();
+        $brands = [];
         $suppliers = \App\Models\Supplier::where('is_active', true)->orWhereNull('is_active')->orderBy('name')->get();
         $priceTiers = PriceTier::where('status', 'Hoạt động')->orderBy('order_num')->orderBy('id')->get();
 
@@ -120,7 +116,7 @@ class WebViewController extends Controller
     public function productCreate()
     {
         $categories = Category::orderBy('name')->get();
-        $brands = Brand::orderBy('name')->get();
+        $brands = [];
         $subcategories = Subcategory::where('is_active', true)->orderBy('name')->get();
         $warehouses = Warehouse::where('is_active', true)
             ->orderByRaw("CASE WHEN name LIKE '%Tổng%' THEN 0 WHEN name LIKE '%Ôm%' THEN 2 ELSE 1 END")
@@ -144,9 +140,9 @@ class WebViewController extends Controller
      */
     public function productEdit($id)
     {
-        $product = Product::with(['category', 'brand', 'supplier'])->findOrFail($id);
+        $product = Product::with(['category', 'supplier'])->findOrFail($id);
         $categories = Category::orderBy('name')->get();
-        $brands = Brand::orderBy('name')->get();
+        $brands = [];
         $suppliers = \App\Models\Supplier::where('is_active', true)->orWhereNull('is_active')->orderBy('name')->get();
         $subcategories = Subcategory::where('is_active', true)->orderBy('name')->get();
         $warehouses = Warehouse::where('is_active', true)
@@ -184,7 +180,7 @@ class WebViewController extends Controller
             'sku' => 'required|string|max:100',
             'name' => 'required|string|max:255',
             'category_id' => 'required|exists:categories,id',
-            'brand_id' => 'required|exists:brands,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
             'unit' => 'required|string|max:50',
         ]);
 
@@ -215,7 +211,7 @@ class WebViewController extends Controller
             'name' => trim($request->input('name')),
             'tax_name' => trim($request->input('tax_name')) ?: trim($request->input('name')),
             'category_id' => (int)$request->input('category_id'),
-            'brand_id' => (int)$request->input('brand_id'),
+            'brand_id' => $request->filled('brand_id') ? (int)$request->input('brand_id') : null,
             'supplier_id' => $request->filled('supplier_id') ? (int)$request->input('supplier_id') : null,
             'subcategory' => trim($request->input('subcategory', '')),
             'subcategory_id' => $request->filled('subcategory_id') ? (int)$request->input('subcategory_id') : null,

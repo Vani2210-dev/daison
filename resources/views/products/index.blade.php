@@ -52,14 +52,6 @@
                 @endforeach
             </select>
 
-            <!-- Filter Brand (Linked with Brands Table) -->
-            <select name="brand_id" onchange="this.form.submit()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none cursor-pointer focus:border-sky-500">
-                <option value="">Tất cả thương hiệu</option>
-                @foreach($brands as $b)
-                    <option value="{{ $b->id }}" {{ request('brand_id') == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
-                @endforeach
-            </select>
-
             <!-- Filter Supplier (Linked with Suppliers Table) -->
             <select name="supplier_id" onchange="this.form.submit()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none cursor-pointer focus:border-sky-500">
                 <option value="">Tất cả nhà cung cấp</option>
@@ -72,7 +64,7 @@
                 <i class="fa-solid fa-filter"></i>
                 <span>Lọc</span>
             </button>
-            @if(request('search') || request('category_id') || request('brand_id') || request('supplier_id'))
+            @if(request('search') || request('category_id') || request('supplier_id'))
                 <a href="{{ url('/cat_products') }}" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-medium transition-colors" title="Xóa bộ lọc">
                     <i class="fa-solid fa-rotate-left"></i>
                 </a>
@@ -108,7 +100,6 @@
                         <th class="py-3 px-3 whitespace-nowrap">Mã SKU</th>
                         <th class="py-3 px-4 min-w-[240px]">Tên Sản Phẩm (Thương Mại & Hóa Đơn)</th>
                         <th class="py-3 px-3 whitespace-nowrap">Phân Loại</th>
-                        <th class="py-3 px-3 whitespace-nowrap">Thương Hiệu</th>
                         <th class="py-3 px-3 whitespace-nowrap">Nhà Cung Cấp</th>
                         <th class="py-3 px-3 whitespace-nowrap text-center">ĐVT Chuẩn</th>
                         <th class="py-3 px-3 whitespace-nowrap">Quy Đổi & Quy Cách</th>
@@ -169,11 +160,6 @@
                             <!-- Phân loại liên kết bảng categories -->
                             <td class="py-3 px-3 whitespace-nowrap">
                                 <span class="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold text-[11px]" x-text="getCategoryName(item)"></span>
-                            </td>
-
-                            <!-- Thương hiệu liên kết bảng brands -->
-                            <td class="py-3 px-3 whitespace-nowrap font-bold text-slate-800">
-                                <span x-text="getBrandName(item)"></span>
                             </td>
 
                             <!-- Nhà cung cấp liên kết bảng suppliers -->
@@ -337,7 +323,7 @@
                     </template>
 
                     <tr x-show="filteredProducts.length === 0">
-                        <td :colspan="priceViewMode === 'split' ? 17 : 15" class="py-12 text-center text-slate-400">
+                        <td :colspan="priceViewMode === 'split' ? 16 : 14" class="py-12 text-center text-slate-400">
                             <i class="fa-solid fa-box-open text-3xl text-slate-300 mb-2"></i>
                             <p class="font-bold text-slate-700">Không tìm thấy sản phẩm phù hợp!</p>
                             <p class="text-xs text-slate-400 mt-1">Hãy thử đổi từ khóa tìm kiếm hoặc bấm "Thêm Sản Phẩm Mới".</p>
@@ -471,13 +457,11 @@ function productsManager() {
     return {
         products: @json($products->items() ?? []),
         categoriesList: @json($categories ?? []),
-        brandsList: @json($brands ?? []),
         suppliersList: @json($suppliers ?? []),
         priceTiersMaster: @json($priceTiers ?? []),
         priceViewMode: 'stacked', // 'stacked' | 'split'
         searchQuery: '',
         selectedCategoryId: '{{ request('category_id') }}',
-        selectedBrandId: '{{ request('brand_id') }}',
         selectedSupplierId: '{{ request('supplier_id') }}',
         showImportModal: false,
         isImporting: false,
@@ -497,10 +481,9 @@ function productsManager() {
 
                 const matchQ = !q || name.includes(q) || taxName.includes(q) || sku.includes(q) || spec.includes(q);
                 const matchCat = !this.selectedCategoryId || String(item.category_id) === String(this.selectedCategoryId);
-                const matchBrand = !this.selectedBrandId || String(item.brand_id) === String(this.selectedBrandId);
                 const matchSupplier = !this.selectedSupplierId || String(item.supplier_id) === String(this.selectedSupplierId);
 
-                return matchQ && matchCat && matchBrand && matchSupplier;
+                return matchQ && matchCat && matchSupplier;
             });
         },
 
@@ -508,12 +491,6 @@ function productsManager() {
             if (item.category && item.category.name) return item.category.name;
             const c = this.categoriesList.find(x => x.id == item.category_id);
             return c ? c.name : 'Chưa phân loại';
-        },
-
-        getBrandName(item) {
-            if (item.brand && item.brand.name) return item.brand.name;
-            const b = this.brandsList.find(x => x.id == item.brand_id);
-            return b ? b.name : 'Chưa gắn hiệu';
         },
 
         getSupplierName(item) {
