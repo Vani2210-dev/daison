@@ -78,12 +78,13 @@
     .order-form-main-card input,
     .order-form-main-card select,
     .order-form-main-card textarea {
-        font-size: 13px !important;
-        min-height: 40px !important;
+        font-size: 14.5px !important;
+        min-height: 42px !important;
     }
     .order-form-main-card label {
-        font-size: 10px !important;
-        margin-bottom: 0.25rem !important;
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        margin-bottom: 0.35rem !important;
     }
 
     /* Dropdown tìm kiếm Khách hàng & Sản phẩm */
@@ -95,7 +96,23 @@
         right: auto !important;
         border-radius: 1rem !important;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2) !important;
+        font-size: 14px !important;
     }
+    .order-customer-dropdown div[id^="dealer-opt-"] .font-bold.text-slate-900 {
+        font-size: 15px !important;
+        font-weight: 800 !important;
+    }
+    .order-customer-dropdown div[id^="dealer-opt-"] .text-\[10px\],
+    .order-customer-dropdown div[id^="dealer-opt-"] .text-\[9\.5px\],
+    .order-customer-dropdown div[id^="dealer-opt-"] .text-\[11px\] {
+        font-size: 11.5px !important;
+        font-weight: 700 !important;
+    }
+    .order-customer-dropdown div[id^="dealer-opt-"] span.font-mono {
+        font-size: 12.5px !important;
+        font-weight: 700 !important;
+    }
+
     .order-product-dropdown {
         width: 100% !important;
         max-width: 100% !important;
@@ -103,6 +120,20 @@
         right: 0 !important;
         border-radius: 1rem !important;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2) !important;
+        font-size: 14px !important;
+    }
+    .order-product-dropdown div[id^="prod-opt-"] .font-bold.text-slate-900 {
+        font-size: 15px !important;
+        font-weight: 800 !important;
+    }
+    .order-product-dropdown div[id^="prod-opt-"] .text-\[11px\],
+    .order-product-dropdown div[id^="prod-opt-"] .text-\[10px\],
+    .order-product-dropdown div[id^="prod-opt-"] .text-\[9px\] {
+        font-size: 12px !important;
+    }
+    .order-product-dropdown div[id^="prod-opt-"] .font-black.text-sky-700 {
+        font-size: 15px !important;
+        font-weight: 900 !important;
     }
 
     /* 4. CHUYỂN BẢNG SẢN PHẨM THÀNH DẠNG CARD CỰC KỲ DỄ THAO TÁC TRÊN MOBILE */
@@ -205,10 +236,10 @@
         box-sizing: border-box !important;
     }
     .order-items-table td.col-product input.product-search-input {
-        height: 38px !important;
+        height: 42px !important;
         width: 100% !important;
         max-width: 100% !important;
-        font-size: 13px !important;
+        font-size: 14.5px !important;
         font-weight: 700 !important;
         border-radius: 0.5rem !important;
         border-color: #cbd5e1 !important;
@@ -225,18 +256,18 @@
     .order-items-table td.col-unit::before {
         content: "ĐƠN VỊ TÍNH";
         display: block;
-        font-size: 9px;
-        font-weight: 700;
-        color: #64748b;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        color: #475569 !important;
         letter-spacing: 0.02em;
-        margin-bottom: 2px;
+        margin-bottom: 3px;
     }
     .order-items-table td.col-unit select {
-        height: 36px !important;
+        height: 40px !important;
         width: 100% !important;
         min-width: 0 !important;
         max-width: 100% !important;
-        font-size: 12px !important;
+        font-size: 14px !important;
         font-weight: 700 !important;
         border-radius: 0.5rem !important;
         border: 1px solid #cbd5e1 !important;
@@ -254,22 +285,22 @@
     .order-items-table td.col-qty::before {
         content: "SỐ LƯỢNG";
         display: block;
-        font-size: 9px;
-        font-weight: 700;
-        color: #64748b;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        color: #475569 !important;
         letter-spacing: 0.02em;
-        margin-bottom: 2px;
+        margin-bottom: 3px;
         text-align: center;
     }
     .order-items-table td.col-qty input {
-        height: 36px !important;
+        height: 40px !important;
         width: 100% !important;
         min-width: 0 !important;
         max-width: 100% !important;
         border: 1px solid #cbd5e1 !important;
         border-radius: 0.5rem !important;
-        font-size: 13.5px !important;
-        font-weight: 800 !important;
+        font-size: 16px !important;
+        font-weight: 900 !important;
         text-align: center !important;
         background: #ffffff !important;
         box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
@@ -286,19 +317,19 @@
     .order-items-table td.col-price::before {
         content: "ĐƠN GIÁ (Đ)";
         display: block;
-        font-size: 9px;
-        font-weight: 700;
-        color: #64748b;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        color: #475569 !important;
         letter-spacing: 0.02em;
-        margin-bottom: 2px;
+        margin-bottom: 3px;
         text-align: right;
     }
     .order-items-table td.col-price input {
-        height: 36px !important;
+        height: 40px !important;
         width: 100% !important;
         min-width: 0 !important;
         max-width: 100% !important;
-        font-size: 12.5px !important;
+        font-size: 14.5px !important;
         font-weight: 800 !important;
         border-radius: 0.5rem !important;
         border: 1px solid #cbd5e1 !important;
@@ -337,20 +368,20 @@
     .order-items-table td.col-policy::before {
         content: "CHÍNH SÁCH";
         display: block;
-        font-size: 9.5px;
-        font-weight: 700;
-        color: #0284c7;
+        font-size: 11.5px !important;
+        font-weight: 800 !important;
+        color: #0284c7 !important;
         letter-spacing: 0.025em;
-        margin-bottom: 2px;
+        margin-bottom: 3px;
     }
     .order-items-table td.col-policy select {
-        height: 36px !important;
+        height: 40px !important;
         width: 100% !important;
         max-width: 100% !important;
         min-width: 0 !important;
         border: 1px solid #cbd5e1 !important;
         border-radius: 0.5rem !important;
-        font-size: 12px !important;
+        font-size: 13.5px !important;
         font-weight: 700 !important;
         color: #0f172a !important;
         background: #ffffff !important;
@@ -376,8 +407,8 @@
     .order-items-table td.col-discount::before {
         content: "CHIẾT KHẤU:";
         display: inline-block !important;
-        font-size: 10px !important;
-        font-weight: 700 !important;
+        font-size: 12px !important;
+        font-weight: 800 !important;
         color: #0284c7 !important;
         letter-spacing: 0.025em !important;
         margin-bottom: 0 !important;
@@ -409,7 +440,7 @@
         width: auto !important;
     }
     .order-items-table td.col-discount > div > .flex > div:first-child input {
-        width: 56px !important;
+        width: 58px !important;
         flex: 0 0 auto !important;
     }
     .order-items-table td.col-discount > div > .flex > div:last-child {
@@ -426,14 +457,19 @@
         min-width: 0 !important;
     }
     .order-items-table td.col-discount input {
-        height: 36px !important;
-        min-height: 36px !important;
-        font-size: 12.5px !important;
+        height: 40px !important;
+        min-height: 40px !important;
+        font-size: 14px !important;
+        font-weight: 800 !important;
         border-radius: 0.5rem !important;
         border-color: #cbd5e1 !important;
         min-width: 0 !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
+    }
+    .order-items-table td.col-discount span {
+        font-size: 13.5px !important;
+        font-weight: 800 !important;
     }
 
     .order-items-table td.col-vat,
@@ -453,8 +489,8 @@
     .order-items-table td.col-picking::before {
         content: "TIẾN ĐỘ BỐC HÀNG: ";
         display: inline-block;
-        font-size: 9.5px;
-        font-weight: 700;
+        font-size: 11px !important;
+        font-weight: 800 !important;
         color: #ea580c;
         margin-right: 4px;
     }
@@ -475,12 +511,12 @@
     }
     .order-items-table td.col-amount::before {
         content: "THÀNH TIỀN:";
-        font-size: 11px;
-        font-weight: 800;
-        color: #334155;
+        font-size: 13px !important;
+        font-weight: 900 !important;
+        color: #1e293b !important;
     }
     .order-items-table td.col-amount > span {
-        font-size: 16px !important;
+        font-size: 18px !important;
         font-weight: 900 !important;
         color: #0284c7 !important;
     }
@@ -560,14 +596,23 @@
         gap: 0.375rem !important;
         width: 100% !important;
     }
+    .order-form-bottom-bar > div:first-child span.uppercase {
+        font-size: 14px !important;
+        font-weight: 900 !important;
+    }
+    .order-form-bottom-bar > div:first-child .text-sky-600 {
+        font-size: 18px !important;
+        font-weight: 900 !important;
+    }
     .btn-save-print {
         display: none !important;
     }
     .order-form-bottom-bar button,
     .order-form-bottom-bar a {
         flex: 1 1 auto !important;
-        height: 40px !important;
-        font-size: 13px !important;
+        height: 44px !important;
+        font-size: 14.5px !important;
+        font-weight: 800 !important;
         padding: 0 0.75rem !important;
         justify-content: center !important;
         white-space: nowrap !important;
@@ -833,9 +878,9 @@
                 <!-- Loại đơn hàng -->
                 <div class="col-span-1 md:col-span-3 lg:col-span-2">
                     <div class="h-5 flex items-center mb-1">
-                        <label class="text-[10px] sm:text-[11px] font-bold text-slate-500 tracking-wide uppercase truncate">LOẠI ĐƠN HÀNG</label>
+                        <label class="text-xs sm:text-[11px] font-bold text-slate-500 tracking-wide uppercase truncate">LOẠI ĐƠN HÀNG</label>
                     </div>
-                    <select x-model="formData.order_type" @change="handleOrderTypeChange()" class="w-full px-2 py-1.5 sm:px-3 sm:py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer">
+                    <select x-model="formData.order_type" @change="handleOrderTypeChange()" class="w-full px-2.5 py-2 sm:px-3 sm:py-2 bg-white border border-slate-200 rounded-xl text-sm sm:text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer">
                         <option value="normal">🛒 Đơn thường</option>
                         <option value="consignment">📦 Đơn gửi</option>
                         <template x-if="formData.order_type && !['normal', 'consignment'].includes(formData.order_type)">
@@ -859,8 +904,8 @@
                      }" 
                      @click.outside="openDealerDropdown = false">
                     <div class="h-5 flex items-center justify-between mb-1 gap-1">
-                        <label class="text-[11px] font-bold text-slate-500 tracking-wide uppercase truncate">KHÁCH HÀNG / ĐẠI LÝ</label>
-                        <span class="text-[11px] font-medium truncate max-w-[140px]" :class="formData.customer_name ? 'text-sky-600 font-semibold' : 'text-slate-400'" x-text="formData.customer_name ? (formData.customer_code ? formData.customer_name + ' (' + formData.customer_code + ')' : (formData.customer_phone ? formData.customer_name + ' (' + formData.customer_phone + ')' : formData.customer_name)) : 'Chưa chọn khách hàng'"></span>
+                        <label class="text-xs sm:text-[11px] font-bold text-slate-500 tracking-wide uppercase truncate">KHÁCH HÀNG / ĐẠI LÝ</label>
+                        <span class="text-xs sm:text-[11px] font-medium truncate max-w-[140px]" :class="formData.customer_name ? 'text-sky-600 font-semibold' : 'text-slate-400'" x-text="formData.customer_name ? (formData.customer_code ? formData.customer_name + ' (' + formData.customer_code + ')' : (formData.customer_phone ? formData.customer_name + ' (' + formData.customer_phone + ')' : formData.customer_name)) : 'Chưa chọn khách hàng'"></span>
                     </div>
                     <div class="flex items-center gap-2">
                         <div class="relative flex-1 min-w-0">
@@ -898,7 +943,7 @@
                                    "
                                    @keydown.escape.prevent="openDealerDropdown = false"
                                    placeholder="Bấm chọn hoặc gõ tìm mã KH, tên đại lý, SĐT..." 
-                                   class="w-full pl-9 pr-8 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer shadow-2xs hover:border-slate-400 transition-colors">
+                                   class="w-full pl-9 pr-8 py-2.5 sm:py-2 bg-white border border-slate-300 rounded-xl text-sm sm:text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer shadow-2xs hover:border-slate-400 transition-colors">
                             
                             <!-- Mũi tên dropdown -->
                             <div class="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center">
@@ -909,7 +954,7 @@
 
                             <!-- Menu Dropdown hiển thị danh sách khách hàng -->
                             <div x-show="openDealerDropdown" x-cloak class="order-customer-dropdown absolute left-0 top-full mt-1.5 z-50 bg-white rounded-xl shadow-2xl border border-slate-200 max-h-72 overflow-y-auto py-1 text-xs w-[440px] max-w-[92vw] min-w-full">
-                                <div class="px-3 py-1.5 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                                <div class="px-3 py-1.5 bg-slate-50 border-b border-slate-100 text-xs sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
                                     <span>Chọn khách hàng / đại lý có sẵn ({{ count($dealers) }})</span>
                                     <span class="shortcut-hint text-sky-600 font-normal lowercase hidden md:inline">dùng phím &uarr; &darr; &bull; Enter chọn</span>
                                 </div>
@@ -921,24 +966,28 @@
                                          :class="highlightedDealerIndex === dIdx ? 'bg-sky-50 text-sky-950 ring-1 ring-sky-300' : (formData.dealer_id == d.id ? 'bg-sky-50/80 font-bold text-sky-700' : 'hover:bg-slate-50')">
                                         <!-- Dòng 1: Tên khách hàng & Cấp đại lý -->
                                         <div class="flex items-center justify-between gap-2">
-                                            <span class="font-bold text-slate-900 text-xs truncate" x-text="d.name"></span>
-                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 shrink-0 whitespace-nowrap" x-text="d.tier || 'Cấp 1'"></span>
+                                            <span class="font-bold text-slate-900 text-sm sm:text-xs truncate" x-text="d.name"></span>
+                                            <span class="px-2 py-0.5 rounded-full text-xs sm:text-[10px] font-bold bg-sky-100 text-sky-800 shrink-0 whitespace-nowrap" x-text="d.tier || 'Cấp 1'"></span>
                                         </div>
                                         <!-- Dòng 2: MST badge, Số điện thoại (ngăn vỡ dòng), Địa chỉ -->
-                                        <div class="flex items-center gap-2 mt-1 text-[11px] text-slate-500 flex-wrap">
+                                        <div class="flex items-center gap-2 mt-1 text-xs sm:text-[11px] text-slate-500 flex-wrap">
                                             <template x-if="d.tax_code && d.tax_code.trim()">
-                                                <span class="px-1.5 py-0.2 rounded text-[9.5px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 whitespace-nowrap" :title="'MST: ' + d.tax_code">
+                                                <span class="px-1.5 py-0.5 rounded text-[11px] sm:text-[9.5px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 whitespace-nowrap" :title="'MST: ' + d.tax_code">
                                                     ✓ MST: <span x-text="d.tax_code"></span>
                                                 </span>
                                             </template>
                                             <template x-if="!d.tax_code || !d.tax_code.trim()">
-                                                <span class="px-1.5 py-0.2 rounded text-[9.5px] font-bold shrink-0 whitespace-nowrap"
+                                                <span class="px-1.5 py-0.5 rounded text-[11px] sm:text-[9.5px] font-bold shrink-0 whitespace-nowrap"
                                                       :class="(d.orders_count || 0) >= 3 ? 'bg-rose-100 text-rose-700 border border-rose-300' : 'bg-amber-100 text-amber-800 border border-amber-300'"
                                                       :title="(d.orders_count || 0) >= 3 ? 'Đã đạt giới hạn 3 đơn - Chặn lên đơn thứ 4 vì chưa có MST' : 'Chưa có MST (Đã lên ' + (d.orders_count || 0) + '/3 đơn)'">
                                                     Chưa MST (<span x-text="(d.orders_count || 0) + '/3'"></span>)
                                                 </span>
                                             </template>
-                                            <span x-show="d.code || d.phone" class="font-mono text-slate-700 font-semibold shrink-0 whitespace-nowrap flex items-center gap-1" :title="'Mã khách hàng: ' + (d.code || d.phone)">
+                                            <span x-show="d.code || d.phone" class="font-mono text-slate-700 font-semibold shrink-0 whitespace-nowrap flex items-center gap-1 text-xs sm:text-[11px]" :title="'Mã khách hàng: ' + (d.code || d.phone)">
+                                                <i class="fa-solid fa-id-card text-[10px] text-slate-400"></i>
+                                                <span x-text="d.code || d.phone"></span>
+                                            </span>
+                                        </div>
                                                 <i class="fa-solid fa-id-card text-[10px] text-slate-400"></i>
                                                 <span x-text="d.code || d.phone"></span>
                                             </span>
@@ -1781,11 +1830,11 @@
     <!-- 6. Floating / Sticky Action Bar (Bottom Bar: 0 MẶT HÀNG | Đóng Esc | Lưu & In Ctrl+F9 | Lưu F9) -->
     <div class="order-form-bottom-bar fixed bottom-0 left-0 right-0 z-[9999] bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 sm:px-8 py-3 shadow-lg flex items-center justify-between gap-3">
         <!-- Left: Items count & Total -->
-        <div class="flex items-center gap-3 text-xs font-bold text-slate-600">
-            <span class="uppercase tracking-wider" x-text="items.length + ' MẶT HÀNG'"></span>
+        <div class="flex items-center gap-3 text-sm sm:text-xs font-bold text-slate-600">
+            <span class="uppercase tracking-wider font-extrabold text-sm sm:text-xs" x-text="items.length + ' MẶT HÀNG'"></span>
             <span class="text-slate-300">|</span>
             <div class="flex items-center gap-3">
-                <span class="text-sm font-black text-sky-600" x-text="formatNumber(finalTotal) + ' đ'"></span>
+                <span class="text-base sm:text-sm font-black text-sky-600" x-text="formatNumber(finalTotal) + ' đ'"></span>
                 <!-- Badges cảnh báo nhanh ở thanh footer -->
                 <template x-if="isNoTaxCodeLimitReached()">
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1 animate-pulse">
