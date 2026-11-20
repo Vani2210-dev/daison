@@ -29,6 +29,12 @@
                             <span class="hidden md:inline-block px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-xs font-extrabold uppercase">
                                 Chọn Nhanh
                             </span>
+                            @if(!empty($userRestrictedBrandName))
+                            <span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-xs font-extrabold flex items-center gap-1.5 shadow-2xs">
+                                <i class="fa-solid fa-building-flag text-amber-600"></i>
+                                <span>Hãng phụ trách: <strong>{{ $userRestrictedBrandName }}</strong></span>
+                            </span>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -665,12 +671,14 @@ function posApp() {
         dealers: @json($dealers ?? []),
         warehouses: @json($warehouses ?? []),
         priceTiers: @json($priceTiers ?? []),
+        userRestrictedBrandId: @json($userRestrictedBrandId ?? null),
+        userRestrictedBrandName: @json($userRestrictedBrandName ?? null),
 
         // Bộ lọc & Trạng thái UI
         searchQuery: '',
         isMobileViewport: typeof window !== 'undefined' ? window.innerWidth <= 768 : false,
         selectedCategory: 'all',
-        selectedBrand: 'all',
+        selectedBrand: @json($userRestrictedBrandId ? (string)$userRestrictedBrandId : 'all'),
         stockFilter: 'all',
         sortBy: 'name_asc',
         viewMode: 'grid', // 'grid' | 'list'

@@ -12,6 +12,7 @@ class Product extends Model
     protected $fillable = [
         'category_id',
         'brand_id',
+        'supplier_id',
         'sku',
         'name',
         'tax_name',
@@ -60,6 +61,43 @@ class Product extends Model
     public function brand()
     {
         return $this->belongsTo(Brand::class);
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class, 'supplier_id');
+    }
+
+    /**
+     * Phạm vi truy cập sản phẩm theo phân quyền nhân viên hãng / nhà cung cấp
+     */
+    public function scopeAccessibleBy($query, $user = null)
+    {
+        $user = $user ?: auth()->user();
+        if (!$user) {
+            return $query;
+        }
+
+        // Manager, Admin hoặc người có quyền products.view_all xem được tất cả
+        if ($user->hasRole('Manager') || $user->hasRole('Admin') || $user->hasPermission('products.view_all')) {
+            return $query;
+        }
+
+        $hasBrand = !empty($user->brand_id);
+        $hasSupplier = !empty($user->supplier_id);
+
+        if ($hasBrand && $hasSupplier) {
+            return $query->where(function ($q) use ($user) {
+                $q->where('brand_id', $user->brand_id)
+                  ->orWhere('supplier_id', $user->supplier_id);
+            });
+        } elseif ($hasBrand) {
+            return $query->where('brand_id', $user->brand_id);
+        } elseif ($hasSupplier) {
+            return $query->where('supplier_id', $user->supplier_id);
+        }
+
+        return $query;
     }
 
     public function subcategoryItem()

@@ -19,7 +19,7 @@ class InventoryController extends Controller
      */
     public function getInventoryBootstrapData()
     {
-        return Product::with(['category', 'brand'])->get()->map(function ($p) {
+        return Product::accessibleBy()->with(['category', 'brand', 'supplier'])->get()->map(function ($p) {
             $priceTiers = $p->price_tiers ?? [];
             $dealerPrice = $p->getPriceForTier('Đại lý Cấp 1', 0);
             $retailPrice = $p->getPriceForTier('Bán Lẻ', 0);
@@ -51,8 +51,12 @@ class InventoryController extends Controller
                 'name' => $p->name,
                 'taxName' => $p->tax_name ?? $p->name,
                 'category' => $p->category?->name ?? '',
+                'categoryId' => (string) ($p->category_id ?? ''),
                 'subcategory' => $p->subcategory ?? '',
                 'brand' => $p->brand?->name ?? '',
+                'brandId' => (string) ($p->brand_id ?? ''),
+                'supplier' => $p->supplier?->name ?? '',
+                'supplierId' => (string) ($p->supplier_id ?? ''),
                 'specification' => $p->specification ?? '',
                 'unit' => $p->unit,
                 'conversionUnit' => $p->conversion_unit,
@@ -256,9 +260,12 @@ class InventoryController extends Controller
             ];
         }
 
+        $supplierId = $request->input('supplierId') ?: $request->input('supplier_id') ?: null;
+
         $data = [
             'category_id'       => $categoryId,
             'brand_id'          => $brandId,
+            'supplier_id'       => $supplierId,
             'sku'               => $request->input('sku') ?: ('SP-' . strtoupper(uniqid())),
             'name'              => $request->input('name'),
             'tax_name'          => $request->input('taxName') ?: $request->input('name'),

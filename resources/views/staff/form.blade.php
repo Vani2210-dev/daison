@@ -145,17 +145,31 @@
                 </div>
 
                 <!-- Nhà Cung Cấp / Hãng Trực Thuộc (Hiển thị nếu là Nhân viên hãng) -->
-                <div x-show="formData.staff_type === 'brand'" x-cloak>
-                    <label class="block font-bold text-purple-900 mb-1.5">
-                        Nhà Cung Cấp / Hãng Trực Thuộc <span class="text-rose-500">*</span>
-                    </label>
-                    <select x-model="formData.supplier_id"
-                            class="w-full px-3.5 py-2.5 bg-purple-100/60 focus:bg-white border border-purple-300 rounded-xl font-bold text-purple-950 outline-none focus:border-purple-600 transition-all cursor-pointer">
-                        <option value="">-- Chọn Nhà cung cấp / Hãng trực thuộc --</option>
-                        <template x-for="sup in suppliersList" :key="sup.id">
-                            <option :value="sup.id" x-text="sup.name + ' (' + (sup.code || 'NCC-' + sup.id) + ')'"></option>
-                        </template>
-                    </select>
+                <div x-show="formData.staff_type === 'brand'" class="grid grid-cols-1 md:grid-cols-2 gap-4" x-cloak>
+                    <div>
+                        <label class="block font-bold text-purple-900 mb-1.5">
+                            Thương Hiệu / Hãng Trực Thuộc
+                        </label>
+                        <select x-model="formData.brand_id"
+                                class="w-full px-3.5 py-2.5 bg-purple-100/60 focus:bg-white border border-purple-300 rounded-xl font-bold text-purple-950 outline-none focus:border-purple-600 transition-all cursor-pointer">
+                            <option value="">-- Chọn Hãng / Thương hiệu --</option>
+                            <template x-for="b in brandsList" :key="b.id">
+                                <option :value="b.id" x-text="b.name + ' (' + (b.code || 'BRAND-' + b.id) + ')'"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-purple-900 mb-1.5">
+                            Nhà Cung Cấp Trực Thuộc
+                        </label>
+                        <select x-model="formData.supplier_id"
+                                class="w-full px-3.5 py-2.5 bg-purple-100/60 focus:bg-white border border-purple-300 rounded-xl font-bold text-purple-950 outline-none focus:border-purple-600 transition-all cursor-pointer">
+                            <option value="">-- Chọn Nhà cung cấp --</option>
+                            <template x-for="sup in suppliersList" :key="sup.id">
+                                <option :value="sup.id" x-text="sup.name + ' (' + (sup.code || 'NCC-' + sup.id) + ')'"></option>
+                            </template>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Hạn Mức Quản Lý / Giữ Nợ -->
@@ -384,6 +398,7 @@
 // Friendly Metadata for permissions
 const PERM_DICT = {
     'orders.view': { name: 'Xem Đơn Hàng', desc: 'Tra cứu danh sách & chi tiết các đơn đặt hàng', icon: 'fa-regular fa-eye' },
+    'orders.view_all': { name: 'Xem Toàn Bộ Đơn Hàng', desc: 'Xem tất cả đơn hàng tổng công ty (không giới hạn cá nhân)', icon: 'fa-solid fa-list-check' },
     'orders.create': { name: 'Lên Đơn Mới', desc: 'Khởi tạo đơn hàng xuất bán cho đại lý/công trình', icon: 'fa-solid fa-plus' },
     'orders.edit': { name: 'Sửa Đơn Hàng', desc: 'Chỉnh sửa mặt hàng, số lượng và trần chiết khấu', icon: 'fa-solid fa-pen' },
     'orders.approve': { name: 'Duyệt Đơn Bán', desc: 'Kế toán/Quản lý chốt duyệt đơn đủ điều kiện xuất kho', icon: 'fa-solid fa-shield-halved' },
@@ -398,6 +413,7 @@ const PERM_DICT = {
     'quotation.convert': { name: 'Chuyển Đơn Bán', desc: 'Tự động tạo đơn hàng chính thức từ bảng báo giá', icon: 'fa-solid fa-cart-shopping' },
     
     'dealers.view': { name: 'Xem Hồ Sơ Đại Lý', desc: 'Tra cứu danh sách đại lý, cấp bậc, địa chỉ giao hàng', icon: 'fa-regular fa-eye' },
+    'dealers.view_all': { name: 'Xem Toàn Bộ Đại Lý', desc: 'Xem tất cả khách hàng đại lý công ty (không giới hạn phụ trách)', icon: 'fa-solid fa-users' },
     'dealers.create': { name: 'Thêm Đại Lý Mới', desc: 'Tạo mới hồ sơ khách hàng công trình & đại lý', icon: 'fa-solid fa-plus' },
     'dealers.edit': { name: 'Sửa Thông Tin', desc: 'Cập nhật địa chỉ nhận hàng, số điện thoại, tuyến đường', icon: 'fa-solid fa-pen' },
     
@@ -406,6 +422,7 @@ const PERM_DICT = {
     'debt.approve': { name: 'Duyệt Vượt Hạn Mức', desc: 'Bảo lãnh xuất hàng khi đại lý đang chạm trần công nợ', icon: 'fa-solid fa-shield-halved' },
     
     'inventory.view': { name: 'Xem Tồn Kho', desc: 'Tra cứu số lượng tồn kho theo cây, cuộn và kho bãi', icon: 'fa-regular fa-eye' },
+    'products.view_all': { name: 'Xem Toàn Bộ Hàng Hóa', desc: 'Xem sản phẩm của tất cả các hãng và nhà cung cấp', icon: 'fa-solid fa-boxes-stacked' },
     'inventory.create': { name: 'Thêm Mặt Hàng', desc: 'Tạo mã sản phẩm, ống nhựa, phụ kiện mới', icon: 'fa-solid fa-plus' },
     'inventory.edit': { name: 'Sửa Thông Tin', desc: 'Chỉnh sửa đơn vị tính, quy cách ống và giá vốn', icon: 'fa-solid fa-pen' },
     
@@ -476,6 +493,7 @@ function staffFormApp() {
         branchesList: @json($branches ?? []),
         dealersList: @json($dealers ?? []),
         suppliersList: @json($suppliers ?? []),
+        brandsList: @json($brands ?? []),
         userPermissions: @json($userPermissions ?? []),
         saving: false,
 
@@ -488,6 +506,7 @@ function staffFormApp() {
             password: '',
             department: '{{ addslashes($user->department ?? 'Sales') }}',
             staff_type: '{{ in_array($user->staff_type ?? '', ['brand', 'brand_staff', 'dealer_sales', 'hang']) ? 'brand' : 'company' }}',
+            brand_id: {{ $user->brand_id ?: 'null' }},
             supplier_id: {{ $user->supplier_id ?: 'null' }},
             dealer_id: {{ $user->dealer_id ?: 'null' }},
             credit_limit: {{ (float)($user->credit_limit ?? 0) }},

@@ -105,6 +105,30 @@ class Dealer extends Model
     }
 
     /**
+     * Scope lọc đại lý theo phân quyền:
+     * - Quản lý / Kế toán / Có quyền dealers.view_all: Xem toàn bộ khách hàng đại lý
+     * - Nhân viên thị trường: Chỉ xem các đại lý do mình phụ trách
+     */
+    public function scopeAccessibleBy($query, $user = null)
+    {
+        $user = $user ?: auth()->user();
+        if (!$user) {
+            return $query;
+        }
+
+        if ($user->hasRole('Manager') || $user->hasRole('Admin') || $user->hasPermission('dealers.view_all')) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($user) {
+            $q->where('sales_rep_id', $user->id);
+            if (!empty($user->dealer_id)) {
+                $q->orWhere('id', $user->dealer_id);
+            }
+        });
+    }
+
+    /**
      * Tính toán công nợ hiện tại của đại lý (có thể loại trừ một đơn hàng đang xử lý để tránh tính trùng)
      */
     public function getDebtExcludingOrder($excludeOrderId = null): float

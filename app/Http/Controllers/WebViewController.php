@@ -379,7 +379,7 @@ class WebViewController extends Controller
             return app(\App\Http\Controllers\PromotionAdvanceController::class)->index($request);
         }
 
-        $query = Order::companyOrders()->with(['dealer', 'items', 'creator', 'assignedDriver']);
+        $query = Order::companyOrders()->accessibleBy()->with(['dealer', 'items', 'creator', 'assignedDriver']);
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -529,10 +529,38 @@ class WebViewController extends Controller
      */
     public function orderPos()
     {
-        $products = self::getPosProductsCatalog();
+        $user = auth()->user();
+        $allProducts = self::getPosProductsCatalog();
+
+        // Kiểm tra phạm vi xem sản phẩm của nhân viên (hãng / nhà cung cấp)
+        $canViewAllProducts = $user && ($user->hasRole('Manager') || $user->hasRole('Admin') || $user->hasPermission('products.view_all'));
+        $restrictedBrandId = (!$canViewAllProducts && $user) ? $user->brand_id : null;
+        $restrictedSupplierId = (!$canViewAllProducts && $user) ? $user->supplier_id : null;
+
+        if ($restrictedBrandId || $restrictedSupplierId) {
+            $products = array_values(array_filter($allProducts, function ($p) use ($restrictedBrandId, $restrictedSupplierId) {
+                if ($restrictedBrandId && isset($p['brand_id']) && (int) $p['brand_id'] === (int) $restrictedBrandId) {
+                    return true;
+                }
+                if ($restrictedSupplierId && isset($p['supplier_id']) && (int) $p['supplier_id'] === (int) $restrictedSupplierId) {
+                    return true;
+                }
+                return false;
+            }));
+        } else {
+            $products = $allProducts;
+        }
+
         $categories = Category::orderBy('name')->get(['id', 'name']);
-        $brands = Brand::orderBy('name')->get(['id', 'name']);
-        $dealers = Dealer::select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit')
+        
+        $brandsQuery = Brand::orderBy('name');
+        if ($restrictedBrandId) {
+            $brandsQuery->where('id', $restrictedBrandId);
+        }
+        $brands = $brandsQuery->get(['id', 'name']);
+
+        $dealers = Dealer::accessibleBy()
+            ->select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit')
             ->orderBy('name')
             ->get();
         [$warehouses, $isDriverUser, $driverVehicle, $mainCompanyWarehouse, $employeeWarehouse] = $this->getAvailableWarehousesForUser();
@@ -542,6 +570,9 @@ class WebViewController extends Controller
             ->orderBy('id')
             ->get();
 
+        $userRestrictedBrandId = $restrictedBrandId;
+        $userRestrictedBrandName = $restrictedBrandId ? ($brands->firstWhere('id', $restrictedBrandId)?->name ?? '') : null;
+
         return view('orders.pos', compact(
             'products',
             'categories',
@@ -550,20 +581,43 @@ class WebViewController extends Controller
             'warehouses',
             'isDriverUser',
             'driverVehicle',
-            'priceTiers'
+            'priceTiers',
+            'userRestrictedBrandId',
+            'userRestrictedBrandName'
         ));
     }
 
     public function orderCreate()
     {
-        $dealers = Dealer::select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit', 'tax_code')
+        $user = auth()->user();
+        $dealers = Dealer::accessibleBy()
+            ->select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit', 'tax_code')
             ->withCount(['orders as orders_count' => function($q) {
                 $q->whereNotIn('status', ['Hủy', 'Đã hủy']);
             }])
             ->orderBy('name')
             ->get();
         [$warehouses, $isDriverUser, $driverVehicle, $mainCompanyWarehouse, $employeeWarehouse] = $this->getAvailableWarehousesForUser();
-        $products = self::getPosProductsCatalog();
+
+        $allProducts = self::getPosProductsCatalog();
+        $canViewAllProducts = $user && ($user->hasRole('Manager') || $user->hasRole('Admin') || $user->hasPermission('products.view_all'));
+        $restrictedBrandId = (!$canViewAllProducts && $user) ? $user->brand_id : null;
+        $restrictedSupplierId = (!$canViewAllProducts && $user) ? $user->supplier_id : null;
+
+        if ($restrictedBrandId || $restrictedSupplierId) {
+            $products = array_values(array_filter($allProducts, function ($p) use ($restrictedBrandId, $restrictedSupplierId) {
+                if ($restrictedBrandId && isset($p['brand_id']) && (int) $p['brand_id'] === (int) $restrictedBrandId) {
+                    return true;
+                }
+                if ($restrictedSupplierId && isset($p['supplier_id']) && (int) $p['supplier_id'] === (int) $restrictedSupplierId) {
+                    return true;
+                }
+                return false;
+            }));
+        } else {
+            $products = $allProducts;
+        }
+
         $drivers = User::select('id', 'name', 'phone')->get();
         $priceTiers = PriceTier::where('status', 'Hoạt động')
             ->orderByRaw("CASE WHEN name LIKE '%Nguyên Giá%' THEN 0 ELSE 1 END")
@@ -581,6 +635,8 @@ class WebViewController extends Controller
             })
             ->orderBy('id')
             ->get();
+
+        $userRestrictedBrandId = $restrictedBrandId;
 
         return view('orders.form', [
             'order' => null,
@@ -668,7 +724,7 @@ class WebViewController extends Controller
      */
     public function dealers(Request $request)
     {
-        $query = Dealer::with(['salesRep', 'orders']);
+        $query = Dealer::accessibleBy()->with(['salesRep', 'orders']);
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -930,7 +986,7 @@ class WebViewController extends Controller
     {
         $roles = \App\Models\Role::with('permissions')->get();
         $branches = \App\Models\Branch::all();
-        $users = User::with(['roles.permissions', 'branch'])->get()->map(function ($u) {
+        $users = User::with(['roles.permissions', 'branch', 'brand', 'supplier'])->get()->map(function ($u) {
             $hasCustom = \App\Models\UserRolePermission::where('user_id', $u->id)->exists();
             if ($hasCustom) {
                 $u->custom_permissions = \App\Models\UserRolePermission::where('user_id', $u->id)
@@ -980,8 +1036,9 @@ class WebViewController extends Controller
         $isEdit = false;
         $userPermissions = [];
         $suppliers = \App\Models\Supplier::where('is_active', true)->orWhereNull('is_active')->select('id', 'name', 'code')->orderBy('name')->get();
+        $brands = \App\Models\Brand::where('is_active', true)->orWhereNull('is_active')->select('id', 'name', 'code')->orderBy('name')->get();
 
-        return view('staff.form', compact('user', 'roles', 'branches', 'dealers', 'suppliers', 'isEdit', 'userPermissions'));
+        return view('staff.form', compact('user', 'roles', 'branches', 'dealers', 'suppliers', 'brands', 'isEdit', 'userPermissions'));
     }
 
     /**
@@ -989,11 +1046,12 @@ class WebViewController extends Controller
      */
     public function staffEdit(Request $request, $id)
     {
-        $user = User::with(['roles.permissions', 'branch', 'dealer', 'supplier'])->findOrFail($id);
+        $user = User::with(['roles.permissions', 'branch', 'dealer', 'supplier', 'brand'])->findOrFail($id);
         $roles = \App\Models\Role::with('permissions')->get();
         $branches = \App\Models\Branch::all();
         $dealers = Dealer::select('id', 'name', 'code')->orderBy('name')->get();
         $suppliers = \App\Models\Supplier::where('is_active', true)->orWhereNull('is_active')->select('id', 'name', 'code')->orderBy('name')->get();
+        $brands = \App\Models\Brand::where('is_active', true)->orWhereNull('is_active')->select('id', 'name', 'code')->orderBy('name')->get();
         $isEdit = true;
 
         $hasCustom = \App\Models\UserRolePermission::where('user_id', $user->id)->exists();
@@ -1009,7 +1067,7 @@ class WebViewController extends Controller
             $userPermissions = $user->roles->first()?->permissions->pluck('slug')->toArray() ?? [];
         }
 
-        return view('staff.form', compact('user', 'roles', 'branches', 'dealers', 'suppliers', 'isEdit', 'userPermissions'));
+        return view('staff.form', compact('user', 'roles', 'branches', 'dealers', 'suppliers', 'brands', 'isEdit', 'userPermissions'));
     }
 
     /**
@@ -1048,6 +1106,7 @@ class WebViewController extends Controller
             'status'               => $request->input('status', 'Đang làm việc'),
             'staff_type'           => $request->input('staff_type', 'company'),
             'dealer_id'            => $request->input('dealer_id') ?: null,
+            'brand_id'             => $request->input('brand_id') ?: null,
             'supplier_id'          => $request->input('supplier_id') ?: null,
             'credit_limit'         => (float) str_replace(['.', ',', ' '], '', $request->input('credit_limit', 0)),
             'base_salary'          => (float) str_replace(['.', ',', ' '], '', $request->input('base_salary', 0)),

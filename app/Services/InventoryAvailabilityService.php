@@ -312,7 +312,7 @@ class InventoryAvailabilityService
         }
 
         return Product::where('is_active', true)
-            ->select('id', 'sku', 'name', 'unit', 'conversion_unit', 'conversion_rate', 'conversion_price', 'cost_price', 'price', 'price_tiers', 'vat_rate', 'stock_quantity', 'reserved_quantity')
+            ->select('id', 'sku', 'name', 'brand_id', 'supplier_id', 'unit', 'conversion_unit', 'conversion_rate', 'conversion_price', 'cost_price', 'price', 'price_tiers', 'vat_rate', 'stock_quantity', 'reserved_quantity')
             ->orderBy('name')
             ->get()
             ->map(function ($p) use ($stockMap, $reservedByProd, $warehouses, $deductedDeltasByProd) {
@@ -340,6 +340,8 @@ class InventoryAvailabilityService
                     'id'               => $p->id,
                     'sku'              => $p->sku,
                     'name'             => $p->name,
+                    'brand_id'         => $p->brand_id,
+                    'supplier_id'      => $p->supplier_id,
                     'unit'             => $p->unit,
                     'conversion_unit'  => $p->conversion_unit,
                     'conversion_rate'  => (float)$p->conversion_rate,

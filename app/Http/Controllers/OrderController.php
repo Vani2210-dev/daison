@@ -50,7 +50,7 @@ class OrderController extends Controller
      */
     public function getBootstrapData()
     {
-        return Order::companyOrders()->with(['items.product', 'dealer', 'salesRep', 'creator', 'salesAccountant', 'assignedDriver', 'warehouseStaff'])
+        return Order::companyOrders()->accessibleBy()->with(['items.product', 'dealer', 'salesRep', 'creator', 'salesAccountant', 'assignedDriver', 'warehouseStaff'])
             ->latest('updated_at')
             ->get()
             ->map(function ($o) {
@@ -2201,6 +2201,16 @@ class OrderController extends Controller
             return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng!'], 404);
         }
 
+        $user = auth()->user();
+        if ($user && !$user->canViewAllOrders()) {
+            $isOwn = ((int)$order->creator_id === (int)$user->id) ||
+                     ((int)$order->sales_rep_id === (int)$user->id) ||
+                     ($order->order_creator && ($order->order_creator === $user->name || $order->order_creator === $user->code));
+            if (!$isOwn) {
+                return response()->json(['success' => false, 'message' => 'Bạn không có quyền xem hoặc in đơn hàng của nhân sự khác!'], 403);
+            }
+        }
+
         $formatted = $this->formatSingleOrderPrintData($order);
 
         return response()->json([
@@ -2369,6 +2379,15 @@ class OrderController extends Controller
             return response()->json(['success' => false, 'message' => 'Bạn không có quyền hủy đơn hàng!'], 403);
         }
 
+        if ($user && !$user->canViewAllOrders()) {
+            $isOwn = ((int)$order->creator_id === (int)$user->id) ||
+                     ((int)$order->sales_rep_id === (int)$user->id) ||
+                     ($order->order_creator && ($order->order_creator === $user->name || $order->order_creator === $user->code));
+            if (!$isOwn) {
+                return response()->json(['success' => false, 'message' => 'Bạn chỉ được hủy đơn hàng do chính mình tạo hoặc phụ trách!'], 403);
+            }
+        }
+
         if (in_array($order->status, ['Hủy', 'Đã hủy', 'Đã huỷ'])) {
             return response()->json(['success' => false, 'message' => 'Đơn hàng này đã ở trạng thái hủy trước đó.'], 422);
         }
@@ -2463,6 +2482,15 @@ class OrderController extends Controller
             return response()->json(['success' => false, 'message' => 'Bạn không có quyền xóa đơn hàng!'], 403);
         }
 
+        if ($user && !$user->canViewAllOrders()) {
+            $isOwn = ((int)$order->creator_id === (int)$user->id) ||
+                     ((int)$order->sales_rep_id === (int)$user->id) ||
+                     ($order->order_creator && ($order->order_creator === $user->name || $order->order_creator === $user->code));
+            if (!$isOwn) {
+                return response()->json(['success' => false, 'message' => 'Bạn chỉ được xóa đơn hàng do chính mình tạo hoặc phụ trách!'], 403);
+            }
+        }
+
         $orderCode = $order->order_code;
         $customerName = $order->customer_name;
         $totalAmount = (float)$order->total_amount;
@@ -2533,6 +2561,15 @@ class OrderController extends Controller
         $user = auth()->user();
         if ($user && !$user->hasAnyPermission('orders.delete', 'all')) {
             return response()->json(['success' => false, 'message' => 'Bạn không có quyền xóa đơn hàng!'], 403);
+        }
+
+        if ($user && !$user->canViewAllOrders()) {
+            $isOwn = ((int)$order->creator_id === (int)$user->id) ||
+                     ((int)$order->sales_rep_id === (int)$user->id) ||
+                     ($order->order_creator && ($order->order_creator === $user->name || $order->order_creator === $user->code));
+            if (!$isOwn) {
+                return response()->json(['success' => false, 'message' => 'Bạn chỉ được xóa đơn hàng do chính mình tạo hoặc phụ trách!'], 403);
+            }
         }
 
         $successCount = 0;

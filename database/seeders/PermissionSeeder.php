@@ -16,6 +16,7 @@ class PermissionSeeder extends Seeder
         $functionalPermissions = [
             // 1. Phân hệ Bán hàng
             ['slug' => 'orders.view', 'name' => 'Xem danh sách & chi tiết đơn hàng', 'module' => 'orders', 'category' => 'Bán hàng', 'action' => 'view'],
+            ['slug' => 'orders.view_all', 'name' => 'Xem toàn bộ đơn hàng tổng công ty', 'module' => 'orders', 'category' => 'Bán hàng', 'action' => 'view_all'],
             ['slug' => 'orders.create', 'name' => 'Lên đơn hàng mới', 'module' => 'orders', 'category' => 'Bán hàng', 'action' => 'create'],
             ['slug' => 'orders.edit', 'name' => 'Chỉnh sửa đơn hàng & trần chiết khấu', 'module' => 'orders', 'category' => 'Bán hàng', 'action' => 'edit'],
             ['slug' => 'orders.approve', 'name' => 'Phê duyệt đơn hàng xuất bán', 'module' => 'orders', 'category' => 'Bán hàng', 'action' => 'approve'],
@@ -38,6 +39,7 @@ class PermissionSeeder extends Seeder
 
             // 2. Phân hệ Kho hàng
             ['slug' => 'inventory.view', 'name' => 'Tra cứu tồn kho & vị trí kệ', 'module' => 'inventory', 'category' => 'Kho hàng', 'action' => 'view'],
+            ['slug' => 'products.view_all', 'name' => 'Xem toàn bộ danh mục sản phẩm (mọi hãng/NCC)', 'module' => 'inventory', 'category' => 'Kho hàng', 'action' => 'view_all'],
             ['slug' => 'inventory.update_price', 'name' => 'Cập nhật bảng giá niêm yết & trần CK', 'module' => 'inventory', 'category' => 'Kho hàng', 'action' => 'update_price'],
             ['slug' => 'inventory.delete', 'name' => 'Xóa sản phẩm hàng hóa trong danh mục kho', 'module' => 'inventory', 'category' => 'Kho hàng', 'action' => 'delete'],
 
@@ -78,6 +80,7 @@ class PermissionSeeder extends Seeder
 
             // 5. Phân hệ Đại lý & Khách hàng
             ['slug' => 'dealers.view', 'name' => 'Xem danh bạ đại lý & thông tin liên hệ', 'module' => 'dealers', 'category' => 'Đại lý', 'action' => 'view'],
+            ['slug' => 'dealers.view_all', 'name' => 'Xem toàn bộ danh bạ khách hàng đại lý', 'module' => 'dealers', 'category' => 'Đại lý', 'action' => 'view_all'],
             ['slug' => 'dealers.create', 'name' => 'Thêm mới đại lý & định vị tọa độ GPS', 'module' => 'dealers', 'category' => 'Đại lý', 'action' => 'create'],
             ['slug' => 'dealers.edit', 'name' => 'Chỉnh sửa hồ sơ đại lý', 'module' => 'dealers', 'category' => 'Đại lý', 'action' => 'edit'],
             ['slug' => 'dealers.delete', 'name' => 'Xóa hồ sơ đại lý khỏi hệ thống', 'module' => 'dealers', 'category' => 'Đại lý', 'action' => 'delete'],

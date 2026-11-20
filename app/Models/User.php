@@ -37,6 +37,7 @@ class User extends Authenticatable
         'affiliate_code',
         'staff_type',
         'dealer_id',
+        'brand_id',
         'supplier_id',
         'credit_limit',
         'current_debt',
@@ -68,6 +69,11 @@ class User extends Authenticatable
         return $this->belongsTo(Dealer::class, 'dealer_id');
     }
 
+    public function brand()
+    {
+        return $this->belongsTo(Brand::class, 'brand_id');
+    }
+
     public function supplier()
     {
         return $this->belongsTo(Supplier::class, 'supplier_id');
@@ -78,7 +84,31 @@ class User extends Authenticatable
      */
     public function isBrandStaff(): bool
     {
-        return in_array($this->staff_type, ['brand', 'brand_staff', 'dealer_sales', 'hang']);
+        return in_array($this->staff_type, ['brand', 'brand_staff', 'dealer_sales', 'hang']) || !empty($this->brand_id) || !empty($this->supplier_id);
+    }
+
+    /**
+     * Kiểm tra quyền xem toàn bộ sản phẩm của mọi hãng/nhà cung cấp
+     */
+    public function canViewAllProducts(): bool
+    {
+        return $this->hasRole('Manager') || $this->hasRole('Admin') || $this->hasPermission('products.view_all');
+    }
+
+    /**
+     * Kiểm tra quyền xem toàn bộ đơn hàng tổng công ty
+     */
+    public function canViewAllOrders(): bool
+    {
+        return $this->hasRole('Manager') || $this->hasRole('Admin') || $this->hasPermission('orders.view_all');
+    }
+
+    /**
+     * Kiểm tra quyền xem toàn bộ danh bạ khách hàng / đại lý
+     */
+    public function canViewAllDealers(): bool
+    {
+        return $this->hasRole('Manager') || $this->hasRole('Admin') || $this->hasPermission('dealers.view_all');
     }
 
     /**

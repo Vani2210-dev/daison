@@ -13,7 +13,7 @@ class DealerController extends Controller
      */
     public function getDealersBootstrapData()
     {
-        return Dealer::with('salesRep')->get()->map(function ($d) {
+        return Dealer::accessibleBy()->with('salesRep')->get()->map(function ($d) {
             return [
                 'id'              => (string) $d->id,
                 'code'            => $d->code,
@@ -53,7 +53,18 @@ class DealerController extends Controller
      */
     public function getDealerCareLogsBootstrapData()
     {
-        return DealerCareLog::with(['dealer', 'salesRep'])->get()->map(function ($log) {
+        $user = auth()->user();
+        $query = DealerCareLog::with(['dealer', 'salesRep']);
+        if ($user && !$user->canViewAllDealers()) {
+            $query->where(function ($q) use ($user) {
+                $q->where('sales_rep_id', $user->id)
+                  ->orWhereHas('dealer', function ($dq) use ($user) {
+                      $dq->where('sales_rep_id', $user->id);
+                  });
+            });
+        }
+
+        return $query->get()->map(function ($log) {
             return [
                 'id'                 => (string) $log->id,
                 'dealerId'           => (string) $log->dealer_id,

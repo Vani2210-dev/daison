@@ -115,6 +115,34 @@ class Order extends Model
         return $this->hasMany(DeliveryReturn::class);
     }
 
+    /**
+     * Scope lọc đơn hàng theo phân quyền truy cập:
+     * - Quản lý / Kế toán / Có quyền orders.view_all: Xem toàn bộ đơn hàng tổng công ty
+     * - Nhân viên: Chỉ xem đơn hàng do mình tạo hoặc phụ trách
+     */
+    public function scopeAccessibleBy($query, $user = null)
+    {
+        $user = $user ?: auth()->user();
+        if (!$user) {
+            return $query;
+        }
+
+        if ($user->hasRole('Manager') || $user->hasRole('Admin') || $user->hasPermission('orders.view_all')) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($user) {
+            $q->where('creator_id', $user->id)
+              ->orWhere('sales_rep_id', $user->id);
+            if (!empty($user->name)) {
+                $q->orWhere('order_creator', $user->name);
+            }
+            if (!empty($user->code)) {
+                $q->orWhere('order_creator', $user->code);
+            }
+        });
+    }
+
     public function dealer()
     {
         return $this->belongsTo(Dealer::class);

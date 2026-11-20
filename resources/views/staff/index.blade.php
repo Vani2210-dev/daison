@@ -357,6 +357,10 @@
                     <span class="text-slate-400 font-medium">Chức danh / Vai trò:</span>
                     <span class="font-bold text-purple-700" x-text="getRoleLabel(selectedUser)"></span>
                 </div>
+                <div class="flex items-center justify-between pt-2" x-show="selectedUser?.brand || selectedUser?.supplier">
+                    <span class="text-slate-400 font-medium">Hãng / Nhà cung cấp:</span>
+                    <span class="font-bold text-amber-700 font-mono" x-text="selectedUser?.brand?.name || selectedUser?.supplier?.name"></span>
+                </div>
                 <div class="flex items-center justify-between pt-2">
                     <span class="text-slate-400 font-medium">Điện thoại liên hệ:</span>
                     <span class="font-bold text-slate-900 font-mono" x-text="selectedUser?.phone || 'Chưa cập nhật'"></span>
@@ -409,6 +413,7 @@
 <script>
 const PERM_DICT = {
     'orders.view': { name: 'Xem Đơn Hàng', desc: 'Tra cứu danh sách & chi tiết các đơn đặt hàng' },
+    'orders.view_all': { name: 'Xem Toàn Bộ Đơn Hàng', desc: 'Xem tất cả đơn hàng tổng công ty (không giới hạn cá nhân)' },
     'orders.create': { name: 'Lên Đơn Mới', desc: 'Khởi tạo đơn hàng xuất bán cho đại lý/công trình' },
     'orders.edit': { name: 'Sửa Đơn Hàng', desc: 'Chỉnh sửa mặt hàng, số lượng và trần chiết khấu' },
     'orders.approve': { name: 'Duyệt Đơn Bán', desc: 'Kế toán/Quản lý chốt duyệt đơn đủ điều kiện xuất kho' },
@@ -425,6 +430,7 @@ const PERM_DICT = {
     'consignments.create': { name: 'Lên Đơn Hàng Ôm', desc: 'Khởi tạo đơn hàng ôm đại lý' },
     'consignments.approve': { name: 'Duyệt Đơn Hàng Ôm', desc: 'Kế toán / Quản lý duyệt xuất đơn hàng ôm' },
     'dealers.view': { name: 'Xem Hồ Sơ Đại Lý', desc: 'Tra cứu danh sách đại lý, cấp bậc, địa chỉ giao hàng' },
+    'dealers.view_all': { name: 'Xem Toàn Bộ Đại Lý', desc: 'Xem tất cả khách hàng đại lý công ty (không giới hạn phụ trách)' },
     'dealers.create': { name: 'Thêm Đại Lý Mới', desc: 'Tạo mới hồ sơ khách hàng công trình & đại lý' },
     'dealers.edit': { name: 'Sửa Thông Tin', desc: 'Cập nhật địa chỉ nhận hàng, số điện thoại, tuyến đường' },
     'dealers.delete': { name: 'Xóa Đại Lý', desc: 'Xóa hồ sơ khách hàng đại lý khỏi hệ thống' },
@@ -435,6 +441,7 @@ const PERM_DICT = {
     'sales_policy.create': { name: 'Tạo Chính Sách', desc: 'Tạo chính sách giá và chiết khấu mới' },
     'sales_policy.edit': { name: 'Sửa Chính Sách', desc: 'Chỉnh sửa chính sách giá và trần chiết khấu' },
     'inventory.view': { name: 'Xem Tồn Kho', desc: 'Tra cứu số lượng tồn kho theo cây, cuộn và kho bãi' },
+    'products.view_all': { name: 'Xem Toàn Bộ Hàng Hóa', desc: 'Xem sản phẩm của tất cả các hãng và nhà cung cấp' },
     'inventory.update_price': { name: 'Cập Nhật Bảng Giá', desc: 'Cập nhật giá bán niêm yết và trần chiết khấu kho' },
     'inventory.delete': { name: 'Xóa Hàng Hóa', desc: 'Xóa sản phẩm hàng hóa trong danh mục kho' },
     'inv_picking.view': { name: 'Xem Lệnh Bốc Hàng', desc: 'Tra cứu danh sách đơn hàng cần bốc xếp và soạn' },
