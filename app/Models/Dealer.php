@@ -140,7 +140,7 @@ class Dealer extends Model
                 continue;
             }
 
-            $total = (float) ($order->total_amount ?? 0);
+            $total = max(0, (float) ($order->total_amount ?? 0) - (float) ($order->total_returned_amount ?? 0));
 
             $paid = 0;
             if (

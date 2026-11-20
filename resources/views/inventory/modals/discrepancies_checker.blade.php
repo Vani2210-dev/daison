@@ -4,10 +4,11 @@
 <div x-show="showDiscrepanciesModal" 
      x-cloak
      class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto"
+     @click.self="if(!isSubmittingResponse) showDiscrepanciesModal = false"
      @keydown.escape.window="if(!isSubmittingResponse) showDiscrepanciesModal = false">
     
     <div class="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[94vh] animate-in fade-in zoom-in-95 duration-150"
-         @click.outside="if(!isSubmittingResponse) showDiscrepanciesModal = false">
+         @click.stop>
         
         <!-- 1. Header -->
         <div class="px-5 py-4 bg-gradient-to-r from-rose-700 via-amber-700 to-indigo-800 text-white flex items-center justify-between shrink-0">

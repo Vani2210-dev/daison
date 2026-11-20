@@ -48,7 +48,7 @@ class PickingSyncController extends Controller
             ?? ($raw['assignedStaffList'] ?? null) 
             ?? ($raw['assigned_staff_list'] ?? null);
         $orderStatus = $request->input('orderStatus') ?? ($raw['orderStatus'] ?? null);
-        $shortageReported = (bool) ($request->input('shortageReported') ?? ($raw['shortageReported'] ?? false));
+        $shortageReported = false;
         $extraData = $request->input('extraData') ?? ($raw['extraData'] ?? null);
 
         if (!$orderId) {
@@ -87,12 +87,10 @@ class PickingSyncController extends Controller
                 $order = \App\Models\Order::where('id', $orderId)->orWhere('order_code', $orderId)->first();
             }
             if ($order) {
-                if ($shortageReported) {
-                    $order->shortage_reported = true;
-                    $order->shortage_reported_at = now();
-                    if (!empty($extraData['shortageNote']) || !empty($shortageReason)) {
-                        $order->shortage_reported_note = $extraData['shortageNote'] ?? $shortageReason;
-                    }
+                if ($order->shortage_reported) {
+                    $order->shortage_reported = false;
+                    $order->shortage_reported_at = null;
+                    $order->shortage_reported_note = null;
                 }
 
                 // Cập nhật từng mặt hàng cụ thể nếu có itemId hoặc sku
@@ -147,6 +145,13 @@ class PickingSyncController extends Controller
                         $isPickedQtyChanged = $hasPickedQtyParam && (abs((float)$orderItem->picked_qty - (float)$pickedQty) > 0.0001);
                         $isPickedQtyUpdate = !$isQcUpdate && $isPickedQtyChanged;
 
+                        if ($isPickedQtyUpdate && $order instanceof \App\Models\Order && in_array($order->status, \App\Http\Controllers\OrderController::EXPORTED_STOCK_STATUSES, true)) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Đơn hàng {$order->order_code} đã kiểm hàng & trừ tồn kho ({$order->status}), không thể sửa số lượng bốc!"
+                            ], 422);
+                        }
+
                         if ($isPickedQtyUpdate && empty($extraData['quickPickAll'])) {
                             $authUser = auth()->user();
                             $performer = $authUser?->name ?? $performerName;
@@ -156,15 +161,31 @@ class PickingSyncController extends Controller
                             $isSuper = $authUser && ($authUser->hasRole('admin') || $authUser->hasRole('super-admin') || $authUser->id === 1);
                             $adminOverride = !empty($raw['adminOverride']) || !empty($extraData['adminOverride']);
 
-                            $isAllowed = ($assignedName !== '' && $assignedName === $curName) 
+                            // Nếu mặt hàng CHƯA ĐƯỢC PHÂN CÔNG (hoặc là null):
+                            // Tự động cho phép và ăn theo người bấm Đủ / bốc hàng!
+                            $isUnassigned = ($assignedName === '' || $assignedName === 'null');
+
+                            $isAllowed = $isUnassigned
+                                || ($assignedName === $curName) 
                                 || in_array($curName, $assignedList) 
                                 || ($isSuper && $adminOverride);
 
                             if (!$isAllowed) {
                                 return response()->json([
                                     'success' => false,
-                                    'message' => 'Bạn không được phân công soạn mặt hàng này! Chỉ ' . ($orderItem->assigned_staff ?: 'người được phân công') . ' mới được sửa số lượng bốc.'
+                                    'message' => 'Mặt hàng này đã được giao cho ' . $orderItem->assigned_staff . '! Bạn không được phép sửa số lượng bốc của người khác.'
                                 ], 403);
+                            }
+
+                            // Nếu chưa phân công mà bốc hàng, tự động gán luôn cho người thao tác
+                            if ($isUnassigned && !empty($performer)) {
+                                $orderItem->assigned_staff = $performer;
+                                $orderItem->assigned_staff_list = [$performer];
+                                $assignedStaff = $performer;
+                                $assignedStaffList = [$performer];
+                                $event->assigned_staff = $performer;
+                                $event->assigned_staff_list = [$performer];
+                                $event->save();
                             }
                         }
 
@@ -173,27 +194,28 @@ class PickingSyncController extends Controller
                                 $pickedQty = $reqQtyTotal;
                             }
                             $orderItem->picked_qty = $pickedQty;
+                            $orderItem->shortage_reason = null;
                             if ($reqQtyTotal > 0 && $pickedQty >= $reqQtyTotal) {
                                 $orderItem->is_picked = true;
                                 $orderItem->item_status = 'Đủ hàng';
-                                $orderItem->shortage_reason = null;
+                            } else {
+                                $orderItem->is_picked = false;
+                                $orderItem->item_status = $pickedQty > 0 ? 'Đang bốc' : 'Chờ bốc';
                             }
                         }
                         if ($itemStatus) {
-                            $orderItem->item_status = $itemStatus;
-                            if ($itemStatus === 'Đủ hàng' || ($reqQtyTotal > 0 && $orderItem->picked_qty >= $reqQtyTotal)) {
+                            $resolvedStatus = ($itemStatus === 'Thiếu hàng')
+                                ? ($orderItem->picked_qty > 0 ? 'Đang bốc' : 'Chờ bốc')
+                                : $itemStatus;
+                            $orderItem->item_status = $resolvedStatus;
+                            $orderItem->shortage_reason = null;
+                            if ($resolvedStatus === 'Đủ hàng' || ($reqQtyTotal > 0 && $orderItem->picked_qty >= $reqQtyTotal)) {
                                 $orderItem->is_picked = true;
                                 $orderItem->item_status = 'Đủ hàng';
-                                $orderItem->shortage_reason = null;
                             }
                         }
                         if ($shortageReason !== null) {
-                            if ($reqQtyTotal > 0 && $orderItem->picked_qty >= $reqQtyTotal) {
-                                $orderItem->shortage_reason = null;
-                                $orderItem->item_status = 'Đủ hàng';
-                            } else {
-                                $orderItem->shortage_reason = $shortageReason;
-                            }
+                            $orderItem->shortage_reason = null;
                         }
                         if ($assignedStaff !== null) {
                             $authUser = auth()->user();
@@ -280,11 +302,6 @@ class PickingSyncController extends Controller
                         if (is_array($extraData)) {
                             if (isset($extraData['isChecked'])) {
                                 $orderItem->is_checked = (bool)$extraData['isChecked'];
-                                if ($orderItem->is_checked && ($orderItem->picked_qty <= 0 || !$orderItem->is_picked)) {
-                                    $orderItem->picked_qty = isset($extraData['checkedQty']) ? (float)$extraData['checkedQty'] : $reqQtyTotal;
-                                    $orderItem->is_picked = true;
-                                    $orderItem->item_status = 'Đủ hàng';
-                                }
                             }
                             if (isset($extraData['checkedQty'])) $orderItem->checked_qty = (float)$extraData['checkedQty'];
                             if (isset($extraData['checkedBy'])) $orderItem->checked_by = $extraData['checkedBy'];
@@ -399,14 +416,8 @@ class PickingSyncController extends Controller
                         if ($itCatId !== $catId) {
                             continue;
                         }
-                        $itReq = (float) ($it->quantity + ($it->gift_quantity ?? 0));
                         $it->is_checked = true;
-                        $it->checked_qty = $it->picked_qty > 0 ? $it->picked_qty : $itReq;
-                        if ($it->picked_qty <= 0 || !$it->is_picked) {
-                            $it->picked_qty = $it->checked_qty;
-                            $it->is_picked = true;
-                            $it->item_status = 'Đủ hàng';
-                        }
+                        $it->checked_qty = (float)($it->picked_qty ?? 0);
                         $it->checked_by = $performerName;
                         $it->checked_at = now()->format('d/m/Y H:i');
                         $it->save();
@@ -419,58 +430,39 @@ class PickingSyncController extends Controller
                                 continue;
                             }
                         }
-                        $itReq = (float) ($it->quantity + ($it->gift_quantity ?? 0));
                         $it->is_checked = true;
-                        $it->checked_qty = $it->picked_qty > 0 ? $it->picked_qty : $itReq;
-                        if ($it->picked_qty <= 0 || !$it->is_picked) {
-                            $it->picked_qty = $it->checked_qty;
-                            $it->is_picked = true;
-                            $it->item_status = 'Đủ hàng';
-                        }
+                        $it->checked_qty = (float)($it->picked_qty ?? 0);
                         $it->checked_by = $performerName;
                         $it->checked_at = now()->format('d/m/Y H:i');
                         $it->save();
                     }
                 }
 
-                // ĐÁNH GIÁ TIẾN ĐỘ TỪNG NHÓM VÀ TOÀN BỘ ĐƠN HÀNG
-                // Trạng thái đơn CHỈ được chuyển đổi triệt để khi TẤT CẢ các nhóm cùng hoàn thành!
+                // ĐÁNH GIÁ TIẾN ĐỘ TỪNG NHÓM VÀ TOÀN BỘ ĐƠN HÀNG (KHÔNG tự nhảy sang Đã bốc xong / Đã kiểm hàng nếu chỉ Lưu hoặc Phân công)
                 $order->load(['items.product.category']);
                 $groupProgress = self::evaluateOrderGroupProgress($order);
+                $isSaveOnly = !empty($extraData['saveOnly']) || !empty($raw['saveOnly']);
+                $isStaffAssignOnly = ($eventType === 'STAFF_ASSIGN');
+                $alreadyTransferred = in_array($order->status, \App\Models\Order::PICKING_TRANSFERRED_STATUSES, true);
+                $oldOrderStatus = $order->status;
 
-                if (!in_array($order->status, ['Đang vận chuyển', 'Đã giao'])) {
-                    if ($groupProgress['has_shortage']) {
-                        $order->status = 'Kho báo thiếu hàng';
-                    } elseif ($groupProgress['all_groups_qc_completed']) {
-                        $order->status = 'Đã kiểm hàng';
-                        $order->shortage_reported = false;
-                        $order->shortage_reported_at = null;
-                        $order->shortage_reported_note = null;
-                    } elseif ($groupProgress['all_groups_picking_completed']) {
-                        $order->status = $groupProgress['completed_qc_groups'] > 0 ? 'Đang kiểm hàng' : 'Đã bốc xong';
-                        $order->shortage_reported = false;
-                        $order->shortage_reported_at = null;
-                        $order->shortage_reported_note = null;
-                    } else {
-                        // Chưa đủ tất cả các nhóm hoàn thành:
-                        // Nếu đã có nhóm hoặc sản phẩm được kiểm hàng (QC): chuyển thành 'Đang kiểm hàng'
-                        // Nếu đã có nhóm hoàn tất bốc hoặc có sản phẩm đã bốc: chuyển thành 'Đang bốc hàng'
-                        if ($groupProgress['completed_qc_groups'] > 0 || $order->items->contains(fn($it) => (bool)$it->is_checked)) {
-                            $order->status = 'Đang kiểm hàng';
-                        } elseif ($groupProgress['completed_picking_groups'] > 0 || $order->items->contains(fn($it) => (bool)$it->is_picked || (float)$it->picked_qty > 0)) {
-                            $order->status = 'Đang bốc hàng';
-                        } else {
-                            if (in_array($order->status, ['Đã bốc xong', 'Đã kiểm hàng', 'Kho đã xuất đủ', 'Đã kiểm hàng (Sẵn sàng xuất xe)'])) {
-                                $order->status = 'Soạn hàng';
-                            }
+                if (!$isStaffAssignOnly && !$isSaveOnly && !in_array($order->status, ['Đang vận chuyển', 'Đã giao', 'Giao thành công'])) {
+                    if ($alreadyTransferred) {
+                        // Nếu đơn đã chuyển kiểm thì dù bốc thiếu vẫn cho phép hoàn tất kiểm -> Đã kiểm hàng
+                        if (!empty($extraData['qcAllChecked'])) {
+                            $order->status = 'Đã kiểm hàng';
                         }
+                    } elseif ($order->items->contains(fn($it) => (bool)$it->is_picked || (float)$it->picked_qty > 0)) {
+                        $order->status = 'Đang bốc hàng';
                     }
                 }
                 $order->save();
 
-                // Nếu là đơn hàng ôm đã được Kế toán duyệt và kho bốc/kiểm hàng xong -> Chuyển vào kho hàng ôm NV & trừ kho công ty
-                if ($order instanceof \App\Models\ConsignmentOrder && in_array($order->status, ['Đã bốc xong', 'Đã kiểm hàng', 'Kho đã xuất đủ', 'in_progress']) && !$order->stock_deducted && $order->approved_at) {
+                // Nếu là đơn hàng ôm đã được Kế toán duyệt và kho kiểm hàng/giao xe xong -> Chuyển vào kho hàng ôm NV & trừ kho công ty
+                if ($order instanceof \App\Models\ConsignmentOrder && in_array($order->status, ['Đã kiểm hàng', 'Kho đã xuất đủ', 'in_progress']) && !$order->stock_deducted && $order->approved_at) {
                     $order->transferStockToEmployeeHoldingWarehouse(auth()->id(), $performerName);
+                } elseif ($order instanceof \App\Models\Order && in_array($order->status, \App\Http\Controllers\OrderController::EXPORTED_STOCK_STATUSES, true) && !$order->stock_deducted) {
+                    app(\App\Http\Controllers\OrderController::class)->syncStockForStatus($order, $oldOrderStatus, true);
                 }
 
                 // Cập nhật lại event để phát sóng realtime chính xác
@@ -522,102 +514,14 @@ class PickingSyncController extends Controller
     }
 
     /**
-     * API: Báo thiếu hàng cho đơn hàng và gửi cảnh báo tới Người phụ trách đơn hàng
+     * API: Cơ chế báo thiếu hàng đã được gỡ bỏ
      */
     public function reportShortage(Request $request)
     {
-        $raw = json_decode($request->getContent(), true) ?? [];
-        $orderId = $request->input('orderId') ?? ($raw['orderId'] ?? null);
-        $shortageItems = $request->input('shortageItems') ?? ($raw['shortageItems'] ?? []);
-        $reporterName = $request->input('reporterName') ?? ($raw['reporterName'] ?? (auth()->user()?->name ?? 'Nhân sự kho'));
-        $note = $request->input('note') ?? ($raw['note'] ?? null);
-
-        if (!$orderId) {
-            return response()->json(['success' => false, 'message' => 'Missing orderId'], 422);
-        }
-
-        $order = \App\Models\Order::with(['items', 'dealer'])->where('id', $orderId)->orWhere('order_code', $orderId)->first();
-        if (!$order && is_numeric($orderId) && (int)$orderId >= 900000) {
-            $order = \App\Models\ConsignmentOrder::with(['items', 'staff'])->find((int)$orderId - 900000);
-        }
-        if (!$order) {
-            $order = \App\Models\ConsignmentOrder::with(['items', 'staff'])->where('code', $orderId)->first();
-        }
-        if (!$order) {
-            return response()->json(['success' => false, 'message' => 'Order not found'], 404);
-        }
-
-        // Cập nhật trạng thái đơn sang Kho báo thiếu hàng
-        $order->status = 'Kho báo thiếu hàng';
-        $order->shortage_reported = true;
-        $order->shortage_reported_at = now();
-        if ($note) {
-            $order->shortage_reported_note = $note;
-        }
-        $order->save();
-
-        // Cập nhật từng mặt hàng thiếu
-        foreach ($shortageItems as $sIt) {
-            $sSku = $sIt['sku'] ?? null;
-            $sId = $sIt['id'] ?? null;
-            $target = null;
-            if ($sId) $target = $order->items->firstWhere('id', $sId);
-            if (!$target && $sSku) $target = $order->items->firstWhere('sku', $sSku);
-
-            if ($target) {
-                $target->item_status = 'Thiếu hàng';
-                if (!empty($sIt['reason'])) {
-                    $target->shortage_reason = $sIt['reason'];
-                }
-                if (isset($sIt['picked_qty'])) {
-                    $target->picked_qty = (float) $sIt['picked_qty'];
-                }
-                $target->save();
-            }
-        }
-
-        // Xác định Người phụ trách đơn hàng (người tạo đơn / NV kinh doanh / NV chăm sóc đại lý)
-        $supervisor = $order->order_creator 
-            ?: ($order->salesRep?->name 
-            ?: ($order->dealer?->staff_in_charge 
-            ?: ($order->staff_name
-            ?: ($order->staff?->name
-            ?: ($order->creator?->name ?: 'Hệ thống')))));
-
-        $orderCode = $order->order_code ?? ($order->code ?? ('OM-' . $order->id));
-        $customerName = $order->customer_name ?? ('Hàng Ôm - ' . ($order->staff_name ?? 'NVKD'));
-        $warehouseName = $order->warehouse ?? ($order->warehouse_name ?? (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng'));
-
-        // Tạo sự kiện đồng bộ Realtime PickingSyncEvent gửi tới Người phụ trách đơn hàng
-        $event = PickingSyncEvent::create([
-            'order_id'            => (string) $order->id,
-            'event_type'          => 'SHORTAGE_REPORTED',
-            'performer_name'      => (string) $reporterName,
-            'assigned_staff'      => (string) $supervisor, // Người phụ trách đơn nhận thông báo
-            'order_status'        => 'Kho báo thiếu hàng',
-            'shortage_reported'   => true,
-            'extra_data'          => [
-                'orderId'        => (int) $order->id,
-                'orderCode'      => $orderCode,
-                'customerName'   => $customerName,
-                'warehouse'      => $warehouseName,
-                'reporter'       => $reporterName,
-                'supervisor'     => $supervisor,
-                'shortageItems'  => $shortageItems,
-                'reportedAt'     => now()->format('H:i:s d/m/Y'),
-                'note'           => $note,
-                'message'        => "Kho báo thiếu hàng đơn {$order->order_code} tới người phụ trách: {$supervisor}",
-            ],
-            'created_at'          => now(),
-        ]);
-
         return response()->json([
-            'success'    => true,
-            'message'    => "Đã gửi cảnh báo thiếu hàng tới người phụ trách đơn hàng: {$supervisor}",
-            'supervisor' => $supervisor,
-            'order'      => $order->fresh(['items']),
-            'event_id'   => $event->id
-        ]);
+            'success' => false,
+            'message' => 'Cơ chế báo thiếu hàng đã được gỡ bỏ.',
+        ], 410);
     }
 
     /**
@@ -786,35 +690,31 @@ class PickingSyncController extends Controller
             }
             if ($orderToPick) {
                 if (!empty($orderToPick->delivery_date)) {
-                    $isDebt = ($orderToPick->status === 'Nợ hàng') || str_contains($orderToPick->notes ?? '', '[ĐƠN NỢ HÀNG]') || str_starts_with($orderToPick->order_code ?? '', 'DH-NO');
-                    if (!$isDebt) {
-                        $orderToPick->load('items.product');
-                        $itemsData = $orderToPick->items->map(fn($it) => [
-                            'product_id'    => $it->product_id,
-                            'sku'           => $it->sku,
-                            'quantity'      => (float)$it->quantity,
-                            'gift_quantity' => (float)($it->gift_quantity ?? 0),
-                            'unit'          => $it->unit,
-                        ])->toArray();
-                        $targetWh = $orderToPick->warehouse ?: (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng');
-                        $check = \App\Services\InventoryAvailabilityService::checkItemsAvailability($targetWh, $itemsData, $orderToPick->id);
+                    $orderToPick->load('items.product');
+                    $itemsData = $orderToPick->items->map(fn($it) => [
+                        'product_id'    => $it->product_id,
+                        'sku'           => $it->sku,
+                        'quantity'      => (float)$it->quantity,
+                        'gift_quantity' => (float)($it->gift_quantity ?? 0),
+                        'unit'          => $it->unit,
+                    ])->toArray();
+                    $targetWh = $orderToPick->warehouse ?: (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng');
+                    $check = \App\Services\InventoryAvailabilityService::checkItemsAvailability($targetWh, $itemsData, $orderToPick->id);
 
-                        if ($check['is_valid']) {
-                            if (in_array($orderToPick->status, ['Chốt đơn', 'Đã duyệt', 'pending', 'approved'])) {
-                                $orderToPick->status = 'Soạn hàng';
-                            }
-                            if ($request->filled('picking_date')) {
-                                $orderToPick->picking_date = $request->query('picking_date');
-                            } elseif (empty($orderToPick->picking_date)) {
-                                $orderToPick->picking_date = now()->format('Y-m-d');
-                            }
-                            $orderToPick->has_shortage_warning = false;
-                            $orderToPick->save();
-                        } else {
-                            $orderToPick->has_shortage_warning = true;
-                            $orderToPick->backorder_status = 'pending_stock';
-                            $orderToPick->save();
+                    if ($check['is_valid']) {
+                        if (in_array($orderToPick->status, ['Chốt đơn', 'Đã duyệt', 'pending', 'approved'])) {
+                            $orderToPick->status = 'Soạn hàng';
                         }
+                        if ($request->filled('picking_date')) {
+                            $orderToPick->picking_date = $request->query('picking_date');
+                        } elseif (empty($orderToPick->picking_date)) {
+                            $orderToPick->picking_date = now()->format('Y-m-d');
+                        }
+                        $orderToPick->has_shortage_warning = false;
+                        $orderToPick->save();
+                    } else {
+                        $orderToPick->has_shortage_warning = true;
+                        $orderToPick->save();
                     }
                 }
             }
@@ -902,34 +802,33 @@ class PickingSyncController extends Controller
                 ?: ($ord->dealer?->staff_in_charge 
                 ?: ($ord->creator?->name ?: 'Hệ thống')));
 
-            // Đánh giá tiến độ từng nhóm bốc hàng trên TOÀN BỘ mặt hàng của đơn
-            $evalProgress = self::evaluateOrderGroupProgress($ord, $allActiveGroups, $allCategories);
-            $ord->groups_progress = $evalProgress['groups'];
-            $ord->group_summary = $evalProgress;
-
-            // Tự động kiểm tra và dọn dẹp các món đã bốc đủ nhưng còn vướng cờ thiếu do cắt đơn trước đó
-            $hasAnyActualShortage = $evalProgress['has_shortage'];
-            $allActualPicked = $evalProgress['all_groups_picking_completed'];
-
+            // Tự động chuẩn hóa các đơn/mặt hàng cũ còn vướng cờ báo thiếu
             foreach ($ord->items as $it) {
                 $req = (float) ($it->quantity + ($it->gift_quantity ?? 0));
-                if ($req > 0 && (float)$it->picked_qty >= $req) {
-                    if ($it->item_status === 'Thiếu hàng' || !empty($it->shortage_reason)) {
-                        $it->item_status = 'Đủ hàng';
-                        $it->shortage_reason = null;
-                        $it->is_picked = true;
-                        $it->save();
-                    }
+                $picked = (float) ($it->picked_qty ?? 0);
+                if ($it->item_status === 'Thiếu hàng' || !empty($it->shortage_reason)) {
+                    $it->item_status = ($req > 0 && $picked >= $req) ? 'Đủ hàng' : ($picked > 0 ? 'Đang bốc' : 'Chờ bốc');
+                    $it->shortage_reason = null;
+                    $it->is_picked = ($req > 0 && $picked >= $req);
+                    $it->save();
                 }
             }
 
-            if (!$hasAnyActualShortage && $ord->status === 'Kho báo thiếu hàng') {
-                $ord->status = $allActualPicked ? 'Đã bốc xong' : 'Soạn hàng';
+            if ($ord->status === 'Kho báo thiếu hàng' || $ord->shortage_reported) {
+                if ($ord->status === 'Kho báo thiếu hàng') {
+                    $anyPicked = $ord->items->contains(fn($x) => (float)($x->picked_qty ?? 0) > 0);
+                    $ord->status = $anyPicked ? 'Đang bốc hàng' : 'Soạn hàng';
+                }
                 $ord->shortage_reported = false;
                 $ord->shortage_reported_at = null;
                 $ord->shortage_reported_note = null;
                 $ord->save();
             }
+
+            // Đánh giá tiến độ từng nhóm bốc hàng trên TOÀN BỘ mặt hàng của đơn
+            $evalProgress = self::evaluateOrderGroupProgress($ord, $allActiveGroups, $allCategories);
+            $ord->groups_progress = $evalProgress['groups'];
+            $ord->group_summary = $evalProgress;
         }
 
         // Gắn thông tin cảnh báo sửa đơn gần đây (trong 24 giờ) vào các đơn hàng để khi F5 / mở lại trang vẫn hiển thị cảnh báo
@@ -982,7 +881,8 @@ class PickingSyncController extends Controller
         $canViewAllCategories = $isSuperUser || $currentUser->hasPermission('inv_picking.view_all_categories');
 
         // 2. Lọc chỉ những nhân viên có quyền soạn bốc hàng (loại trừ kế toán, sales, v.v.)
-        $pickingStaff = \App\Models\User::select('id', 'name', 'email', 'department')
+        $pickingStaff = \App\Models\User::with(['roles', 'userRolePermissions.permission'])
+            ->select('id', 'name', 'email', 'department')
             ->orderBy('name')
             ->get()
             ->filter(function ($u) {
@@ -997,12 +897,9 @@ class PickingSyncController extends Controller
             ->values();
 
         // 3. Tìm các nhóm nhân sự mà user này tham gia (đang active)
-        $allActiveGroups = \App\Models\StaffGroup::where('status', 'active')->with(['leader'])->get();
         $leaderGroups = $allActiveGroups->filter(fn($g) => (int)$g->user_id === (int)$currentUser->id);
         $memberGroups = $allActiveGroups->filter(fn($g) => $g->hasMember($currentUser->id));
         $userGroups = $leaderGroups->merge($memberGroups)->unique('id');
-
-        $allCategories = \App\Models\Category::all(['id', 'code', 'name']);
         $allCategoryIds = $allCategories->pluck('id')->map(fn($id) => (int)$id)->toArray();
 
         $userCategoryIds = $userGroups->pluck('category_ids')
@@ -1192,9 +1089,8 @@ class PickingSyncController extends Controller
             }
 
             $req = (float)($it->quantity + ($it->gift_quantity ?? 0));
-            $isPicked = ($it->is_picked || ($req > 0 && (float)$it->picked_qty >= $req)) && $it->item_status !== 'Thiếu hàng';
+            $isPicked = ($req > 0 && (float)$it->picked_qty >= $req) || ((bool)$it->is_picked && (float)$it->picked_qty >= $req);
             $isChecked = (bool)$it->is_checked || ($req > 0 && (float)$it->checked_qty >= $req);
-            $isShort = $req > 0 && (float)$it->picked_qty < $req && ($it->item_status === 'Thiếu hàng' || !empty($it->shortage_reason));
 
             $groupBuckets[$gKey]['items_count']++;
             if ($isPicked) {
@@ -1202,10 +1098,6 @@ class PickingSyncController extends Controller
             }
             if ($isChecked) {
                 $groupBuckets[$gKey]['checked_count']++;
-            }
-            if ($isShort) {
-                $groupBuckets[$gKey]['has_shortage'] = true;
-                $groupBuckets[$gKey]['shortage_items_count']++;
             }
         }
 
@@ -1251,7 +1143,7 @@ class PickingSyncController extends Controller
         // Kiểm tra bổ sung toàn bộ items để đảm bảo tính toàn vẹn 100%
         $overallItemsPicked = $items->every(function ($i) {
             $r = (float)($i->quantity + ($i->gift_quantity ?? 0));
-            return ($i->is_picked || ($r > 0 && (float)$i->picked_qty >= $r)) && $i->item_status !== 'Thiếu hàng';
+            return $r > 0 && (float)$i->picked_qty >= $r;
         });
         $overallItemsChecked = $items->every(function ($i) {
             $r = (float)($i->quantity + ($i->gift_quantity ?? 0));
@@ -1275,27 +1167,391 @@ class PickingSyncController extends Controller
     }
 
     /**
-     * API: Tự động tách Đơn Giao Sau (Backorder) cho các mặt hàng bốc thiếu khi xuất kho
+     * API: Cơ chế tách đơn nợ hàng đã được gỡ bỏ
      */
     public function splitBackorder(\Illuminate\Http\Request $request)
     {
-        $raw = json_decode($request->getContent(), true) ?? [];
-        $orderId = $request->input('orderId') ?? ($raw['orderId'] ?? null);
-        $shortageItems = $request->input('shortageItems') ?? ($raw['shortageItems'] ?? []);
-        $note = $request->input('note') ?? ($raw['note'] ?? null);
+        return response()->json([
+            'success' => false,
+            'message' => 'Cơ chế tách đơn nợ hàng đã được gỡ bỏ.',
+        ], 410);
+    }
 
-        if (!$orderId) {
-            return response()->json(['success' => false, 'message' => 'Missing orderId'], 422);
+    /**
+     * API thống nhất cho nút [Lưu], [Chuyển kiểm] (bên Bốc) và [Lưu], [Giao xe] (bên Kiểm).
+     * Ngăn không tự động chuyển trạng thái khi mới nhập số lượng hoặc mới bấm Lưu.
+     */
+    public function savePickingOrQc(Request $request)
+    {
+        $raw = [];
+        if ($request->getContent()) {
+            $raw = json_decode($request->getContent(), true) ?: [];
+        }
+        $payload = array_merge($request->all(), $raw);
+
+        $mode = $payload['mode'] ?? 'picking'; // 'picking' | 'qc'
+        $action = $payload['action'] ?? 'save'; // 'save' | 'transfer_to_qc' | 'handover_to_vehicle'
+        $ordersInput = $payload['orders'] ?? [];
+        $authUser = auth()->user();
+        $performer = $authUser?->name ?? ($payload['performerName'] ?? 'Nhân sự kho');
+        $inspector = $payload['inspectorName'] ?? $performer;
+
+        if (empty($ordersInput) || !is_array($ordersInput)) {
+            return response()->json(['success' => false, 'message' => 'Không có dữ liệu đơn hàng để lưu!'], 422);
         }
 
-        $order = \App\Models\Order::with('items')->where('id', $orderId)->orWhere('order_code', $orderId)->first();
-        if (!$order) {
-            return response()->json(['success' => false, 'message' => 'Order not found'], 404);
+        $isSuper = $authUser && (
+            $authUser->id === 1
+            || $authUser->hasRole('admin')
+            || $authUser->hasRole('Admin')
+            || $authUser->hasRole('super-admin')
+            || in_array($authUser->department ?? '', ['Ban Giám Đốc', 'IT', 'Quản Lý', 'Executive'])
+        );
+        $adminOverride = !empty($payload['adminOverride']) && $isSuper;
+
+        if ($mode === 'qc') {
+            $canQc = $isSuper || ($authUser && (
+                $authUser->hasRole('warehouse')
+                || $authUser->hasPermission('inv_picking.qc')
+                || $authUser->hasPermission('inv_qc.qc')
+                || $authUser->hasPermission('inv_qc.approve')
+                || $authUser->hasPermission('inv_picking.assign')
+                || $authUser->hasPermission('inv_picking.view_all_categories')
+                || \App\Models\StaffGroup::where('status', 'active')->where('user_id', $authUser->id)->exists()
+            ));
+            if (!$canQc) {
+                return response()->json(['success' => false, 'message' => 'Bạn không có quyền thao tác Kiểm hàng (QC)!'], 403);
+            }
         }
 
-        $result = \App\Services\BackorderService::splitOrderOnShortage($order, $shortageItems, $note);
+        $curNameLower = mb_strtolower(trim((string)$performer));
+        $transferredStatuses = \App\Models\Order::PICKING_TRANSFERRED_STATUSES;
+        $updatedOrders = [];
+        $shouldRefreshAvailability = false;
 
-        return response()->json($result, $result['success'] ? 200 : 422);
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            foreach ($ordersInput as $ordData) {
+                $orderId = $ordData['orderId'] ?? ($ordData['id'] ?? null);
+                if (!$orderId) continue;
+
+                $order = null;
+                $isConsignment = false;
+                if (is_numeric($orderId) && (int)$orderId >= 900000) {
+                    $order = \App\Models\ConsignmentOrder::with(['items.product.category', 'staff', 'warehouse'])->find((int)$orderId - 900000);
+                    $isConsignment = (bool)$order;
+                }
+                if (!$order) {
+                    $order = \App\Models\ConsignmentOrder::with(['items.product.category', 'staff', 'warehouse'])->where('code', $orderId)->first();
+                    $isConsignment = (bool)$order;
+                }
+                if (!$order) {
+                    $order = \App\Models\Order::with(['items.product.category'])->where('id', $orderId)->orWhere('order_code', $orderId)->first();
+                }
+                if (!$order) continue;
+
+                $orderCode = $isConsignment ? $order->code : $order->order_code;
+
+                if (in_array($order->status, ['Đang vận chuyển', 'Đã giao', 'Giao thành công', 'Hủy', 'Đã hủy'])) {
+                    \Illuminate\Support\Facades\DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Đơn hàng {$orderCode} đang ở trạng thái '{$order->status}', không thể chỉnh sửa số lượng bốc/kiểm!"
+                    ], 422);
+                }
+
+                if ($mode === 'picking' && in_array($order->status, ['Đã kiểm hàng', 'Đã kiểm', 'Đã kiểm xong', 'Đã kiểm hàng (Sẵn sàng xuất xe)', 'Sẵn sàng xuất xe'], true)) {
+                    \Illuminate\Support\Facades\DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Đơn hàng {$orderCode} đã kiểm hàng & giao xe ({$order->status}), không thể sửa số lượng bốc!"
+                    ], 422);
+                }
+
+                // Kiểm tra điều kiện Giao xe bên Kiểm: bên Bốc bắt buộc phải bấm [Chuyển kiểm] trước
+                $alreadyTransferred = in_array($order->status, $transferredStatuses, true)
+                    || ($isConsignment && $order->status === 'in_progress');
+
+                if ($mode === 'qc' && $action === 'handover_to_vehicle' && !$alreadyTransferred) {
+                    \Illuminate\Support\Facades\DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Không thể giao xe! Đơn hàng {$orderCode} chưa bốc xong hoặc chưa bấm 'Chuyển kiểm'."
+                    ], 422);
+                }
+
+                $itemsInput = $ordData['items'] ?? [];
+                $itemsInputById = [];
+                $itemsInputBySku = [];
+                foreach ($itemsInput as $iIn) {
+                    if (!empty($iIn['id'])) $itemsInputById[(string)$iIn['id']] = $iIn;
+                    if (!empty($iIn['sku'])) $itemsInputBySku[(string)$iIn['sku']] = $iIn;
+                }
+
+                foreach ($order->items as $orderItem) {
+                    $iIn = $itemsInputById[(string)$orderItem->id] ?? ($itemsInputBySku[(string)$orderItem->sku] ?? null);
+                    $reqTotal = (float)($orderItem->quantity + ($orderItem->gift_quantity ?? 0));
+
+                    if ($mode === 'picking') {
+                        if ($iIn !== null) {
+                            $oldPicked = (float)($orderItem->picked_qty ?? 0);
+                            $newPicked = max(0.0, (float)($iIn['picked_qty'] ?? $oldPicked));
+                            if ($reqTotal > 0 && $newPicked > $reqTotal) {
+                                $newPicked = $reqTotal;
+                            }
+
+                            $qtyChanged = abs($newPicked - $oldPicked) > 0.0001;
+                            $assignedRaw = trim((string)($orderItem->assigned_staff ?? ''));
+                            $assignedNameLower = mb_strtolower($assignedRaw);
+                            $assignedListLower = array_values(array_filter(
+                                array_map(fn($s) => mb_strtolower(trim((string)$s)), (array)($orderItem->assigned_staff_list ?? [])),
+                                fn($s) => $s !== '' && $s !== 'null'
+                            ));
+                            $isUnassigned = ($assignedNameLower === '' || $assignedNameLower === 'null') && empty($assignedListLower);
+
+                            if ($qtyChanged) {
+                                $isAllowed = $isUnassigned
+                                    || ($assignedNameLower === $curNameLower)
+                                    || in_array($curNameLower, $assignedListLower, true)
+                                    || $adminOverride
+                                    || $isSuper;
+
+                                if (!$isAllowed) {
+                                    \Illuminate\Support\Facades\DB::rollBack();
+                                    return response()->json([
+                                        'success' => false,
+                                        'message' => "Mặt hàng [{$orderItem->sku}] của đơn {$orderCode} đã giao cho {$orderItem->assigned_staff}! Bạn không thể sửa số lượng bốc của người khác."
+                                    ], 403);
+                                }
+                            }
+
+                            // Nếu chưa phân công mà thao tác bốc / chuyển kiểm -> tự nhận cho người thao tác
+                            if ($isUnassigned && ($newPicked > 0 || $action === 'transfer_to_qc')) {
+                                $orderItem->assigned_staff = $performer;
+                                $orderItem->assigned_staff_list = [$performer];
+                            } else {
+                                if (array_key_exists('assigned_staff', $iIn)) {
+                                    $stVal = trim((string)($iIn['assigned_staff'] ?? ''));
+                                    $orderItem->assigned_staff = ($stVal !== '' && $stVal !== 'null') ? $stVal : null;
+                                }
+                                if (isset($iIn['assigned_staff_list']) && is_array($iIn['assigned_staff_list'])) {
+                                    $cleanList = array_values(array_filter($iIn['assigned_staff_list'], fn($s) => $s && trim((string)$s) !== '' && trim((string)$s) !== 'null'));
+                                    $orderItem->assigned_staff_list = $cleanList;
+                                }
+                            }
+
+                            $orderItem->picked_qty = $newPicked;
+                            $orderItem->shortage_reason = null;
+
+                            if ($reqTotal > 0 && $newPicked >= $reqTotal) {
+                                $orderItem->is_picked = true;
+                                $orderItem->item_status = 'Đủ hàng';
+                            } elseif ($newPicked > 0) {
+                                $orderItem->is_picked = false;
+                                $orderItem->item_status = 'Đang bốc';
+                            } else {
+                                $orderItem->is_picked = false;
+                                $orderItem->item_status = 'Chờ bốc';
+                            }
+                            $orderItem->save();
+                        } elseif ($action === 'transfer_to_qc') {
+                            $picked = (float)($orderItem->picked_qty ?? 0);
+                            if ($orderItem->item_status === 'Thiếu hàng' || !empty($orderItem->shortage_reason)) {
+                                $orderItem->item_status = ($reqTotal > 0 && $picked >= $reqTotal) ? 'Đủ hàng' : ($picked > 0 ? 'Đang bốc' : 'Chờ bốc');
+                                $orderItem->shortage_reason = null;
+                                $orderItem->save();
+                            }
+                        }
+                    } elseif ($mode === 'qc') {
+                        $pickedCap = (float)($orderItem->picked_qty ?? 0);
+                        $maxCheck = $alreadyTransferred ? $pickedCap : $reqTotal;
+
+                        if ($iIn !== null) {
+                            $newChecked = isset($iIn['checked_qty']) ? max(0.0, (float)$iIn['checked_qty']) : (float)($orderItem->checked_qty ?? 0);
+                            if ($newChecked > $maxCheck) {
+                                $newChecked = $maxCheck;
+                            }
+                            $orderItem->checked_qty = $newChecked;
+                            if ($action === 'handover_to_vehicle') {
+                                $orderItem->is_checked = true;
+                                if ($newChecked <= 0 && $pickedCap > 0 && empty($iIn['checked_qty_explicit'])) {
+                                    $orderItem->checked_qty = $pickedCap;
+                                }
+                            } else {
+                                $orderItem->is_checked = isset($iIn['is_checked']) ? (bool)$iIn['is_checked'] : ($newChecked >= $maxCheck && $maxCheck > 0);
+                            }
+                            if (array_key_exists('check_notes', $iIn)) {
+                                $orderItem->check_notes = $iIn['check_notes'];
+                            }
+                            if ($orderItem->is_checked || $orderItem->checked_qty > 0) {
+                                $orderItem->checked_by = $inspector;
+                                $orderItem->checked_at = now()->format('d/m/Y H:i');
+                            }
+                            $orderItem->save();
+                        } elseif ($action === 'handover_to_vehicle') {
+                            $orderItem->is_checked = true;
+                            $orderItem->checked_qty = $pickedCap;
+                            $orderItem->checked_by = $inspector;
+                            $orderItem->checked_at = now()->format('d/m/Y H:i');
+                            $orderItem->save();
+                        }
+                    }
+                }
+
+                $order->load(['items.product.category']);
+                $hasAnyShort = $order->items->contains(function ($x) {
+                    $r = (float)($x->quantity + ($x->gift_quantity ?? 0));
+                    return $r > 0 && ((float)$x->picked_qty + 0.0001) < $r;
+                });
+
+                if ($mode === 'picking') {
+                    if ($action === 'transfer_to_qc') {
+                        $order->shortage_reported = false;
+                        $order->shortage_reported_at = null;
+                        $order->shortage_reported_note = null;
+                        $oldSt = $order->status;
+                        $order->status = 'Đã bốc xong';
+                        $order->save();
+
+                        if ($order instanceof \App\Models\Order) {
+                            $order->logOperation(
+                                'Chuyển Kiểm Hàng',
+                                $hasAnyShort
+                                    ? "Bên Bốc đã lưu số lượng thực bốc (có mặt hàng thiếu) và bấm Chuyển kiểm."
+                                    : "Bên Bốc đã hoàn tất & bấm Chuyển kiểm.",
+                                $performer,
+                                $oldSt,
+                                $order->status
+                            );
+                        }
+                    } else {
+                        // action === 'save': Chỉ lưu số lượng đã bốc, KHÔNG tự động chuyển kiểm / không mở Giao xe
+                        $order->shortage_reported = false;
+                        $order->shortage_reported_at = null;
+                        $order->shortage_reported_note = null;
+                        if (!$alreadyTransferred) {
+                            $anyPicked = $order->items->contains(fn($x) => (float)$x->picked_qty > 0 || (bool)$x->is_picked);
+                            $order->status = $anyPicked ? 'Đang bốc hàng' : 'Soạn hàng';
+                        }
+                        $order->save();
+                    }
+                } elseif ($mode === 'qc') {
+                    if ($action === 'handover_to_vehicle') {
+                        $oldSt = $order->status;
+                        $order->status = 'Đã kiểm hàng';
+                        $order->save();
+
+                        if ($order instanceof \App\Models\ConsignmentOrder && !$order->stock_deducted && $order->approved_at) {
+                            $order->transferStockToEmployeeHoldingWarehouse(auth()->id(), $performer);
+                        } elseif ($order instanceof \App\Models\Order) {
+                            app(\App\Http\Controllers\OrderController::class)->syncStockForStatus($order, $oldSt, false);
+                            $shouldRefreshAvailability = true;
+                        }
+                        if ($order instanceof \App\Models\Order) {
+                            $order->logOperation(
+                                'Xác Nhận Kiểm & Giao Xe',
+                                "Bên Kiểm ({$inspector}) đã xác nhận kiểm hàng, chuyển Giao xe và trừ tồn kho thực tế" . ($hasAnyShort ? ' (đơn bốc thiếu nhưng đã chuyển kiểm).' : '.'),
+                                $performer,
+                                $oldSt,
+                                $order->status
+                            );
+                        }
+                    } else {
+                        // action === 'save' bên Kiểm: giữ nguyên trạng thái bốc nếu chưa chuyển kiểm; nếu đã chuyển kiểm thì đặt Đang kiểm hàng
+                        if ($alreadyTransferred && in_array($order->status, ['Đã bốc xong', 'Kiểm hàng'], true)) {
+                            $order->status = 'Đang kiểm hàng';
+                            $order->save();
+                        }
+                    }
+                }
+
+                $groupProgress = self::evaluateOrderGroupProgress($order);
+
+                try {
+                    PickingSyncEvent::create([
+                        'order_id'          => (string)$orderId,
+                        'event_type'        => ($action === 'save') ? 'ORDER_PROGRESS_SAVED' : 'ORDER_STATUS_CHANGED',
+                        'performer_name'    => (string)$performer,
+                        'order_status'      => (string)$order->status,
+                        'shortage_reported' => (bool)$order->shortage_reported,
+                        'extra_data'        => [
+                            'orderId'       => (int)$orderId,
+                            'orderCode'     => $orderCode,
+                            'newStatus'     => $order->status,
+                            'stockDeducted' => (bool)$order->stock_deducted,
+                            'mode'          => $mode,
+                            'action'        => $action,
+                            'groupProgress' => $groupProgress,
+                            'items'         => $order->items->map(fn($x) => [
+                                'id'                  => $x->id,
+                                'sku'                 => $x->sku,
+                                'picked_qty'          => (float)$x->picked_qty,
+                                'is_picked'           => (bool)$x->is_picked,
+                                'item_status'         => $x->item_status,
+                                'shortage_reason'     => $x->shortage_reason,
+                                'assigned_staff'      => $x->assigned_staff,
+                                'assigned_staff_list' => $x->assigned_staff_list,
+                                'checked_qty'         => (float)$x->checked_qty,
+                                'is_checked'          => (bool)$x->is_checked,
+                                'check_notes'         => $x->check_notes,
+                                'checked_by'          => $x->checked_by,
+                                'checked_at'          => $x->checked_at,
+                            ])->values()->toArray(),
+                        ],
+                        'created_at'        => now(),
+                    ]);
+                } catch (\Throwable $evErr) {
+                    \Log::warning('PickingSyncEvent create failed in savePickingOrQc: ' . $evErr->getMessage());
+                }
+
+                $updatedOrders[] = [
+                    'id'                => (int)$orderId,
+                    'status'            => $order->status,
+                    'shortage_reported' => (bool)$order->shortage_reported,
+                    'stock_deducted'    => (bool)$order->stock_deducted,
+                    'groups_progress'   => $groupProgress['groups'],
+                    'group_summary'     => $groupProgress,
+                    'items'             => $order->items->map(fn($x) => [
+                        'id'                  => $x->id,
+                        'sku'                 => $x->sku,
+                        'picked_qty'          => (float)$x->picked_qty,
+                        'is_picked'           => (bool)$x->is_picked,
+                        'item_status'         => $x->item_status,
+                        'shortage_reason'     => $x->shortage_reason,
+                        'assigned_staff'      => $x->assigned_staff,
+                        'assigned_staff_list' => $x->assigned_staff_list,
+                        'checked_qty'         => (float)$x->checked_qty,
+                        'is_checked'          => (bool)$x->is_checked,
+                        'check_notes'         => $x->check_notes,
+                        'checked_by'          => $x->checked_by,
+                        'checked_at'          => $x->checked_at,
+                    ])->values()->toArray(),
+                ];
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            if ($shouldRefreshAvailability) {
+                \App\Http\Controllers\OrderController::refreshAvailabilityCache();
+            }
+
+            return response()->json([
+                'success'       => true,
+                'updatedOrders' => $updatedOrders,
+                'message'       => match ($action) {
+                    'transfer_to_qc'      => 'Đã lưu số lượng thực bốc và Chuyển Kiểm hàng thành công!',
+                    'handover_to_vehicle' => 'Đã xác nhận Kiểm hàng, chuyển Giao xe và trừ tồn kho thực tế thành công!',
+                    default               => $mode === 'qc' ? 'Đã lưu số lượng kiểm hàng!' : 'Đã lưu số lượng đã bốc (chưa chuyển kiểm)!',
+                },
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Log::error('savePickingOrQc failed: ' . $e->getMessage(), ['exception' => $e]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi lưu dữ liệu: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -1306,9 +1562,9 @@ class PickingSyncController extends Controller
     {
         $raw = json_decode($request->getContent(), true) ?? [];
         $allocations = $request->input('allocations') ?? ($raw['allocations'] ?? []);
-        $note = $request->input('note') ?? ($raw['note'] ?? 'Nhân viên xe tự phân bổ hàng thiếu khi bốc');
-        $autoCreateBackorder = $request->input('autoCreateBackorder', true) ?? ($raw['autoCreateBackorder'] ?? true);
-        $markPickedIfReady = $request->input('markPickedIfReady', true) ?? ($raw['markPickedIfReady'] ?? true);
+        $note = $request->input('note') ?? ($raw['note'] ?? 'Phân bổ số lượng thực bốc theo đơn');
+        $autoCreateBackorder = false;
+        $markPickedIfReady = $request->input('markPickedIfReady', false) ?? ($raw['markPickedIfReady'] ?? false);
 
         if (empty($allocations)) {
             return response()->json(['success' => false, 'message' => 'Không có dữ liệu phân bổ'], 422);
@@ -1357,21 +1613,10 @@ class PickingSyncController extends Controller
                         $item->shortage_reason = null;
                         $item->save();
                     } else {
-                        // Bị thiếu so với yêu cầu
-                        if ($autoCreateBackorder) {
-                            $shortageItemsForSplit[] = [
-                                'id'         => $item->id,
-                                'product_id' => $item->product_id,
-                                'sku'        => $item->sku,
-                                'picked_qty' => $allocatedQty,
-                                'reason'     => $note,
-                            ];
-                        } else {
-                            $item->is_picked = ($allocatedQty > 0);
-                            $item->item_status = ($allocatedQty > 0 ? 'Thiếu hàng' : 'Chờ bốc');
-                            $item->shortage_reason = $note;
-                            $item->save();
-                        }
+                        $item->is_picked = false;
+                        $item->item_status = $allocatedQty > 0 ? 'Đang bốc' : 'Chờ bốc';
+                        $item->shortage_reason = null;
+                        $item->save();
                     }
                 }
 
@@ -1390,18 +1635,19 @@ class PickingSyncController extends Controller
                     $order = $order->fresh(['items']);
                 }
 
-                // Kiểm tra trạng thái hoàn tất bốc của đơn
+                // Cập nhật trạng thái đơn (KHÔNG tự chuyển sang Đã bốc xong trừ khi markPickedIfReady được bật tường minh)
                 if ($order && $order->items) {
-                    $allPicked = $order->items->count() > 0 && $order->items->every(fn($it) => (bool)$it->is_picked || (float)$it->picked_qty >= (float)$it->quantity);
-                    if ($allPicked && $markPickedIfReady) {
-                        $order->status = 'Đã bốc xong';
-                        $order->shortage_reported = false;
-                    } elseif ($order->items->some(fn($it) => (float)$it->picked_qty > 0 || (bool)$it->is_picked)) {
-                        if ($order->status !== 'Kho báo thiếu hàng') {
+                    $alreadyTransferred = in_array($order->status, \App\Models\Order::PICKING_TRANSFERRED_STATUSES, true);
+                    if (!$alreadyTransferred) {
+                        $allPicked = $order->items->count() > 0 && $order->items->every(fn($it) => (bool)$it->is_picked && (float)$it->picked_qty >= (float)$it->quantity);
+                        if ($allPicked && $markPickedIfReady) {
+                            $order->status = 'Đã bốc xong';
+                            $order->shortage_reported = false;
+                        } else {
                             $order->status = 'Đang bốc hàng';
                         }
+                        $order->save();
                     }
-                    $order->save();
                     $updatedOrderCodes[] = $order->order_code;
                 }
 

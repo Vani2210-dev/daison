@@ -639,7 +639,7 @@ class DebtHandoverController extends Controller
                         (int)$handover->from_user_id,
                         "✅ Đã giải phóng 100% công nợ: {$handover->code}",
                         "Sale {$approverName} đã xác nhận nhận công nợ {$handover->code} (" . number_format($amount, 0, ',', '.') . " đ). Bạn đã được giải phóng trách nhiệm công nợ.",
-                        '/driver/portal',
+                        '/driver-portal',
                         'debt_handover_confirmed',
                         $handover,
                         [
@@ -755,7 +755,7 @@ class DebtHandoverController extends Controller
                     (int)$handover->from_user_id,
                     "❌ Từ chối biên bản bàn giao nợ: {$handover->code}",
                     "{$rejecterName} đã từ chối nhận nợ biên bản {$handover->code} (" . number_format($handover->amount, 0, ',', '.') . " đ). Lý do: {$reason}. Vui lòng kiểm tra lại chứng từ.",
-                    '/driver/portal',
+                    '/driver-portal',
                     'debt_handover_rejected',
                     $handover,
                     [

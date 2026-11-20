@@ -203,7 +203,6 @@ class WarehouseTransactionController extends Controller
 
             DB::commit();
             \App\Services\InventoryAvailabilityService::clearCache();
-            \App\Services\BackorderService::checkAndNotifyBackordersOnStockArrival();
 
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([

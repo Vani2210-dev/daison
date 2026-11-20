@@ -10,9 +10,15 @@ use Illuminate\Http\Request;
 class OrderController extends Controller
 {
     /**
-     * Order statuses where physical goods have left the warehouse and must be deducted from on-hand stock.
+     * Order statuses where goods have passed QC & handed over to vehicle or physically left warehouse
+     * and must be deducted from actual on-hand stock immediately.
      */
     public const EXPORTED_STOCK_STATUSES = [
+        'Đã kiểm hàng',
+        'Đã kiểm',
+        'Đã kiểm xong',
+        'Đã kiểm hàng (Sẵn sàng xuất xe)',
+        'Sẵn sàng xuất xe',
         'Đang vận chuyển',
         'Đang giao hàng',
         'Đã giao',
@@ -295,55 +301,48 @@ class OrderController extends Controller
 
                     $order->status = 'Chờ hàng';
                     $order->has_shortage_warning = true;
-                    $order->backorder_status = 'pending_stock';
                     $order->save();
 
                     return response()->json([
                         'success'   => false,
-                        'message'   => "Kho [{$targetWh}] không đủ hàng tồn để chuyển sang Soạn hàng!\n\n{$shortageText}\n\nĐơn hàng đã được chuyển sang trạng thái [Chờ hàng]. Vui lòng chờ nhập thêm hàng hoặc dùng chức năng Tách đơn nợ để giao trước phần có sẵn.",
+                        'message'   => "Kho [{$targetWh}] không đủ hàng tồn để chuyển sang Soạn hàng!\n\n{$shortageText}\n\nĐơn hàng đã được chuyển sang trạng thái [Chờ hàng]. Vui lòng chờ nhập thêm hàng trước khi soạn.",
                         'shortages' => $check['shortages']
                     ], 422);
                 } else {
                     $order->has_shortage_warning = false;
-                    if ($order->backorder_status === 'pending_stock') {
-                        $order->backorder_status = 'ready_to_pick';
-                    }
                 }
             }
 
-            // Chặn chuyển sang "Đã bốc xong" nếu các nhóm chưa hoàn thành 100% việc bốc hàng
-            if (in_array($status, ['Đã bốc xong', 'Kho đã xuất đủ'])) {
-                $order->load('items.product.category');
-                $progress = \App\Http\Controllers\PickingSyncController::evaluateOrderGroupProgress($order);
-                if (!$progress['all_groups_picking_completed']) {
-                    $pendingStr = implode(', ', $progress['pending_picking_group_names']);
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Không thể chuyển sang trạng thái 'Đã bốc xong'. Còn nhóm chưa hoàn thành: {$pendingStr}!"
-                    ], 422);
-                }
-            }
-
-            // Chặn chuyển sang "Đã kiểm hàng" nếu các nhóm chưa hoàn thành 100% việc kiểm hàng
+            // Chặn chuyển sang "Đã kiểm hàng" / Giao xe nếu bên Bốc chưa bấm "Chuyển kiểm"
             if (in_array($status, ['Đã kiểm hàng', 'Đã kiểm hàng (Sẵn sàng xuất xe)', 'Đã kiểm xong'])) {
-                $order->load('items.product.category');
-                $progress = \App\Http\Controllers\PickingSyncController::evaluateOrderGroupProgress($order);
-                if (!$progress['all_groups_qc_completed']) {
-                    $pendingStr = implode(', ', $progress['pending_qc_group_names']);
+                if (!in_array($oldStatus, Order::PICKING_TRANSFERRED_STATUSES, true)) {
                     return response()->json([
                         'success' => false,
-                        'message' => "Không thể chuyển sang trạng thái 'Đã kiểm hàng'. Còn nhóm chưa hoàn thành kiểm tra (QC): {$pendingStr}!"
+                        'message' => "Không thể xác nhận 'Đã kiểm hàng' / Giao xe! Đơn hàng {$order->order_code} chưa bốc xong hoặc chưa bấm 'Chuyển kiểm'."
                     ], 422);
                 }
+            }
+
+            $authUser = auth()->user();
+            $performerName = $authUser?->name ?? 'Người dùng';
+            $performerId = $authUser?->id;
+
+            // Khi hoàn thành đơn ('Đã giao' / 'Giao thành công'), tự động chỉnh sửa lại số lượng & tiền theo thực bốc
+            $wasAdjusted = false;
+            if (in_array($status, ['Đã giao', 'Giao thành công']) && !in_array($oldStatus, ['Đã giao', 'Giao thành công'], true)) {
+                $adjRes = $order->applyPickedQuantitiesAdjustment($performerName);
+                $wasAdjusted = !empty($adjRes['adjusted']);
             }
 
             $order->status = $status;
             $order->save();
 
-            // Record into audit_logs table
-            $authUser = auth()->user();
-            $performerName = $authUser?->name ?? 'Người dùng';
-            $performerId = $authUser?->id;
+            if ($wasAdjusted && $order->dealer_id) {
+                $dealer = \App\Models\Dealer::find($order->dealer_id);
+                if ($dealer) {
+                    $dealer->recalculateCurrentDebt();
+                }
+            }
 
             $actionName = match($status) {
                 'Chốt đơn', 'Đã duyệt' => 'Phê Duyệt & Chốt Đơn',
@@ -383,7 +382,7 @@ class OrderController extends Controller
 
             $order->save();
 
-            // Chỉ trừ tồn kho thực tế khi đơn thực sự xuất kho/vận chuyển; trước đó chỉ giữ tồn khả dụng
+            // Trừ tồn kho thực tế ngay khi đơn Đã kiểm hàng (Giao xe) hoặc các bước giao nhận; trước đó chỉ giữ tồn khả dụng
             $this->syncStockForStatus($order, $oldStatus);
 
             try {
@@ -708,15 +707,10 @@ class OrderController extends Controller
                     ? (float)$order->total_amount
                     : max(0, $subtotal - $discount + $tax)));
 
-        $notesPayload = (string) ($data['notes'] ?? ($order?->notes ?? ''));
-        $isBackOrder = (($data['orderType'] ?? ($data['order_type'] ?? '')) === 'backorder') 
-            || str_contains($notesPayload, '[ĐƠN NỢ HÀNG');
-
-        $defaultPrefix = $isBackOrder ? 'DH-NO-' : 'DH-';
-        $resolvedOrderType = $isHoldingStockSale ? 'holding_sale' : ($isBackOrder ? 'backorder' : ($data['orderType'] ?? ($data['order_type'] ?? ($order?->order_type ?? 'normal'))));
+        $resolvedOrderType = $isHoldingStockSale ? 'holding_sale' : ($data['orderType'] ?? ($data['order_type'] ?? ($order?->order_type ?? 'normal')));
 
         $orderAttributes = [
-            'order_code'             => $orderCode ?: ($order ? $order->order_code : $defaultPrefix . date('Y') . '-' . rand(1000, 9999)),
+            'order_code'             => $orderCode ?: ($order ? $order->order_code : 'DH-' . date('Y') . '-' . rand(1000, 9999)),
             'dealer_id'              => $dealerId,
             'creator_id'             => $creatorId,
             'sales_rep_id'           => $salesRepId ?: ($order?->sales_rep_id ?? null),
@@ -744,15 +738,11 @@ class OrderController extends Controller
             'has_returns'            => !empty($data['hasReturns']) || !empty($data['has_returns']),
             'total_returned_amount'  => (float) ($data['totalReturnedAmount'] ?? ($data['total_returned_amount'] ?? 0)),
             'return_slip_code'       => $data['returnSlipCode'] ?? ($data['return_slip_code'] ?? null),
-            'status'                 => (function() use ($data, $order, $isBackOrder, $isHoldingStockSale) {
+            'status'                 => (function() use ($data, $order, $isHoldingStockSale) {
                 if (!empty($data['status'])) {
-                    if ($isBackOrder && in_array($data['status'], ['Chốt đơn', 'Báo giá', 'Giao sau', 'Nợ hàng'])) {
-                        return 'Giao sau';
-                    }
                     return $data['status'];
                 }
                 if ($isHoldingStockSale) return 'Đã giao hàng';
-                if ($isBackOrder) return 'Giao sau';
                 return $order?->status ?? 'Chốt đơn';
             })(),
             'payment_status'          => $data['paymentStatus'] ?? ($data['payment_status'] ?? 'Chưa thanh toán'),
@@ -767,24 +757,18 @@ class OrderController extends Controller
             'discount_amount'        => $discount,
             'tax_amount'             => $tax,
             'total_amount'           => $total,
-            'shortage_reported'      => isset($data['shortageReported']) ? (bool)$data['shortageReported'] : (isset($data['shortage_reported']) ? (bool)$data['shortage_reported'] : ($order?->shortage_reported ?? false)),
-            'shortage_reported_at'   => $data['shortageReportedAt'] ?? ($data['shortage_reported_at'] ?? ($order?->shortage_reported_at ?? null)),
-            'shortage_reported_note' => $data['shortageReportedNote'] ?? ($data['shortage_reported_note'] ?? ($order?->shortage_reported_note ?? null)),
+            'shortage_reported'      => false,
+            'shortage_reported_at'   => null,
+            'shortage_reported_note' => null,
             'failed_delivery_reason' => $data['failedDeliveryReason'] ?? ($data['failed_delivery_reason'] ?? ($order?->failed_delivery_reason ?? null)),
             'failed_delivery_note'   => $data['failedDeliveryNote'] ?? ($data['failed_delivery_note'] ?? ($order?->failed_delivery_note ?? null)),
             'failed_delivery_at'     => $data['failedDeliveryAt'] ?? ($data['failed_delivery_at'] ?? ($order?->failed_delivery_at ?? null)),
             'failed_delivery_by'     => $data['failedDeliveryBy'] ?? ($data['failed_delivery_by'] ?? ($order?->failed_delivery_by ?? null)),
             'rescheduled_date'       => $data['rescheduledDate'] ?? ($data['rescheduled_date'] ?? ($order?->rescheduled_date ?? null)),
-            'notes'                  => (function() use ($data) {
-                $n = $data['notes'] ?? '';
-                if (!empty($data['parentOrderCode']) && !str_contains($n, $data['parentOrderCode'])) {
-                    $n = "[ĐƠN NỢ HÀNG] Tách từ đơn gốc " . $data['parentOrderCode'] . " do kho thiếu hàng.\n" . $n;
-                }
-                return $n;
-            })(),
-            'parent_order_id'        => $data['parentOrderId'] ?? ($data['parent_order_id'] ?? ($order?->parent_order_id ?? null)),
-            'parent_order_code'      => $data['parentOrderCode'] ?? ($data['parent_order_code'] ?? ($order?->parent_order_code ?? null)),
-            'backorder_status'       => $isBackOrder ? ($data['backorderStatus'] ?? ($data['backorder_status'] ?? ($order?->backorder_status ?? 'pending_stock'))) : null,
+            'notes'                  => (string) ($data['notes'] ?? ''),
+            'parent_order_id'        => null,
+            'parent_order_code'      => null,
+            'backorder_status'       => null,
             'has_shortage_warning'   => isset($data['hasShortageWarning']) 
                 ? (bool)$data['hasShortageWarning'] 
                 : (isset($data['has_shortage_warning']) 
@@ -906,12 +890,10 @@ class OrderController extends Controller
                 $targetWh = $orderAttributes['warehouse'] ?: (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng');
                 $check = \App\Services\InventoryAvailabilityService::checkItemsAvailability($targetWh, $itemsToCheck, $order?->id);
                 if (!$check['is_valid']) {
-                    $isBackorder = ($orderAttributes['order_type'] ?? '') === 'backorder' 
-                        || in_array($orderAttributes['status'] ?? '', ['Giao sau', 'Nợ hàng']);
                     $isCancelled = in_array($orderAttributes['status'] ?? '', ['Hủy', 'Đã hủy', 'Đã huỷ']);
 
-                    // Quy định: Hết tồn kho khả dụng là không được lên đơn (ngoại trừ Báo giá hoặc Đơn giao sau/Nợ hàng)
-                    if (!$isBackorder && !$isCancelled) {
+                    // Quy định: Hết tồn kho khả dụng là không được lên đơn
+                    if (!$isCancelled) {
                         $shortageDetails = collect($check['shortages'] ?? [])->map(function($s) {
                             return ($s['sku'] ?? 'SP') . " (cần {$s['requested']}, khả dụng: {$s['available']})";
                         })->implode('; ');
@@ -921,12 +903,6 @@ class OrderController extends Controller
                             'message'   => "🚫 Không thể lên đơn hàng do kho [{$targetWh}] hết tồn khả dụng: {$shortageDetails}",
                             'shortages' => $check['shortages'] ?? [],
                         ], 422);
-                    }
-
-                    $orderAttributes['has_shortage_warning'] = true;
-                    $orderAttributes['backorder_status'] = 'pending_stock';
-                    if (in_array($orderAttributes['status'], ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Chốt đơn', 'Chờ hàng', 'Chờ hàng về', 'Giao sau', 'Nợ hàng'])) {
-                        $orderAttributes['status'] = 'Chờ hàng';
                     }
                 } else {
                     $orderAttributes['has_shortage_warning'] = false;
@@ -1029,15 +1005,18 @@ class OrderController extends Controller
                 } else if ($reqTotal > 0 && $pickedQty < $reqTotal) {
                     $isPicked = false;
                     $itemStatus = ($pickedQty > 0) ? 'Đang bốc' : 'Chờ bốc';
-                    $shortageReason = $it['shortageReason'] ?? ($it['shortage_reason'] ?? ($oldItem?->shortage_reason ?? null));
+                    $shortageReason = null;
                 } else if ($reqTotal > 0 && $pickedQty >= $reqTotal) {
                     $isPicked = true;
                     $itemStatus = 'Đủ hàng';
-                    $shortageReason = null; // Đã bốc đủ (hoặc đã cắt đơn cho vừa đủ), tự động xóa cờ báo thiếu
+                    $shortageReason = null;
                 } else {
                     $isPicked = !empty($it['isPicked']) || !empty($it['is_picked']) || (bool)($oldItem?->is_picked ?? false);
                     $itemStatus = $it['itemStatus'] ?? ($it['item_status'] ?? ($oldItem?->item_status ?? ($isPicked ? 'Đủ hàng' : 'Chờ bốc')));
-                    $shortageReason = $it['shortageReason'] ?? ($it['shortage_reason'] ?? ($oldItem?->shortage_reason ?? null));
+                    if ($itemStatus === 'Thiếu hàng') {
+                        $itemStatus = $pickedQty > 0 ? 'Đang bốc' : 'Chờ bốc';
+                    }
+                    $shortageReason = null;
                 }
 
                 $isChecked = $isHoldingStockSale ? true : (!empty($it['isChecked']) || !empty($it['is_checked']) || (bool)($oldItem?->is_checked ?? false));
@@ -1105,26 +1084,19 @@ class OrderController extends Controller
             $order->save();
         }
 
-        // Tự động kiểm tra trạng thái đơn hàng sau khi sửa/cắt đơn
+        // Chuẩn hóa nếu đơn cũ còn trạng thái Kho báo thiếu hàng
         $order->load('items');
         $allOrderItems = $order->items;
-        if ($allOrderItems->isNotEmpty()) {
-            $hasAnyShortage = $allOrderItems->contains(function ($i) {
-                $r = (float)($i->quantity + ($i->gift_quantity ?? 0));
-                return $r > 0 && ($i->picked_qty < $r && ($i->item_status === 'Thiếu hàng' || !empty($i->shortage_reason)));
-            });
+        if ($allOrderItems->isNotEmpty() && ($order->status === 'Kho báo thiếu hàng' || $order->shortage_reported)) {
             $allArePicked = $allOrderItems->every(function ($i) {
                 $r = (float)($i->quantity + ($i->gift_quantity ?? 0));
                 return $r > 0 && $i->picked_qty >= $r;
             });
-
-            if (!$hasAnyShortage && $order->status === 'Kho báo thiếu hàng') {
-                $order->status = $allArePicked ? 'Đã bốc xong' : 'Soạn hàng';
-                $order->shortage_reported = false;
-                $order->shortage_reported_at = null;
-                $order->shortage_reported_note = null;
-                $order->save();
-            }
+            $order->status = $allArePicked ? 'Đã bốc xong' : 'Soạn hàng';
+            $order->shortage_reported = false;
+            $order->shortage_reported_at = null;
+            $order->shortage_reported_note = null;
+            $order->save();
         }
 
         // Tự động chuyển đơn về "Soạn hàng" nếu phát sinh tăng số lượng cần bốc khi đơn đã hoàn thành trước đó
@@ -1644,7 +1616,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Deduct stock for order items when order physically leaves the warehouse (Đang vận chuyển / Đã giao)
+     * Deduct physical stock for order items when QC checks & hands over to vehicle (Đã kiểm hàng) or later delivery stages.
      */
     public function deductOrderStock(Order $order)
     {
@@ -1663,8 +1635,11 @@ class OrderController extends Controller
         }
 
         $order->load('items');
+        $breakdown = $order->computePickedDeliveryBreakdown();
         foreach ($order->items as $item) {
-            $qty = (float) $item->quantity;
+            $qty = isset($breakdown['items'][$item->id])
+                ? ((float)$breakdown['items'][$item->id]['sold_qty'] + (float)$breakdown['items'][$item->id]['gift_qty'])
+                : ((float)$item->quantity + (float)($item->gift_quantity ?? 0));
             if ($qty <= 0) continue;
 
             $product = null;
@@ -1771,8 +1746,11 @@ class OrderController extends Controller
         }
 
         $order->load('items');
+        $breakdown = $order->computePickedDeliveryBreakdown();
         foreach ($order->items as $item) {
-            $qty = (float) $item->quantity;
+            $qty = isset($breakdown['items'][$item->id])
+                ? ((float)$breakdown['items'][$item->id]['sold_qty'] + (float)$breakdown['items'][$item->id]['gift_qty'])
+                : ((float)$item->quantity + (float)($item->gift_quantity ?? 0));
             if ($qty <= 0) continue;
 
             $product = null;
@@ -1868,67 +1846,9 @@ class OrderController extends Controller
             return response()->json(['success' => true, 'orders' => []]);
         }
 
-        $query = Order::with('items')
-            ->whereNotIn('status', ['Đã giao', 'Giao thành công', 'Hủy', 'Đã hủy', 'Đã gộp đơn']);
-
-        if ($excludeId) {
-            $query->where('id', '!=', $excludeId);
-        }
-
-        $query->where(function ($q) use ($dealerId, $phone, $name) {
-            if ($dealerId) {
-                $q->where('dealer_id', $dealerId);
-                if ($phone) $q->orWhere('customer_phone', $phone);
-            } elseif ($phone) {
-                $q->where('customer_phone', $phone);
-                if ($name) $q->orWhere('customer_name', $name);
-            } else {
-                $q->where('customer_name', $name);
-            }
-        });
-
-        $query->where(function ($q) {
-            $q->whereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng'])
-              ->orWhereIn('order_type', ['backorder']);
-        });
-
-        $orders = $query->with(['items.product'])->latest('id')->get()->map(function ($o) {
-            return [
-                'id' => $o->id,
-                'order_code' => $o->order_code,
-                'status' => $o->status,
-                'order_type' => 'backorder',
-                'type_label' => 'Đơn giao sau (nợ hàng)',
-                'created_at' => $o->created_at ? $o->created_at->format('d/m/Y H:i') : '',
-                'notes' => $o->notes,
-                'total_amount' => (float)$o->total_amount,
-                'items_count' => $o->items->count(),
-                'items' => $o->items->map(function ($it) {
-                    $name = $it->name ?: ($it->product->name ?? 'Sản phẩm #' . $it->product_id);
-                    $sku = $it->sku ?: ($it->product->sku ?? '');
-                    return [
-                        'id' => $it->id,
-                        'product_id' => $it->product_id,
-                        'name' => $name,
-                        'sku' => $sku,
-                        'unit' => $it->unit ?: ($it->product->unit ?? 'cái'),
-                        'quantity' => (float)$it->quantity,
-                        'picked_qty' => (float)$it->picked_qty,
-                        'unit_price' => (float)$it->unit_price,
-                        'amount' => (float)$it->amount,
-                        'vat_percent' => (float)($it->vat_percent ?? 0),
-                        'vat_amount' => (float)($it->vat_amount ?? 0),
-                        'discount_amount' => (float)($it->discount_amount ?? 0),
-                        'discount_percent' => (float)($it->discount_percent ?? 0),
-                        'price_type' => $it->applied_tier_policy ?: 'Theo phiếu',
-                    ];
-                }),
-            ];
-        });
-
         return response()->json([
             'success' => true,
-            'orders' => $orders,
+            'orders'  => [],
         ]);
     }
 

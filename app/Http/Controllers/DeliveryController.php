@@ -1501,7 +1501,7 @@ class DeliveryController extends Controller
         $slipCode = $data['slipCode'] ?? ($data['code'] ?? null);
         $slipIds = $data['slipIds'] ?? [];
         $vehiclePlate = $data['vehiclePlate'] ?? null;
-        $action = $data['action'] ?? ($data['status'] === 'Chờ thủ kho duyệt nhập' ? 'submit' : 'approve');
+        $action = $data['action'] ?? (($data['status'] ?? '') === 'Chờ thủ kho duyệt nhập' ? 'submit' : 'approve');
 
         $intakeUserId = $data['intakeUserId'] ?? auth()->id();
         $intakeUser = $intakeUserId ? \App\Models\User::find($intakeUserId) : auth()->user();
@@ -1616,6 +1616,10 @@ class DeliveryController extends Controller
 
         // TRƯỜNG HỢP 3: Thủ kho xác nhận duyệt nhập kho -> TỰ ĐỘNG CỘNG LẠI TỒN KHO & ĐỒNG BỘ BẢNG KHO CHUNG
         foreach ($slips as $returnSlip) {
+            if ($returnSlip->status === 'Đã nhập kho lại') {
+                continue; // Tránh cộng trùng tồn kho nếu phiếu đã được duyệt trước đó
+            }
+
             $returnSlip->update([
                 'status'              => 'Đã nhập kho lại',
                 'intake_by_user_id'   => auth()->id() ?? $intakeUserId,
@@ -1660,15 +1664,26 @@ class DeliveryController extends Controller
                     }
 
                     if ($prod) {
+                        // Tính toán số lượng theo đơn vị cơ sở nếu sản phẩm dùng đơn vị quy đổi (thùng/kiện...)
+                        $baseQty = $qty;
+                        if ($prod->hasConversionUnit() && (float)$prod->conversion_rate > 0) {
+                            $itemUnit = mb_strtolower(trim($item->unit ?? ''));
+                            $convUnit = mb_strtolower(trim($prod->conversion_unit ?? ''));
+                            $baseUnit = mb_strtolower(trim($prod->unit ?? ''));
+                            if ($itemUnit === $convUnit && $convUnit !== $baseUnit) {
+                                $baseQty = $prod->toBaseQuantity((float)$qty);
+                            }
+                        }
+
                         // 1. Tăng tồn kho tổng
-                        $prod->increment('stock_quantity', $qty);
+                        $prod->increment('stock_quantity', $baseQty);
 
                         // 2. Tăng tồn kho tại kho đích trong warehouse_stocks
                         $targetStock = \App\Models\WarehouseStock::firstOrCreate(
                             ['product_id' => $prod->id, 'warehouse_id' => $warehouseId],
                             ['stock_quantity' => 0, 'reserved_quantity' => 0]
                         );
-                        $targetStock->increment('stock_quantity', $qty);
+                        $targetStock->increment('stock_quantity', $baseQty);
 
                         // 3. Giảm tồn kho tại kho xe lưu động (nếu có tồn trên xe)
                         if ($carWh) {
@@ -1676,7 +1691,7 @@ class DeliveryController extends Controller
                                 ->where('warehouse_id', $carWh->id)
                                 ->first();
                             if ($carStock && $carStock->stock_quantity > 0) {
-                                $carStock->decrement('stock_quantity', min($qty, $carStock->stock_quantity));
+                                $carStock->decrement('stock_quantity', min($baseQty, $carStock->stock_quantity));
                             }
                         }
 
@@ -1747,7 +1762,7 @@ class DeliveryController extends Controller
                                 (int)$returnSlip->driver_id,
                                 "Thủ kho đã duyệt nhập kho đơn #{$order->order_code}",
                                 "Thủ kho {$intakeUserName} đã kiểm đếm và xác nhận nhập kho thành công cho đơn #{$order->order_code} tại {$warehouseName}. Tồn kho đã được hoàn lại.",
-                                '/driver/portal',
+                                '/driver-portal',
                                 'order_return_approved',
                                 $order,
                                 ['order_code' => $order->order_code, 'slip_code' => $returnSlip->slip_code]
@@ -1860,13 +1875,24 @@ class DeliveryController extends Controller
                     }
 
                     if ($productId) {
+                        $prod = \App\Models\Product::find($productId);
+                        $baseQty = $qty;
+                        if ($prod && $prod->hasConversionUnit() && (float)$prod->conversion_rate > 0) {
+                            $itemUnit = mb_strtolower(trim($it->unit ?? ''));
+                            $convUnit = mb_strtolower(trim($prod->conversion_unit ?? ''));
+                            $baseUnit = mb_strtolower(trim($prod->unit ?? ''));
+                            if ($itemUnit === $convUnit && $convUnit !== $baseUnit) {
+                                $baseQty = $prod->toBaseQuantity((float)$qty);
+                            }
+                        }
+
                         $stock = \App\Models\WarehouseStock::firstOrNew([
                             'warehouse_id' => $holdingWarehouse->id,
                             'product_id'   => $productId,
                         ]);
-                        $stock->stock_quantity = (float)($stock->stock_quantity ?? 0) + $qty;
+                        $stock->stock_quantity = (float)($stock->stock_quantity ?? 0) + $baseQty;
                         $stock->save();
-                        $totalItemsCount += $qty;
+                        $totalItemsCount += $baseQty;
                     }
                 }
 
@@ -2524,7 +2550,7 @@ class DeliveryController extends Controller
                     (int)$driverId,
                     "Thủ kho đã duyệt nhập kho đơn #{$order->order_code}",
                     "Thủ kho {$intakeUserName} đã kiểm đếm và xác nhận nhập kho thành công cho đơn #{$order->order_code} tại {$warehouseName}. Tồn kho đã được cộng lại.",
-                    '/driver/portal',
+                    '/driver-portal',
                     'order_return_approved',
                     $order,
                     ['order_code' => $order->order_code, 'order_id' => $order->id]
@@ -2864,6 +2890,10 @@ class DeliveryController extends Controller
                 $ord->is_debt_handed_over = !empty($hInfo);
                 $ord->debt_handover_info = $hInfo;
 
+                $breakdown = $ord->computePickedDeliveryBreakdown();
+                $ord->effective_total_amount = $breakdown['total_amount'];
+                $ord->has_picked_shortage = $breakdown['has_shortage'];
+
                 $orderRetSlips = $allReturns->get($ord->id, collect());
                 $retItems = $orderRetSlips->flatMap->items;
                 $hasRet = (bool)($ord->has_returns || $retItems->isNotEmpty() || $ord->items->contains(fn($it) => (float)($it->returned_qty ?? 0) > 0));
@@ -2882,7 +2912,12 @@ class DeliveryController extends Controller
                         }
                     }
                     $retQ = (float)($item->returned_qty ?? 0);
-                    $item->delivered_qty = max(0, (float)$item->quantity - $retQ);
+                    $info = $breakdown['items'][$item->id] ?? null;
+                    $effectiveSold = $info ? $info['sold_qty'] : (float)$item->quantity;
+                    $item->ordered_quantity = (float)$item->quantity;
+                    $item->effective_qty = $effectiveSold;
+                    $item->effective_amount = $info ? $info['line_amount'] : (float)$item->amount;
+                    $item->delivered_qty = max(0, $effectiveSold - $retQ);
                 }
             }
         }
@@ -3211,7 +3246,7 @@ class DeliveryController extends Controller
      */
     public function departTrip(Request $request)
     {
-        $plate = $request->input('vehiclePlate');
+        $plate = $request->input('vehiclePlate') ?? $request->input('plate') ?? $request->input('plate_number') ?? $request->input('vehicle_plate');
         $vehicle = Vehicle::where('plate_number', $plate)->first();
         if (!$vehicle) {
             return response()->json(['success' => false, 'message' => 'Không tìm thấy xe'], 404);
@@ -3414,9 +3449,11 @@ class DeliveryController extends Controller
             $defaultWhId = $employeeWarehouses->first()->id;
         }
 
+        $deliveryBreakdown = $order->computePickedDeliveryBreakdown();
+
         return view('delivery.confirm', compact(
             'order', 'dealer', 'previousDebt', 'creditLimit', 'vehicle', 'vehiclePlate', 'canApproveCredit', 'salesStaff',
-            'employeeWarehouses', 'defaultWhId'
+            'employeeWarehouses', 'defaultWhId', 'deliveryBreakdown'
         ));
     }
 
@@ -3464,16 +3501,18 @@ class DeliveryController extends Controller
         $combinedBank = max(0, (float)($data['combinedBank'] ?? 0));
         $combinedDebt = max(0, (float)($data['combinedDebt'] ?? 0));
 
+        $deliveryBreakdown = $order->computePickedDeliveryBreakdown();
         $totalReturned = 0;
         $returnSlipCode = null;
 
-        // Xử lý hàng trả lại nếu có
+        // Xử lý hàng trả lại nếu có (giới hạn tối đa theo SL thực bốc trên xe)
         if ($hasReturns && !empty($returnedItems) && is_array($returnedItems)) {
             $returnSlipCode = 'TH-' . $order->order_code;
             foreach ($returnedItems as $rit) {
                 $orderItem = (!empty($rit['order_item_id']) ? $order->items->firstWhere('id', (int)$rit['order_item_id']) : null)
                     ?? $order->items->firstWhere('sku', $rit['sku'] ?? '');
-                $maxQty = $orderItem ? (float)$orderItem->quantity : 999999;
+                $bInfo = $orderItem ? ($deliveryBreakdown['items'][$orderItem->id] ?? null) : null;
+                $maxQty = $bInfo ? $bInfo['sold_qty'] : ($orderItem ? (float)$orderItem->quantity : 999999);
                 $rQty = max(0, min((float)($rit['returnedQty'] ?? ($rit['returned_qty'] ?? 0)), $maxQty));
                 $rPrice = (float)($rit['unitPrice'] ?? ($rit['unit_price'] ?? ($orderItem?->unit_price ?? 0)));
                 if ($rQty > 0) {
@@ -3501,7 +3540,8 @@ class DeliveryController extends Controller
             foreach ($returnedItems as $rit) {
                 $orderItem = (!empty($rit['order_item_id']) ? $order->items->firstWhere('id', (int)$rit['order_item_id']) : null)
                     ?? $order->items->firstWhere('sku', $rit['sku'] ?? '');
-                $maxQty = $orderItem ? (float)$orderItem->quantity : 999999;
+                $bInfo = $orderItem ? ($deliveryBreakdown['items'][$orderItem->id] ?? null) : null;
+                $maxQty = $bInfo ? $bInfo['sold_qty'] : ($orderItem ? (float)$orderItem->quantity : 999999);
                 $rQty = max(0, min((float)($rit['returnedQty'] ?? ($rit['returned_qty'] ?? 0)), $maxQty));
                 $unitPrice = (float)($rit['unitPrice'] ?? ($rit['unit_price'] ?? ($orderItem?->unit_price ?? 0)));
 
@@ -3521,7 +3561,7 @@ class DeliveryController extends Controller
 
                     if ($orderItem) {
                         $orderItem->returned_qty = $rQty;
-                        $orderItem->delivered_qty = max(0, (float)$orderItem->quantity - $rQty);
+                        $orderItem->delivered_qty = max(0, $maxQty - $rQty);
                         $orderItem->return_reason = $rit['reason'] ?? ($rit['returnReason'] ?? 'Khách trả hàng');
                         $orderItem->save();
                     }
@@ -3533,9 +3573,11 @@ class DeliveryController extends Controller
             $order->return_slip_code = $returnSlipCode;
         }
 
-        // Cập nhật trạng thái đơn hàng & thanh toán
+        // Cập nhật trạng thái đơn hàng & thanh toán (tính theo SL thực bốc & tự động chỉnh SL đơn hàng khi hoàn thành)
         $oldOrderStatus = $order->status;
-        $finalOrderAmount = max(0, (float)$order->total_amount - $totalReturned);
+        $adjResult = $order->applyPickedQuantitiesAdjustment(auth()->user()?->name ?? ($order->assignedDriver?->name ?? 'Lái xe'));
+        $effectiveBaseTotal = $adjResult['adjusted'] ? (float)$order->total_amount : (float)($deliveryBreakdown['total_amount'] ?? $order->total_amount);
+        $finalOrderAmount = max(0, $effectiveBaseTotal - $totalReturned);
         $order->status = 'Đã giao';
 
         if ($isCombined) {

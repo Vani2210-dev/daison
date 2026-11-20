@@ -755,16 +755,21 @@ function returnsIntakeApp() {
             document.getElementById('p-sign-driver').innerText = returnSlip.driver_name || '(Ký, họ tên)';
             document.getElementById('p-sign-stocker').innerText = '{{ auth()->user()?->name ?? 'Thủ kho' }}';
 
+            const escapeHtml = (str) => {
+                if (!str) return '';
+                return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+            };
+
             const tbody = document.getElementById('p-items-body');
             tbody.innerHTML = '';
             (returnSlip.items || []).forEach((it, idx) => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="border border-black p-2 text-center">${idx + 1}</td>
-                    <td class="border border-black p-2"><strong>${it.name || ''}</strong><br><span style="font-size:10px; color:#555">${it.sku || ''}</span></td>
-                    <td class="border border-black p-2 text-center">${it.unit || ''}</td>
+                    <td class="border border-black p-2"><strong>${escapeHtml(it.name || '')}</strong><br><span style="font-size:10px; color:#555">${escapeHtml(it.sku || '')}</span></td>
+                    <td class="border border-black p-2 text-center">${escapeHtml(it.unit || '')}</td>
                     <td class="border border-black p-2 text-center font-bold font-mono">${it.returned_qty || 0}</td>
-                    <td class="border border-black p-2 text-left italic">${it.reason || 'Khách hoàn trả'}</td>
+                    <td class="border border-black p-2 text-left italic">${escapeHtml(it.reason || 'Khách hoàn trả')}</td>
                 `;
                 tbody.appendChild(tr);
             });

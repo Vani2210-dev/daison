@@ -4,7 +4,10 @@
 
 @section('content')
 @php
-    $origTotal = (float)($order->total_amount ?? 0);
+    $breakdown = $deliveryBreakdown ?? $order->computePickedDeliveryBreakdown();
+    $rawOrderedTotal = (float)($order->total_amount ?? 0);
+    $hasPickedShortage = !empty($breakdown['has_shortage']);
+    $origTotal = $hasPickedShortage ? (float)($breakdown['total_amount'] ?? $rawOrderedTotal) : $rawOrderedTotal;
     $prevDebt = (float)($previousDebt ?? 0);
     $cLimit = (float)($creditLimit ?? 0);
     $custCode = $dealer?->code ?: ($order->dealer_id ? 'KH-' . $order->dealer_id : 'KH-LE');
@@ -414,13 +417,27 @@
                     </label>
                 </div>
 
-                <!-- Bảng danh sách mặt hàng giao (chỉ hiển thị khi tích có trả hàng) -->
-                <div x-show="confirmForm.hasReturns" x-cloak class="space-y-2 pt-2 border-t border-slate-100">
+                @if($hasPickedShortage)
+                <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs flex items-start gap-2">
+                    <i class="fa-solid fa-boxes-packing text-amber-600 mt-0.5 shrink-0"></i>
+                    <div>
+                        <div class="font-extrabold">Giao tự động theo số lượng thực tế đã bốc tại kho</div>
+                        <div class="text-[11px] text-amber-800 mt-0.5">
+                            Đơn đặt gốc: <span class="font-mono line-through">{{ number_format($rawOrderedTotal, 0, ',', '.') }} đ</span>
+                            → Thực giao theo SL bốc: <strong class="font-mono text-amber-950">{{ number_format($origTotal, 0, ',', '.') }} đ</strong>.
+                            Số lượng trong đơn hàng sẽ tự động chỉnh lại khi hoàn thành giao.
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                <!-- Bảng danh sách mặt hàng giao (hiển thị khi có trả hàng hoặc khi kho bốc thiếu để đối chiếu) -->
+                <div x-show="confirmForm.hasReturns || {{ $hasPickedShortage ? 'true' : 'false' }}" x-cloak class="space-y-2 pt-2 border-t border-slate-100">
                     <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                         <span class="hidden sm:inline">Danh sách mặt hàng giao (<span x-text="confirmForm.items.length"></span> mục)</span>
                         <span class="inline sm:hidden">Mặt hàng giao (<span x-text="confirmForm.items.length"></span>)</span>
-                        <span class="hidden sm:inline">Số lượng xuất kho</span>
-                        <span class="inline sm:hidden">SL xuất</span>
+                        <span class="hidden sm:inline">Số lượng thực giao (theo SL bốc)</span>
+                        <span class="inline sm:hidden">SL giao</span>
                     </div>
 
                     <div class="space-y-2 max-h-[350px] overflow-y-auto pr-1">
@@ -440,10 +457,16 @@
                                         </div>
                                     </div>
 
-                                    <div class="text-right shrink-0">
-                                        <span class="inline-block px-2.5 py-1 rounded-lg bg-white border border-slate-200 font-mono font-black text-xs text-slate-800 shadow-2xs">
+                                    <div class="text-right shrink-0 space-y-0.5">
+                                        <span class="inline-block px-2.5 py-1 rounded-lg bg-white border font-mono font-black text-xs shadow-2xs"
+                                              :class="Number(it.ordered_quantity) > Number(it.quantity) ? 'border-amber-300 text-amber-900 bg-amber-50/40' : 'border-slate-200 text-slate-800'">
                                             <span x-text="formatNumber(it.quantity)"></span> <span class="text-[10px] text-slate-500 font-medium" x-text="it.unit"></span>
                                         </span>
+                                        <template x-if="Number(it.ordered_quantity) > Number(it.quantity)">
+                                            <div class="text-[10px] text-amber-700 font-bold">
+                                                Đặt: <span class="font-mono" x-text="formatNumber(it.ordered_quantity)"></span>
+                                            </div>
+                                        </template>
                                     </div>
                                 </div>
 
@@ -2014,7 +2037,10 @@ function deliveryConfirmPage() {
 
         initData() {
             @php
-                $itemsJson = json_encode($order->items->map(function($it) {
+                $itemsJson = json_encode($order->items->map(function($it) use ($breakdown) {
+                    $bInfo = $breakdown['items'][$it->id] ?? null;
+                    $effQty = $bInfo ? (float)$bInfo['sold_qty'] : (float)$it->quantity;
+                    $effAmt = $bInfo ? (float)$bInfo['line_amount'] : (float)$it->amount;
                     return [
                         'id' => $it->id,
                         'order_item_id' => $it->id,
@@ -2022,9 +2048,10 @@ function deliveryConfirmPage() {
                         'sku' => $it->sku,
                         'name' => $it->name,
                         'unit' => $it->unit ?: 'cái',
-                        'quantity' => (float)$it->quantity,
+                        'ordered_quantity' => (float)$it->quantity,
+                        'quantity' => $effQty,
                         'unit_price' => (float)$it->unit_price,
-                        'amount' => (float)$it->amount,
+                        'amount' => $effAmt,
                         'returnedQty' => 0,
                         'returnReason' => ''
                     ];

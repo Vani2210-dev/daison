@@ -205,6 +205,10 @@ class WaterFilterController extends Controller
 
     public function deletePart($id)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasAnyPermission('water_filter.parts_delete', 'all')) {
+            return response()->json(['success' => false, 'message' => 'Bạn không có quyền xóa phụ tùng.'], 403);
+        }
         $part = FilterPart::findOrFail($id);
         $part->delete();
 
@@ -377,6 +381,10 @@ class WaterFilterController extends Controller
 
     public function deleteMachineModel($id)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasAnyPermission('water_filter.models_manage', 'danhmuc.manage', 'all')) {
+            return response()->json(['success' => false, 'message' => 'Bạn không có quyền xóa model máy lọc.'], 403);
+        }
         $model = FilterMachineModel::findOrFail($id);
         $model->delete();
 
@@ -924,6 +932,10 @@ class WaterFilterController extends Controller
 
     public function deleteInstallation($id)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasAnyPermission('water_filter.install_delete', 'all')) {
+            return response()->json(['success' => false, 'message' => 'Bạn không có quyền xóa đơn lắp đặt máy lọc.'], 403);
+        }
         $installation = FilterInstallation::findOrFail($id);
         $installation->delete();
 
@@ -1204,6 +1216,10 @@ class WaterFilterController extends Controller
 
     public function deleteRepair($id)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasAnyPermission('water_filter.repair_delete', 'all')) {
+            return response()->json(['success' => false, 'message' => 'Bạn không có quyền xóa phiếu sửa chữa.'], 403);
+        }
         $repair = FilterRepair::findOrFail($id);
         $repair->delete();
 
@@ -1547,6 +1563,10 @@ class WaterFilterController extends Controller
      */
     public function deleteInstalledMachine($id)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasAnyPermission('water_filter.install_delete', 'all')) {
+            return response()->json(['success' => false, 'message' => 'Bạn không có quyền xóa máy lọc nước đã lắp.'], 403);
+        }
         $machine = FilterInstalledMachine::findOrFail($id);
         $machine->delete();
 

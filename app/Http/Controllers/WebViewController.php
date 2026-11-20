@@ -407,21 +407,6 @@ class WebViewController extends Controller
                 $query->whereIn('status', ['Đã giao', 'Giao thành công']);
             } elseif ($status === 'Hủy') {
                 $query->whereIn('status', ['Hủy', 'Đã hủy']);
-            } elseif (in_array($status, ['Đơn thiếu', 'Báo thiếu', 'Kho báo thiếu'])) {
-                $query->where(function ($q) {
-                    $q->where('shortage_reported', true)
-                      ->orWhere('status', 'Kho báo thiếu hàng');
-                });
-            } elseif ($status === 'Đã đủ hàng' || $status === 'ready_to_deliver') {
-                $query->where(function ($q) {
-                    $q->where('backorder_status', 'ready_to_deliver')
-                      ->orWhere('status', 'Đã đủ hàng');
-                });
-            } elseif (in_array($status, ['Giao sau', 'Đơn giao sau', 'Đơn nợ', 'Nợ hàng'])) {
-                $query->where(function ($q) {
-                    $q->where('order_type', 'backorder')
-                      ->orWhereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng']);
-                });
             } else {
                 $query->where('status', $status);
             }
@@ -441,11 +426,6 @@ class WebViewController extends Controller
                 });
             } elseif ($orderType === 'project') {
                 $query->where('order_type', 'project');
-            } elseif (in_array($orderType, ['backorder', 'debt'])) {
-                $query->where(function ($q) {
-                    $q->whereIn('order_type', ['backorder', 'debt'])
-                      ->orWhereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng']);
-                });
             } else {
                 $query->where('order_type', $orderType);
             }
@@ -913,26 +893,8 @@ class WebViewController extends Controller
             ->latest('id')
             ->get();
 
-        // Dữ liệu Hàng Lẻ Xe (Bán dạo / Lưu động theo xe)
-        $vanDispatches = \App\Models\VanSaleDispatch::with(['items', 'driver'])
-            ->latest('id')
-            ->take(60)
-            ->get();
-        $totalVanStockAmount = \App\Models\VanSaleDispatch::where('status', 'dispatched')->sum('total_amount');
-        $allDrivers = \App\Models\User::where('staff_type', 'driver')
-            ->orWhere('department', 'LIKE', '%Vận tải%')
-            ->orWhere('department', 'LIKE', '%Lái xe%')
-            ->orWhere('department', 'LIKE', '%Logistics%')
-            ->orWhereHas('roles', function($q) { $q->where('slug', 'driver'); })
-            ->orderBy('name')
-            ->get(['id', 'name', 'phone', 'staff_type', 'department', 'current_debt']);
-        $availableProducts = \App\Models\Product::where('stock_quantity', '>', 0)
-            ->orderBy('name')
-            ->get(['id', 'name', 'sku', 'unit', 'cost_price', 'stock_quantity']);
-
         return view('delivery.dispatch', compact(
-            'dispatches', 'vehicles', 'routes', 'readyOrders',
-            'vanDispatches', 'totalVanStockAmount', 'allDrivers', 'availableProducts'
+            'dispatches', 'vehicles', 'routes', 'readyOrders'
         ));
     }
 

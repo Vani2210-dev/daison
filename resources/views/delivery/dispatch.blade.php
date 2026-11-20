@@ -19,8 +19,8 @@
         <span x-text="toast.message"></span>
     </div>
 
-    <!-- 1. Top Header -->
-    <div class="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <!-- 1. Top Header (Desktop) -->
+    <div class="hidden lg:flex bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-3.5">
             <div class="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-purple-600/25">
                 <i class="fa-solid fa-truck-ramp-box text-xl"></i>
@@ -31,6 +31,8 @@
                     <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-700 border border-purple-200">
                         Thời gian thực
                     </span>
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-black bg-amber-100 text-amber-900 border border-amber-300"
+                          x-text="unassignedOrders.length + ' đơn chờ xếp'"></span>
                 </div>
                 <p class="text-xs text-slate-500 font-medium mt-0.5">
                     Theo dõi trạng thái đội xe vận tải & Cài đặt lộ tuyến hoạt động
@@ -39,29 +41,7 @@
         </div>
 
         <!-- Top Right Actions & Nav -->
-        <div class="flex flex-wrap items-center gap-2 sm:gap-2.5">
-            <!-- Tab 1: Điều phối chuyến xe -->
-            <button type="button" @click="currentMainTab = 'dispatch'"
-                    class="px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border shadow-2xs cursor-pointer"
-                    :class="currentMainTab === 'dispatch' ? 'bg-purple-600 text-white border-purple-600 shadow-purple-600/20' : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'">
-                <i class="fa-solid fa-layer-group"></i>
-                <span>Điều phối xe</span>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-black ml-0.5"
-                      :class="currentMainTab === 'dispatch' ? 'bg-purple-800 text-purple-100' : 'bg-purple-100 text-purple-800'"
-                      x-text="unassignedOrders.length"></span>
-            </button>
-
-            <!-- Tab 2: Hàng lẻ lưu động trên xe (Bán dạo) -->
-            <button type="button" @click="currentMainTab = 'vansale'"
-                    class="px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border shadow-2xs cursor-pointer"
-                    :class="currentMainTab === 'vansale' ? 'bg-purple-600 text-white border-purple-600 shadow-purple-600/20' : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'">
-                <i class="fa-solid fa-boxes-packing"></i>
-                <span>Hàng lẻ xe (Bán dạo)</span>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-black ml-0.5"
-                      :class="currentMainTab === 'vansale' ? 'bg-purple-800 text-purple-100' : 'bg-emerald-100 text-emerald-800'"
-                      x-text="vanDispatches.length"></span>
-            </button>
-
+        <div class="flex items-center gap-2 sm:gap-2.5">
             <!-- Link: Danh sách xe -->
             <a href="/vehicles"
                class="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 transition-all flex items-center gap-1.5 shadow-2xs">
@@ -87,60 +67,105 @@
         </div>
     </div>
 
-    <!-- ========================================================================= -->
-    <!-- KHỐI 1: ĐIỀU PHỐI CHUYẾN XE THEO LỘ TUYẾN (DISPATCH)                       -->
-    <!-- ========================================================================= -->
-    <div x-show="currentMainTab === 'dispatch'" class="space-y-4">
+    <!-- 1. Top Header (Mobile Dedicated - Siêu gọn nhẹ & dễ thao tác) -->
+    <div class="block lg:hidden bg-white rounded-2xl p-3 border border-slate-200/90 shadow-2xs space-y-2">
+        <!-- Row 1: Brand title & driver portal button -->
+        <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+                <div class="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-purple-600/30">
+                    <i class="fa-solid fa-truck-ramp-box text-sm"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-1.5">
+                        <h1 class="text-sm font-black text-slate-900 tracking-tight truncate">Điều Phối Xe</h1>
+                        <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200 shrink-0">
+                            Realtime
+                        </span>
+                    </div>
+                </div>
+            </div>
 
-    <!-- 2. Smart Process Banner -->
-    <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 font-bold text-sm">
-                <i class="fa-solid fa-bolt"></i>
-            </div>
-            <div class="text-xs">
-                <div class="flex items-center gap-2 font-black text-slate-900">
-                    <span>Quy trình điều phối thông minh theo lộ tuyến</span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
-                        3 Bước Đơn Giản
-                    </span>
-                </div>
-                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-slate-600 mt-1 text-[11px] font-medium">
-                    <span><strong class="text-purple-700 font-bold">1</strong> Chọn xe đích ở cột trái (hoặc để tự động)</span>
-                    <i class="fa-solid fa-arrow-right text-[10px] text-slate-300"></i>
-                    <span><strong class="text-purple-700 font-bold">2</strong> Xem đơn hàng gợi ý theo lộ tuyến ở cột phải</span>
-                    <i class="fa-solid fa-arrow-right text-[10px] text-slate-300"></i>
-                    <span><strong class="text-purple-700 font-bold">3</strong> Bấm <strong>+ Xếp vào xe</strong>, tick chọn hàng loạt hoặc kéo thả</span>
-                </div>
-            </div>
+            <a href="/driver-portal" target="_blank"
+               class="px-2.5 py-1.5 rounded-xl text-[11px] font-black text-white bg-slate-900 hover:bg-slate-800 transition-all flex items-center gap-1.5 shrink-0 shadow-xs active:scale-95">
+                <i class="fa-solid fa-mobile-screen text-emerald-400 text-xs"></i>
+                <span>Cổng Lái Xe</span>
+            </a>
         </div>
 
-        <!-- Banner Right Actions -->
-        <div class="flex flex-wrap items-center gap-2 shrink-0">
-            <!-- Nút giải phóng đơn hoàn thành ra khỏi xe nếu có -->
-            <button type="button" @click="releaseCompletedFromSelectedVehicle()"
-                    x-show="hasCompletedOrdersOnActiveVehicle"
-                    class="px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs">
-                <i class="fa-solid fa-circle-check text-emerald-600"></i>
-                <span x-text="'Cho ' + completedOrdersCountOnActiveVehicle + ' đơn hoàn thành ra khỏi xe'"></span>
+        <!-- Row 2: Quick Navigation Chips (Danh sách xe & Lộ tuyến) -->
+        <div class="flex items-center gap-2 pt-1 border-t border-slate-100 text-[11px]">
+            <span class="text-slate-400 font-semibold shrink-0 text-[10px] uppercase">Lối tắt:</span>
+            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                <a href="/vehicles"
+                   class="px-2.5 py-1 rounded-lg font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all flex items-center gap-1 shrink-0">
+                    <i class="fa-solid fa-truck text-slate-400 text-[10px]"></i>
+                    <span>Xe</span>
+                    <span class="font-mono text-[10px] text-slate-500 font-bold" x-text="'(' + vehicles.length + ')'"></span>
+                </a>
+
+                <a href="/delivery-routes"
+                   class="px-2.5 py-1 rounded-lg font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all flex items-center gap-1 shrink-0">
+                    <i class="fa-solid fa-route text-slate-400 text-[10px]"></i>
+                    <span>Lộ tuyến</span>
+                    <span class="font-mono text-[10px] text-slate-500 font-bold" x-text="'(' + routes.length + ')'"></span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- ĐIỀU PHỐI CHUYẾN XE THEO LỘ TUYẾN (DISPATCH)                               -->
+    <!-- ========================================================================= -->
+    <div class="space-y-3 sm:space-y-4">
+
+    <!-- Mobile Switcher: Đội Xe vs Đơn Chờ Xếp (Chỉ hiển thị trên Mobile) -->
+    <div id="mobile-dispatch-switcher" class="block lg:hidden bg-white p-2.5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2">
+        <div class="grid grid-cols-2 p-1 bg-slate-100/90 rounded-xl gap-1">
+            <!-- Nút 1: Đội xe (Đứng trước) -->
+            <button type="button" @click="mobileDispatchTab = 'vehicles'; $nextTick(() => { const el = document.getElementById('mobile-dispatch-switcher'); if(el) el.scrollIntoView({behavior: 'smooth', block: 'start'}); })"
+                    class="py-2 px-2.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    :class="mobileDispatchTab === 'vehicles' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'">
+                <i class="fa-solid fa-truck-moving text-xs"></i>
+                <span>Đội xe</span>
+                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold"
+                      :class="mobileDispatchTab === 'vehicles' ? 'bg-purple-800 text-purple-100' : 'bg-slate-200 text-slate-700'"
+                      x-text="vehicles.length"></span>
             </button>
 
-            <!-- Đặt lại -->
-            <button type="button" @click="resetFilters()"
-                    class="px-3 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors flex items-center gap-1 cursor-pointer">
-                <i class="fa-solid fa-rotate-left text-slate-500"></i>
-                <span>Đặt lại</span>
+            <!-- Nút 2: Đơn chờ xếp (Đứng sau) -->
+            <button type="button" @click="mobileDispatchTab = 'orders'; $nextTick(() => { const el = document.getElementById('mobile-dispatch-orders-top') || document.getElementById('mobile-dispatch-switcher'); if(el) el.scrollIntoView({behavior: 'smooth', block: 'start'}); })"
+                    class="py-2 px-2.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    :class="mobileDispatchTab === 'orders' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'">
+                <i class="fa-solid fa-box text-xs"></i>
+                <span>Đơn chờ xếp</span>
+                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold"
+                      :class="mobileDispatchTab === 'orders' ? 'bg-purple-800 text-purple-100' : 'bg-amber-100 text-amber-800'"
+                      x-text="unassignedOrders.length"></span>
+            </button>
+        </div>
+
+        <!-- Mobile Context Bar: Xe đang chọn để nhận đơn -->
+        <div class="flex items-center justify-between text-xs px-1 text-slate-600">
+            <div class="flex items-center gap-1.5 min-w-0">
+                <span class="text-slate-400 text-[11px] shrink-0">Mục tiêu:</span>
+                <span class="font-mono font-black text-purple-900 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200 text-xs truncate"
+                      x-text="selectedVehiclePlate || 'Chưa chọn xe'"></span>
+            </div>
+            <button type="button" 
+                    @click="mobileDispatchTab = (mobileDispatchTab === 'vehicles' ? 'orders' : 'vehicles'); $nextTick(() => { const el = document.getElementById(mobileDispatchTab === 'orders' ? 'mobile-dispatch-orders-top' : 'mobile-dispatch-switcher'); if(el) el.scrollIntoView({behavior: 'smooth', block: 'start'}); })"
+                    class="text-[11px] font-bold text-purple-600 hover:text-purple-800 flex items-center gap-1 shrink-0">
+                <span x-text="mobileDispatchTab === 'vehicles' ? 'Xem đơn chờ xếp &rarr;' : '&larr; Quay lại đội xe'"></span>
             </button>
         </div>
     </div>
 
-    <!-- 3. Main Two-Column Layout -->
+    <!-- 2. Main Two-Column Layout -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
 
         <!-- ========================================== -->
         <!-- LEFT COLUMN: Đội Xe Theo Lộ Tuyến (5 cols) -->
         <!-- ========================================== -->
-        <div class="lg:col-span-5 xl:col-span-5 space-y-3">
+        <div class="lg:col-span-5 xl:col-span-5 space-y-3" :class="mobileDispatchTab === 'vehicles' ? 'block' : 'hidden lg:block'">
             
             <!-- Left Header Card -->
             <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex items-center justify-between">
@@ -219,12 +244,12 @@
                         </div>
 
                         <!-- Row 4: Stats Loaded & Total Value -->
-                        <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                        <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-100 flex-wrap gap-1">
                             <span class="text-slate-600 font-semibold">
-                                Đã xếp: <strong class="font-mono font-black text-purple-700" x-text="getAssignedOrdersCount(v.plate_number) + ' đơn hàng'"></strong>
+                                Đã xếp: <strong class="font-mono font-black text-purple-700 whitespace-nowrap" x-text="getAssignedOrdersCount(v.plate_number) + ' đơn'"></strong>
                             </span>
                             <span class="text-slate-600 font-semibold">
-                                Tổng giá trị: <strong class="font-mono font-black text-slate-900" x-text="formatCurrency(getAssignedOrdersTotal(v.plate_number))"></strong>
+                                Tổng giá trị: <strong class="font-mono font-black text-slate-900 whitespace-nowrap" x-text="formatCurrency(getAssignedOrdersTotal(v.plate_number))"></strong>
                             </span>
                         </div>
 
@@ -257,35 +282,54 @@
                                 <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200"
                                    :class="expandedVehiclePlates.includes(v.plate_number) ? 'rotate-180' : ''"></i>
                             </button>
+
+                            <!-- Mobile Action: Nút xếp đơn vào xe này -->
+                            <button type="button" @click.stop="selectVehicleAndSwitchToOrders(v.plate_number)"
+                                    class="lg:hidden px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-black text-[11px] shadow-2xs flex items-center gap-1.5 cursor-pointer">
+                                <span>Xếp đơn</span>
+                                <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                            </button>
                         </div>
 
                         <!-- Collapsible Orders Table inside Vehicle Card -->
                         <div x-show="expandedVehiclePlates.includes(v.plate_number)" x-collapse class="pt-2 space-y-2">
                             <template x-for="ord in getAssignedOrdersList(v.plate_number)" :key="ord.id">
-                                <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs gap-2">
-                                    <div>
-                                        <div class="flex items-center gap-2">
-                                            <span class="font-mono font-black text-sky-700 text-xs" x-text="ord.order_code"></span>
-                                            <span class="font-bold text-slate-800 truncate max-w-[180px]" x-text="ord.customer_name"></span>
-                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border"
-                                                  :class="['Đã kiểm hàng', 'Đã kiểm hàng (Sẵn sàng xuất xe)', 'Đã kiểm xong', 'Đang vận chuyển'].includes(ord.status) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'"
-                                                  x-text="ord.status"></span>
+                                <div class="p-2.5 bg-white hover:bg-slate-50/90 rounded-xl border border-slate-200/90 shadow-2xs space-y-2 transition-all">
+                                    <!-- Row 1: Code, Customer Name & Status -->
+                                    <div class="flex items-center justify-between gap-1.5 min-w-0">
+                                        <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                                            <span class="font-mono font-black text-sky-700 text-xs shrink-0 whitespace-nowrap" x-text="ord.order_code"></span>
+                                            <span class="font-bold text-slate-800 text-xs truncate" :title="formatCustomerName(ord.customer_name)" x-text="formatCustomerName(ord.customer_name)"></span>
                                         </div>
-                                        <div class="text-[10px] text-slate-500 font-mono mt-0.5" x-text="formatCurrency(ord.total_amount)"></div>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 whitespace-nowrap"
+                                              :class="['Đã kiểm hàng', 'Đã kiểm hàng (Sẵn sàng xuất xe)', 'Đã kiểm xong', 'Đang vận chuyển'].includes(ord.status) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'"
+                                              x-text="ord.status"></span>
                                     </div>
 
-                                    <template x-if="['Không thành công', 'Giao thất bại', 'Đang vận chuyển'].includes(ord.status)">
-                                        <button type="button" @click.stop="returnOrderToWarehouseFromDispatch(ord)"
-                                                class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg font-bold text-[10px] transition-colors cursor-pointer"
-                                                title="Hoàn hàng về kho (cộng lại tồn kho & reset bốc kiểm để bốc lại lần sau)">
-                                            <i class="fa-solid fa-boxes-packing mr-0.5"></i> Hoàn kho
-                                        </button>
-                                    </template>
-                                    <button type="button" @click.stop="unassignOrderFromVehicle(ord)"
-                                            class="px-2 py-1 bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 hover:border-rose-300 rounded-lg font-bold text-[10px] transition-colors cursor-pointer"
-                                            title="Rút đơn hàng khỏi xe này về hàng chờ">
-                                        <i class="fa-solid fa-xmark mr-0.5"></i> Rút đơn
-                                    </button>
+                                    <!-- Row 2: Total Amount & Action Buttons -->
+                                    <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100 text-xs">
+                                        <div class="font-mono font-bold text-slate-600 text-[11px] flex items-center gap-1">
+                                            <span class="text-slate-400 font-normal">Tổng:</span>
+                                            <span class="text-slate-900" x-text="formatCurrency(ord.total_amount)"></span>
+                                        </div>
+
+                                        <div class="flex items-center gap-1.5 shrink-0">
+                                            <template x-if="['Không thành công', 'Giao thất bại', 'Đang vận chuyển'].includes(ord.status)">
+                                                <button type="button" @click.stop="returnOrderToWarehouseFromDispatch(ord)"
+                                                        class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-800 border border-amber-300 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                                                        title="Hoàn hàng về kho (cộng lại tồn kho & reset bốc kiểm để bốc lại lần sau)">
+                                                    <i class="fa-solid fa-boxes-packing text-[10px] text-amber-600"></i>
+                                                    <span>Hoàn kho</span>
+                                                </button>
+                                            </template>
+                                            <button type="button" @click.stop="unassignOrderFromVehicle(ord)"
+                                                    class="px-2.5 py-1 bg-white hover:bg-rose-50 active:scale-95 text-rose-600 border border-slate-200 hover:border-rose-300 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                                                    title="Rút đơn hàng khỏi xe này về hàng chờ">
+                                                <i class="fa-solid fa-xmark text-[10px]"></i>
+                                                <span>Rút đơn</span>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </template>
                             <div x-show="getAssignedOrdersCount(v.plate_number) === 0" class="py-3 text-center text-slate-400 text-xs italic">
@@ -302,7 +346,7 @@
         <!-- ========================================== -->
         <!-- RIGHT COLUMN: Đơn Hàng Chờ Xếp Xe (7 cols) -->
         <!-- ========================================== -->
-        <div class="lg:col-span-7 xl:col-span-7 space-y-3">
+        <div id="mobile-dispatch-orders-top" class="lg:col-span-7 xl:col-span-7 space-y-3" :class="mobileDispatchTab === 'orders' ? 'block' : 'hidden lg:block'">
 
             <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs space-y-3.5">
                 
@@ -315,9 +359,34 @@
                               x-text="unassignedOrders.length + ' đơn chưa xếp'"></span>
                     </div>
 
-                    <div class="text-xs font-semibold text-slate-600">
-                        <span>Mục tiêu xếp: </span>
-                        <strong class="font-mono font-black text-purple-700" x-text="selectedVehiclePlate + ' (' + getVehicleTypeName(selectedVehiclePlate) + ')'"></strong>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <div class="text-xs font-semibold text-slate-600">
+                            <span>Mục tiêu: </span>
+                            <strong class="font-mono font-black text-purple-700" x-text="selectedVehiclePlate + ' (' + getVehicleTypeName(selectedVehiclePlate) + ')'"></strong>
+                        </div>
+
+                        <!-- Mobile shortcut: Đổi xe khác -->
+                        <button type="button" @click="mobileDispatchTab = 'vehicles'; $nextTick(() => { const el = document.getElementById('mobile-dispatch-switcher'); if(el) el.scrollIntoView({behavior: 'smooth', block: 'start'}); })"
+                                class="lg:hidden px-2.5 py-1 rounded-xl text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-arrow-left text-[10px]"></i>
+                            <span>Đổi xe</span>
+                        </button>
+
+                        <!-- Nút giải phóng đơn hoàn thành ra khỏi xe nếu có -->
+                        <button type="button" @click="releaseCompletedFromSelectedVehicle()"
+                                x-show="hasCompletedOrdersOnActiveVehicle"
+                                class="px-2.5 py-1 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs">
+                            <i class="fa-solid fa-circle-check text-emerald-600 text-xs"></i>
+                            <span x-text="'Cho ' + completedOrdersCountOnActiveVehicle + ' đơn xong ra khỏi xe'"></span>
+                        </button>
+
+                        <!-- Đặt lại -->
+                        <button type="button" @click="resetFilters()"
+                                class="px-2.5 py-1 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors flex items-center gap-1 cursor-pointer"
+                                title="Đặt lại bộ lọc tìm kiếm">
+                            <i class="fa-solid fa-rotate-left text-[11px] text-slate-500"></i>
+                            <span>Đặt lại</span>
+                        </button>
                     </div>
                 </div>
 
@@ -396,48 +465,52 @@
                     </div>
                 </div>
 
-                <!-- Floating Bulk Action Toolbar if orders are checked -->
+                <!-- Floating Bulk Action Toolbar if orders are checked (Sticky Bottom on Mobile) -->
                 <div x-show="selectedOrderIds.length > 0" x-cloak
-                     class="p-3 bg-purple-50 border border-purple-200 rounded-2xl flex items-center justify-between gap-3 text-xs animate-fade-in">
-                    <div class="flex items-center gap-2 text-purple-900 font-bold">
-                        <i class="fa-solid fa-circle-check text-purple-600"></i>
-                        <span x-text="'Đã chọn ' + selectedOrderIds.length + ' đơn hàng'"></span>
+                     class="fixed sm:static bottom-3 left-3 right-3 z-50 p-3 bg-purple-950/95 sm:bg-purple-50 text-white sm:text-purple-900 backdrop-blur-md sm:backdrop-blur-none border border-purple-700 sm:border-purple-200 rounded-2xl shadow-2xl sm:shadow-none flex items-center justify-between gap-2.5 text-xs animate-fade-in">
+                    <div class="flex items-center gap-2 font-bold min-w-0">
+                        <i class="fa-solid fa-circle-check text-emerald-400 sm:text-purple-600 text-sm"></i>
+                        <span class="truncate" x-text="'Đã chọn ' + selectedOrderIds.length + ' đơn'"></span>
                     </div>
 
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button type="button" @click="selectedOrderIds = []"
+                                class="px-2 py-1 rounded-lg text-[11px] font-semibold text-purple-200 sm:text-slate-600 hover:underline cursor-pointer">
+                            Bỏ chọn
+                        </button>
                         <button type="button" @click="assignBulkOrdersToVehicle(selectedVehiclePlate)"
-                                class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-black rounded-xl transition-all cursor-pointer shadow-sm shadow-purple-600/25 flex items-center gap-1.5 active:scale-95">
-                            <i class="fa-solid fa-plus"></i>
-                            <span x-text="'Xếp & Lưu ' + selectedOrderIds.length + ' đơn vào ' + selectedVehiclePlate"></span>
+                                class="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-purple-500 hover:bg-purple-600 sm:bg-purple-600 sm:hover:bg-purple-700 text-white font-black rounded-xl transition-all cursor-pointer shadow-sm shadow-purple-600/25 flex items-center gap-1.5 active:scale-95">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                            <span x-text="'Xếp vào ' + selectedVehiclePlate"></span>
                         </button>
                     </div>
                 </div>
 
                 <!-- Orders Cards List -->
-                <div class="space-y-3 max-h-[calc(100vh-380px)] overflow-y-auto pr-1">
+                <div class="space-y-2.5 sm:space-y-3 max-h-[calc(100vh-380px)] overflow-y-auto pr-1">
                     <template x-for="ord in filteredUnassignedOrders" :key="ord.id">
-                        <div class="p-4 rounded-2xl border transition-all space-y-2.5"
+                        <div class="p-3 sm:p-4 rounded-2xl border transition-all space-y-2 sm:space-y-2.5"
                              :class="isOrderMatchingActiveVehicle(ord) 
                                      ? 'border-purple-300 bg-purple-50/25 shadow-xs' 
                                      : 'border-slate-200/90 bg-white hover:border-slate-300 hover:shadow-2xs'">
                             
                             <!-- Row 1: Checkbox, Code, Customer Name, Badge, Amount & Status -->
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="flex items-start gap-2.5">
+                            <div class="flex items-start justify-between gap-2.5">
+                                <div class="flex items-start gap-2 sm:gap-2.5 min-w-0 flex-1">
                                     <input type="checkbox" :value="ord.id" x-model="selectedOrderIds"
-                                           class="mt-1 rounded text-purple-600 focus:ring-0 cursor-pointer">
-                                    <div>
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            <span class="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 font-mono font-black text-xs"
+                                           class="mt-1 rounded text-purple-600 focus:ring-0 cursor-pointer shrink-0">
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                                            <span class="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 font-mono font-black text-xs shrink-0"
                                                   x-text="ord.order_code"></span>
-                                            <span class="font-black text-slate-900 text-xs sm:text-sm" x-text="ord.customer_name"></span>
+                                            <span class="font-black text-slate-900 text-xs sm:text-sm truncate" x-text="formatCustomerName(ord.customer_name)"></span>
                                             <template x-if="ord.order_type === 'project'">
-                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 border border-sky-200">
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 border border-sky-200 shrink-0">
                                                     Khách Dự Án
                                                 </span>
                                             </template>
                                             <template x-if="isOrderMatchingActiveVehicle(ord)">
-                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1 shadow-2xs">
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1 shadow-2xs shrink-0">
                                                     <i class="fa-solid fa-star text-amber-500 text-[9px]"></i>
                                                     <span>Khớp xe đang chọn</span>
                                                 </span>
@@ -445,7 +518,7 @@
                                         </div>
 
                                         <!-- Sales Rep info -->
-                                        <div class="text-[11px] text-slate-500 mt-1 flex items-center gap-3">
+                                        <div class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 sm:gap-3 flex-wrap">
                                             <span>NV Bán hàng: <strong class="text-slate-700" x-text="ord.creator_name || ord.order_creator || '---'"></strong></span>
                                             <template x-if="ord.customer_phone">
                                                 <span>• SĐT: <span class="font-mono font-medium text-slate-700" x-text="ord.customer_phone"></span></span>
@@ -455,7 +528,7 @@
                                 </div>
 
                                 <div class="text-right shrink-0">
-                                    <div class="font-mono font-black text-emerald-700 text-sm" x-text="formatCurrency(ord.total_amount)"></div>
+                                    <div class="font-mono font-black text-emerald-700 text-xs sm:text-sm" x-text="formatCurrency(ord.total_amount)"></div>
                                     <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border mt-0.5"
                                           :class="getOrderStatusBadgeClass(ord.status)"
                                           x-text="ord.status"></span>
@@ -463,7 +536,7 @@
                             </div>
 
                             <!-- Row 2: Address & Notes -->
-                            <div class="text-xs text-slate-600 bg-slate-50/70 p-2.5 rounded-xl border border-slate-100 space-y-1">
+                            <div class="text-xs text-slate-600 bg-slate-50/70 p-2 sm:p-2.5 rounded-xl border border-slate-100 space-y-1">
                                 <div class="flex items-center gap-1.5 font-medium text-slate-700">
                                     <i class="fa-solid fa-location-dot text-rose-500 text-xs"></i>
                                     <span x-text="ord.customer_address || 'Địa chỉ khách hàng'"></span>
@@ -554,183 +627,7 @@
     </div>
     </div> <!-- Đóng KHỐI 1: currentMainTab === 'dispatch' -->
 
-    <!-- ========================================================================= -->
-    <!-- KHỐI 2: HÀNG LẺ LƯU ĐỘNG TRÊN XE (VAN SALES / BÁN DẠO DỌC ĐƯỜNG)           -->
-    <!-- ========================================================================= -->
-    <div x-show="currentMainTab === 'vansale'" class="space-y-4" style="display: none;">
-        
-        <!-- Stats & Actions Bar -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            <div class="bg-white p-4 rounded-2xl shadow-2xs border border-slate-200/90 flex items-center gap-3.5">
-                <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 text-xl font-bold">
-                    <i class="fa-solid fa-sack-dollar"></i>
-                </div>
-                <div>
-                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tổng Hàng Lẻ Trên Xe</p>
-                    <p class="text-lg font-black text-emerald-700 font-mono mt-0.5" x-text="formatCurrency(totalVanStockAmount)"></p>
-                </div>
-            </div>
 
-            <div class="bg-white p-4 rounded-2xl shadow-2xs border border-slate-200/90 flex items-center gap-3.5">
-                <div class="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0 text-xl font-bold">
-                    <i class="fa-solid fa-truck-moving"></i>
-                </div>
-                <div>
-                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Phiếu Đang Trên Xe</p>
-                    <p class="text-lg font-black text-sky-800 font-mono mt-0.5" x-text="activeVanDispatchesCount + ' phiếu xe'"></p>
-                </div>
-            </div>
-
-            <div class="bg-white p-4 rounded-2xl shadow-2xs border border-slate-200/90 flex items-center gap-3.5">
-                <div class="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 text-xl font-bold">
-                    <i class="fa-solid fa-boxes-stacked"></i>
-                </div>
-                <div>
-                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Mặt Hàng Lưu Động</p>
-                    <p class="text-lg font-black text-purple-900 font-mono mt-0.5" x-text="totalVanItemsCount + ' mặt hàng'"></p>
-                </div>
-            </div>
-
-            <div class="bg-gradient-to-r from-emerald-600 to-teal-700 p-4 rounded-2xl text-white shadow-md flex items-center justify-between gap-3">
-                <div>
-                    <p class="text-xs font-bold text-emerald-100">Bốc thêm hàng lên xe?</p>
-                    <p class="text-[11px] text-emerald-200 mt-0.5">Xuất hàng lẻ đi bán dạo & tính nợ xe</p>
-                </div>
-                <button type="button" @click="openVanSaleModal()"
-                        class="px-3.5 py-2 rounded-xl bg-white text-emerald-800 hover:bg-emerald-50 font-black text-xs transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
-                    <i class="fa-solid fa-plus mr-1"></i>Lập phiếu
-                </button>
-            </div>
-        </div>
-
-        <!-- Filter & Search Toolbar -->
-        <div class="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-2.5 flex-wrap flex-1 max-w-2xl">
-                <div class="relative flex-1 min-w-[220px]">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                    <input type="text" x-model="vanSearchQuery" placeholder="Tìm theo mã phiếu, tên lái xe, biển số xe..."
-                           class="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-500 font-medium outline-none">
-                </div>
-
-                <select x-model="vanStatusFilter" class="px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-slate-50 text-slate-700 outline-none">
-                    <option value="all">Tất cả trạng thái</option>
-                    <option value="dispatched">🚚 Đang trên xe (Chưa quyết toán)</option>
-                    <option value="settled">✅ Đã quyết toán</option>
-                </select>
-
-                <select x-model="vanVehicleFilter" class="px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-slate-50 text-slate-700 outline-none">
-                    <option value="all">Tất cả xe</option>
-                    <template x-for="v in vehicles" :key="v.id">
-                        <option :value="v.plate_number" x-text="v.plate_number + ' (' + (v.driver?.name || 'Lái xe') + ')'"></option>
-                    </template>
-                </select>
-            </div>
-
-            <div class="flex items-center gap-2">
-                <button type="button" @click="vanSearchQuery = ''; vanStatusFilter = 'all'; vanVehicleFilter = 'all';"
-                        class="px-3 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer">
-                    <i class="fa-solid fa-rotate-left text-slate-400"></i>
-                    <span>Đặt lại lọc</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Bảng Danh Sách Phiếu Hàng Lẻ Xe -->
-        <div class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-            <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-truck-ramp-box text-emerald-600 text-base"></i>
-                    <h3 class="font-black text-slate-900 text-sm">Danh Sách Phiếu Hàng Lẻ Đang Lưu Động Trên Xe</h3>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-200 text-slate-700" x-text="filteredVanDispatches.length + ' phiếu'"></span>
-                </div>
-                <p class="text-[11px] text-slate-400 hidden sm:block">
-                    Hàng hóa xuất lẻ bán dạo dọc đường do tài xế phụ trách và tính vào công nợ xe
-                </p>
-            </div>
-
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse text-xs">
-                    <thead>
-                        <tr class="bg-slate-100/80 text-slate-700 font-bold uppercase text-[11px] border-b border-slate-200">
-                            <th class="py-3 px-3.5 w-12 text-center">STT</th>
-                            <th class="py-3 px-3.5">Mã Phiếu Xe</th>
-                            <th class="py-3 px-3.5">Xe Vận Tải</th>
-                            <th class="py-3 px-3.5">Lái Xe / Phụ Trách</th>
-                            <th class="py-3 px-3.5">Chi Tiết Mặt Hàng Bốc Lên Xe</th>
-                            <th class="py-3 px-3.5 text-right">Tổng Tiền Xuất Xe</th>
-                            <th class="py-3 px-3.5">Ngày Xuất</th>
-                            <th class="py-3 px-3.5 text-center">Trạng Thái</th>
-                            <th class="py-3 px-3.5 text-center">Thao Tác</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
-                        <template x-for="(v, vIdx) in filteredVanDispatches" :key="v.id">
-                            <tr class="hover:bg-slate-50/80 transition-colors">
-                                <td class="py-3 px-3.5 text-center text-slate-400 font-mono" x-text="vIdx + 1"></td>
-                                <td class="py-3 px-3.5">
-                                    <span class="font-mono font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200" x-text="v.code"></span>
-                                    <div class="text-[11px] text-slate-400 mt-1" x-text="v.notes || 'Hàng bán dạo lưu động'"></div>
-                                </td>
-                                <td class="py-3 px-3.5">
-                                    <span class="font-mono font-black text-xs text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 inline-block" x-text="v.vehicle_plate || 'Xe lưu động'"></span>
-                                </td>
-                                <td class="py-3 px-3.5">
-                                    <div class="font-bold text-slate-900 text-xs" x-text="v.driver_name || (v.driver?.name || 'Tài xế')"></div>
-                                    <div class="text-[11px] text-slate-500 font-mono mt-0.5" x-text="v.driver?.phone || '---'"></div>
-                                </td>
-                                <td class="py-3 px-3.5">
-                                    <div class="space-y-1 max-w-sm">
-                                        <template x-for="(it, iIdx) in (v.items || [])" :key="iIdx">
-                                            <div class="flex items-center justify-between text-[11.5px] bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                                                <span class="font-semibold text-slate-800 truncate mr-2" x-text="it.name"></span>
-                                                <span class="font-mono text-emerald-700 shrink-0 font-bold" x-text="it.quantity + ' ' + (it.unit || 'cái') + ' × ' + formatCurrency(it.unit_price)"></span>
-                                            </div>
-                                        </template>
-                                        <div x-show="!v.items || v.items.length === 0" class="text-slate-400 text-[11px] italic">Chưa có chi tiết item</div>
-                                    </div>
-                                </td>
-                                <td class="py-3 px-3.5 text-right font-mono font-black text-emerald-700 text-sm whitespace-nowrap" x-text="formatCurrency(v.total_amount)"></td>
-                                <td class="py-3 px-3.5 text-slate-600 text-[11px] whitespace-nowrap" x-text="formatDate(v.dispatch_date || v.created_at)"></td>
-                                <td class="py-3 px-3.5 text-center whitespace-nowrap">
-                                    <template x-if="v.status === 'dispatched' || v.status === 'pending_settle'">
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
-                                            Đang trên xe
-                                        </span>
-                                    </template>
-                                    <template x-if="v.status === 'settled' || v.status === 'completed'">
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                                            Đã quyết toán
-                                        </span>
-                                    </template>
-                                </td>
-                                <td class="py-3 px-3.5 text-center whitespace-nowrap">
-                                    <button type="button" @click="openVanSaleModal(v.vehicle_plate)"
-                                            class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200 transition-colors cursor-pointer"
-                                            title="Bốc thêm hàng cho xe này">
-                                        <i class="fa-solid fa-plus mr-0.5"></i>Bốc thêm
-                                    </button>
-                                </td>
-                            </tr>
-                        </template>
-                        <tr x-show="filteredVanDispatches.length === 0">
-                            <td colspan="9" class="py-12 text-center text-slate-400">
-                                <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2 text-lg">
-                                    <i class="fa-solid fa-box-open"></i>
-                                </div>
-                                <p class="font-bold">Chưa có phiếu xuất hàng lẻ nào trên xe</p>
-                                <p class="text-xs text-slate-400 mt-0.5">Bấm nút bên dưới để lập phiếu bốc hàng lẻ bán dạo lên xe cho tài xế</p>
-                                <button type="button" @click="openVanSaleModal()" class="mt-3 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer">
-                                    + Lập Phiếu Bốc Hàng Lên Xe Đầu Tiên
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-    </div>
 
     <!-- Modal: Xác Nhận Xuất Bến Cho Xe -->
     <div x-show="showDepartureModal" x-cloak class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
@@ -793,231 +690,18 @@
             </div>
         </div>
     </div>
-    <!-- ========================================================================= -->
-    <!-- MODAL: LẬP PHIẾU BỐC HÀNG LẺ LƯU ĐỘNG LÊN XE (TÍNH NỢ XE)                  -->
-    <!-- ========================================================================= -->
-    <div x-show="showVanSaleModal" x-cloak
-         class="fixed inset-0 z-[9999] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-        <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
-             @click.away="showVanSaleModal = false">
-            
-            <!-- Modal Header -->
-            <div class="p-4 sm:p-5 border-b border-slate-100 bg-gradient-to-r from-emerald-700 to-teal-800 text-white flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-white/10 text-white flex items-center justify-center font-bold text-lg border border-white/20 shadow-inner">
-                        <i class="fa-solid fa-truck-ramp-box"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-base font-black tracking-tight">Lập Phiếu Bốc Hàng Lẻ Lưu Động Lên Xe</h3>
-                        <p class="text-xs text-emerald-200 mt-0.5">Tính nợ hàng lưu động trên xe cho tài xế & tự động trừ tồn kho</p>
-                    </div>
-                </div>
-                <button type="button" @click="showVanSaleModal = false" class="text-white/70 hover:text-white transition-colors cursor-pointer">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <!-- Modal Body -->
-            <div class="p-4 sm:p-5 space-y-4 text-xs">
-                
-                <!-- Notice Banner -->
-                <div class="p-3 bg-amber-50 rounded-2xl border border-amber-200/80 text-amber-900 text-[11.5px] leading-relaxed flex items-start gap-2.5">
-                    <i class="fa-solid fa-circle-info text-amber-600 text-sm mt-0.5 shrink-0"></i>
-                    <div>
-                        <strong>Cơ chế hàng lẻ xe:</strong> Hàng xuất bốc lên xe bán dạo dọc đường sẽ được <strong>trừ kho thực tế</strong> và ghi trực tiếp vào <strong>công nợ tài xế chịu trách nhiệm</strong> cho đến khi xe về quyết toán hoặc thu tiền về nộp quỹ.
-                    </div>
-                </div>
-
-                <!-- Chọn Xe & Tài Xế -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    <div>
-                        <label class="block font-black text-slate-700 mb-1.5">
-                            <i class="fa-solid fa-truck text-emerald-600 mr-1"></i>Biển Số Xe (*):
-                        </label>
-                        <select x-model="vanSaleForm.vehicle_plate" @change="onVehicleChange()"
-                                class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-500 font-mono font-bold text-xs text-slate-800 outline-none">
-                            <option value="">-- Chọn xe nhận hàng lẻ --</option>
-                            <template x-for="v in vehicles" :key="v.id">
-                                <option :value="v.plate_number" x-text="v.plate_number + ' (' + v.vehicle_type + ' - ' + (v.driver?.name || 'Chưa gán') + ')'"></option>
-                            </template>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block font-black text-slate-700 mb-1.5">
-                            <i class="fa-solid fa-user-shield text-emerald-600 mr-1"></i>Lái Xe / Người Vận Chuyển (*):
-                        </label>
-                        <select x-model="vanSaleForm.driver_id" @change="onDriverChange()"
-                                class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-500 font-bold text-xs text-slate-800 outline-none">
-                            <option value="">-- Chọn tài xế chịu trách nhiệm --</option>
-                            <template x-for="d in drivers" :key="d.id">
-                                <option :value="d.id" x-text="d.name + ' (' + (d.phone || 'Không SĐT') + ')'"></option>
-                            </template>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Danh Sách Sản Phẩm -->
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="font-black text-slate-800 flex items-center gap-1.5">
-                            <i class="fa-solid fa-boxes-stacked text-emerald-600"></i>
-                            <span>Danh Sách Sản Phẩm Bốc Lên Xe:</span>
-                        </label>
-                        <button type="button" @click="addVanItem()"
-                                class="text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1 cursor-pointer text-xs">
-                            <i class="fa-solid fa-circle-plus"></i> Thêm sản phẩm
-                        </button>
-                    </div>
-
-                    <div class="border border-slate-200 rounded-2xl overflow-hidden max-h-60 overflow-y-auto">
-                        <table class="w-full text-left border-collapse text-[11px]">
-                            <thead class="bg-slate-100 text-slate-700 font-bold sticky top-0 z-10">
-                                <tr>
-                                    <th class="py-2.5 px-3">Sản Phẩm (Tồn Kho Thực Tế)</th>
-                                    <th class="py-2.5 px-2.5 w-24 text-center">Số Lượng</th>
-                                    <th class="py-2.5 px-2.5 w-28 text-right">Đơn Giá Xuất</th>
-                                    <th class="py-2.5 px-2.5 w-28 text-right">Thành Tiền</th>
-                                    <th class="py-2.5 px-2 w-8 text-center"></th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                <template x-for="(it, idx) in vanSaleForm.items" :key="it._uid">
-                                    <tr>
-                                        <td class="p-2 relative min-w-[260px]">
-                                            <div class="relative" @click.outside="if (activeProdDropdownIndex === idx) activeProdDropdownIndex = null">
-                                                <input type="text"
-                                                       x-model="it.searchQuery"
-                                                       @focus="activeProdDropdownIndex = idx; prodHighlightIndex = 0"
-                                                       @input="activeProdDropdownIndex = idx; prodHighlightIndex = 0; if(!it.searchQuery) { it.product_id = ''; it.unit_price = 0; }"
-                                                       @keydown.down.prevent="
-                                                           const prods = getFilteredProducts(it.searchQuery);
-                                                           if (prods.length > 0) prodHighlightIndex = (prodHighlightIndex + 1) % prods.length;
-                                                       "
-                                                       @keydown.up.prevent="
-                                                           const prods = getFilteredProducts(it.searchQuery);
-                                                           if (prods.length > 0) prodHighlightIndex = (prodHighlightIndex - 1 + prods.length) % prods.length;
-                                                       "
-                                                       @keydown.enter.prevent="
-                                                           if (activeProdDropdownIndex === idx) {
-                                                               const prods = getFilteredProducts(it.searchQuery);
-                                                               if (prods.length > 0 && prods[prodHighlightIndex]) {
-                                                                   selectProductForRow(idx, prods[prodHighlightIndex]);
-                                                               }
-                                                           }
-                                                       "
-                                                       @keydown.escape.prevent="activeProdDropdownIndex = null"
-                                                       placeholder="Tìm mã hoặc tên sản phẩm..."
-                                                       class="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:border-emerald-500 focus:outline-none shadow-2xs">
-
-                                                <div x-show="activeProdDropdownIndex === idx && getFilteredProducts(it.searchQuery).length > 0"
-                                                     x-cloak
-                                                     class="absolute left-0 top-full mt-1 w-[440px] max-w-[90vw] z-50 bg-white rounded-xl shadow-2xl border border-slate-200 max-h-60 overflow-y-auto py-1 text-xs">
-                                                    <template x-for="(p, pIdx) in getFilteredProducts(it.searchQuery)" :key="p.id">
-                                                        <div @mousedown.prevent="selectProductForRow(idx, p)"
-                                                             @mouseenter="prodHighlightIndex = pIdx"
-                                                             class="px-3 py-2 cursor-pointer flex items-center justify-between border-b border-slate-50 last:border-0"
-                                                             :class="prodHighlightIndex === pIdx ? 'bg-emerald-50 text-emerald-950 font-bold' : 'hover:bg-slate-50'">
-                                                            <div class="min-w-0 pr-3">
-                                                                <div class="font-bold text-slate-900 truncate">
-                                                                    <span class="text-emerald-700 font-mono mr-1" x-text="'[' + (p.sku || 'N/A') + ']'"></span>
-                                                                    <span x-text="p.name"></span>
-                                                                </div>
-                                                                <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
-                                                                    <span x-text="'ĐVT: ' + (p.unit || 'cái')"></span>
-                                                                    <span>&bull;</span>
-                                                                    <span x-text="'Tồn: ' + (p.stock_quantity || 0) + ' ' + (p.unit || 'cái')"></span>
-                                                                </div>
-                                                            </div>
-                                                            <div class="shrink-0 font-black text-emerald-700 text-xs" x-text="formatCurrency(p.cost_price || 0)"></div>
-                                                        </div>
-                                                    </template>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="p-2 text-center">
-                                            <input type="number" min="1" x-model.number="it.quantity"
-                                                   class="w-full p-2 text-center rounded-xl border border-slate-200 text-xs font-mono font-bold outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 bg-slate-50 focus:bg-white transition-all">
-                                        </td>
-                                        <td class="p-2 text-right">
-                                            <input type="number" min="0" x-model.number="it.unit_price"
-                                                   class="w-full p-2 text-right rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 bg-slate-50 focus:bg-white transition-all">
-                                        </td>
-                                        <td class="p-2 text-right font-mono font-black text-slate-900 whitespace-nowrap"
-                                            x-text="formatCurrency((it.quantity || 0) * (it.unit_price || 0))"></td>
-                                        <td class="p-2 text-center">
-                                            <button type="button" @click="removeVanItem(idx)" class="text-rose-400 hover:text-rose-600 cursor-pointer p-1 transition-colors" title="Xóa dòng">
-                                                <i class="fa-solid fa-trash-can text-sm"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Box Tổng Tiền -->
-                <div class="flex items-center justify-between p-3.5 bg-emerald-50/80 rounded-2xl border border-emerald-200/90 font-bold">
-                    <div>
-                        <span class="text-emerald-950 font-black block">Tổng Trị Giá Ghi Nợ Cho Lái Xe:</span>
-                        <span class="text-[11px] text-emerald-700 font-normal">Tự động cộng vào công nợ tài xế chịu trách nhiệm</span>
-                    </div>
-                    <span class="text-lg text-emerald-800 font-mono font-black" x-text="formatCurrency(getVanSaleTotal())"></span>
-                </div>
-
-                <!-- Ghi Chú -->
-                <div>
-                    <label class="block font-black text-slate-700 mb-1.5">Ghi Chú Lộ Trình / Địa Bàn Bán Dạo:</label>
-                    <textarea x-model="vanSaleForm.notes" rows="2" placeholder="Ví dụ: Bốc thêm 10 bao phụ kiện PVC + 5 lõi lọc đi bán dạo khu vực Hoài Đức - Quốc Oai..."
-                              class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-500 text-xs outline-none"></textarea>
-                </div>
-            </div>
-
-            <!-- Modal Footer -->
-            <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2.5 text-xs">
-                <button type="button" @click="showVanSaleModal = false"
-                        class="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-100 cursor-pointer">
-                    Hủy bỏ
-                </button>
-                <button type="button" @click="submitVanSale()"
-                        class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-black text-white shadow-md shadow-emerald-600/25 flex items-center gap-1.5 cursor-pointer active:scale-95">
-                    <i class="fa-solid fa-check"></i>
-                    <span>Xác Nhận Xuất Hàng Lên Xe</span>
-                </button>
-            </div>
-        </div>
-    </div>
 
 </div>
 
 <script>
 function dispatchApp() {
     return {
-        currentMainTab: 'dispatch',
+        mobileDispatchTab: 'vehicles',
         vehicles: @json($vehicles),
         routes: @json($routes),
         orders: @json($readyOrders),
         
-        // Dữ liệu Hàng Lẻ Xe
-        totalVanStockAmount: {{ (float)($totalVanStockAmount ?? 0) }},
-        vanDispatches: @json($vanDispatches ?? []),
-        availableProducts: @json($availableProducts ?? []),
-        drivers: @json($allDrivers ?? []),
-        
-        vanSearchQuery: '',
-        vanStatusFilter: 'all',
-        vanVehicleFilter: 'all',
 
-        showVanSaleModal: false,
-        vanSaleForm: {
-            driver_id: '',
-            vehicle_plate: '',
-            notes: '',
-            items: [
-                { product_id: '', quantity: 1, unit_price: 0 }
-            ]
-        },
 
         selectedVehiclePlate: (Array.isArray(@json($vehicles ?? [])) && @json($vehicles ?? []).length > 0) ? @json($vehicles ?? [])[0].plate_number : '',
         searchQuery: '',
@@ -1038,159 +722,9 @@ function dispatchApp() {
             type: 'success'
         },
 
-        get activeVanDispatchesCount() {
-            return this.vanDispatches.filter(v => v.status === 'dispatched' || v.status === 'pending_settle').length;
-        },
 
-        get totalVanItemsCount() {
-            return this.vanDispatches.reduce((acc, v) => acc + (v.items ? v.items.length : 0), 0);
-        },
 
-        get filteredVanDispatches() {
-            return this.vanDispatches.filter(v => {
-                if (this.vanSearchQuery) {
-                    const q = this.vanSearchQuery.toLowerCase();
-                    const code = (v.code || '').toLowerCase();
-                    const driver = (v.driver_name || (v.driver?.name || '')).toLowerCase();
-                    const plate = (v.vehicle_plate || '').toLowerCase();
-                    if (!code.includes(q) && !driver.includes(q) && !plate.includes(q)) return false;
-                }
-                if (this.vanStatusFilter !== 'all') {
-                    if (this.vanStatusFilter === 'dispatched' && v.status !== 'dispatched' && v.status !== 'pending_settle') return false;
-                    if (this.vanStatusFilter === 'settled' && v.status !== 'settled' && v.status !== 'completed') return false;
-                }
-                if (this.vanVehicleFilter !== 'all') {
-                    if (v.vehicle_plate !== this.vanVehicleFilter) return false;
-                }
-                return true;
-            });
-        },
 
-        openVanSaleModal(plate = null) {
-            const defaultPlate = plate || this.selectedVehiclePlate || (this.vehicles[0]?.plate_number || '');
-            this.vanSaleForm = {
-                driver_id: '',
-                vehicle_plate: defaultPlate,
-                notes: '',
-                items: [
-                    { _uid: 'it_' + Math.random().toString(36).substr(2, 9), product_id: '', quantity: 1, unit_price: 0 },
-                    { _uid: 'it_' + Math.random().toString(36).substr(2, 9), product_id: '', quantity: 1, unit_price: 0 },
-                    { _uid: 'it_' + Math.random().toString(36).substr(2, 9), product_id: '', quantity: 1, unit_price: 0 }
-                ]
-            };
-            if (defaultPlate) {
-                const veh = this.vehicles.find(v => v.plate_number === defaultPlate);
-                if (veh && veh.driver_id) {
-                    this.vanSaleForm.driver_id = veh.driver_id;
-                } else if (veh && veh.driver && veh.driver.id) {
-                    this.vanSaleForm.driver_id = veh.driver.id;
-                }
-            }
-            this.showVanSaleModal = true;
-        },
-
-        onVehicleChange() {
-            if (!this.vanSaleForm.vehicle_plate) return;
-            const veh = this.vehicles.find(v => v.plate_number === this.vanSaleForm.vehicle_plate);
-            if (veh && (veh.driver_id || (veh.driver && veh.driver.id))) {
-                this.vanSaleForm.driver_id = veh.driver_id || veh.driver.id;
-            }
-        },
-
-        onDriverChange() {
-            if (!this.vanSaleForm.driver_id) return;
-            const veh = this.vehicles.find(v => v.driver_id == this.vanSaleForm.driver_id || (v.driver && v.driver.id == this.vanSaleForm.driver_id));
-            if (veh) {
-                this.vanSaleForm.vehicle_plate = veh.plate_number;
-            }
-        },
-
-        addVanItem() {
-            this.vanSaleForm.items.push({
-                _uid: 'it_' + Math.random().toString(36).substr(2, 9),
-                product_id: '',
-                quantity: 1,
-                unit_price: 0
-            });
-        },
-
-        removeVanItem(idx) {
-            if (this.vanSaleForm.items.length > 1) {
-                this.vanSaleForm.items.splice(idx, 1);
-            }
-        },
-
-        getFilteredProducts(query) {
-            const list = this.availableProducts || [];
-            if (!query || !query.trim()) return list.slice(0, 30);
-            const q = query.toLowerCase().trim();
-            return list.filter(p => (p.sku || '').toLowerCase().includes(q) || (p.name || '').toLowerCase().includes(q)).slice(0, 30);
-        },
-
-        selectProductForRow(idx, p) {
-            const item = this.vanSaleForm.items[idx];
-            if (!item || !p) return;
-            item.product_id = p.id;
-            item.sku = p.sku || '';
-            item.name = p.name;
-            item.unit = p.unit || 'cái';
-            item.stock_quantity = p.stock_quantity || 0;
-            item.searchQuery = '[' + (p.sku || 'N/A') + '] ' + p.name;
-            item.unit_price = Number(p.cost_price || 0);
-            this.activeProdDropdownIndex = null;
-        },
-
-        getVanSaleTotal() {
-            return this.vanSaleForm.items.reduce((sum, it) => sum + (Number(it.quantity || 0) * Number(it.unit_price || 0)), 0);
-        },
-
-        async submitVanSale() {
-            if (!this.vanSaleForm.driver_id) {
-                this.showToast('Vui lòng chọn tài xế / người phụ trách xe!', 'error');
-                return;
-            }
-            const validItems = this.vanSaleForm.items.filter(i => i.product_id && Number(i.quantity) > 0);
-            if (validItems.length === 0) {
-                this.showToast('Vui lòng chọn ít nhất 1 sản phẩm có số lượng hợp lệ!', 'error');
-                return;
-            }
-
-            try {
-                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                const payload = {
-                    driver_id: this.vanSaleForm.driver_id,
-                    vehicle_plate: this.vanSaleForm.vehicle_plate,
-                    notes: this.vanSaleForm.notes,
-                    items: validItems.map(i => ({
-                        product_id: i.product_id,
-                        quantity: Number(i.quantity),
-                        unit_price: Number(i.unit_price)
-                    }))
-                };
-                const res = await fetch('/van-sale-dispatches', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': token || ''
-                    },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (data.success) {
-                    this.showToast(data.message, 'success');
-                    if (data.dispatch) {
-                        this.vanDispatches.unshift(data.dispatch);
-                        this.totalVanStockAmount += Number(data.dispatch.total_amount || 0);
-                    }
-                    this.showVanSaleModal = false;
-                    this.currentMainTab = 'vansale';
-                } else {
-                    this.showToast(data.message || 'Lỗi lập phiếu xuất hàng lẻ', 'error');
-                }
-            } catch(e) {
-                this.showToast('Lỗi kết nối máy chủ: ' + e.message, 'error');
-            }
-        },
 
         initApp() {
             if (typeof BroadcastChannel !== 'undefined') {
@@ -1215,6 +749,31 @@ function dispatchApp() {
 
         selectVehicle(plate) {
             this.selectedVehiclePlate = plate;
+            // Ở màn hình mobile (< 1024px), ấn vào xe là chuyển ngay sang tab đơn hàng và đưa lên đầu danh sách
+            if (window.innerWidth < 1024) {
+                this.mobileDispatchTab = 'orders';
+                this.$nextTick(() => {
+                    const el = document.getElementById('mobile-dispatch-orders-top') || document.getElementById('mobile-dispatch-switcher');
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                });
+            }
+        },
+
+        selectVehicleAndSwitchToOrders(plate) {
+            this.selectedVehiclePlate = plate;
+            this.mobileDispatchTab = 'orders';
+            this.$nextTick(() => {
+                const el = document.getElementById('mobile-dispatch-orders-top') || document.getElementById('mobile-dispatch-switcher');
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            });
         },
 
         toggleVehicleOrders(plate) {
@@ -1740,6 +1299,33 @@ function dispatchApp() {
         formatCurrency(num) {
             if (!num) return '0 đ';
             return new Intl.NumberFormat('vi-VN').format(num) + ' đ';
+        },
+
+        formatCustomerName(name) {
+            if (!name) return '';
+            let txt = String(name);
+            try {
+                // Decode triệt để các HTML entities (kể cả double encode như &amp;amp;)
+                const parser = new DOMParser();
+                let doc = parser.parseFromString(txt, 'text/html');
+                txt = doc.body.textContent || txt;
+                if (txt.includes('&')) {
+                    doc = parser.parseFromString(txt, 'text/html');
+                    txt = doc.body.textContent || txt;
+                }
+            } catch(e) {
+                while (txt.includes('&amp;') || txt.includes('&quot;') || txt.includes('&#039;')) {
+                    const prev = txt;
+                    txt = txt
+                        .replace(/&amp;/g, '&')
+                        .replace(/&quot;/g, '"')
+                        .replace(/&#039;/g, "'")
+                        .replace(/&lt;/g, '<')
+                        .replace(/&gt;/g, '>');
+                    if (txt === prev) break;
+                }
+            }
+            return txt;
         },
 
         formatDate(dateStr) {

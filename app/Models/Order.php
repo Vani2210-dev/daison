@@ -9,6 +9,21 @@ class Order extends Model
 {
     use HasFactory;
 
+    public const PICKING_TRANSFERRED_STATUSES = [
+        'Đã bốc xong',
+        'Kiểm hàng',
+        'Đang kiểm hàng',
+        'Đã kiểm hàng',
+        'Đã kiểm',
+        'Sẵn sàng xuất xe',
+        'Đã kiểm hàng (Sẵn sàng xuất xe)',
+        'Kho đã xuất đủ',
+        'Đang vận chuyển',
+        'Đang giao hàng',
+        'Đã giao',
+        'Giao thành công',
+    ];
+
     protected $fillable = [
         'order_code',
         'dealer_id',
@@ -217,6 +232,23 @@ class Order extends Model
     }
 
     /**
+     * Tự động giải mã HTML entities nếu customer_name bị mã hóa nhiều lần (ví dụ &amp;amp;)
+     */
+    public function getCustomerNameAttribute($value): string
+    {
+        if (empty($value)) {
+            return '';
+        }
+        $decoded = (string)$value;
+        while (str_contains($decoded, '&amp;') || str_contains($decoded, '&quot;') || str_contains($decoded, '&#039;')) {
+            $prev = $decoded;
+            $decoded = html_entity_decode($decoded, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if ($decoded === $prev) break;
+        }
+        return $decoded;
+    }
+
+    /**
      * Lấy danh sách lịch sử thao tác từ file log riêng của đơn hàng
      */
     public function getOperationLogs(): array
@@ -242,5 +274,211 @@ class Order extends Model
             return '';
         }
         return @file_get_contents($logFile) ?: '';
+    }
+
+    /**
+     * Kiểm tra đơn hàng đã được bên Bốc hoàn tất / bấm Chuyển kiểm hay chưa.
+     */
+    public function hasPickingTransferred(): bool
+    {
+        return in_array($this->status, self::PICKING_TRANSFERRED_STATUSES, true);
+    }
+
+    /**
+     * Kiểm tra đơn hàng đã có dữ liệu bốc/kiểm từ kho chưa (không phụ thuộc trạng thái hiện tại
+     * để hoàn/hủy đơn sau khi đã kiểm hàng vẫn đọc đúng số lượng thực tế đã bốc).
+     */
+    public function hasWarehousePickingData(): bool
+    {
+        $this->loadMissing('items');
+        if ($this->hasPickingTransferred()) {
+            return true;
+        }
+        return $this->items->contains(function ($it) {
+            return (bool)$it->is_picked
+                || (float)($it->picked_qty ?? 0) > 0
+                || in_array($it->item_status, ['Đủ hàng', 'Đang bốc', 'Thiếu hàng'], true)
+                || (bool)$it->is_checked
+                || (float)($it->checked_qty ?? 0) > 0;
+        });
+    }
+
+    /**
+     * Tính toán số lượng & thành tiền thực tế giao theo số lượng đã bốc (picked_qty).
+     */
+    public function computePickedDeliveryBreakdown(): array
+    {
+        $this->loadMissing('items');
+        $usePicked = $this->hasWarehousePickingData();
+        $alreadyCompleted = in_array($this->status, ['Đã giao', 'Giao thành công'], true);
+
+        $itemsMap = [];
+        $hasShortage = false;
+        $origItemsSubtotal = 0.0;
+        $newSubtotal = 0.0;
+
+        foreach ($this->items as $it) {
+            $origSold = (float)($it->quantity ?? 0);
+            $origGift = (float)($it->gift_quantity ?? 0);
+            $origAmt = (float)($it->amount ?? 0);
+            $origItemsSubtotal += $origAmt;
+
+            if (!$usePicked || $alreadyCompleted) {
+                $newSold = $origSold;
+                $newGift = $origGift;
+                $newDisc = (float)($it->discount_amount ?? 0);
+                $newAmt = $origAmt;
+            } else {
+                $pickedTotal = max(0.0, (float)($it->picked_qty ?? 0));
+                $newSold = min($origSold, $pickedTotal);
+                $newGift = min($origGift, max(0.0, $pickedTotal - $origSold));
+
+                if (abs($newSold - $origSold) > 0.0001 || abs($newGift - $origGift) > 0.0001) {
+                    $hasShortage = true;
+                }
+
+                $unitPrice = (float)($it->unit_price ?? 0);
+                $discPct = (float)($it->discount_percent ?? 0);
+                $origDiscAmt = (float)($it->discount_amount ?? 0);
+
+                if (abs($newSold - $origSold) > 0.0001 && $origSold > 0) {
+                    if ($discPct > 0) {
+                        $newDisc = round(($newSold * $unitPrice * $discPct) / 100, 2);
+                    } elseif ($origDiscAmt > 0) {
+                        $newDisc = round($origDiscAmt * ($newSold / $origSold), 2);
+                    } else {
+                        $newDisc = 0.0;
+                    }
+                    $newAmt = ($unitPrice == 0.0) ? 0.0 : max(0.0, round(($newSold * $unitPrice) - $newDisc, 2));
+                } else {
+                    $newDisc = $origDiscAmt;
+                    $newAmt = $origAmt;
+                }
+            }
+
+            $newSubtotal += $newAmt;
+            $itemsMap[$it->id] = [
+                'item_id'        => $it->id,
+                'sku'            => $it->sku,
+                'name'           => $it->name,
+                'orig_sold_qty'  => $origSold,
+                'orig_gift_qty'  => $origGift,
+                'sold_qty'       => $newSold,
+                'gift_qty'       => $newGift,
+                'picked_qty'     => (float)($it->picked_qty ?? 0),
+                'line_discount'  => $newDisc,
+                'line_amount'    => $newAmt,
+                'changed'        => (abs($newSold - $origSold) > 0.0001 || abs($newGift - $origGift) > 0.0001),
+            ];
+        }
+
+        if (!$hasShortage) {
+            return [
+                'has_shortage'    => false,
+                'items'           => $itemsMap,
+                'subtotal'        => (float)($this->subtotal > 0 ? $this->subtotal : $origItemsSubtotal),
+                'discount_amount' => (float)($this->discount_amount ?? 0),
+                'tax_amount'      => (float)($this->tax_amount ?? 0),
+                'total_amount'    => (float)($this->total_amount ?? 0),
+            ];
+        }
+
+        $origSubtotal = (float)($this->subtotal > 0 ? $this->subtotal : $origItemsSubtotal);
+        $newSubtotal = round($newSubtotal, 2);
+
+        $orderDiscPct = (float)($this->discount_percent ?? 0);
+        $origOrderDisc = (float)($this->discount_amount ?? 0);
+        if ($orderDiscPct > 0) {
+            $newDiscount = round(($newSubtotal * $orderDiscPct) / 100, 2);
+        } elseif ($origOrderDisc > 0 && $origSubtotal > 0) {
+            $newDiscount = round($origOrderDisc * ($newSubtotal / $origSubtotal), 2);
+        } else {
+            $newDiscount = 0.0;
+        }
+
+        $origTax = (float)($this->tax_amount ?? 0);
+        if ($origTax > 0 && $origSubtotal > 0) {
+            $newTax = round($origTax * ($newSubtotal / $origSubtotal), 2);
+        } else {
+            $newTax = 0.0;
+        }
+
+        $newTotal = max(0.0, round($newSubtotal - $newDiscount + $newTax, 2));
+
+        return [
+            'has_shortage'    => true,
+            'items'           => $itemsMap,
+            'subtotal'        => $newSubtotal,
+            'discount_amount' => $newDiscount,
+            'tax_amount'      => $newTax,
+            'total_amount'    => $newTotal,
+        ];
+    }
+
+    /**
+     * Khi hoàn thành giao đơn: tự động chỉnh sửa lại số lượng & thành tiền trên đơn hàng theo số lượng đã bốc.
+     */
+    public function applyPickedQuantitiesAdjustment(?string $performerName = null): array
+    {
+        $breakdown = $this->computePickedDeliveryBreakdown();
+        if (empty($breakdown['has_shortage'])) {
+            return ['adjusted' => false, 'changes' => [], 'breakdown' => $breakdown];
+        }
+
+        $changes = [];
+        foreach ($this->items as $it) {
+            $info = $breakdown['items'][$it->id] ?? null;
+            if (!$info) continue;
+
+            if ($info['changed']) {
+                $changes[] = sprintf(
+                    '[%s] %s: Đặt %s -> Thực giao %s',
+                    $it->sku,
+                    $it->name,
+                    rtrim(rtrim(number_format($info['orig_sold_qty'], 2, '.', ''), '0'), '.'),
+                    rtrim(rtrim(number_format($info['sold_qty'], 2, '.', ''), '0'), '.')
+                );
+
+                $it->quantity = $info['sold_qty'];
+                $it->gift_quantity = $info['gift_qty'];
+                $it->discount_amount = $info['line_discount'];
+                $it->amount = $info['line_amount'];
+
+                $totalActual = $info['sold_qty'] + $info['gift_qty'];
+                $it->picked_qty = $totalActual;
+                $it->is_picked = $totalActual > 0;
+                $it->item_status = $totalActual > 0 ? 'Đủ hàng' : 'Chờ bốc';
+                $retQ = (float)($it->returned_qty ?? 0);
+                if ($retQ > $info['sold_qty']) {
+                    $retQ = $info['sold_qty'];
+                    $it->returned_qty = $retQ;
+                }
+                $it->delivered_qty = max(0.0, $info['sold_qty'] - $retQ);
+                $it->save();
+            }
+        }
+
+        if (!empty($changes)) {
+            $oldTotal = (float)($this->total_amount ?? 0);
+            $this->subtotal = $breakdown['subtotal'];
+            $this->discount_amount = $breakdown['discount_amount'];
+            $this->tax_amount = $breakdown['tax_amount'];
+            $this->total_amount = $breakdown['total_amount'];
+            $this->save();
+
+            $this->logOperation(
+                'Tự Động Chỉnh SL Theo Thực Bốc',
+                "Hoàn thành giao hàng: Tự động chỉnh sửa số lượng đơn theo thực bốc (" . implode('; ', $changes) . "). Tổng đơn: " . number_format($oldTotal, 0, ',', '.') . " đ -> " . number_format($this->total_amount, 0, ',', '.') . " đ.",
+                $performerName ?? (auth()->user()?->name ?? 'Hệ thống'),
+                $this->status,
+                $this->status
+            );
+        }
+
+        return [
+            'adjusted'  => !empty($changes),
+            'changes'   => $changes,
+            'breakdown' => $breakdown,
+        ];
     }
 }

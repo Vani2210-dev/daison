@@ -65,7 +65,7 @@
 
             <div class="flex items-center justify-end gap-2 pt-1 border-t border-white/20">
                 <template x-if="realtimeAlert && realtimeAlert.isDiscrepancy">
-                    <button type="button" @click="openDiscrepanciesModal(); realtimeAlert = null"
+                    <button type="button" @click.stop="openDiscrepanciesModal(); realtimeAlert = null"
                             class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-rose-700 font-black text-xs shadow transition-all flex items-center gap-1.5 cursor-pointer">
                         <i class="fa-solid fa-truck-ramp-box text-xs"></i>
                         <span>Xem & phản hồi cho lái xe</span>
@@ -86,9 +86,164 @@
         </div>
     </div>
 
-    <!-- 1. Page Header (Tối giản & Gọn nhẹ) -->
-    <div class="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-3"
-         :class="mobileView === 'detail' ? 'hidden lg:flex' : 'flex'">
+    <!-- ======================================================== -->
+    <!-- MOBILE DEDICATED HEADER & NAVIGATION (Dành riêng Mobile) -->
+    <!-- ======================================================== -->
+    <div class="block lg:hidden space-y-2.5" x-show="mobileView === 'list'">
+        <!-- Mobile Top Title & Badges Bar -->
+        <div class="bg-white rounded-2xl p-3 border border-slate-200/90 shadow-2xs flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <i class="fa-solid fa-clipboard-check text-xs"></i>
+                </div>
+                <div>
+                    <h1 class="text-xs font-black text-slate-900 tracking-tight leading-tight">Soạn & Kiểm Đơn</h1>
+                    <div class="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
+                        <span class="inline-flex items-center gap-0.5 text-amber-700 font-bold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            <span x-text="countPendingPick + ' bốc'"></span>
+                        </span>
+                        <span>•</span>
+                        <span class="inline-flex items-center gap-0.5 text-emerald-700 font-bold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span x-text="countReadyQc + ' kiểm'"></span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nút bật/tắt bộ lọc nâng cao -->
+            <button type="button" @click="showMobileAdvancedFilters = !showMobileAdvancedFilters"
+                    class="px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                    :class="showMobileAdvancedFilters || selectedBranch || (filterPickingDate && filterPickingDate !== '{{ date('Y-m-d') }}') ? 'bg-amber-50 text-amber-900 border-amber-300' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'">
+                <i class="fa-solid fa-sliders text-xs" :class="showMobileAdvancedFilters ? 'text-amber-600' : 'text-slate-400'"></i>
+                <span>Lọc</span>
+                <i class="fa-solid text-[9px]" :class="showMobileAdvancedFilters ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+            </button>
+        </div>
+
+        <!-- Mobile Segmented Main Tabs (3 Tabs) -->
+        <div class="grid grid-cols-3 gap-1.5 bg-slate-200/80 p-1 rounded-2xl text-xs font-black">
+            <!-- Tab 1: Soạn & Bốc -->
+            <button type="button" @click="switchTab('picking')"
+                    class="py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer relative"
+                    :class="activeTab === 'picking' ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-700 hover:bg-white/60'">
+                <div class="flex items-center gap-1">
+                    <i class="fa-solid fa-box-open text-xs"></i>
+                    <span class="text-[11px]">Soạn hàng</span>
+                </div>
+                <span class="px-1.5 py-0.2 rounded-full text-[9px] font-black"
+                      :class="activeTab === 'picking' ? 'bg-black/20 text-white' : 'bg-amber-100 text-amber-800'"
+                      x-text="countPendingPick"></span>
+            </button>
+
+            <!-- Tab 2: Kiểm QC -->
+            <button type="button" @click="switchTab('qc')"
+                    class="py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer relative"
+                    :class="activeTab === 'qc' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-700 hover:bg-white/60'">
+                <div class="flex items-center gap-1">
+                    <i class="fa-solid fa-circle-check text-xs"></i>
+                    <span class="text-[11px]">Kiểm QC</span>
+                </div>
+                <span class="px-1.5 py-0.2 rounded-full text-[9px] font-black"
+                      :class="activeTab === 'qc' ? 'bg-black/20 text-white' : 'bg-emerald-100 text-emerald-800'"
+                      x-text="countReadyQc"></span>
+            </button>
+
+            <!-- Tab 3: Lệch Xe -->
+            <button type="button" @click.stop="openDiscrepanciesModal()"
+                    class="py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer relative border"
+                    :class="pendingDiscrepanciesCount > 0 ? 'bg-rose-500 text-white border-rose-600 shadow-xs animate-pulse' : 'text-slate-700 hover:bg-white/60 border-transparent'">
+                <div class="flex items-center gap-1">
+                    <i class="fa-solid fa-truck-ramp-box text-xs"></i>
+                    <span class="text-[11px]">Lệch xe</span>
+                </div>
+                <span class="px-1.5 py-0.2 rounded-full text-[9px] font-black"
+                      :class="pendingDiscrepanciesCount > 0 ? 'bg-white text-rose-700' : 'bg-slate-100 text-slate-600'"
+                      x-text="pendingDiscrepanciesCount > 0 ? pendingDiscrepanciesCount : discrepanciesList.length"></span>
+            </button>
+        </div>
+
+        <!-- Mobile Quick Sub-Toolbar: Mode Switch + Quick Date Toggle -->
+        <div class="bg-white rounded-2xl p-2 border border-slate-200/90 shadow-2xs flex items-center justify-between gap-2">
+            <!-- Mode switch: Single vs Batch -->
+            <div class="inline-flex rounded-xl p-0.5 bg-slate-100 border border-slate-200 text-xs">
+                <button type="button" @click="fulfillmentMode = 'single'"
+                        class="px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer text-[11px]"
+                        :class="fulfillmentMode === 'single' ? 'bg-white text-sky-700 shadow-2xs' : 'text-slate-600'">
+                    <i class="fa-solid fa-list-check text-[10px]"></i>
+                    <span>Từng đơn</span>
+                </button>
+                <button type="button" @click="fulfillmentMode = 'batch'"
+                        class="px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer text-[11px]"
+                        :class="fulfillmentMode === 'batch' ? 'bg-white text-sky-700 shadow-2xs' : 'text-slate-600'">
+                    <i class="fa-solid fa-layer-group text-[10px]"></i>
+                    <span>Gom nhiều đơn</span>
+                </button>
+            </div>
+
+            <!-- Quick Date toggle: Hôm nay vs Tất cả -->
+            <div class="flex items-center gap-1 text-[11px] font-bold">
+                <button type="button" @click="filterPickingDate = '{{ date('Y-m-d') }}'"
+                        class="px-2.5 py-1 rounded-lg border transition-all cursor-pointer"
+                        :class="filterPickingDate === '{{ date('Y-m-d') }}' ? 'bg-amber-500 text-white border-amber-600 shadow-2xs' : 'bg-slate-100 text-slate-700 border-slate-200'">
+                    Hôm nay
+                </button>
+                <button type="button" @click="filterPickingDate = ''"
+                        class="px-2.5 py-1 rounded-lg border transition-all cursor-pointer"
+                        :class="!filterPickingDate ? 'bg-sky-600 text-white border-sky-700 shadow-2xs' : 'bg-slate-100 text-slate-700 border-slate-200'">
+                    Tất cả
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Expandable Advanced Filter & Permission Panel -->
+        <div x-show="showMobileAdvancedFilters" x-collapse
+             class="bg-white rounded-2xl p-3 border border-slate-200/90 shadow-2xs space-y-2.5 text-xs">
+            <!-- Chi nhánh & Ngày cụ thể -->
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 block mb-1">Chi nhánh</label>
+                    <select x-model="selectedBranch" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-1.5 text-xs font-bold text-slate-800 focus:outline-none">
+                        <option value="">Toàn bộ chi nhánh</option>
+                        @foreach($branches as $br)
+                            <option value="{{ $br->name }}">{{ $br->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 block mb-1">Ngày soạn cụ thể</label>
+                    <input type="date" x-model="filterPickingDate"
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl p-1.5 text-xs font-bold font-mono text-slate-800 focus:outline-none">
+                </div>
+            </div>
+
+            <!-- Quyền ngành hàng & nhóm phụ trách -->
+            <div class="pt-2 border-t border-slate-100">
+                <template x-if="canViewAllCategories">
+                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-900 font-bold text-[11px]">
+                        <i class="fa-solid fa-layer-group text-indigo-600"></i>
+                        <span>Quyền xem: <strong>Toàn bộ ngành hàng</strong></span>
+                    </div>
+                </template>
+                <template x-if="!canViewAllCategories">
+                    <div class="space-y-1 text-[11px]">
+                        <div class="flex items-center gap-1 text-slate-700">
+                            <span class="text-slate-400">Nhóm:</span>
+                            <strong class="text-amber-900" x-text="userGroupsSummary"></strong>
+                        </div>
+                        <div class="flex items-center gap-1 text-slate-700">
+                            <span class="text-slate-400">Phụ trách:</span>
+                            <strong class="text-sky-900" x-text="userCategoriesSummary"></strong>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. Page Header (Desktop) -->
+    <div class="hidden lg:flex bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/90 shadow-2xs flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-2.5">
                 <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
@@ -161,9 +316,8 @@
         </div>
     </div>
 
-    <!-- Category & Staff Group Authorization Banner -->
-    <div class="bg-white rounded-2xl p-3 sm:px-4 border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-2.5 text-xs"
-         :class="mobileView === 'detail' ? 'hidden lg:flex' : 'flex'">
+    <!-- Category & Staff Group Authorization Banner (Desktop) -->
+    <div class="hidden lg:flex bg-white rounded-2xl p-3 sm:px-4 border border-slate-200/90 shadow-2xs flex-col md:flex-row md:items-center md:justify-between gap-2.5 text-xs">
         <div class="flex items-center gap-2 flex-wrap">
             <!-- Mode 1: Có quyền xem bốc xếp không phân loại sản phẩm (Toàn quyền mọi loại sản phẩm) -->
             <template x-if="canViewAllCategories">
@@ -205,8 +359,8 @@
         </div>
     </div>
 
-    <!-- 2. Main Process Tabs -->
-    <div class="flex items-center gap-2 sm:gap-3" :class="mobileView === 'detail' ? 'hidden lg:flex' : 'flex'">
+    <!-- 2. Main Process Tabs (Desktop) -->
+    <div class="hidden lg:flex items-center gap-2 sm:gap-3">
         <!-- Tab 1: Soạn & Bốc Hàng -->
         <button type="button" @click="switchTab('picking')"
                 class="flex-1 sm:flex-initial px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
@@ -230,7 +384,7 @@
         </button>
 
         <!-- Tab 3: Phản Ánh Lệch Hàng Từ Xe Xuất Bến (Người bốc ⇄ Lái Xe) -->
-        <button type="button" @click="openDiscrepanciesModal()"
+        <button type="button" @click.stop="openDiscrepanciesModal()"
                 class="flex-1 sm:flex-initial px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs border relative"
                 :class="pendingDiscrepanciesCount > 0 
                     ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300 ring-2 ring-rose-500/20' 
@@ -243,9 +397,8 @@
         </button>
     </div>
 
-    <!-- 3. Sub-toolbar: Chế độ soạn / kiểm kho & Mã đơn đang xem -->
-    <div class="bg-white rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-xs"
-         :class="mobileView === 'detail' ? 'hidden lg:flex' : 'flex'">
+    <!-- 3. Sub-toolbar: Chế độ soạn / kiểm kho & Mã đơn đang xem (Desktop) -->
+    <div class="hidden lg:flex bg-white rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3 border border-slate-200/90 shadow-2xs flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-xs">
         <div class="flex items-center gap-3">
             <span class="font-bold text-slate-600 hidden sm:inline" x-text="activeTab === 'picking' ? 'Chế độ soạn:' : 'Chế độ kiểm:'"></span>
             
@@ -304,7 +457,7 @@
                                 <span x-text="activeTab === 'picking' ? 'Đơn Hàng Chờ Soạn' : 'Đơn Hàng Chờ Kiểm'"></span>
                             </h2>
                             <span class="font-mono text-xs font-bold text-slate-500"
-                                  x-text="filteredOrders.length + '/' + totalOrdersCount + ' đơn'"></span>
+                                  x-text="countFilteredPending > 0 ? (countFilteredPending + ' chờ · ' + countFilteredCompleted + ' xong') : (filteredOrders.length + '/' + totalOrdersCount + ' đơn')"></span>
                         </div>
                     </template>
                 </div>
@@ -363,6 +516,32 @@
                     </div>
                 </div>
 
+                <!-- Alert Banner: Nhắc nhở đơn chờ xử lý ở các ngày khác tránh sót đơn -->
+                <template x-if="activeTab === 'qc' && filterPickingDate && totalReadyQcAllDates > countReadyQc">
+                    <div class="px-2.5 py-2 rounded-xl bg-amber-50/90 border border-amber-300 text-amber-950 text-xs flex items-center justify-between gap-1 shadow-2xs">
+                        <span class="flex items-center gap-1.5 font-bold truncate">
+                            <i class="fa-solid fa-bell text-amber-600 shrink-0"></i>
+                            <span>Còn <strong class="text-rose-600 font-mono text-xs" x-text="totalReadyQcAllDates - countReadyQc"></strong> đơn chờ kiểm ngày khác</span>
+                        </span>
+                        <button type="button" @click="filterPickingDate = ''" 
+                                class="px-2 py-0.5 rounded-lg bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-black text-[10px] shrink-0 cursor-pointer shadow-xs transition-all">
+                            Xem tất cả
+                        </button>
+                    </div>
+                </template>
+                <template x-if="activeTab === 'picking' && filterPickingDate && totalPendingPickAllDates > countPendingPick">
+                    <div class="px-2.5 py-2 rounded-xl bg-amber-50/90 border border-amber-300 text-amber-950 text-xs flex items-center justify-between gap-1 shadow-2xs">
+                        <span class="flex items-center gap-1.5 font-bold truncate">
+                            <i class="fa-solid fa-bell text-amber-600 shrink-0"></i>
+                            <span>Còn <strong class="text-rose-600 font-mono text-xs" x-text="totalPendingPickAllDates - countPendingPick"></strong> đơn chờ soạn ngày khác</span>
+                        </span>
+                        <button type="button" @click="filterPickingDate = ''" 
+                                class="px-2 py-0.5 rounded-lg bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-black text-[10px] shrink-0 cursor-pointer shadow-xs transition-all">
+                            Xem tất cả
+                        </button>
+                    </div>
+                </template>
+
                 <!-- Batch Action Buttons: Chọn tất cả & Bỏ chọn lọc -->
                 <div x-show="fulfillmentMode === 'batch'" class="grid grid-cols-2 gap-2 pt-1 pb-1">
                     <button type="button" @click="selectAllBatchOrders()"
@@ -384,16 +563,31 @@
                     </button>
                 </div>
 
-                <!-- Order Cards Scrollable List -->
+                <!-- Order Cards Scrollable List (Đơn chưa xong lên trên, hoàn thành đẩy xuống dưới) -->
                 <div class="space-y-2.5 lg:max-h-[calc(100vh-330px)] lg:overflow-y-auto pr-1">
-                    <template x-for="ord in filteredOrders" :key="ord.id">
-                        <div @click="fulfillmentMode === 'batch' ? toggleBatchOrder(ord.id) : selectOrder(ord)"
-                             class="p-3.5 rounded-2xl border transition-all cursor-pointer relative space-y-2"
-                             :class="fulfillmentMode === 'batch'
-                                ? (selectedBatchOrderIds.includes(ord.id) ? 'border-sky-400 bg-sky-50/60 ring-2 ring-sky-500/20 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80 shadow-2xs')
-                                : (activeOrderId === ord.id 
-                                    ? (activeTab === 'picking' ? 'border-sky-400 bg-sky-50/60 ring-2 ring-sky-500/20 shadow-xs' : 'border-emerald-400 bg-emerald-50/50 ring-2 ring-emerald-500/20 shadow-xs')
-                                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80 shadow-2xs')">
+                    <template x-for="(ord, idx) in filteredOrders" :key="ord.id">
+                        <div class="space-y-2">
+                            <!-- Đường phân cách trực quan cho nhóm đơn đã hoàn tất được đẩy xuống dưới -->
+                            <template x-if="idx > 0 && (activeTab === 'qc' ? (isOrderDaKiem(ord) && !isOrderDaKiem(filteredOrders[idx-1])) : (isOrderDaBoc(ord) && !isOrderDaBoc(filteredOrders[idx-1])))">
+                                <div class="pt-2 pb-1 flex items-center gap-2">
+                                    <div class="h-px bg-slate-200 flex-1"></div>
+                                    <span class="px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-500 flex items-center gap-1.5 shrink-0 shadow-2xs">
+                                        <i class="fa-solid fa-circle-check text-emerald-600 text-[10px]"></i>
+                                        <span x-text="activeTab === 'qc' ? 'Đã kiểm xong (' + countFilteredCompleted + ' đơn)' : 'Đã bốc xong (' + countFilteredCompleted + ' đơn)'"></span>
+                                    </span>
+                                    <div class="h-px bg-slate-200 flex-1"></div>
+                                </div>
+                            </template>
+
+                            <div @click="fulfillmentMode === 'batch' ? toggleBatchOrder(ord.id) : selectOrder(ord)"
+                                 class="p-3.5 rounded-2xl border transition-all cursor-pointer relative space-y-2"
+                                 :class="fulfillmentMode === 'batch'
+                                    ? (selectedBatchOrderIds.includes(ord.id) ? 'border-sky-400 bg-sky-50/60 ring-2 ring-sky-500/20 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80 shadow-2xs')
+                                    : (activeOrderId === ord.id 
+                                        ? (activeTab === 'picking' ? 'border-sky-400 bg-sky-50/60 ring-2 ring-sky-500/20 shadow-xs' : 'border-emerald-400 bg-emerald-50/50 ring-2 ring-emerald-500/20 shadow-xs')
+                                        : ((activeTab === 'qc' ? isOrderDaKiem(ord) : isOrderDaBoc(ord))
+                                            ? 'border-slate-200/80 bg-slate-50/60 opacity-80 hover:opacity-100 hover:bg-white shadow-2xs' 
+                                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80 shadow-2xs'))">
 
                             <div class="flex items-start gap-2.5">
                                 <!-- Checkbox when in batch mode -->
@@ -492,8 +686,8 @@
                                         <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5">
                                             <template x-for="grp in ord.groups_progress" :key="grp.group_id">
                                                 <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border transition-colors"
-                                                      :class="(activeTab === 'picking' ? grp.is_picking_completed : grp.is_qc_completed) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : (grp.has_shortage ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-800 border-amber-200')">
-                                                    <i class="fa-solid" :class="(activeTab === 'picking' ? grp.is_picking_completed : grp.is_qc_completed) ? 'fa-check text-emerald-600' : (grp.has_shortage ? 'fa-triangle-exclamation text-rose-500' : 'fa-clock text-amber-500')"></i>
+                                                      :class="(activeTab === 'picking' ? grp.is_picking_completed : grp.is_qc_completed) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'">
+                                                    <i class="fa-solid" :class="(activeTab === 'picking' ? grp.is_picking_completed : grp.is_qc_completed) ? 'fa-check text-emerald-600' : 'fa-clock text-amber-500'"></i>
                                                     <span x-text="grp.group_name"></span>:
                                                     <span class="font-mono font-black" x-text="(activeTab === 'picking' ? grp.picked_count : grp.checked_count) + '/' + grp.items_count"></span>
                                                 </span>
@@ -512,6 +706,7 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
                     </template>
 
                     <div x-show="filteredOrders.length === 0" class="py-10 text-center text-slate-400 text-xs italic bg-slate-50 rounded-xl border border-dashed border-slate-200">
@@ -525,7 +720,7 @@
         <!-- ========================================== -->
         <!-- RIGHT COLUMN: Order Detail Workspace (8.5 cols) -->
         <!-- ========================================== -->
-        <div class="lg:col-span-8 xl:col-span-9" :class="mobileView === 'list' ? 'hidden lg:block' : 'block'">
+        <div class="lg:col-span-8 xl:col-span-9" :class="mobileView === 'list' ? 'hidden lg:block' : 'block pb-28 lg:pb-0'">
 
             <!-- Mobile Sticky Header Navigation (Quay lại danh sách đơn trên điện thoại) -->
             <div class="lg:hidden mb-3.5 sticky top-2 z-30">
@@ -561,9 +756,9 @@
                     <!-- =============================================== -->
                     <div x-show="activeTab === 'picking'" class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden mt-0">
                         
-                        <!-- Panel Header (Tối giản) -->
-                        <div class="px-3.5 py-3 sm:px-5 sm:py-3.5 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                            <div>
+                        <!-- Panel Header (Tối giản, gọn gàng) -->
+                        <div class="px-3.5 py-2.5 sm:px-5 sm:py-3 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-2.5 bg-white">
+                            <div class="min-w-0">
                                 <h3 class="text-sm sm:text-base font-black text-slate-900 tracking-tight flex items-center gap-1.5 flex-wrap">
                                     <span class="text-sky-700 font-mono" x-text="activeOrder.order_code"></span>
                                     <template x-if="activeOrder.is_consignment">
@@ -573,9 +768,9 @@
                                         </span>
                                     </template>
                                     <span class="text-slate-300">|</span>
-                                    <span x-text="activeOrder.customer_name" class="font-bold"></span>
+                                    <span x-text="activeOrder.customer_name" class="font-bold truncate"></span>
                                 </h3>
-                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500 mt-1">
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500 mt-0.5">
                                     <span>Kho: <strong class="text-slate-700" x-text="activeOrder.warehouse || 'Kho Tổng'"></strong></span>
                                     <span>·</span>
                                     <span>Lên đơn: <strong class="text-slate-700 font-mono" x-text="formatDate(activeOrder.created_at)"></strong></span>
@@ -589,145 +784,71 @@
                             </div>
 
                             <!-- Action Buttons -->
-                            <div class="flex items-center gap-2 shrink-0">
-                                <!-- Bốc đủ nhanh -->
+                            <div class="flex items-center gap-1.5 shrink-0 flex-wrap">
+                                <template x-if="hasUnsavedPicking(activeOrder)">
+                                    <span class="px-2 py-1 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black animate-pulse">
+                                        Chưa lưu SL
+                                    </span>
+                                </template>
+
+                                <!-- Điền đủ nhanh (chỉ điền tạm trên màn hình) -->
                                 <button type="button" @click="quickPickAllActiveOrder()"
-                                        class="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs">
-                                    <i class="fa-solid fa-bolt-lightning text-sky-600 text-xs"></i>
+                                        :disabled="isOrderLockedForPicking(activeOrder) || isSavingBatchOrSingle"
+                                        class="px-2.5 py-1.5 rounded-lg text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-300 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs disabled:opacity-40"
+                                        title="Điền đủ số lượng cần bốc cho tất cả mặt hàng">
+                                    <i class="fa-solid fa-bolt-lightning text-sky-600 text-[11px]"></i>
                                     <span x-text="'Bốc đủ (' + activeOrder.items.length + ')'"></span>
                                 </button>
 
-                                <!-- Hoàn Tất Bốc & Chuyển Kiểm -->
-                                <button type="button" @click="completePickingAndSendToQc()"
-                                        class="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-black text-white bg-amber-500 hover:bg-amber-600 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/20">
-                                    <i class="fa-solid fa-circle-check text-xs"></i>
-                                    <span>Hoàn Tất Bốc</span>
+                                <!-- Nút Lưu (chỉ lưu số lượng đã bốc, chưa chuyển kiểm) -->
+                                <button type="button" @click="savePickingActiveOrder()"
+                                        :disabled="isOrderLockedForPicking(activeOrder) || isSavingBatchOrSingle"
+                                        class="px-3 py-1.5 rounded-lg text-xs font-black text-white bg-sky-600 hover:bg-sky-700 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs disabled:opacity-40"
+                                        title="Lưu số lượng đã bốc (bên kiểm chưa thể giao xe)">
+                                    <i class="fa-solid fa-floppy-disk text-[11px]"></i>
+                                    <span>Lưu</span>
+                                </button>
+
+                                <!-- Nút Chuyển kiểm (chuyển sang kiểm hàng, kể cả khi thiếu hàng vẫn chuyển được) -->
+                                <button type="button" @click="transferPickingToQcActiveOrder()"
+                                        :disabled="isOrderLockedForPicking(activeOrder) || isSavingBatchOrSingle"
+                                        class="px-3 py-1.5 rounded-lg text-xs font-black text-white bg-amber-500 hover:bg-amber-600 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs disabled:opacity-40"
+                                        title="Chuyển đơn sang bộ phận Kiểm hàng (cho phép giao xe)">
+                                    <i class="fa-solid fa-right-to-bracket text-[11px]"></i>
+                                    <span>Chuyển kiểm</span>
                                 </button>
                             </div>
                         </div>
 
-                        <!-- GROUP-LEVEL PROGRESS TRACKER (Tiến độ theo từng nhóm bốc hàng - Tối giản) -->
-                        <template x-if="activeOrder && activeOrder.groups_progress && activeOrder.groups_progress.length > 0">
-                            <div class="m-3 sm:m-4 mb-1 p-2.5 sm:p-3 rounded-xl bg-slate-50 border border-slate-200/90 shadow-2xs space-y-2">
-                                <div class="flex items-center justify-between gap-2">
-                                    <div class="flex items-center gap-1.5">
-                                        <i class="fa-solid fa-users-gear text-sky-600 text-xs"></i>
-                                        <span class="text-xs font-black text-slate-800 uppercase tracking-wide">Tiến độ nhóm:</span>
-                                        <span class="text-[10px] font-bold text-slate-400 font-mono" x-text="'(' + activeOrder.groups_progress.length + ' nhóm)'"></span>
-                                    </div>
-                                    
-                                    <!-- Overall Completion Status Badge -->
-                                    <div class="shrink-0">
-                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border shadow-2xs transition-all"
-                                              :class="isAllGroupsPickingCompleted(activeOrder) ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300'">
-                                            <i class="fa-solid" :class="isAllGroupsPickingCompleted(activeOrder) ? 'fa-circle-check text-emerald-600' : 'fa-hourglass-half text-amber-600'"></i>
-                                            <span x-text="isAllGroupsPickingCompleted(activeOrder) ? '100% ĐÃ XONG' : 'ĐANG CHỜ HOÀN TẤT'"></span>
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <!-- Cards for each StaffGroup: Compact Chips -->
-                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
-                                    <template x-for="grp in activeOrder.groups_progress" :key="grp.group_id">
-                                        <div class="px-2.5 py-1.5 rounded-lg border bg-white flex items-center justify-between text-xs gap-2 shadow-2xs"
-                                             :class="(activeTab === 'picking' ? grp.is_picking_completed : grp.is_qc_completed) ? 'border-emerald-200 bg-emerald-50/20' : (grp.has_shortage ? 'border-rose-200 bg-rose-50/20' : 'border-amber-200 bg-amber-50/20')">
-                                            <div class="flex items-center gap-1.5 min-w-0">
-                                                <span class="w-1.5 h-1.5 rounded-full shrink-0"
-                                                      :class="(activeTab === 'picking' ? grp.is_picking_completed : grp.is_qc_completed) ? 'bg-emerald-500' : (grp.has_shortage ? 'bg-rose-500' : 'bg-amber-500')"></span>
-                                                <span class="font-bold text-slate-800 truncate text-[11px]" x-text="grp.group_name"></span>
-                                            </div>
-                                            <div class="flex items-center gap-1.5 shrink-0 font-mono text-[11px]">
-                                                <span class="font-bold text-slate-700" x-text="(activeTab === 'picking' ? grp.picked_count : grp.checked_count) + '/' + grp.items_count"></span>
-                                                <span class="px-1.5 py-0.2 rounded text-[9px] font-black"
-                                                      :class="(activeTab === 'picking' ? grp.is_picking_completed : grp.is_qc_completed) ? 'bg-emerald-100 text-emerald-700' : (grp.has_shortage ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800')"
-                                                      x-text="activeTab === 'picking' ? (grp.is_picking_completed ? 'Xong' : (grp.has_shortage ? 'Thiếu' : 'Bốc')) : (grp.is_qc_completed ? 'Đạt' : 'Chờ')"></span>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </div>
+                        <!-- CẢNH BÁO KHÓA BỐC (nếu đã kiểm xong) -->
+                        <template x-if="isOrderLockedForPicking(activeOrder)">
+                            <div class="px-3 py-1.5 bg-amber-100/90 border-b border-amber-300 text-amber-950 font-bold text-xs flex items-center gap-1.5">
+                                <i class="fa-solid fa-lock text-amber-700 text-xs"></i>
+                                <span>Đơn hàng đã kiểm xong — Đã khóa người bốc</span>
                             </div>
                         </template>
 
-                        <!-- CẢNH BÁO THIẾU HÀNG TOÀN ĐƠN (Exact style from Mockup Image 2) -->
-                        <template x-if="activeOrder && countShortageItems(activeOrder) > 0">
-                            <div class="m-5 p-4 rounded-2xl bg-[#fee2e2] border border-rose-300 text-rose-950 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xs">
-                                <div class="flex items-center gap-3.5">
-                                    <div class="w-10 h-10 rounded-xl bg-white border border-rose-200 text-rose-600 flex items-center justify-center shrink-0 shadow-xs text-xl font-bold">
-                                        <i class="fa-solid fa-triangle-exclamation"></i>
-                                    </div>
-                                    <div class="space-y-1">
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            <span class="font-extrabold text-sm text-slate-900 tracking-tight">
-                                                Cảnh báo: Kho không đủ hàng so với đơn đặt!
-                                            </span>
-                                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#fecaca] text-[#b91c1c] border border-rose-300"
-                                                  x-text="countShortageItems(activeOrder) + ' sản phẩm thiếu'"></span>
-                                        </div>
-                                        <div class="text-xs text-slate-700 font-medium">
-                                            <span>Đơn hàng: <strong class="font-mono text-slate-900 font-black" x-text="activeOrder.order_code"></strong> (<span x-text="activeOrder.customer_name"></span>)</span>
-                                            <span> • Kho xuất: <strong class="text-slate-800 font-bold" x-text="activeOrder.warehouse || 'Kho Tổng'"></strong></span>
-                                            <span> • Người phụ trách đơn: <strong class="text-sky-700 underline font-black" x-text="getOrderSupervisor(activeOrder)"></strong></span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <button type="button" @click="autoSplitBackOrderActiveOrder()"
-                                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-full shrink-0 cursor-pointer shadow-md transition-all flex items-center gap-2"
-                                            title="Tự động cắt đơn gốc theo số thực bốc và sinh đơn giao sau cho phần thiếu">
-                                        <i class="fa-solid fa-code-fork"></i>
-                                        <span>Tự động tách đơn nợ (Giao sau)</span>
-                                    </button>
-                                    <button type="button" @click="reportShortageActiveOrder()"
-                                            class="px-4 py-2 bg-[#e11d48] hover:bg-rose-700 text-white text-xs font-bold rounded-full shrink-0 cursor-pointer shadow-md transition-all flex items-center gap-2">
-                                        <i class="fa-solid fa-bell"></i>
-                                        <span>Báo thiếu hàng</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </template>
-
-                        <!-- Category Tabs Filter (Chỉ hiển thị khi có quyền xem tất cả không phân loại) -->
-                        <div x-show="canViewAllCategories" class="px-5 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center gap-2 overflow-x-auto text-xs">
-                            <span class="font-bold text-slate-500 shrink-0 flex items-center gap-1">
-                                <i class="fa-solid fa-layer-group text-slate-400"></i>
-                                <span>Lọc loại SP:</span>
-                            </span>
-                            <button type="button" @click="selectedCategoryFilter = 'all'"
-                                    class="px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer shrink-0"
-                                    :class="selectedCategoryFilter === 'all' ? 'bg-sky-600 text-white border-sky-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'">
-                                <span>Tất cả loại SP</span>
-                                <span class="ml-1 opacity-80 font-mono" x-text="'(' + (activeOrder ? activeOrder.items.length : 0) + ')'"></span>
-                            </button>
-                            <template x-for="cat in availableCategoriesInActiveOrder" :key="cat.id">
-                                <button type="button" @click="selectedCategoryFilter = String(cat.id)"
-                                        class="px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer shrink-0 flex items-center gap-1.5"
-                                        :class="selectedCategoryFilter === String(cat.id) ? 'bg-sky-600 text-white border-sky-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'">
-                                    <span x-text="cat.name"></span>
-                                    <span class="px-1.5 py-0.2 rounded-full text-[10px]"
-                                          :class="selectedCategoryFilter === String(cat.id) ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'"
-                                          x-text="cat.count"></span>
-                                </button>
-                            </template>
-                        </div>
-
-                        <!-- Info Banner & Staff Filter & Quick Assign -->
-                        <div class="px-3.5 py-2 sm:px-5 sm:py-2.5 bg-amber-50/70 border-b border-amber-200/80 flex flex-col md:flex-row md:items-center md:justify-between gap-2.5 text-xs">
-                            <div class="flex items-center gap-2 text-amber-900 font-bold" x-show="isOrderLockedForPicking(activeOrder)">
-                                <i class="fa-solid fa-lock text-amber-600"></i>
-                                <span>Đơn hàng đã kiểm xong - Đã khóa người bốc</span>
+                        <!-- Toolbar (Danh sách SP, Giao tất cả, Lọc người soạn, Tài khoản) -->
+                        <div class="px-3 py-2 sm:px-4 sm:py-2.5 bg-slate-50/90 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-xs">
+                            <!-- Left: Label & Total Count -->
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="font-bold text-slate-800 text-xs sm:text-sm flex items-center gap-1.5">
+                                    <i class="fa-solid fa-boxes-stacked text-sky-600"></i>
+                                    <span>Danh sách mặt hàng</span>
+                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-sky-100 text-sky-800 border border-sky-200" x-text="filteredActiveItems.length + ' món'"></span>
+                                </span>
                             </div>
 
-                            <!-- Right Controls: Phân công nhanh & Lọc người soạn -->
-                            <div class="flex flex-wrap items-center gap-3 text-xs">
-                                <!-- Giao nhanh toàn bộ các mặt hàng chưa bốc (cho Trưởng nhóm / Admin) -->
+                            <!-- Right Controls: Quick Assign & Picker Filter & User Badge / Admin Override -->
+                            <div class="flex items-center gap-1.5 flex-wrap shrink-0 justify-between md:justify-end">
+                                <!-- Giao nhanh toàn bộ các mặt hàng chưa bốc -->
                                 <template x-if="(canViewAllCategories || leaderCategoryIds.length > 0 || isUserAdmin) && !isOrderLockedForPicking(activeOrder)">
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="font-bold text-slate-600 shrink-0">
-                                            <i class="fa-solid fa-user-plus text-amber-600 mr-1"></i>Giao tất cả:
-                                        </span>
+                                    <div class="inline-flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-amber-300 shadow-2xs"
+                                         title="Giao nhanh tất cả mặt hàng cho nhân viên">
+                                        <i class="fa-solid fa-user-plus text-amber-600 text-[10px]"></i>
                                         <select @change="assignAllItemsToStaff($event.target.value); $event.target.value = ''"
-                                                class="p-1.5 bg-white rounded-lg border border-amber-300 text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-500 cursor-pointer shadow-2xs">
-                                            <option value="">-- Chọn người nhận --</option>
+                                                class="bg-transparent text-[11px] font-bold text-slate-800 focus:outline-none cursor-pointer max-w-[130px] truncate">
+                                            <option value="">Giao tất cả...</option>
                                             <template x-for="st in groupStaff" :key="st.id">
                                                 <option :value="st.name" x-text="st.name + (st.department ? ' (' + st.department + ')' : '')"></option>
                                             </template>
@@ -736,131 +857,55 @@
                                 </template>
 
                                 <!-- Lọc người soạn -->
-                                <div class="flex items-center gap-2 text-xs">
-                                    <span class="font-bold text-slate-600 shrink-0">
-                                        <i class="fa-solid fa-filter text-slate-400 mr-1"></i>Lọc:
-                                    </span>
-                                    <select x-model="pickerFilter" class="p-1.5 bg-white rounded-lg border border-slate-300 text-xs font-semibold text-slate-800 focus:outline-none focus:border-sky-500 cursor-pointer">
+                                <div class="inline-flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-300 shadow-2xs"
+                                     title="Lọc danh sách theo người bốc">
+                                    <i class="fa-solid fa-filter text-slate-400 text-[10px]"></i>
+                                    <select x-model="pickerFilter" class="bg-transparent text-[11px] font-semibold text-slate-800 focus:outline-none cursor-pointer max-w-[125px] truncate">
                                         <option value="all" x-text="'Tất cả (' + activeOrder.items.length + ')'"></option>
-                                        <option value="unassigned">Chưa phân công</option>
+                                        <option value="unassigned">Chưa giao</option>
                                         <template x-for="st in groupStaff" :key="st.id">
                                             <option :value="st.name" x-text="st.name"></option>
                                         </template>
                                     </select>
                                 </div>
 
-                                <!-- Current User Badge & Admin Override Toggle -->
-                                <div class="flex items-center gap-2">
-                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-slate-700 font-bold text-xs shadow-2xs">
-                                        <i class="fa-solid fa-circle-user text-sky-600 text-sm"></i>
-                                        <span class="text-slate-500 font-medium">Tôi:</span>
-                                        <span>{{ $currentUser->name }}</span>
-                                    </div>
-                                    <template x-if="isUserAdmin">
-                                        <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold cursor-pointer select-none transition-all shadow-2xs"
-                                               :class="adminOverrideMode ? 'bg-amber-500 text-white border-amber-600' : 'bg-white text-slate-600 border-slate-300 hover:border-amber-400'"
-                                               title="Bật để Admin có thể trực tiếp sửa số lượng bốc của mọi dòng mà không cần phân công cho chính mình">
-                                            <input type="checkbox" x-model="adminOverrideMode" class="w-3.5 h-3.5 rounded text-amber-600 cursor-pointer">
-                                            <span>Admin sửa tất cả</span>
-                                        </label>
-                                    </template>
-                                </div>
+                                <!-- Admin Override Toggle -->
+                                <template x-if="isUserAdmin">
+                                    <label class="inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-bold cursor-pointer select-none transition-all shadow-2xs"
+                                           :class="adminOverrideMode ? 'bg-amber-500 text-white border-amber-600' : 'bg-white text-slate-600 border-slate-300 hover:border-amber-400'"
+                                           title="Bật để Admin có thể trực tiếp sửa số lượng bốc của mọi dòng mà không cần phân công cho chính mình">
+                                        <input type="checkbox" x-model="adminOverrideMode" class="w-3 h-3 rounded text-amber-600 cursor-pointer">
+                                        <span>Admin sửa</span>
+                                    </label>
+                                </template>
                             </div>
                         </div>
 
-                        <!-- Danh sách các Loại sản phẩm bốc hàng -->
-                        <div class="space-y-4 p-4 sm:p-5">
-                            <template x-for="catGroup in categorizedActiveItems" :key="catGroup.id">
-                                <div class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-                                    <!-- Category Group Section Header -->
-                                    <div class="bg-gradient-to-r from-sky-50/90 via-slate-50 to-sky-50/40 p-3 sm:px-4 border-b border-sky-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-                                        <div class="flex items-center gap-2.5 flex-wrap">
-                                            <div class="w-7 h-7 rounded-lg bg-sky-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
-                                                <i class="fa-solid fa-shapes"></i>
-                                            </div>
-                                            <div class="flex items-center gap-2 flex-wrap">
-                                                <span class="font-black text-slate-800 text-xs sm:text-sm uppercase tracking-tight" x-text="catGroup.name"></span>
-                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                                                      :class="catGroup.isAllPicked ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'"
-                                                      x-text="catGroup.isAllPicked ? '✓ Đã bốc xong 100%' : ('Tiến độ: ' + getCatGroupProgress(catGroup))">
-                                                </span>
-                                                <span class="text-[11px] text-slate-500 font-medium" x-text="'(' + catGroup.items.length + ' mặt hàng)'"></span>
-                                            </div>
-                                        </div>
-
-                                        <!-- Group Action: Trưởng nhóm hoặc Thành viên tự nhận & Bốc đủ theo loại & Sang kiểm -->
-                                        <div class="flex items-center gap-2 flex-wrap" x-show="!isOrderLockedForPicking(activeOrder)">
-                                            <!-- Nút Bốc đủ cả loại này -->
-                                            <button type="button" @click="quickPickCategory(catGroup)"
-                                                    class="px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold border border-sky-300 text-[11px] shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
-                                                    title="Bốc đủ tất cả mặt hàng thuộc loại này">
-                                                <i class="fa-solid fa-bolt-lightning text-sky-600 text-[10px]"></i>
-                                                <span x-text="'Bốc đủ loại này (' + catGroup.items.length + ')'"></span>
-                                            </button>
-
-                                            <!-- Nút Chuyển sang kiểm hàng loại này khi đã bốc xong -->
-                                            <template x-if="catGroup.isAllPicked">
-                                                <button type="button" @click="activeTab = 'qc'"
-                                                        class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
-                                                        title="Loại này đã bốc xong 100%! Bấm để sang tab Kiểm hàng kiểm tra ngay mà không cần chờ loại khác">
-                                                    <i class="fa-solid fa-circle-check text-[10px]"></i>
-                                                    <span>Sang kiểm loại này</span>
-                                                </button>
-                                            </template>
-
-                                            <!-- Case 1: Trưởng nhóm loại này (Được quyền phân người soạn) -->
-                                            <template x-if="catGroup.isLeader">
-                                                <div class="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs text-[11px]">
-                                                    <span class="font-bold text-amber-900 shrink-0 flex items-center gap-1">
-                                                        <i class="fa-solid fa-crown text-amber-600 text-[10px]"></i>
-                                                        <span>Giao cả loại này:</span>
-                                                    </span>
-                                                    <select @change="assignCategoryItemsToStaff(catGroup.id, $event.target.value); $event.target.value = ''"
-                                                            class="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer">
-                                                        <option value="">-- Chọn người nhận --</option>
-                                                        <template x-for="st in availableStaffForCategory(catGroup.id)" :key="st.id">
-                                                            <option :value="st.name" x-text="st.name + (st.department ? ' (' + st.department + ')' : '')"></option>
-                                                        </template>
-                                                    </select>
-                                                </div>
-                                            </template>
-
-                                            <!-- Case 2: Thành viên loại này (Tự nhận các món chưa giao) -->
-                                            <template x-if="!catGroup.isLeader">
-                                                <button type="button" @click="claimAllUnassignedInCategory(catGroup.id)"
-                                                        x-show="catGroup.items.some(it => !it.assigned_staff)"
-                                                        class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] shadow-2xs transition-all flex items-center gap-1 cursor-pointer">
-                                                    <i class="fa-solid fa-hand text-[10px]"></i>
-                                                    <span>Tự nhận các món chưa giao</span>
-                                                </button>
-                                            </template>
-                                        </div>
-                                    </div>
-
-                                    <!-- Table for this category (Desktop) -->
-                                    <div class="hidden lg:block overflow-x-auto">
-                                        <table class="w-full text-left text-xs border-collapse min-w-[950px]">
-                                            <thead>
-                                                <tr class="bg-slate-50/80 text-slate-700 font-bold text-[11px] uppercase tracking-wider border-b border-slate-200">
-                                                    <th class="py-3 px-4 text-center w-16">XÁC NHẬN</th>
-                                                    <th class="py-3 px-4">MÃ SKU & TÊN SẢN PHẨM</th>
-                                                    <th class="py-3 px-3">KHO XUẤT</th>
-                                                    <th class="py-3 px-4">NGƯỜI SOẠN HÀNG (PHÂN CÔNG / TỰ NHẬN)</th>
-                                                    <th class="py-3 px-3 text-center">ĐVT</th>
-                                                    <th class="py-3 px-4 text-center bg-amber-50/50">CẦN BỐC</th>
-                                                    <th class="py-3 px-4 text-center bg-sky-50/40">ĐÃ BỐC (NHẬP SL)</th>
-                                                    <th class="py-3 px-4 text-center">TRẠNG THÁI & LÝ DO</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody class="divide-y divide-slate-100 font-medium">
-                                                <!-- Items inside Category Group -->
-                                                <template x-for="(it, idx) in catGroup.items" :key="it.id || (it.sku + '_' + idx)">
+                        <!-- Danh sách mặt hàng bốc (Dạng phẳng) -->
+                        <div class="p-2.5 sm:p-4">
+                            <div class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+                                <!-- Table (Desktop) -->
+                                <div class="hidden lg:block overflow-x-auto">
+                                    <table class="w-full text-left text-xs border-collapse min-w-[950px]">
+                                        <thead>
+                                            <tr class="bg-slate-50/80 text-slate-700 font-bold text-[11px] uppercase tracking-wider border-b border-slate-200">
+                                                <th class="py-3 px-4 text-center w-16">XÁC NHẬN</th>
+                                                <th class="py-3 px-4">MÃ SKU & TÊN SẢN PHẨM</th>
+                                                <th class="py-3 px-3">KHO XUẤT</th>
+                                                <th class="py-3 px-4">NGƯỜI SOẠN HÀNG (PHÂN CÔNG / TỰ NHẬN)</th>
+                                                <th class="py-3 px-3 text-center">ĐVT</th>
+                                                <th class="py-3 px-4 text-center bg-amber-50/50">CẦN BỐC</th>
+                                                <th class="py-3 px-4 text-center bg-sky-50/40">ĐÃ BỐC (NHẬP SL)</th>
+                                                <th class="py-3 px-4 text-center">TRẠNG THÁI & LÝ DO</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-100 font-medium">
+                                            <!-- Items inside Order -->
+                                            <template x-for="(it, idx) in filteredActiveItems" :key="it.id || (it.sku + '_' + idx)">
                                             <tr class="transition-colors"
-                                                :class="isItemShort(it) 
-                                                    ? 'bg-[#fee2e2]/75 border-l-4 border-l-[#b91c1c]' 
-                                                    : (it._justModified 
-                                                        ? 'bg-amber-50/90 border-l-4 border-l-amber-500 ring-1 ring-amber-300' 
-                                                        : (it.is_picked ? 'bg-emerald-50/30' : 'hover:bg-slate-50/80'))">
+                                                :class="it._justModified 
+                                                    ? 'bg-amber-50/90 border-l-4 border-l-amber-500 ring-1 ring-amber-300' 
+                                                    : (it.is_picked ? 'bg-emerald-50/30' : 'hover:bg-slate-50/80')">
                                                 
                                                 <!-- Checkbox Xác nhận -->
                                                 <td class="py-3.5 px-4 text-center">
@@ -899,7 +944,7 @@
                                                                 <div class="space-y-1">
                                                                     <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-950 border border-amber-300">
                                                                         <i class="fa-solid fa-user text-[11px] text-amber-600"></i>
-                                                                        <span x-text="it.assigned_staff + (it.assigned_staff === currentUserName ? ' (Tôi)' : '')"></span>
+                                                                        <span x-text="(it.assigned_staff && it.assigned_staff !== 'null' ? it.assigned_staff : 'Chưa phân công') + (it.assigned_staff === currentUserName ? ' (Tôi)' : '')"></span>
                                                                     </div>
                                                                     <div class="text-[10px] text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5">
                                                                         <i class="fa-solid fa-lock text-[9px] text-slate-400"></i>
@@ -918,10 +963,10 @@
                                                             <!-- Chưa khóa: Dropdown cho phép trưởng nhóm phân công -->
                                                             <template x-if="!isItemStaffLocked(it)">
                                                                 <div class="space-y-1">
-                                                                    <select :value="it.assigned_staff || ''"
+                                                                    <select :value="(it.assigned_staff && it.assigned_staff !== 'null') ? it.assigned_staff : ''"
                                                                             @change="updateItemAssignedStaff(it, $event.target.value)"
                                                                             class="w-full max-w-[190px] px-2.5 py-1.5 text-xs font-bold rounded-lg border focus:outline-none focus:ring-1 focus:ring-amber-500 transition-all cursor-pointer shadow-2xs"
-                                                                            :class="it.assigned_staff ? 'bg-amber-50/70 text-amber-950 border-amber-300' : 'bg-white text-slate-500 border-slate-300 hover:border-slate-400'">
+                                                                            :class="(it.assigned_staff && it.assigned_staff !== 'null') ? 'bg-amber-50/70 text-amber-950 border-amber-300' : 'bg-white text-slate-500 border-slate-300 hover:border-slate-400'">
                                                                         <option value="">-- Chưa phân công --</option>
                                                                         <template x-if="it.assigned_staff && !availableStaffForCategory(it.category_id).some(s => s.name === it.assigned_staff)">
                                                                             <option :value="it.assigned_staff" :selected="true" x-text="it.assigned_staff + ' (Hiện tại)'"></option>
@@ -1010,12 +1055,17 @@
                                                     <!-- TRƯỜNG HỢP 1: Người dùng ĐƯỢC PHÂN CÔNG (hoặc Admin bật override) -> Được sửa số lượng và bấm Đủ -->
                                                     <template x-if="canUserPickItem(it)">
                                                         <div class="flex items-center justify-center gap-1.5">
-                                                            <input type="number" step="any" min="0"
+                                                            <input type="number"
+                                                                   :step="isIntegerQty(Number(it.quantity || 0) + Number(it.gift_quantity || 0)) ? '1' : 'any'"
+                                                                   :inputmode="isIntegerQty(Number(it.quantity || 0) + Number(it.gift_quantity || 0)) ? 'numeric' : 'decimal'"
+                                                                   min="0"
                                                                    :max="Number(it.quantity || 0) + Number(it.gift_quantity || 0)"
-                                                                   x-model.number="it.picked_qty"
-                                                                   @input="validateAndSavePickedQty(it)"
-                                                                   class="w-14 p-1 text-center font-mono font-bold text-xs rounded-lg border focus:outline-none transition-all"
-                                                                   :class="isItemShort(it) ? 'border-rose-400 text-rose-700 bg-rose-50/40 font-black' : 'border-slate-300 text-slate-900 bg-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500'">
+                                                                   :value="formatQtyInput(it.picked_qty, Number(it.quantity || 0) + Number(it.gift_quantity || 0))"
+                                                                   @focus="$event.target.select()"
+                                                                   @keydown="if (isIntegerQty(Number(it.quantity || 0) + Number(it.gift_quantity || 0)) && ($event.key === '.' || $event.key === ',')) $event.preventDefault()"
+                                                                   @change="it.picked_qty = formatQtyInput($event.target.value, Number(it.quantity || 0) + Number(it.gift_quantity || 0)); $event.target.value = it.picked_qty; validateAndSavePickedQty(it)"
+                                                                   @keydown.enter="$event.target.blur()"
+                                                                   class="w-16 p-1 text-center font-mono font-bold text-xs rounded-lg border focus:outline-none transition-all shadow-2xs border-slate-300 text-slate-900 bg-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
                                                             
                                                             <button type="button" @click="pickFullItem(it)"
                                                                     class="px-2 py-1 bg-[#0284c7] hover:bg-sky-700 text-white font-bold text-[11px] rounded-lg transition-colors cursor-pointer shadow-2xs"
@@ -1040,43 +1090,19 @@
                                                     </template>
                                                 </td>
 
-                                                <!-- Trạng Thái & Lý Do (Hình 2: Hiển thị Badge Thiếu X ĐVT + Select Lý do + Nút Gửi cảnh báo cho người phụ trách) -->
+                                                <!-- Trạng Thái Soạn -->
                                                 <td class="py-3.5 px-4 text-center">
-                                                    <!-- Trường hợp 1: Thiếu hàng -->
-                                                    <template x-if="isItemShort(it)">
-                                                        <div class="space-y-1.5 flex flex-col items-center">
-                                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#fee2e2] text-[#b91c1c] border border-rose-300 shadow-2xs">
-                                                                <i class="fa-solid fa-triangle-exclamation text-[10px]"></i>
-                                                                <span x-text="'Thiếu ' + getShortageQty(it) + ' ' + (it.unit || 'cây').toLowerCase()"></span>
-                                                            </span>
-
-                                                            <select x-model="it.shortage_reason"
-                                                                    @change="saveItemShortageReason(it)"
-                                                                    class="w-full max-w-[185px] p-1 text-[11px] font-semibold rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:border-rose-500 shadow-2xs cursor-pointer">
-                                                                <option value="Hết hàng trên kệ kho">Hết hàng trên kệ kho</option>
-                                                                <option value="Hàng lỗi / vỡ / hỏng">Hàng lỗi / vỡ / hỏng</option>
-                                                                <option value="Không tìm thấy hàng trong kho">Không tìm thấy hàng trong kho</option>
-                                                                <option value="Chờ lô hàng nhập mới">Chờ lô hàng nhập mới</option>
-                                                                <option value="Lý do khác">Lý do khác</option>
-                                                            </select>
-
-                                                            <button type="button" @click="reportShortageItem(it)"
-                                                                    class="text-[11px] text-rose-600 hover:text-rose-800 font-bold flex items-center justify-center gap-1 cursor-pointer hover:underline"
-                                                                    title="Gửi thông báo thiếu hàng tới người phụ trách đơn hàng">
-                                                                <i class="fa-solid fa-bell text-[10px]"></i>
-                                                                <span>Gửi cảnh báo thiếu hàng</span>
-                                                            </button>
-                                                        </div>
-                                                    </template>
-
-                                                    <!-- Trường hợp 2: Bình thường -->
-                                                    <template x-if="!isItemShort(it)">
-                                                        <div>
-                                                            <span class="inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold border"
-                                                                  :class="getItemStatusBadgeClass(it)"
-                                                                  x-text="(Number(it.picked_qty || 0) >= (Number(it.quantity || 0) + Number(it.gift_quantity || 0)) && (Number(it.quantity || 0) + Number(it.gift_quantity || 0)) > 0) ? 'Đủ hàng' : (it.item_status || 'Chờ bốc')"></span>
-                                                        </div>
-                                                    </template>
+                                                    <span class="inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold border"
+                                                          :class="Number(it.picked_qty || 0) >= (Number(it.quantity || 0) + Number(it.gift_quantity || 0)) && (Number(it.quantity || 0) + Number(it.gift_quantity || 0)) > 0
+                                                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                                              : (Number(it.picked_qty || 0) > 0 
+                                                                  ? 'bg-sky-50 text-sky-700 border-sky-300' 
+                                                                  : 'bg-amber-50 text-amber-800 border-amber-300')"
+                                                          x-text="Number(it.picked_qty || 0) >= (Number(it.quantity || 0) + Number(it.gift_quantity || 0)) && (Number(it.quantity || 0) + Number(it.gift_quantity || 0)) > 0
+                                                              ? 'Đã bốc đủ' 
+                                                              : (Number(it.picked_qty || 0) > 0 
+                                                                  ? 'Đang bốc (' + formatQtyInput(it.picked_qty, Number(it.quantity || 0) + Number(it.gift_quantity || 0)) + '/' + (Number(it.quantity || 0) + Number(it.gift_quantity || 0)) + ')' 
+                                                                  : 'Chờ bốc')"></span>
                                                 </td>
 
                                             </tr>
@@ -1085,15 +1111,13 @@
                                 </table>
                             </div>
 
-                            <!-- Cards for this category (Mobile: Thẻ sản phẩm tối ưu điện thoại) -->
+                            <!-- Cards (Mobile: Thẻ sản phẩm tối ưu điện thoại) -->
                             <div class="block lg:hidden p-2.5 space-y-2.5">
-                                <template x-for="(it, idx) in catGroup.items" :key="it.id || (it.sku + '_' + idx)">
+                                <template x-for="(it, idx) in filteredActiveItems" :key="it.id || (it.sku + '_' + idx)">
                                     <div class="p-3 rounded-xl border transition-all space-y-2.5"
-                                         :class="isItemShort(it) 
-                                            ? 'bg-rose-50/75 border-rose-300 ring-1 ring-rose-300' 
-                                            : (it._justModified 
-                                                ? 'bg-amber-50/90 border-amber-300 ring-1 ring-amber-300' 
-                                                : (it.is_picked ? 'bg-emerald-50/40 border-emerald-300' : 'bg-white border-slate-200 shadow-2xs'))">
+                                         :class="it._justModified 
+                                            ? 'bg-amber-50/90 border-amber-300 ring-1 ring-amber-300' 
+                                            : (it.is_picked ? 'bg-emerald-50/40 border-emerald-300' : 'bg-white border-slate-200 shadow-2xs')">
                                         
                                         <!-- Row 1: Checkbox + SKU + Badge SL sửa + ĐVT + Trạng thái -->
                                         <div class="flex items-start justify-between gap-2">
@@ -1116,19 +1140,16 @@
                                                 <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold text-[10px] uppercase font-mono" x-text="it.unit || 'CÂY'"></span>
                                                 <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border"
                                                       :class="getItemStatusBadgeClass(it)"
-                                                      x-text="(Number(it.picked_qty || 0) >= (Number(it.quantity || 0) + Number(it.gift_quantity || 0)) && (Number(it.quantity || 0) + Number(it.gift_quantity || 0)) > 0) ? 'Đủ hàng' : (it.item_status || 'Chờ bốc')"></span>
+                                                      x-text="(Number(it.picked_qty || 0) >= (Number(it.quantity || 0) + Number(it.gift_quantity || 0)) && (Number(it.quantity || 0) + Number(it.gift_quantity || 0)) > 0) ? 'Đã bốc đủ' : (Number(it.picked_qty || 0) > 0 ? 'Đang bốc (' + formatQtyInput(it.picked_qty, Number(it.quantity || 0) + Number(it.gift_quantity || 0)) + '/' + (Number(it.quantity || 0) + Number(it.gift_quantity || 0)) + ')' : 'Chờ bốc')"></span>
                                             </div>
                                         </div>
 
                                         <!-- Row 2: Product Name -->
                                         <div class="text-xs font-bold text-slate-800 leading-snug" x-text="it.name"></div>
 
-                                        <!-- Row 3: Kho xuất & Người soạn hàng -->
-                                        <div class="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
-                                            <div class="text-[11px] text-slate-500 flex items-center gap-1 truncate">
-                                                <i class="fa-solid fa-warehouse text-slate-400 text-[10px]"></i>
-                                                <span class="truncate" x-text="activeOrder.warehouse || 'Kho Tổng'"></span>
-                                            </div>
+                                        <!-- Row 3: Người soạn hàng -->
+                                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5 text-xs">
+                                            <span class="text-[11px] text-slate-500 font-medium">Người soạn hàng:</span>
 
                                             <!-- Người soạn -->
                                             <div>
@@ -1138,21 +1159,31 @@
                                                         <template x-if="isItemStaffLocked(it)">
                                                             <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-950 border border-amber-300">
                                                                 <i class="fa-solid fa-user-check text-[10px] text-amber-600"></i>
-                                                                <span x-text="it.assigned_staff + (it.assigned_staff === currentUserName ? ' (Tôi)' : '')"></span>
+                                                                <span x-text="(it.assigned_staff && it.assigned_staff !== 'null' ? it.assigned_staff : 'Chưa phân công') + (it.assigned_staff === currentUserName ? ' (Tôi)' : '')"></span>
                                                                 <button type="button" x-show="!isOrderLockedForPicking(activeOrder)"
                                                                         @click="it._forceUnlock = true"
                                                                         class="text-[10px] text-sky-700 underline font-bold ml-1">Đổi</button>
                                                             </div>
                                                         </template>
                                                         <template x-if="!isItemStaffLocked(it)">
-                                                            <select :value="it.assigned_staff || ''"
-                                                                    @change="updateItemAssignedStaff(it, $event.target.value)"
-                                                                    class="w-full text-xs font-bold p-1 rounded border border-amber-300 bg-amber-50/60 text-amber-950">
-                                                                <option value="">-- Chỉ định người bốc --</option>
-                                                                <template x-for="st in availableStaffForCategory(it.category_id)" :key="st.id">
-                                                                    <option :value="st.name" :selected="it.assigned_staff === st.name" x-text="st.name"></option>
+                                                            <div>
+                                                                <template x-if="!isOrderLockedForPicking(activeOrder)">
+                                                                    <select :value="(it.assigned_staff && it.assigned_staff !== 'null') ? it.assigned_staff : ''"
+                                                                            @change="updateItemAssignedStaff(it, $event.target.value)"
+                                                                            class="w-full text-xs font-bold p-1 rounded border border-amber-300 bg-amber-50/60 text-amber-950">
+                                                                        <option value="">-- Chỉ định người bốc --</option>
+                                                                        <template x-for="st in availableStaffForCategory(it.category_id)" :key="st.id">
+                                                                            <option :value="st.name" :selected="it.assigned_staff === st.name" x-text="st.name"></option>
+                                                                        </template>
+                                                                    </select>
                                                                 </template>
-                                                            </select>
+                                                                <template x-if="isOrderLockedForPicking(activeOrder)">
+                                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                                                                        <i class="fa-solid fa-user-slash text-[9px] text-slate-400"></i>
+                                                                        <span>Chưa phân công</span>
+                                                                    </span>
+                                                                </template>
+                                                            </div>
                                                         </template>
                                                     </div>
                                                 </template>
@@ -1160,15 +1191,24 @@
                                                 <!-- Case 2: Thành viên tự nhận -->
                                                 <template x-if="!canAssignItem(it)">
                                                     <div>
-                                                        <template x-if="!it.assigned_staff">
-                                                            <button type="button" @click="claimItem(it)"
-                                                                    :disabled="isOrderLockedForPicking(activeOrder)"
-                                                                    class="px-2 py-1 rounded bg-amber-500 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs">
-                                                                <i class="fa-solid fa-hand text-[10px]"></i>
-                                                                <span>Tự nhận</span>
-                                                            </button>
+                                                        <template x-if="!it.assigned_staff || it.assigned_staff === 'null'">
+                                                            <div>
+                                                                <template x-if="!isOrderLockedForPicking(activeOrder)">
+                                                                    <button type="button" @click="claimItem(it)"
+                                                                            class="px-2 py-1 rounded bg-amber-500 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs">
+                                                                        <i class="fa-solid fa-hand text-[10px]"></i>
+                                                                        <span>Tự nhận</span>
+                                                                    </button>
+                                                                </template>
+                                                                <template x-if="isOrderLockedForPicking(activeOrder)">
+                                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                                                                        <i class="fa-solid fa-user-slash text-[9px] text-slate-400"></i>
+                                                                        <span>Chưa phân công</span>
+                                                                    </span>
+                                                                </template>
+                                                            </div>
                                                         </template>
-                                                        <template x-if="it.assigned_staff && it.assigned_staff === currentUserName">
+                                                        <template x-if="it.assigned_staff && it.assigned_staff !== 'null' && it.assigned_staff === currentUserName">
                                                             <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[11px] font-bold border border-emerald-300">
                                                                 <i class="fa-solid fa-check text-[10px]"></i>
                                                                 <span>Tôi phụ trách</span>
@@ -1176,7 +1216,7 @@
                                                                         @click="unclaimItem(it)" class="text-[9px] text-rose-600 underline ml-1 font-semibold">Hủy</button>
                                                             </div>
                                                         </template>
-                                                        <template x-if="it.assigned_staff && it.assigned_staff !== currentUserName">
+                                                        <template x-if="it.assigned_staff && it.assigned_staff !== 'null' && it.assigned_staff !== currentUserName">
                                                             <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[11px] font-medium border border-slate-200" x-text="it.assigned_staff"></span>
                                                         </template>
                                                     </div>
@@ -1184,11 +1224,11 @@
                                             </div>
                                         </div>
 
-                                        <!-- Row 4: Quantities (Cần bốc vs Đã bốc) -->
-                                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 bg-slate-50/80 -mx-3 -mb-3 p-2.5 rounded-b-xl">
+                                        <!-- Row 4: Quantities (Cần bốc vs Đã bốc với Steppers) -->
+                                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 bg-slate-50/80 -mx-3 -mb-3 p-2.5 rounded-b-xl flex-wrap">
                                             <!-- Cần bốc -->
                                             <div class="flex items-center gap-1.5 text-xs">
-                                                <span class="text-slate-500 font-semibold">Cần:</span>
+                                                <span class="text-slate-500 font-bold">Cần:</span>
                                                 <span class="font-mono font-black text-slate-900 text-sm" x-text="Number(it.quantity || 0) + Number(it.gift_quantity || 0)"></span>
                                                 <template x-if="Number(it.gift_quantity || 0) > 0">
                                                     <span class="text-[9px] font-bold text-amber-800 bg-amber-100 px-1 py-0.2 rounded"
@@ -1196,25 +1236,41 @@
                                                 </template>
                                             </div>
 
-                                            <!-- Đã bốc input + button Đủ -->
+                                            <!-- Đã bốc với Steppers [-] [SL] [+] và Nút [Đủ] -->
                                             <div class="flex items-center gap-1.5">
-                                                <span class="text-slate-500 font-semibold text-xs">Đã bốc:</span>
+                                                <span class="text-slate-500 font-semibold text-xs hidden xs:inline">Đã bốc:</span>
                                                 <template x-if="canUserPickItem(it)">
                                                     <div class="flex items-center gap-1">
-                                                        <input type="number" step="any" min="0"
+                                                        <button type="button" @click="decrementPickedQty(it)"
+                                                                :disabled="Number(it.picked_qty || 0) <= 0"
+                                                                class="w-7 h-7 rounded-lg bg-white border border-slate-300 text-slate-700 font-black text-xs flex items-center justify-center active:scale-95 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed shadow-2xs cursor-pointer">
+                                                            <i class="fa-solid fa-minus text-[10px]"></i>
+                                                        </button>
+                                                        <input type="number"
+                                                               :step="isIntegerQty(Number(it.quantity || 0) + Number(it.gift_quantity || 0)) ? '1' : 'any'"
+                                                               :inputmode="isIntegerQty(Number(it.quantity || 0) + Number(it.gift_quantity || 0)) ? 'numeric' : 'decimal'"
+                                                               min="0"
                                                                :max="Number(it.quantity || 0) + Number(it.gift_quantity || 0)"
-                                                               x-model.number="it.picked_qty"
-                                                               @input="validateAndSavePickedQty(it)"
-                                                               class="w-14 p-1 text-center font-mono font-bold text-xs rounded-lg border bg-white focus:outline-none"
-                                                               :class="isItemShort(it) ? 'border-rose-400 text-rose-700 bg-rose-50/50 font-black' : 'border-slate-300 text-slate-900 focus:border-sky-500'">
+                                                               :value="formatQtyInput(it.picked_qty, Number(it.quantity || 0) + Number(it.gift_quantity || 0))"
+                                                               @focus="$event.target.select()"
+                                                               @keydown="if (isIntegerQty(Number(it.quantity || 0) + Number(it.gift_quantity || 0)) && ($event.key === '.' || $event.key === ',')) $event.preventDefault()"
+                                                               @change="it.picked_qty = formatQtyInput($event.target.value, Number(it.quantity || 0) + Number(it.gift_quantity || 0)); $event.target.value = it.picked_qty; validateAndSavePickedQty(it)"
+                                                               @keydown.enter="$event.target.blur()"
+                                                               class="w-14 h-7 p-0.5 text-center font-mono font-black text-xs rounded-lg border border-slate-300 text-slate-900 bg-white focus:border-sky-500 focus:outline-none shadow-2xs">
+                                                        <button type="button" @click="incrementPickedQty(it)"
+                                                                :disabled="Number(it.picked_qty || 0) >= (Number(it.quantity || 0) + Number(it.gift_quantity || 0))"
+                                                                class="w-7 h-7 rounded-lg bg-white border border-slate-300 text-slate-700 font-black text-xs flex items-center justify-center active:scale-95 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed shadow-2xs cursor-pointer">
+                                                            <i class="fa-solid fa-plus text-[10px]"></i>
+                                                        </button>
                                                         <button type="button" @click="pickFullItem(it)"
-                                                                class="px-2.5 py-1 bg-sky-600 active:bg-sky-700 text-white font-black text-xs rounded-lg shadow-2xs">
-                                                            Đủ
+                                                                class="h-7 px-2.5 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-black text-xs rounded-lg shadow-2xs flex items-center gap-1 cursor-pointer ml-0.5">
+                                                            <span>Đủ</span>
                                                         </button>
                                                     </div>
                                                 </template>
                                                 <template x-if="!canUserPickItem(it)">
-                                                    <span class="px-2 py-0.5 bg-slate-200 text-slate-600 font-mono font-bold text-xs rounded flex items-center gap-1">
+                                                    <span class="px-2 py-0.5 bg-slate-200 text-slate-600 font-mono font-bold text-xs rounded flex items-center gap-1"
+                                                          :title="!it.assigned_staff ? 'Chưa phân công' : ('Chỉ ' + it.assigned_staff + ' được sửa')">
                                                         <i class="fa-solid fa-lock text-[9px]"></i>
                                                         <span x-text="Number(it.picked_qty || 0)"></span>
                                                     </span>
@@ -1222,48 +1278,21 @@
                                             </div>
                                         </div>
 
-                                        <!-- Row 5: Shortage reason & report button if short -->
-                                        <template x-if="isItemShort(it)">
-                                            <div class="mt-2 pt-2 border-t border-rose-200 space-y-1.5">
-                                                <div class="flex items-center justify-between text-[11px]">
-                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-800 text-[10px] border border-rose-300">
-                                                        <i class="fa-solid fa-triangle-exclamation text-[9px]"></i>
-                                                        <span x-text="'Thiếu ' + getShortageQty(it) + ' ' + (it.unit || 'cây').toLowerCase()"></span>
-                                                    </span>
-                                                    <button type="button" @click="reportShortageItem(it)"
-                                                            class="text-[10px] text-rose-600 font-bold underline flex items-center gap-1">
-                                                        <i class="fa-solid fa-bell text-[9px]"></i>
-                                                        <span>Báo thiếu</span>
-                                                    </button>
-                                                </div>
-                                                <select x-model="it.shortage_reason"
-                                                        @change="saveItemShortageReason(it)"
-                                                        class="w-full p-1 text-[11px] font-semibold rounded-lg border border-rose-300 bg-white text-slate-800">
-                                                    <option value="Hết hàng trên kệ kho">Hết hàng trên kệ kho</option>
-                                                    <option value="Hàng lỗi / vỡ / hỏng">Hàng lỗi / vỡ / hỏng</option>
-                                                    <option value="Không tìm thấy hàng trong kho">Không tìm thấy hàng trong kho</option>
-                                                    <option value="Chờ lô hàng nhập mới">Chờ lô hàng nhập mới</option>
-                                                    <option value="Lý do khác">Lý do khác</option>
-                                                </select>
-                                            </div>
-                                        </template>
-
                                     </div>
                                 </template>
                             </div>
                         </div>
-                    </template>
+                    </div>
                 </div>
-            </div>
 
                     <!-- =============================================== -->
                     <!-- TAB 2 CONTENT: 2. KIỂM HÀNG (QC SOẠN ĐƠN)     -->
                     <!-- =============================================== -->
                     <div x-show="activeTab === 'qc'" class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden mt-0">
                         
-                        <!-- Panel Header (Tối giản) -->
-                        <div class="px-3.5 py-3 sm:px-5 sm:py-3.5 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                            <div>
+                        <!-- Panel Header (Tối giản, gọn gàng) -->
+                        <div class="px-3.5 py-2.5 sm:px-5 sm:py-3 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-2.5 bg-white">
+                            <div class="min-w-0">
                                 <h3 class="text-sm sm:text-base font-black text-slate-900 tracking-tight flex items-center gap-1.5 flex-wrap">
                                     <span class="text-emerald-700 font-mono" x-text="activeOrder.order_code"></span>
                                     <template x-if="activeOrder.is_consignment">
@@ -1273,12 +1302,13 @@
                                         </span>
                                     </template>
                                     <span class="text-slate-300">|</span>
-                                    <span x-text="activeOrder.customer_name" class="font-bold"></span>
-                                    <span class="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                                        Đang kiểm
+                                    <span x-text="activeOrder.customer_name" class="font-bold truncate"></span>
+                                    <span class="inline-flex px-1.5 py-0.2 rounded-full text-[9px] font-bold border shrink-0"
+                                          :class="activeOrder.stock_deducted || ['Đã kiểm hàng', 'Sẵn sàng xuất xe', 'Đang vận chuyển', 'Đã giao'].includes(activeOrder.status) ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300'"
+                                          x-text="(activeOrder.stock_deducted || ['Đã kiểm hàng', 'Sẵn sàng xuất xe', 'Đang vận chuyển', 'Đã giao'].includes(activeOrder.status)) ? 'Đã kiểm · Đã trừ kho' : 'Đang kiểm'">
                                     </span>
                                 </h3>
-                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500 mt-1">
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500 mt-0.5">
                                     <span>Kho: <strong class="text-slate-700" x-text="activeOrder.warehouse || 'Kho Tổng'"></strong></span>
                                     <span>·</span>
                                     <span>Tiến độ: <strong class="text-emerald-700 font-bold font-mono" x-text="getProgressRatio(activeOrder)"></strong></span>
@@ -1288,21 +1318,51 @@
                                 </div>
                             </div>
 
-                            <!-- Button Xác nhận QC hoàn tất -->
-                            <button type="button" @click="confirmQcAndReadyForDelivery()"
-                                    class="px-3.5 py-1.5 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/20">
-                                <i class="fa-solid fa-shield-check text-xs"></i>
-                                <span>Xác Nhận Đã Kiểm & Bàn Giao Xe</span>
-                            </button>
+                            <!-- Action Buttons QC: Lưu & Giao xe -->
+                            <div class="flex items-center gap-1.5 shrink-0 flex-wrap">
+                                <template x-if="hasUnsavedQc(activeOrder)">
+                                    <span class="px-2 py-1 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black animate-pulse">
+                                        Chưa lưu kiểm
+                                    </span>
+                                </template>
+
+                                <button type="button" @click="saveQcActiveOrder()"
+                                        :disabled="isSavingBatchOrSingle || ['Đang vận chuyển', 'Đã giao', 'Giao thành công'].includes(activeOrder.status)"
+                                        class="px-3 py-1.5 rounded-lg text-xs font-black text-white bg-sky-600 hover:bg-sky-700 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs disabled:opacity-40"
+                                        title="Lưu số lượng kiểm tạm thời">
+                                    <i class="fa-solid fa-floppy-disk text-[11px]"></i>
+                                    <span>Lưu</span>
+                                </button>
+
+                                <button type="button" @click="handoverQcActiveOrderToVehicle()"
+                                        :disabled="!isOrderTransferredToQc(activeOrder) || isSavingBatchOrSingle || ['Đang vận chuyển', 'Đã giao', 'Giao thành công'].includes(activeOrder.status)"
+                                        :title="!isOrderTransferredToQc(activeOrder) ? 'Bên Bốc chưa hoàn tất & bấm Chuyển kiểm! Chưa thể giao xe.' : 'Xác nhận kiểm xong & Giao xe (Trừ tồn kho)'"
+                                        :class="isOrderTransferredToQc(activeOrder) ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer' : 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed'"
+                                        class="px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1 disabled:opacity-70">
+                                    <i class="fa-solid" :class="isOrderTransferredToQc(activeOrder) ? 'fa-truck-fast text-[11px]' : 'fa-lock text-[11px]'"></i>
+                                    <span>Giao xe</span>
+                                </button>
+                            </div>
                         </div>
 
-                        <!-- Sub-bar: QC Inspector & Batch Action (Tối giản) -->
-                        <div class="px-3.5 py-2.5 sm:px-5 sm:py-3 bg-slate-50/90 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-xs">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="font-bold text-slate-600 text-xs">
+                        <!-- Cảnh báo nếu bên Bốc chưa bấm Chuyển kiểm -->
+                        <template x-if="activeOrder && !isOrderTransferredToQc(activeOrder)">
+                            <div class="m-3 p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs flex items-center gap-2 shadow-2xs">
+                                <i class="fa-solid fa-triangle-exclamation text-amber-600 text-sm shrink-0"></i>
+                                <div>
+                                    <div class="font-black text-xs">Chưa bốc xong / Chưa bấm "Chuyển kiểm" — Không được Giao xe!</div>
+                                    <div class="text-[11px] text-amber-800">Chỉ khi bên bốc bấm nút <strong>Chuyển kiểm</strong> thì nút <strong>Giao xe</strong> mới kích hoạt.</div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Sub-bar: QC Inspector & Batch Action (Gọn gàng) -->
+                        <div class="px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-50/90 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="font-bold text-slate-600 text-[11px] shrink-0">
                                     <i class="fa-solid fa-user-shield text-slate-400 mr-1"></i>QC:
                                 </span>
-                                <select x-model="qcInspector" class="p-1 bg-white rounded-lg border border-slate-300 text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
+                                <select x-model="qcInspector" class="p-1 bg-white rounded-lg border border-slate-300 text-[11px] font-bold text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[200px] truncate">
                                     @foreach($staff as $st)
                                         <option value="{{ $st->name }} ({{ $st->department }})">{{ $st->name }} ({{ $st->department }})</option>
                                     @endforeach
@@ -1311,106 +1371,35 @@
 
                             <!-- Button Tích kiểm tất cả -->
                             <button type="button" @click="qcCheckAllActiveOrder()"
-                                    class="px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs">
-                                <i class="fa-solid fa-square-check text-emerald-600 text-xs"></i>
+                                    class="px-2.5 py-1 rounded-lg text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs">
+                                <i class="fa-solid fa-square-check text-emerald-600 text-[11px]"></i>
                                 <span>Tích kiểm tất cả</span>
                             </button>
                         </div>
 
-                        <!-- GROUP-LEVEL PROGRESS TRACKER IN QC TAB (Tối giản) -->
-                        <template x-if="activeOrder && activeOrder.groups_progress && activeOrder.groups_progress.length > 0">
-                            <div class="m-3 sm:m-4 mb-1 p-2.5 sm:p-3 rounded-xl bg-slate-50 border border-slate-200/90 shadow-2xs space-y-2">
-                                <div class="flex items-center justify-between gap-2">
-                                    <div class="flex items-center gap-1.5">
-                                        <i class="fa-solid fa-clipboard-check text-emerald-600 text-xs"></i>
-                                        <span class="text-xs font-black text-slate-800 uppercase tracking-wide">Tiến độ QC nhóm:</span>
-                                        <span class="text-[10px] font-bold text-slate-400 font-mono" x-text="'(' + activeOrder.groups_progress.length + ' nhóm)'"></span>
-                                    </div>
-                                    
-                                    <div class="shrink-0">
-                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border shadow-2xs transition-all"
-                                              :class="isAllGroupsQcCompleted(activeOrder) ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300'">
-                                            <i class="fa-solid" :class="isAllGroupsQcCompleted(activeOrder) ? 'fa-shield-check text-emerald-600' : 'fa-hourglass-half text-amber-600'"></i>
-                                            <span x-text="isAllGroupsQcCompleted(activeOrder) ? '100% ĐẠT QC' : 'ĐANG CHỜ KIỂM'"></span>
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
-                                    <template x-for="grp in activeOrder.groups_progress" :key="grp.group_id">
-                                        <div class="px-2.5 py-1.5 rounded-lg border bg-white flex items-center justify-between text-xs gap-2 shadow-2xs"
-                                             :class="grp.is_qc_completed ? 'border-emerald-200 bg-emerald-50/20' : 'border-amber-200 bg-amber-50/20'">
-                                            <div class="flex items-center gap-1.5 min-w-0">
-                                                <span class="w-1.5 h-1.5 rounded-full shrink-0"
-                                                      :class="grp.is_qc_completed ? 'bg-emerald-500' : 'bg-amber-500'"></span>
-                                                <span class="font-bold text-slate-800 truncate text-[11px]" x-text="grp.group_name"></span>
-                                            </div>
-                                            <div class="flex items-center gap-1.5 shrink-0 font-mono text-[11px]">
-                                                <span class="font-bold text-slate-700" x-text="grp.checked_count + '/' + grp.items_count"></span>
-                                                <span class="px-1.5 py-0.2 rounded text-[9px] font-black"
-                                                      :class="grp.is_qc_completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'"
-                                                      x-text="grp.is_qc_completed ? 'Đạt' : 'Chờ'"></span>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
-                        </template>
-
-                        <!-- Danh sách các Loại sản phẩm kiểm hàng (QC) -->
-                        <div class="space-y-4 p-4 sm:p-5">
-                            <template x-for="catGroup in categorizedActiveItems" :key="catGroup.id">
-                                <div class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-                                    <!-- Category Group Header in QC -->
-                                    <div class="bg-gradient-to-r from-emerald-50/80 via-slate-50 to-emerald-50/40 p-3 sm:px-4 border-b border-emerald-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-                                        <div class="flex items-center gap-2.5 flex-wrap">
-                                            <div class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
-                                                <i class="fa-solid fa-shapes"></i>
-                                            </div>
-                                            <div class="flex items-center gap-2 flex-wrap">
-                                                <span class="font-black text-slate-800 text-xs sm:text-sm uppercase tracking-tight" x-text="catGroup.name"></span>
-                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0"
-                                                      :class="catGroup.isAllPicked ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300'">
-                                                    <span x-text="catGroup.isAllPicked ? '✓ Đã bốc xong (Sẵn sàng kiểm)' : ('⏳ Đang bốc hàng: ' + getCatGroupProgress(catGroup))"></span>
-                                                </span>
-                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0"
-                                                      :class="catGroup.isAllChecked ? 'bg-teal-100 text-teal-800 border-teal-300' : 'bg-slate-100 text-slate-700 border-slate-200'">
-                                                    <i class="fa-solid fa-circle-check text-teal-600 mr-1"></i>
-                                                    <span x-text="'Đã kiểm: ' + catGroup.items.filter(i => i.is_checked).length + '/' + catGroup.items.length + ' món'"></span>
-                                                </span>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Category Action in QC -->
-                                        <div class="flex items-center gap-2 shrink-0">
-                                            <button type="button" @click="qcCheckAllCategory(catGroup)"
-                                                    class="px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-800 bg-white hover:bg-emerald-50 border border-emerald-300 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs">
-                                                <i class="fa-solid fa-check-double text-emerald-600"></i>
-                                                <span x-text="catGroup.isAllPicked ? ('Tích kiểm cả loại ' + catGroup.name) : 'Tích kiểm các món đã bốc'"></span>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Table for this category QC (Desktop) -->
-                                    <div class="hidden lg:block overflow-x-auto">
-                                        <table class="w-full text-left text-xs border-collapse min-w-[1050px]">
-                                            <thead>
-                                                <tr class="bg-slate-50/80 text-slate-600 font-black text-[11px] uppercase tracking-wider border-b border-slate-200">
-                                                    <th class="py-3 px-4 text-center w-12">Đã Kiểm</th>
-                                                    <th class="py-3 px-4">Mã SKU & Tên Sản Phẩm</th>
-                                                    <th class="py-3 px-4">Người Đã Soạn</th>
-                                                    <th class="py-3 px-3 text-center">ĐVT</th>
-                                                    <th class="py-3 px-3 text-center bg-amber-50/40">SL Cần</th>
-                                                    <th class="py-3 px-3 text-center bg-sky-50/40">SL Đã Bốc</th>
-                                                    <th class="py-3 px-3 text-center">Trạng Thái Soạn</th>
-                                                    <th class="py-3 px-4 text-center bg-emerald-50/40">SL Thực Kiểm</th>
-                                                    <th class="py-3 px-3 text-center">Trạng Thái Kiểm</th>
-                                                    <th class="py-3 px-4">Ghi Chú KCS / Tem Kiện</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody class="divide-y divide-slate-100 font-medium">
-                                                <!-- Items inside this category -->
-                                                <template x-for="(it, idx) in catGroup.items" :key="it.id || idx">
+                        <!-- Danh sách mặt hàng kiểm (Dạng phẳng) -->
+                        <div class="p-2.5 sm:p-4">
+                            <div class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+                                <!-- Table (Desktop) -->
+                                <div class="hidden lg:block overflow-x-auto">
+                                    <table class="w-full text-left text-xs border-collapse min-w-[1050px]">
+                                        <thead>
+                                            <tr class="bg-slate-50/80 text-slate-600 font-black text-[11px] uppercase tracking-wider border-b border-slate-200">
+                                                <th class="py-3 px-4 text-center w-12">Đã Kiểm</th>
+                                                <th class="py-3 px-4">Mã SKU & Tên Sản Phẩm</th>
+                                                <th class="py-3 px-4">Người Đã Soạn</th>
+                                                <th class="py-3 px-3 text-center">ĐVT</th>
+                                                <th class="py-3 px-3 text-center bg-amber-50/40">SL Cần</th>
+                                                <th class="py-3 px-3 text-center bg-sky-50/40">SL Đã Bốc</th>
+                                                <th class="py-3 px-3 text-center">Trạng Thái Soạn</th>
+                                                <th class="py-3 px-4 text-center bg-emerald-50/40">SL Thực Kiểm</th>
+                                                <th class="py-3 px-3 text-center">Trạng Thái Kiểm</th>
+                                                <th class="py-3 px-4">Ghi Chú KCS / Tem Kiện</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-100 font-medium">
+                                            <!-- Items inside Order -->
+                                            <template x-for="(it, idx) in filteredActiveItems" :key="it.id || idx">
                                                     <tr class="hover:bg-slate-50/80 transition-colors"
                                                         :class="it.is_checked ? 'bg-emerald-50/30' : ''">
                                                 
@@ -1418,7 +1407,7 @@
                                                 <td class="py-3.5 px-4 text-center">
                                                     <div class="flex flex-col items-center justify-center">
                                                         <input type="checkbox" x-model="it.is_checked"
-                                                               :disabled="!it.is_picked && Number(it.picked_qty || 0) <= 0"
+                                                               :disabled="!isOrderTransferredToQc(activeOrder) && !it.is_picked && Number(it.picked_qty || 0) <= 0"
                                                                :title="(!it.is_picked && Number(it.picked_qty || 0) <= 0) ? 'Mặt hàng này chưa bốc xong. Cần bốc hàng trước khi kiểm.' : 'Tích chọn để xác nhận đạt chuẩn QC'"
                                                                @change="handleQcCheckChange(it)"
                                                                class="w-4 h-4 rounded text-emerald-600 focus:ring-0 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
@@ -1477,9 +1466,16 @@
 
                                                 <!-- SL Thực Kiểm -->
                                                 <td class="py-3.5 px-4 text-center bg-emerald-50/30">
-                                                    <input type="number" step="any" min="0"
-                                                           x-model.number="it.checked_qty"
-                                                           @input.debounce.400ms="saveItemQcQty(it)"
+                                                    <input type="number"
+                                                           :step="isIntegerQty(Number(it.quantity || 0) + Number(it.gift_quantity || 0)) ? '1' : 'any'"
+                                                           :inputmode="isIntegerQty(Number(it.quantity || 0) + Number(it.gift_quantity || 0)) ? 'numeric' : 'decimal'"
+                                                           min="0"
+                                                           :max="isOrderTransferredToQc(activeOrder) ? Number(it.picked_qty || 0) : (Number(it.picked_qty) > 0 ? Number(it.picked_qty) : (Number(it.quantity || 0) + Number(it.gift_quantity || 0)))"
+                                                           :value="formatQtyInput(it.checked_qty, Number(it.quantity || 0) + Number(it.gift_quantity || 0))"
+                                                           @focus="$event.target.select()"
+                                                           @keydown="if (isIntegerQty(Number(it.quantity || 0) + Number(it.gift_quantity || 0)) && ($event.key === '.' || $event.key === ',')) $event.preventDefault()"
+                                                           @change="it.checked_qty = formatQtyInput($event.target.value, Number(it.quantity || 0) + Number(it.gift_quantity || 0)); $event.target.value = it.checked_qty; saveItemQcQty(it)"
+                                                           @keydown.enter="$event.target.blur()"
                                                            class="w-16 p-1.5 text-center font-mono font-bold text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-emerald-500 bg-white">
                                                 </td>
 
@@ -1504,9 +1500,9 @@
                                         </table>
                                     </div>
 
-                                    <!-- Cards for this category QC (Mobile: Thẻ kiểm hàng QC tối ưu điện thoại) -->
-                                    <div class="block lg:hidden p-2.5 space-y-2.5">
-                                        <template x-for="(it, idx) in catGroup.items" :key="it.id || idx">
+                                <!-- Cards (Mobile: Thẻ kiểm hàng QC tối ưu điện thoại) -->
+                                <div class="block lg:hidden p-2.5 space-y-2.5">
+                                    <template x-for="(it, idx) in filteredActiveItems" :key="it.id || idx">
                                             <div class="p-3 rounded-xl border transition-all space-y-2.5"
                                                  :class="it.is_checked ? 'bg-emerald-50/40 border-emerald-300' : 'bg-white border-slate-200 shadow-2xs'">
                                                 
@@ -1514,7 +1510,7 @@
                                                 <div class="flex items-start justify-between gap-2">
                                                     <div class="flex items-center gap-2">
                                                         <input type="checkbox" x-model="it.is_checked"
-                                                               :disabled="!it.is_picked && Number(it.picked_qty || 0) <= 0"
+                                                               :disabled="!isOrderTransferredToQc(activeOrder) && !it.is_picked && Number(it.picked_qty || 0) <= 0"
                                                                @change="handleQcCheckChange(it)"
                                                                class="w-5 h-5 rounded text-emerald-600 focus:ring-0 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
                                                         <div class="flex items-center gap-1.5 flex-wrap">
@@ -1549,22 +1545,51 @@
                                                           x-text="Number(it.picked_qty) >= (Number(it.quantity) + Number(it.gift_quantity || 0)) ? 'Đã bốc đủ' : (Number(it.picked_qty) > 0 ? 'Đang bốc' : 'Chưa bốc')"></span>
                                                 </div>
 
-                                                <!-- Row 4: Quantities (Cần / Đã bốc / Thực kiểm) -->
-                                                <div class="pt-2 border-t border-slate-100 grid grid-cols-3 gap-2 bg-slate-50/80 -mx-3 p-2.5 text-center text-xs">
-                                                    <div>
-                                                        <span class="text-[10px] text-slate-400 block font-medium">SL Cần</span>
-                                                        <span class="font-mono font-black text-slate-800 text-xs" x-text="Number(it.quantity || 0) + Number(it.gift_quantity || 0)"></span>
-                                                    </div>
-                                                    <div>
-                                                        <span class="text-[10px] text-slate-400 block font-medium">Đã bốc</span>
-                                                        <span class="font-mono font-black text-sky-700 text-xs" x-text="Number(it.picked_qty || 0)"></span>
-                                                    </div>
-                                                    <div>
-                                                        <span class="text-[10px] text-emerald-700 block font-bold">Thực kiểm</span>
-                                                        <input type="number" step="any" min="0"
-                                                               x-model.number="it.checked_qty"
-                                                               @input.debounce.400ms="saveItemQcQty(it)"
-                                                               class="w-14 p-1 text-center font-mono font-bold text-xs rounded border border-slate-300 focus:border-emerald-500 bg-white mx-auto">
+                                                <!-- Row 4: Quantities (Cần / Đã bốc / Thực kiểm với Stepper) -->
+                                                <div class="pt-2 border-t border-slate-100 bg-slate-50/80 -mx-3 p-2.5 space-y-2 rounded-b-xl">
+                                                    <div class="flex items-center justify-between text-xs">
+                                                        <div class="flex items-center gap-3">
+                                                            <div>
+                                                                <span class="text-[10px] text-slate-400 block font-medium">Cần</span>
+                                                                <span class="font-mono font-black text-slate-800 text-xs" x-text="Number(it.quantity || 0) + Number(it.gift_quantity || 0)"></span>
+                                                            </div>
+                                                            <div>
+                                                                <span class="text-[10px] text-slate-400 block font-medium">Đã bốc</span>
+                                                                <span class="font-mono font-black text-sky-700 text-xs" x-text="Number(it.picked_qty || 0)"></span>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Thực kiểm với Stepper [-] [SL] [+] [Đủ] -->
+                                                        <div class="flex items-center gap-1">
+                                                            <span class="text-[10px] text-emerald-700 font-bold mr-0.5">Kiểm:</span>
+                                                            <button type="button" @click="decrementCheckedQty(it)"
+                                                                    :disabled="Number(it.checked_qty || 0) <= 0"
+                                                                    class="w-7 h-7 rounded-lg bg-white border border-slate-300 text-slate-700 font-black text-xs flex items-center justify-center active:scale-95 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed shadow-2xs cursor-pointer">
+                                                                <i class="fa-solid fa-minus text-[10px]"></i>
+                                                            </button>
+
+                                                            <input type="number"
+                                                                   :step="isIntegerQty(Number(it.quantity || 0) + Number(it.gift_quantity || 0)) ? '1' : 'any'"
+                                                                   :inputmode="isIntegerQty(Number(it.quantity || 0) + Number(it.gift_quantity || 0)) ? 'numeric' : 'decimal'"
+                                                                   min="0"
+                                                                   :max="isOrderTransferredToQc(activeOrder) ? Number(it.picked_qty || 0) : (Number(it.picked_qty) > 0 ? Number(it.picked_qty) : (Number(it.quantity || 0) + Number(it.gift_quantity || 0)))"
+                                                                   :value="formatQtyInput(it.checked_qty, Number(it.quantity || 0) + Number(it.gift_quantity || 0))"
+                                                                   @focus="$event.target.select()"
+                                                                   @keydown="if (isIntegerQty(Number(it.quantity || 0) + Number(it.gift_quantity || 0)) && ($event.key === '.' || $event.key === ',')) $event.preventDefault()"
+                                                                   @change="it.checked_qty = formatQtyInput($event.target.value, Number(it.quantity || 0) + Number(it.gift_quantity || 0)); $event.target.value = it.checked_qty; saveItemQcQty(it)"
+                                                                   @keydown.enter="$event.target.blur()"
+                                                                   class="w-14 h-7 p-0.5 text-center font-mono font-black text-xs rounded-lg border border-slate-300 focus:border-emerald-500 bg-white shadow-2xs">
+
+                                                            <button type="button" @click="incrementCheckedQty(it)"
+                                                                    class="w-7 h-7 rounded-lg bg-white border border-slate-300 text-slate-700 font-black text-xs flex items-center justify-center active:scale-95 hover:bg-slate-100 shadow-2xs cursor-pointer">
+                                                                <i class="fa-solid fa-plus text-[10px]"></i>
+                                                            </button>
+
+                                                            <button type="button" @click="checkFullItemQc(it)"
+                                                                    class="h-7 px-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs rounded-lg shadow-2xs flex items-center gap-1 cursor-pointer ml-0.5">
+                                                                <span>Đủ</span>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -1580,12 +1605,9 @@
                                         </template>
                                     </div>
                                 </div>
-                            </template>
+                            </div>
                         </div>
-
                     </div>
-
-                </div>
             </template>
 
             <!-- ======================================================== -->
@@ -1596,44 +1618,65 @@
                     <!-- ======================================================== -->
                     <!-- TAB 1: BỐC HÀNG GỘP (BATCH PICKING WORKSPACE)             -->
                     <!-- ======================================================== -->
-                    <div x-show="activeTab === 'picking'" class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden p-5 space-y-4 mt-0">
+                    <div x-show="activeTab === 'picking'" class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden p-3 sm:p-5 space-y-3 sm:space-y-4 mt-0">
                         
-                        <!-- 1. Header Toolbar (Matching user screenshot) -->
-                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-3 border-b border-slate-100">
+                        <!-- 1. Header Toolbar (Responsive & Tối ưu mobile) -->
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2.5 pb-3 border-b border-slate-100">
                             <div>
-                                <div class="flex items-center gap-2.5 flex-wrap">
-                                    <h3 class="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <h3 class="text-sm sm:text-base font-black text-slate-900 tracking-tight flex items-center gap-1.5">
                                         <i class="fa-solid fa-layer-group text-sky-600"></i>
                                         <span x-text="'Danh Sách Hàng Hóa Gộp Soạn Bốc (' + aggregatedItems.length + ' mặt hàng)'"></span>
                                     </h3>
-                                    <span class="px-2.5 py-0.5 bg-sky-50 text-sky-700 border border-sky-200 rounded-full font-bold text-xs"
+                                    <span class="px-2 py-0.5 bg-sky-50 text-sky-700 border border-sky-200 rounded-full font-bold text-[11px]"
                                           x-text="selectedBatchOrderIds.length + ' đơn đã chọn'"></span>
                                 </div>
-                                <p class="text-xs text-slate-500 mt-1">Tự động gom vật tư cùng mã SKU, cộng dồn số lượng cần bốc từ các đơn đã chọn bên trái.</p>
+                                <p class="text-[11px] sm:text-xs text-slate-500 mt-0.5">Tự động gom vật tư cùng mã SKU, cộng dồn số lượng cần bốc từ các đơn đã chọn.</p>
                             </div>
 
-                            <!-- Button Hoàn Tất Bốc Cả Lô & Chuyển Kiểm Hàng -->
-                            <div>
+                            <!-- Action Buttons Lô Gộp: Bốc đủ lô, Lưu, Chuyển kiểm -->
+                            <div class="flex flex-wrap items-center gap-2">
+                                <template x-if="hasAnyUnsavedBatchPicking">
+                                    <span class="px-2 py-1 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black animate-pulse">
+                                        Chưa lưu SL lô
+                                    </span>
+                                </template>
+
+                                <button type="button" @click="quickPickAllBatchOrders()"
+                                        :disabled="isSavingBatchOrSingle"
+                                        class="flex-1 sm:flex-none px-3 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300 font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40">
+                                    <i class="fa-solid fa-bolt-lightning text-xs"></i>
+                                    <span>Bốc đủ cả lô</span>
+                                </button>
+
+                                <button type="button" @click="saveBatchPickingOrders()"
+                                        :disabled="isSavingBatchOrSingle"
+                                        class="flex-1 sm:flex-none px-4 py-2 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40">
+                                    <i class="fa-solid fa-floppy-disk text-xs"></i>
+                                    <span>Lưu</span>
+                                </button>
+
                                 <button type="button" @click="completeAllBatchOrders()"
-                                        class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer">
-                                    <i class="fa-solid fa-circle-check text-sm"></i>
-                                    <span>Hoàn Tất Bốc Cả Lô & Chuyển Kiểm Hàng</span>
+                                        :disabled="isSavingBatchOrSingle"
+                                        class="w-full sm:w-auto px-4 py-2 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40">
+                                    <i class="fa-solid fa-right-to-bracket text-xs"></i>
+                                    <span>Chuyển kiểm</span>
                                 </button>
                             </div>
                         </div>
 
                         <!-- 2. Batch Staff Assignment Toolbar (Giao cả lô cho) -->
-                        <div class="bg-slate-50/80 p-3 rounded-xl border border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-                            <div class="flex items-center gap-2.5 flex-wrap">
-                                <span class="font-bold text-slate-700 flex items-center gap-1.5">
+                        <div class="bg-slate-50/90 p-2.5 sm:p-3 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-bold text-slate-700 flex items-center gap-1.5 shrink-0 text-[11px] sm:text-xs">
                                     <i class="fa-solid fa-user-plus text-sky-600"></i>
-                                    <span>Giao cả lô cho:</span>
+                                    <span>Giao cả lô:</span>
                                 </span>
 
-                                <div class="relative">
+                                <div class="relative flex-1 sm:flex-none min-w-[170px]">
                                     <select x-model="batchAssignStaff" @change="if(batchAssignStaff) assignBatchAll(batchAssignStaff)"
-                                            class="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:outline-none focus:border-sky-500 shadow-2xs cursor-pointer min-w-[200px]">
-                                        <option value="">-- Tìm tên nhân sự giao cả lô... --</option>
+                                            class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:outline-none focus:border-sky-500 shadow-2xs cursor-pointer">
+                                        <option value="">-- Tìm nhân sự giao cả lô --</option>
                                         <template x-for="st in staffList" :key="st.id">
                                             <option :value="st.name" x-text="st.name + (st.department ? ' (' + st.department + ')' : '')"></option>
                                         </template>
@@ -1641,23 +1684,23 @@
                                 </div>
 
                                 <button type="button" @click="claimBatchAll()"
-                                        class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer">
+                                        class="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer shrink-0 text-xs">
                                     <i class="fa-solid fa-phone text-xs"></i>
                                     <span>Tự nhận cả lô</span>
                                 </button>
                             </div>
 
-                            <div>
+                            <div class="flex justify-end">
                                 <button type="button" @click="unassignBatchAll()"
-                                        class="px-3 py-1.5 border border-rose-300 hover:bg-rose-50 text-rose-600 font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer">
+                                        class="w-full sm:w-auto px-2.5 py-1.5 border border-rose-300 hover:bg-rose-50 text-rose-600 font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer text-xs">
                                     <i class="fa-solid fa-rotate-left text-xs"></i>
                                     <span>Hủy phân công cả lô</span>
                                 </button>
                             </div>
                         </div>
 
-                        <!-- 3. Aggregated Items Table for Picking -->
-                        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                        <!-- 3. Aggregated Items Table for Desktop (Ẩn trên mobile) -->
+                        <div class="hidden lg:block overflow-x-auto border border-slate-200 rounded-xl">
                             <table class="w-full text-left text-xs border-collapse min-w-[900px]">
                                 <thead>
                                     <tr class="bg-slate-50 text-slate-600 font-black text-[11px] uppercase tracking-wider border-b border-slate-200">
@@ -1668,7 +1711,6 @@
                                                    class="w-4 h-4 rounded text-sky-600 border-slate-300 focus:ring-sky-500 cursor-pointer">
                                         </th>
                                         <th class="py-3 px-4">MÃ SKU, TÊN VẬT TƯ & ĐƠN ĐÓNG GÓP</th>
-                                        <th class="py-3 px-3 text-center">KHO XUẤT</th>
                                         <th class="py-3 px-4">NGƯỜI SOẠN HÀNG (GIAO NHIỀU NGƯỜI)</th>
                                         <th class="py-3 px-2 text-center w-16">ĐVT</th>
                                         <th class="py-3 px-3 text-center w-24 bg-amber-50 font-black text-slate-800">TỔNG CẦN BỐC</th>
@@ -1688,25 +1730,22 @@
                                             </td>
 
                                             <!-- MÃ SKU, TÊN VẬT TƯ & ĐƠN ĐÓNG GÓP -->
-                                            <td class="py-3.5 px-4 space-y-1">
-                                                <div class="font-mono font-bold text-[11px] text-slate-500 uppercase" x-text="ag.sku"></div>
-                                                <div class="font-black text-slate-900 text-xs sm:text-[13px]" x-text="ag.name"></div>
+                                            <td class="py-3.5 px-4 space-y-1.5">
+                                                <div class="flex items-center gap-2 flex-wrap">
+                                                    <span class="font-mono font-bold text-xs text-sky-800 bg-sky-50 px-2 py-0.5 rounded border border-sky-200 uppercase whitespace-nowrap" x-text="ag.sku"></span>
+                                                    <span class="font-black text-slate-900 text-xs sm:text-[13px]" x-text="ag.name"></span>
+                                                </div>
                                                 <div class="text-[11px] text-slate-500 font-normal flex flex-wrap items-center gap-1.5">
-                                                    <span class="font-bold text-slate-600" x-text="'Gồm ' + ag.contributingOrders.length + ' đơn:'"></span>
-                                                    <template x-for="(c, cIdx) in ag.contributingOrders" :key="c.orderId">
-                                                        <span class="inline-flex items-center gap-1 font-mono text-[10px]">
+                                                    <span class="font-bold text-slate-600 shrink-0" x-text="'Gồm ' + ag.contributingOrders.length + ' đơn:'"></span>
+                                                    <template x-for="c in ag.contributingOrders" :key="c.orderId">
+                                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border font-mono text-[11px] whitespace-nowrap shadow-2xs"
+                                                              :class="c.pickedQty < c.totalReq && ag.totalPicked < ag.totalRequired ? 'bg-amber-50 border-amber-300' : 'bg-white border-slate-200'">
                                                             <span class="text-sky-700 font-bold" x-text="c.orderCode"></span>:
-                                                            <span class="text-slate-800 font-bold" x-text="c.totalReq + ' ' + (ag.unit || '').toLowerCase()"></span>
-                                                            <span x-show="cIdx < ag.contributingOrders.length - 1" class="text-slate-300 mx-0.5 font-sans">|</span>
+                                                            <span class="font-extrabold" :class="c.pickedQty < c.totalReq && ag.totalPicked < ag.totalRequired ? 'text-amber-800' : 'text-slate-900'"
+                                                                  x-text="formatQtyInput(c.pickedQty, c.totalReq) + '/' + formatQtyInput(c.totalReq, c.totalReq) + ' ' + (ag.unit || '').toLowerCase()"></span>
                                                         </span>
                                                     </template>
                                                 </div>
-                                            </td>
-
-                                            <!-- KHO XUẤT -->
-                                            <td class="py-3.5 px-3 text-center">
-                                                <span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 font-semibold text-[11px] border border-slate-200 whitespace-nowrap"
-                                                      x-text="ag.warehouse"></span>
                                             </td>
 
                                             <!-- NGƯỜI SOẠN HÀNG (GIAO NHIỀU NGƯỜI) -->
@@ -1749,10 +1788,16 @@
                                             <!-- TỔNG ĐÃ BỐC -->
                                             <td class="py-3.5 px-3 text-center bg-sky-50/40">
                                                 <div class="flex items-center justify-center gap-1.5">
-                                                    <input type="number" step="any" min="0" :max="ag.totalRequired"
-                                                           :value="ag.totalPicked"
-                                                           @change="if (Number($event.target.value) < ag.totalRequired && ag.contributingOrders.length > 1) { ag.totalPicked = Number($event.target.value); openVehicleShortageModal(ag); } else { updateBatchItemPickedQty(ag, $event.target.value); }"
-                                                           class="w-14 p-1 text-center font-mono font-bold text-xs rounded-lg border border-slate-300 text-slate-900 bg-white focus:outline-none focus:border-sky-500 shadow-2xs">
+                                                    <input type="number"
+                                                           :step="isIntegerQty(ag.totalRequired) ? '1' : 'any'"
+                                                           :inputmode="isIntegerQty(ag.totalRequired) ? 'numeric' : 'decimal'"
+                                                           min="0" :max="ag.totalRequired"
+                                                           :value="formatQtyInput(ag.totalPicked, ag.totalRequired)"
+                                                           @focus="$event.target.select()"
+                                                           @keydown="if (isIntegerQty(ag.totalRequired) && ($event.key === '.' || $event.key === ',')) $event.preventDefault()"
+                                                           @change="let cleanVal = formatQtyInput($event.target.value, ag.totalRequired); $event.target.value = cleanVal; updateBatchItemPickedQty(ag, cleanVal)"
+                                                           @keydown.enter="$event.target.blur()"
+                                                           class="w-16 p-1 text-center font-mono font-bold text-xs rounded-lg border border-slate-300 text-slate-900 bg-white focus:outline-none focus:border-sky-500 shadow-2xs">
                                                     
                                                     <button type="button" @click="pickFullBatchItem(ag)"
                                                             class="px-2 py-1 font-bold text-[11px] rounded-lg transition-colors cursor-pointer shadow-2xs border"
@@ -1769,13 +1814,13 @@
                                                     <span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border"
                                                           :class="ag.badgeClass"
                                                           x-text="ag.status"></span>
-                                                    <template x-if="ag.totalPicked < ag.totalRequired && ag.totalRequired > 0">
+                                                    <template x-if="ag.totalPicked < ag.totalRequired && ag.totalRequired > 0 && ag.contributingOrders.length > 1">
                                                         <button type="button" 
                                                                 @click="openVehicleShortageModal(ag)"
-                                                                class="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold text-[10px] shadow-xs flex items-center gap-1 cursor-pointer transition-all"
-                                                                title="Bốc thiếu: Tự phân bổ số lượng cho từng đơn trên xe và tự động cắt đơn nợ">
+                                                                class="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold text-[10.5px] shadow-xs flex items-center gap-1 cursor-pointer transition-all"
+                                                                title="Bốc thiếu: Chia số lượng thực bốc cho từng đơn hàng trong lô">
                                                             <i class="fa-solid fa-arrows-split-up-and-left text-[9px]"></i>
-                                                            <span>Phân bổ xe</span>
+                                                            <span>Phân bổ đơn</span>
                                                         </button>
                                                     </template>
                                                 </div>
@@ -1786,69 +1831,249 @@
                             </table>
                         </div>
 
+                        <!-- 4. Mobile Aggregated Items Cards (Chuyên dụng cho điện thoại) -->
+                        <div class="block lg:hidden space-y-2.5">
+                            <!-- Mobile Select All Toolbar -->
+                            <div class="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 text-xs">
+                                <label class="flex items-center gap-2 cursor-pointer font-bold text-slate-700">
+                                    <input type="checkbox"
+                                           :checked="selectedAggregatedSkus.length > 0 && selectedAggregatedSkus.length === aggregatedItems.length"
+                                           @change="toggleSelectAllAggregated($event.target.checked)"
+                                           class="w-4 h-4 rounded text-sky-600 border-slate-300 focus:ring-sky-500 cursor-pointer">
+                                    <span>Chọn tất cả (<span x-text="aggregatedItems.length"></span> SP)</span>
+                                </label>
+                                <span class="text-[11px] font-mono font-bold text-sky-700" x-text="'Đã chọn: ' + selectedAggregatedSkus.length"></span>
+                            </div>
+
+                            <template x-for="ag in aggregatedItems" :key="'m_pick_' + ag.sku">
+                                <div class="p-3 rounded-2xl border transition-all space-y-2.5 shadow-2xs"
+                                     :class="ag.isFullyPicked 
+                                         ? 'border-emerald-300 bg-emerald-50/25 ring-1 ring-emerald-300/40' 
+                                         : (ag.totalPicked > 0 
+                                             ? 'border-amber-300 bg-amber-50/25' 
+                                             : 'border-slate-200/90 bg-white')">
+                                    
+                                    <!-- Row 1: Checkbox + SKU / Mã đơn + Unit + Status (Bỏ hiển thị kho theo yêu cầu) -->
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div class="flex items-center gap-2 flex-wrap min-w-0">
+                                            <input type="checkbox" :value="ag.sku" x-model="selectedAggregatedSkus"
+                                                   class="w-5 h-5 rounded text-sky-600 border-slate-300 focus:ring-sky-500 cursor-pointer shrink-0">
+                                            <span class="font-mono font-black text-sky-800 text-xs sm:text-sm whitespace-nowrap" x-text="ag.sku"></span>
+                                            
+                                            <!-- Nếu gom từ 1 đơn thì hiển thị luôn mã đơn hàng đầy đủ ngay tại hàng đầu -->
+                                            <template x-if="ag.contributingOrders && ag.contributingOrders.length === 1">
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-sky-50 text-sky-800 border border-sky-200 font-mono font-bold text-[11px] whitespace-nowrap">
+                                                    <i class="fa-solid fa-file-invoice text-[9px] text-sky-600"></i>
+                                                    <span x-text="ag.contributingOrders[0].orderCode"></span>
+                                                </span>
+                                            </template>
+                                        </div>
+                                        <div class="shrink-0 flex items-center justify-end">
+                                            <span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border"
+                                                  :class="ag.badgeClass"
+                                                  x-text="ag.status"></span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Row 2: Product Name -->
+                                    <div class="text-xs sm:text-sm font-black text-slate-900 leading-snug" x-text="ag.name"></div>
+
+                                    <!-- Row 3: Contributing Orders Chips (Hiển thị đầy đủ mã đơn hàng) -->
+                                    <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs space-y-1.5">
+                                        <div class="text-[10.5px] font-bold text-slate-600 flex items-center justify-between">
+                                            <span x-text="'Gồm ' + ag.contributingOrders.length + ' đơn hàng:'"></span>
+                                        </div>
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <template x-for="c in ag.contributingOrders" :key="c.orderId">
+                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs shadow-2xs whitespace-nowrap"
+                                                      :class="c.pickedQty < c.totalReq && ag.totalPicked < ag.totalRequired ? 'bg-amber-50 border-amber-300' : 'bg-white border-sky-200'">
+                                                    <span class="font-mono font-black text-sky-700 tracking-tight" x-text="c.orderCode"></span>
+                                                    <span class="text-slate-300">:</span>
+                                                    <span class="font-bold" :class="c.pickedQty < c.totalReq && ag.totalPicked < ag.totalRequired ? 'text-amber-800' : 'text-slate-900'"
+                                                          x-text="formatQtyInput(c.pickedQty, c.totalReq) + '/' + formatQtyInput(c.totalReq, c.totalReq) + ' ' + (ag.unit || '').toLowerCase()"></span>
+                                                </span>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <!-- Row 4: Assigned Staff (Người soạn) -->
+                                    <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 text-xs">
+                                        <div class="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+                                            <span class="text-[11px] text-slate-400 font-medium shrink-0">Soạn:</span>
+                                            <div class="flex flex-wrap items-center gap-1 min-w-0">
+                                                <template x-for="stName in ag.assignedStaffList" :key="stName">
+                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-950 font-bold text-[10px] border border-amber-300">
+                                                        <span x-text="stName === currentUserName ? stName + ' (Tôi)' : stName"></span>
+                                                        <button type="button" @click="unassignBatchItemStaff(ag, stName)" class="hover:text-rose-600 cursor-pointer font-black ml-0.5">&times;</button>
+                                                    </span>
+                                                </template>
+                                                <select @change="if($event.target.value) { assignBatchItemStaff(ag, $event.target.value); $event.target.value = ''; }"
+                                                        class="px-2 py-1 text-[10px] rounded-lg border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-sky-500 shadow-2xs cursor-pointer">
+                                                    <option value="" x-text="ag.assignedStaffList && ag.assignedStaffList.length > 0 ? '+ Thêm người' : 'Giao người soạn'"></option>
+                                                    <template x-for="st in staffList" :key="st.id">
+                                                        <option :value="st.name" x-text="st.name"></option>
+                                                    </template>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <template x-if="!ag.assignedStaffList || !ag.assignedStaffList.includes(currentUserName)">
+                                            <button type="button" @click="claimBatchItem(ag)"
+                                                    class="px-2 py-1 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold text-[10px] rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 shrink-0">
+                                                <i class="fa-solid fa-phone text-[8px]"></i>
+                                                <span>Tự nhận</span>
+                                            </button>
+                                        </template>
+                                    </div>
+
+                                    <!-- Row 5: Quantities Stepper & Actions -->
+                                    <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-100">
+                                        <div class="text-xs">
+                                            <div class="text-[10px] text-slate-400 font-bold uppercase">CẦN BỐC</div>
+                                            <div class="font-mono font-black text-slate-900 text-sm" x-text="ag.totalRequired + ' ' + (ag.unit || '')"></div>
+                                        </div>
+
+                                        <div class="flex items-center gap-1.5">
+                                            <div class="text-right mr-0.5">
+                                                <div class="text-[10px] text-slate-400 font-bold uppercase">ĐÃ BỐC</div>
+                                            </div>
+                                            <!-- Stepper: Trừ / Input / Cộng / Đủ -->
+                                            <div class="flex items-center gap-1">
+                                                <button type="button" 
+                                                        @click="let val = Math.max(0, (Number(ag.totalPicked) || 0) - 1); updateBatchItemPickedQty(ag, val);"
+                                                        class="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 font-black text-slate-700 flex items-center justify-center shadow-2xs cursor-pointer text-xs active:scale-95">
+                                                    -
+                                                </button>
+                                                <input type="number"
+                                                       :step="isIntegerQty(ag.totalRequired) ? '1' : 'any'"
+                                                       :inputmode="isIntegerQty(ag.totalRequired) ? 'numeric' : 'decimal'"
+                                                       min="0" :max="ag.totalRequired"
+                                                       :value="formatQtyInput(ag.totalPicked, ag.totalRequired)"
+                                                       @focus="$event.target.select()"
+                                                       @keydown="if (isIntegerQty(ag.totalRequired) && ($event.key === '.' || $event.key === ',')) $event.preventDefault()"
+                                                       @change="let cleanVal = formatQtyInput($event.target.value, ag.totalRequired); $event.target.value = cleanVal; updateBatchItemPickedQty(ag, cleanVal)"
+                                                       @keydown.enter="$event.target.blur()"
+                                                       class="w-14 p-1 text-center font-mono font-black text-xs rounded-lg border border-slate-300 text-slate-900 bg-white focus:outline-none focus:border-sky-500 shadow-2xs">
+                                                <button type="button" 
+                                                        @click="let val = Math.min(ag.totalRequired, (Number(ag.totalPicked) || 0) + 1); updateBatchItemPickedQty(ag, val);"
+                                                        class="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 font-black text-slate-700 flex items-center justify-center shadow-2xs cursor-pointer text-xs active:scale-95">
+                                                    +
+                                                </button>
+                                                <button type="button" @click="pickFullBatchItem(ag)"
+                                                        class="px-2.5 py-1 font-bold text-[11px] rounded-lg transition-all cursor-pointer shadow-2xs border active:scale-95"
+                                                        :class="ag.isFullyPicked ? 'bg-sky-600 text-white border-sky-600' : 'bg-white hover:bg-sky-50 text-slate-700 border-slate-300'">
+                                                    Đủ
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Nút Phân bổ đơn nếu bốc thiếu ở gộp nhiều đơn -->
+                                    <template x-if="ag.totalPicked < ag.totalRequired && ag.totalRequired > 0 && ag.contributingOrders.length > 1">
+                                        <div>
+                                            <button type="button" 
+                                                    @click="openVehicleShortageModal(ag)"
+                                                    class="w-full py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold text-xs shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all">
+                                                <i class="fa-solid fa-arrows-split-up-and-left text-xs"></i>
+                                                <span>Phân bổ đơn (chia SL bốc thiếu cho từng đơn)</span>
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+
                     </div>
 
                     <!-- ======================================================== -->
                     <!-- TAB 2: KIỂM HÀNG GỘP (BATCH QC WORKSPACE)                 -->
                     <!-- ======================================================== -->
-                    <div x-show="activeTab === 'qc'" class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden p-5 space-y-4 mt-0">
+                    <div x-show="activeTab === 'qc'" class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden p-3 sm:p-5 space-y-3 sm:space-y-4 mt-0">
                         
-                        <!-- 1. Header Toolbar for Batch QC -->
-                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-3 border-b border-slate-100">
+                        <!-- 1. Header Toolbar for Batch QC (Responsive & Tối ưu mobile) -->
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2.5 pb-3 border-b border-slate-100">
                             <div>
-                                <div class="flex items-center gap-2.5 flex-wrap">
-                                    <h3 class="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <h3 class="text-sm sm:text-base font-black text-slate-900 tracking-tight flex items-center gap-1.5">
                                         <i class="fa-solid fa-clipboard-check text-emerald-600"></i>
                                         <span x-text="'Kiểm Tra Hàng Hóa Gộp QC (' + aggregatedItems.length + ' mặt hàng)'"></span>
                                     </h3>
-                                    <span class="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-bold text-xs"
+                                    <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-bold text-[11px]"
                                           x-text="selectedBatchOrderIds.length + ' đơn đã chọn'"></span>
                                 </div>
-                                <p class="text-xs text-slate-500 mt-1">Kiểm tra, đối soát chất lượng và số lượng hàng hóa gom lô từ các đơn đã chọn trước khi xuất bến.</p>
+                                <p class="text-[11px] sm:text-xs text-slate-500 mt-0.5">Kiểm tra, đối soát chất lượng và số lượng hàng hóa gom lô trước khi xuất bến.</p>
                             </div>
 
-                            <!-- Button Hoàn Tất Kiểm Cả Lô & Chuyển Xuất Xe -->
-                            <div>
+                            <!-- Action Buttons Batch QC: Lưu & Giao xe -->
+                            <div class="flex flex-wrap items-center gap-2">
+                                <template x-if="hasAnyUnsavedBatchQc">
+                                    <span class="px-2 py-1 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black animate-pulse">
+                                        Chưa lưu kiểm
+                                    </span>
+                                </template>
+
+                                <button type="button" @click="saveBatchQcOrders()"
+                                        :disabled="isSavingBatchOrSingle"
+                                        class="flex-1 sm:flex-none px-4 py-2 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40">
+                                    <i class="fa-solid fa-floppy-disk text-xs"></i>
+                                    <span>Lưu</span>
+                                </button>
+
                                 <button type="button" @click="completeAllBatchQcOrders()"
-                                        class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer">
-                                    <i class="fa-solid fa-truck-fast text-sm"></i>
-                                    <span>Hoàn Tất Kiểm Cả Lô & Chuyển Xuất Xe</span>
+                                        :disabled="!canHandoverBatchQcToVehicle || isSavingBatchOrSingle"
+                                        :title="!canHandoverBatchQcToVehicle ? 'Còn đơn trong lô chưa bấm Chuyển kiểm bên Bốc! Không thể giao xe.' : 'Hoàn tất kiểm cả lô & Giao xe'"
+                                        :class="canHandoverBatchQcToVehicle ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-xs' : 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed'"
+                                        class="w-full sm:w-auto px-4 py-2 active:scale-95 font-black text-xs rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-75">
+                                    <i class="fa-solid" :class="canHandoverBatchQcToVehicle ? 'fa-truck-fast text-sm' : 'fa-lock text-xs'"></i>
+                                    <span>Giao xe</span>
                                 </button>
                             </div>
                         </div>
 
+                        <!-- Cảnh báo nếu có đơn trong lô chưa chuyển kiểm -->
+                        <template x-if="batchOrders.length > 0 && pendingTransferBatchOrders.length > 0">
+                            <div class="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs flex items-start gap-2.5 shadow-2xs">
+                                <i class="fa-solid fa-triangle-exclamation text-amber-600 text-base mt-0.5 shrink-0"></i>
+                                <div>
+                                    <div class="font-black">Chưa thể Giao xe — Còn <span x-text="pendingTransferBatchOrders.length"></span> đơn chưa bốc xong / chưa bấm "Chuyển kiểm"!</div>
+                                    <div class="text-[11px] text-amber-800 mt-0.5">
+                                        Các đơn chưa chuyển kiểm: <strong class="font-mono" x-text="pendingTransferBatchOrders.map(o => o.order_code).join(', ')"></strong>.
+                                        Vui lòng quay lại tab <strong>Soạn hàng</strong> bấm <strong>Chuyển kiểm</strong> trước khi Giao xe.
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
                         <!-- 2. Batch QC Action Toolbar -->
-                        <div class="bg-emerald-50/60 p-3 rounded-xl border border-emerald-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-                            <div class="flex items-center gap-2.5 flex-wrap">
+                        <div class="bg-emerald-50/70 p-2.5 sm:p-3 rounded-xl border border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                            <div class="flex items-center gap-2 flex-wrap">
                                 <button type="button" @click="qcCheckAllBatchItems()"
-                                        class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-2xs flex items-center gap-1.5 cursor-pointer">
+                                        class="flex-1 sm:flex-none px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-lg shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer text-xs">
                                     <i class="fa-solid fa-check-double text-xs"></i>
-                                    <span>Tích kiểm toàn bộ lô hàng</span>
+                                    <span>Tích kiểm toàn bộ lô</span>
                                 </button>
 
-                                <span class="px-2.5 py-1 bg-white border border-emerald-200 rounded-lg text-emerald-900 font-bold flex items-center gap-1.5 shadow-2xs">
+                                <span class="px-2.5 py-1 bg-white border border-emerald-200 rounded-lg text-emerald-900 font-bold flex items-center gap-1.5 shadow-2xs text-[11px] sm:text-xs">
                                     <i class="fa-solid fa-user-check text-emerald-600"></i>
-                                    <span>Người kiểm tra: <strong x-text="qcInspector"></strong></span>
+                                    <span class="truncate">Người kiểm tra: <strong x-text="qcInspector"></strong></span>
                                 </span>
                             </div>
 
-                            <div>
+                            <div class="flex justify-end">
                                 <button type="button" @click="uncheckAllBatchItems()"
-                                        class="px-3 py-1.5 border border-slate-300 hover:bg-slate-100 text-slate-600 font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer">
+                                        class="w-full sm:w-auto px-2.5 py-1.5 border border-slate-300 hover:bg-slate-100 text-slate-600 font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer text-xs">
                                     <i class="fa-solid fa-rotate-left text-xs"></i>
                                     <span>Bỏ tích kiểm cả lô</span>
                                 </button>
                             </div>
                         </div>
 
-                        <!-- 3. Batch QC Table -->
-                        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                        <!-- 3. Batch QC Table for Desktop (Ẩn trên mobile) -->
+                        <div class="hidden lg:block overflow-x-auto border border-slate-200 rounded-xl">
                             <table class="w-full text-left text-xs border-collapse min-w-[1050px]">
                                 <thead>
                                     <tr class="bg-slate-50 text-slate-600 font-black text-[11px] uppercase tracking-wider border-b border-slate-200">
                                         <th class="py-3 px-3 w-12 text-center">ĐÃ KIỂM</th>
                                         <th class="py-3 px-4">MÃ SKU, TÊN VẬT TƯ & ĐƠN ĐÓNG GÓP</th>
-                                        <th class="py-3 px-3 text-center">KHO XUẤT</th>
                                         <th class="py-3 px-4">NGƯỜI ĐÃ SOẠN</th>
                                         <th class="py-3 px-2 text-center w-16">ĐVT</th>
                                         <th class="py-3 px-3 text-center w-24 bg-amber-50 font-black text-slate-800">TỔNG CẦN</th>
@@ -1871,25 +2096,20 @@
                                             </td>
 
                                             <!-- MÃ SKU, TÊN VẬT TƯ & ĐƠN ĐÓNG GÓP -->
-                                            <td class="py-3.5 px-4 space-y-1">
-                                                <div class="font-mono font-bold text-[11px] text-slate-500 uppercase" x-text="ag.sku"></div>
-                                                <div class="font-black text-slate-900 text-xs sm:text-[13px]" x-text="ag.name"></div>
+                                            <td class="py-3.5 px-4 space-y-1.5">
+                                                <div class="flex items-center gap-2 flex-wrap">
+                                                    <span class="font-mono font-bold text-xs text-sky-800 bg-sky-50 px-2 py-0.5 rounded border border-sky-200 uppercase whitespace-nowrap" x-text="ag.sku"></span>
+                                                    <span class="font-black text-slate-900 text-xs sm:text-[13px]" x-text="ag.name"></span>
+                                                </div>
                                                 <div class="text-[11px] text-slate-500 font-normal flex flex-wrap items-center gap-1.5">
-                                                    <span class="font-bold text-slate-600" x-text="'Gồm ' + ag.contributingOrders.length + ' đơn:'"></span>
-                                                    <template x-for="(c, cIdx) in ag.contributingOrders" :key="c.orderId">
-                                                        <span class="inline-flex items-center gap-1 font-mono text-[10px]">
+                                                    <span class="font-bold text-slate-600 shrink-0" x-text="'Gồm ' + ag.contributingOrders.length + ' đơn:'"></span>
+                                                    <template x-for="c in ag.contributingOrders" :key="c.orderId">
+                                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-slate-200 font-mono text-[11px] whitespace-nowrap shadow-2xs">
                                                             <span class="text-sky-700 font-bold" x-text="c.orderCode"></span>:
-                                                            <span class="text-slate-800 font-bold" x-text="c.totalReq + ' ' + (ag.unit || '').toLowerCase()"></span>
-                                                            <span x-show="cIdx < ag.contributingOrders.length - 1" class="text-slate-300 mx-0.5 font-sans">|</span>
+                                                            <span class="text-slate-900 font-extrabold" x-text="c.totalReq + ' ' + (ag.unit || '').toLowerCase()"></span>
                                                         </span>
                                                     </template>
                                                 </div>
-                                            </td>
-
-                                            <!-- KHO XUẤT -->
-                                            <td class="py-3.5 px-3 text-center">
-                                                <span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 font-semibold text-[11px] border border-slate-200 whitespace-nowrap"
-                                                      x-text="ag.warehouse"></span>
                                             </td>
 
                                             <!-- NGƯỜI ĐÃ SOẠN -->
@@ -1930,9 +2150,15 @@
                                             <!-- SL THỰC KIỂM -->
                                             <td class="py-3.5 px-4 text-center bg-emerald-50/40">
                                                 <div class="flex items-center justify-center gap-1.5">
-                                                    <input type="number" step="any" min="0"
-                                                           :value="ag.totalChecked || (ag.isFullyChecked ? ag.totalPicked : 0)"
-                                                           @change="updateBatchItemCheckedQty(ag, $event.target.value)"
+                                                    <input type="number"
+                                                           :step="isIntegerQty(ag.totalRequired) ? '1' : 'any'"
+                                                           :inputmode="isIntegerQty(ag.totalRequired) ? 'numeric' : 'decimal'"
+                                                           min="0" :max="ag.totalPicked"
+                                                           :value="formatQtyInput(ag.totalChecked, ag.totalRequired)"
+                                                           @focus="$event.target.select()"
+                                                           @keydown="if (isIntegerQty(ag.totalRequired) && ($event.key === '.' || $event.key === ',')) $event.preventDefault()"
+                                                           @change="let cleanVal = formatQtyInput($event.target.value, ag.totalRequired); $event.target.value = cleanVal; updateBatchItemCheckedQty(ag, cleanVal)"
+                                                           @keydown.enter="$event.target.blur()"
                                                            class="w-16 p-1.5 text-center font-mono font-bold text-xs rounded-lg border border-slate-300 text-slate-900 bg-white focus:outline-none focus:border-emerald-500 shadow-2xs">
                                                     <button type="button" @click="qcCheckFullBatchItem(ag)"
                                                             class="px-2 py-1 font-bold text-[11px] rounded-lg cursor-pointer shadow-2xs border bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100">
@@ -1961,6 +2187,126 @@
                             </table>
                         </div>
 
+                        <!-- 4. Mobile Aggregated Items Cards for Batch QC (Chuyên dụng cho điện thoại) -->
+                        <div class="block lg:hidden space-y-2.5">
+                            <template x-for="ag in aggregatedItems" :key="'m_qc_' + ag.sku">
+                                <div class="p-3 rounded-2xl border transition-all space-y-2.5 shadow-2xs"
+                                     :class="ag.isFullyChecked 
+                                         ? 'border-emerald-400 bg-emerald-50/25 ring-1 ring-emerald-400/40' 
+                                         : 'border-slate-200/90 bg-white'">
+                                    
+                                    <!-- Row 1: Checkbox Đã Kiểm + SKU / Mã đơn + Unit + QC status badge (Bỏ hiển thị kho theo yêu cầu) -->
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div class="flex items-center gap-2 flex-wrap min-w-0">
+                                            <input type="checkbox" :checked="ag.isFullyChecked"
+                                                   @change="toggleBatchItemQc(ag, $event.target.checked)"
+                                                   class="w-5 h-5 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer shrink-0">
+                                            <span class="font-mono font-black text-emerald-800 text-xs sm:text-sm whitespace-nowrap" x-text="ag.sku"></span>
+                                            
+                                            <!-- Nếu gom từ 1 đơn thì hiển thị luôn mã đơn hàng đầy đủ ngay tại hàng đầu -->
+                                            <template x-if="ag.contributingOrders && ag.contributingOrders.length === 1">
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono font-bold text-[11px] whitespace-nowrap">
+                                                    <i class="fa-solid fa-file-invoice text-[9px] text-emerald-600"></i>
+                                                    <span x-text="ag.contributingOrders[0].orderCode"></span>
+                                                </span>
+                                            </template>
+                                        </div>
+                                        <div class="shrink-0 flex items-center justify-end">
+                                            <span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border"
+                                                  :class="ag.qcBadgeClass"
+                                                  x-text="ag.qcStatus"></span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Row 2: Product Name -->
+                                    <div class="text-xs sm:text-sm font-black text-slate-900 leading-snug" x-text="ag.name"></div>
+
+                                    <!-- Row 3: Contributing Orders Chips (Hiển thị đầy đủ mã đơn hàng) -->
+                                    <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs space-y-1.5">
+                                        <div class="text-[10.5px] font-bold text-slate-600 flex items-center justify-between">
+                                            <span x-text="'Gồm ' + ag.contributingOrders.length + ' đơn hàng:'"></span>
+                                            <span class="text-[10px] text-slate-500 font-normal">
+                                                Đã bốc: <strong class="font-mono text-slate-800 font-bold" x-text="ag.totalPicked + '/' + ag.totalRequired"></strong>
+                                            </span>
+                                        </div>
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <template x-for="c in ag.contributingOrders" :key="c.orderId">
+                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-emerald-200 text-xs shadow-2xs whitespace-nowrap">
+                                                    <span class="font-mono font-black text-sky-700 tracking-tight" x-text="c.orderCode"></span>
+                                                    <span class="text-slate-300">:</span>
+                                                    <span class="font-bold text-slate-900" x-text="c.totalReq + ' ' + (ag.unit || '').toLowerCase()"></span>
+                                                </span>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <!-- Row 4: Người đã soạn hàng -->
+                                    <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 text-xs">
+                                        <span class="text-[11px] text-slate-400 font-medium shrink-0">Người đã soạn:</span>
+                                        <div class="flex flex-wrap items-center gap-1 justify-end">
+                                            <template x-for="stName in ag.assignedStaffList" :key="stName">
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold text-[10px] border border-slate-200">
+                                                    <i class="fa-solid fa-user text-[8px] text-slate-500"></i>
+                                                    <span x-text="stName"></span>
+                                                </span>
+                                            </template>
+                                            <template x-if="!ag.assignedStaffList || ag.assignedStaffList.length === 0">
+                                                <span class="text-slate-400 italic text-[10px]">Chưa phân công</span>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <!-- Row 5: QC Checked Quantity Stepper (+ - Đủ) -->
+                                    <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-emerald-50/50 border border-emerald-100">
+                                        <div class="text-xs">
+                                            <div class="text-[10px] text-emerald-800 font-bold uppercase">CẦN KIỂM</div>
+                                            <div class="font-mono font-black text-slate-900 text-sm" x-text="ag.totalPicked + ' ' + (ag.unit || '')"></div>
+                                        </div>
+
+                                        <div class="flex items-center gap-1.5">
+                                            <div class="text-right mr-0.5">
+                                                <div class="text-[10px] text-emerald-800 font-bold uppercase">THỰC KIỂM</div>
+                                            </div>
+                                            <!-- Stepper: Trừ / Input / Cộng / Đủ -->
+                                            <div class="flex items-center gap-1">
+                                                <button type="button" 
+                                                        @click="let val = Math.max(0, (Number(ag.totalChecked || 0)) - 1); updateBatchItemCheckedQty(ag, val);"
+                                                        class="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 font-black text-slate-700 flex items-center justify-center shadow-2xs cursor-pointer text-xs active:scale-95">
+                                                    -
+                                                </button>
+                                                <input type="number"
+                                                       :step="isIntegerQty(ag.totalRequired) ? '1' : 'any'"
+                                                       :inputmode="isIntegerQty(ag.totalRequired) ? 'numeric' : 'decimal'"
+                                                       min="0" :max="ag.totalPicked"
+                                                       :value="formatQtyInput(ag.totalChecked, ag.totalRequired)"
+                                                       @focus="$event.target.select()"
+                                                       @keydown="if (isIntegerQty(ag.totalRequired) && ($event.key === '.' || $event.key === ',')) $event.preventDefault()"
+                                                       @change="let cleanVal = formatQtyInput($event.target.value, ag.totalRequired); $event.target.value = cleanVal; updateBatchItemCheckedQty(ag, cleanVal)"
+                                                       @keydown.enter="$event.target.blur()"
+                                                       class="w-14 p-1 text-center font-mono font-black text-xs rounded-lg border border-slate-300 text-slate-900 bg-white focus:outline-none focus:border-emerald-500 shadow-2xs">
+                                                <button type="button" 
+                                                        @click="let val = Math.min(ag.totalPicked, (Number(ag.totalChecked || 0) || 0) + 1); updateBatchItemCheckedQty(ag, val);"
+                                                        class="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 font-black text-slate-700 flex items-center justify-center shadow-2xs cursor-pointer text-xs active:scale-95">
+                                                    +
+                                                </button>
+                                                <button type="button" @click="qcCheckFullBatchItem(ag)"
+                                                        class="px-2.5 py-1 font-bold text-[11px] rounded-lg transition-all cursor-pointer shadow-2xs border bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 active:scale-95">
+                                                    Đủ
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Ghi chú KCS / Tem kiện -->
+                                    <div class="pt-0.5">
+                                        <input type="text" placeholder="Ghi chú tem kiện, KCS..."
+                                               :value="ag.checkNotes || ''"
+                                               @blur="updateBatchItemCheckNotes(ag, $event.target.value)"
+                                               class="w-full p-2 text-xs rounded-xl border border-slate-200 text-slate-700 focus:outline-none focus:border-emerald-500 bg-slate-50/70 focus:bg-white placeholder:text-slate-400">
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
                     </div>
                 </div>
             </template>
@@ -1980,7 +2326,70 @@
 
     </div>
 
-</div>
+    <!-- ======================================================== -->
+    <!-- MOBILE STICKY BOTTOM ACTION BAR (Cố định đáy màn hình)    -->
+    <!-- ======================================================== -->
+    <div x-show="mobileView === 'detail' && activeOrder" 
+         x-cloak
+         class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-3 py-2.5 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+        <div class="flex items-center gap-2 max-w-lg mx-auto">
+            <!-- Nút Về danh sách đơn -->
+            <button type="button" @click="mobileView = 'list'; $nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }))"
+                    class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 flex items-center justify-center shrink-0 border border-slate-200 shadow-2xs cursor-pointer"
+                    title="Quay lại danh sách">
+                <i class="fa-solid fa-arrow-left text-sm"></i>
+            </button>
+
+            <!-- Chế độ 1: Soạn & Bốc hàng -->
+            <template x-if="activeTab === 'picking'">
+                <div class="flex-1 flex items-center gap-1.5">
+                    <button type="button" @click="quickPickAllActiveOrder()"
+                            :disabled="isOrderLockedForPicking(activeOrder) || isSavingBatchOrSingle"
+                            class="py-2.5 px-2.5 rounded-xl text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 active:scale-95 border border-sky-300 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs shrink-0 disabled:opacity-40">
+                        <i class="fa-solid fa-bolt-lightning text-sky-600 text-xs"></i>
+                        <span>Bốc đủ</span>
+                    </button>
+                    <button type="button" @click="savePickingActiveOrder()"
+                            :disabled="isOrderLockedForPicking(activeOrder) || isSavingBatchOrSingle"
+                            class="flex-1 py-2.5 px-2.5 rounded-xl text-xs font-black text-white bg-sky-600 hover:bg-sky-700 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-sm truncate disabled:opacity-40">
+                        <i class="fa-solid fa-floppy-disk text-xs"></i>
+                        <span>Lưu</span>
+                    </button>
+                    <button type="button" @click="transferPickingToQcActiveOrder()"
+                            :disabled="isOrderLockedForPicking(activeOrder) || isSavingBatchOrSingle"
+                            class="flex-[1.2] py-2.5 px-2.5 rounded-xl text-xs font-black text-white bg-amber-500 hover:bg-amber-600 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-md shadow-amber-500/25 truncate disabled:opacity-40">
+                        <i class="fa-solid fa-right-to-bracket text-xs"></i>
+                        <span>Chuyển kiểm</span>
+                    </button>
+                </div>
+            </template>
+
+            <!-- Chế độ 2: Kiểm Hàng (QC) -->
+            <template x-if="activeTab === 'qc'">
+                <div class="flex-1 flex items-center gap-1.5">
+                    <button type="button" @click="qcCheckAllActiveOrder()"
+                            :disabled="isSavingBatchOrSingle || ['Đang vận chuyển', 'Đã giao', 'Giao thành công'].includes(activeOrder.status)"
+                            class="py-2.5 px-2.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 active:scale-95 border border-emerald-300 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs shrink-0 disabled:opacity-40">
+                        <i class="fa-solid fa-square-check text-emerald-600 text-xs"></i>
+                        <span>Kiểm đủ</span>
+                    </button>
+                    <button type="button" @click="saveQcActiveOrder()"
+                            :disabled="isSavingBatchOrSingle || ['Đang vận chuyển', 'Đã giao', 'Giao thành công'].includes(activeOrder.status)"
+                            class="flex-1 py-2.5 px-2.5 rounded-xl text-xs font-black text-white bg-sky-600 hover:bg-sky-700 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-sm truncate disabled:opacity-40">
+                        <i class="fa-solid fa-floppy-disk text-xs"></i>
+                        <span>Lưu</span>
+                    </button>
+                    <button type="button" @click="handoverQcActiveOrderToVehicle()"
+                            :disabled="!isOrderTransferredToQc(activeOrder) || isSavingBatchOrSingle || ['Đang vận chuyển', 'Đã giao', 'Giao thành công'].includes(activeOrder.status)"
+                            :class="isOrderTransferredToQc(activeOrder) ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/25 cursor-pointer' : 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed'"
+                            class="flex-[1.2] py-2.5 px-2.5 rounded-xl text-xs font-black active:scale-95 transition-all flex items-center justify-center gap-1 truncate disabled:opacity-70">
+                        <i class="fa-solid" :class="isOrderTransferredToQc(activeOrder) ? 'fa-truck-fast text-xs' : 'fa-lock text-xs'"></i>
+                        <span>Giao xe</span>
+                    </button>
+                </div>
+            </template>
+        </div>
+    </div>
 
     <!-- ======================================================== -->
     <!-- MODAL: PHÂN BỔ HÀNG THIẾU CHO CÁC ĐƠN TRÊN XE / LÔ       -->
@@ -2001,10 +2410,10 @@
                     </div>
                     <div>
                         <div class="flex items-center gap-2">
-                            <h3 class="text-base font-black tracking-tight">Phân Bổ Hàng Thiếu Cho Chuyến Xe</h3>
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white border border-white/30">Tự động chốt đơn</span>
+                            <h3 class="text-base font-black tracking-tight">Phân Bổ Đơn Hàng Khi Thiếu Hàng</h3>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white border border-white/30">Phân bổ SL bốc</span>
                         </div>
-                        <p class="text-xs text-rose-100 mt-0.5">Nhân viên xe trực tiếp phân bổ số lượng thực bốc cho từng đơn. Hệ thống tự động cắt đơn gốc và sinh Đơn Giao Sau (Backorder) ngay lập tức.</p>
+                        <p class="text-xs text-rose-100 mt-0.5">Chia số lượng thực bốc cho từng đơn hàng trong lô. Khi xe giao xong & hoàn thành đơn, số lượng đơn hàng sẽ tự động điều chỉnh theo thực tế.</p>
                     </div>
                 </div>
                 <button type="button" 
@@ -2164,16 +2573,12 @@
                                         <template x-if="Number(row.allocatedQty) > 0 && Number(row.allocatedQty) < row.totalReq">
                                             <span class="inline-flex flex-col items-center">
                                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300"
-                                                      x-text="'Cắt còn ' + row.allocatedQty + ', nợ ' + (row.totalReq - row.allocatedQty)"></span>
-                                                <span class="text-[9px] text-amber-700 font-semibold mt-0.5">Tạo ĐH-NO tự động</span>
+                                                      x-text="'Giao ' + formatQtyInput(row.allocatedQty, row.totalReq) + ', thiếu ' + formatQtyInput(row.totalReq - row.allocatedQty, row.totalReq)"></span>
                                             </span>
                                         </template>
                                         <template x-if="Number(row.allocatedQty) <= 0">
                                             <span class="inline-flex flex-col items-center">
-                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                                                    Nợ 100% (Giao sau)
-                                                </span>
-                                                <span class="text-[9px] text-rose-700 font-semibold mt-0.5">Chuyển sang ĐH-NO</span>
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">Bốc 0 (Thiếu 100%)</span>
                                             </span>
                                         </template>
                                     </td>
@@ -2215,23 +2620,12 @@
                     </div>
                 </div>
 
-                <!-- Automation Options & Notes -->
-                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox" x-model="shortageModal.autoCreateBackorder" class="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500">
-                            <span class="font-bold text-slate-800">Tự động cắt đơn gốc & tạo Đơn Giao Sau (Backorder) cho phần thiếu ngay</span>
-                        </label>
-                        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox" x-model="shortageModal.markPickedIfReady" class="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500">
-                            <span class="font-bold text-slate-800">Đánh dấu "Đã bốc xong" nếu các món khác đã đủ</span>
-                        </label>
-                    </div>
-
-                    <div class="pt-1.5 flex items-center gap-2">
-                        <span class="text-slate-500 shrink-0 font-medium">Ghi chú:</span>
+                <!-- Notes -->
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+                    <div class="flex items-center gap-2">
+                        <span class="text-slate-500 shrink-0 font-bold text-xs">Ghi chú:</span>
                         <input type="text" x-model="shortageModal.note" placeholder="Lý do phân bổ thiếu hàng..."
-                               class="flex-1 px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-indigo-500">
+                               class="flex-1 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-indigo-500">
                     </div>
                 </div>
 
@@ -2248,15 +2642,9 @@
 
                 <button type="button" 
                         @click="confirmVehicleShortageAllocation()"
-                        :disabled="shortageModal.saving"
-                        class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-700 hover:to-indigo-700 active:scale-95 text-white font-black shadow-md shadow-indigo-600/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50">
-                    <template x-if="shortageModal.saving">
-                        <i class="fa-solid fa-spinner fa-spin text-sm"></i>
-                    </template>
-                    <template x-if="!shortageModal.saving">
-                        <i class="fa-solid fa-floppy-disk text-sm"></i>
-                    </template>
-                    <span x-text="shortageModal.saving ? 'Đang chốt đơn & tạo đơn nợ...' : '💾 Xác Nhận Phân Bổ & Chốt Đơn'"></span>
+                        class="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-black shadow-md shadow-sky-600/20 transition-all flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-floppy-disk text-sm"></i>
+                    <span>💾 Xác Nhận Phân Bổ Số Lượng</span>
                 </button>
             </div>
 
@@ -2266,12 +2654,15 @@
     <!-- MODAL PHẢN ÁNH LỆCH HÀNG TỪ XE XUẤT BẾN (QC ⇄ LÁI XE) -->
     @include('inventory.modals.discrepancies_checker')
 
+</div> <!-- Đóng root container x-data="pickingApp()" -->
+
 <script>
 function pickingApp() {
     return {
         activeTab: 'picking', // 'picking' | 'qc'
         fulfillmentMode: 'single', // 'single' | 'batch'
         mobileView: 'list', // 'list' | 'detail' (trên mobile điều hướng giữa danh sách đơn và chi tiết sản phẩm)
+        showMobileAdvancedFilters: false,
         selectedBranch: '',
         filterPickingDate: '{{ date("Y-m-d") }}',
         filterOrderType: 'all', // 'all' | 'sales' | 'consignment'
@@ -2282,6 +2673,7 @@ function pickingApp() {
         currentUserId: {{ $currentUser->id }},
         isUserAdmin: {{ ($currentUser->hasRole('admin') || $currentUser->hasRole('super-admin') || $currentUser->id === 1 || in_array($currentUser->department ?? '', ['Ban Giám Đốc', 'IT'])) ? 'true' : 'false' }},
         adminOverrideMode: false,
+        isSavingBatchOrSingle: false,
         
         // Batch Fulfillment State
         selectedBatchOrderIds: [],
@@ -2295,9 +2687,8 @@ function pickingApp() {
             warehouse: '',
             totalRequired: 0,
             totalAvailable: 0,
-            autoCreateBackorder: true,
-            markPickedIfReady: true,
-            note: 'Nhân viên xe tự phân bổ hàng thiếu khi bốc',
+            markPickedIfReady: false,
+            note: 'Phân bổ số lượng thực bốc theo đơn',
             allocations: [],
             saving: false
         },
@@ -2401,29 +2792,32 @@ function pickingApp() {
                 // Chỉ lưu state trên đơn, không bung popup làm che màn hình
             }
 
-            // Tự động kiểm tra và dọn dẹp cờ thiếu hàng cho các mặt hàng đã bốc đủ (hoặc đã cắt đơn cho vừa đủ)
+            // Chuẩn hóa dữ liệu khi nạp vào UI
             (this.orders || []).forEach(o => {
-                let hasActualShortage = false;
                 let allDone = true;
                 (o.items || []).forEach(it => {
-                    const req = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
-                    const picked = Number(it.picked_qty || 0);
+                    it.quantity = Number(it.quantity || 0);
+                    it.gift_quantity = Number(it.gift_quantity || 0);
+                    const req = it.quantity + it.gift_quantity;
+                    it.picked_qty = this.formatQtyInput(it.picked_qty, req);
+                    it.checked_qty = this.formatQtyInput(it.checked_qty, req);
+                    it._dirtyPicking = false;
+                    it._dirtyQc = false;
+                    it.shortage_reason = '';
+                    const picked = it.picked_qty;
                     if (req > 0 && picked >= req) {
                         it.item_status = 'Đủ hàng';
-                        it.shortage_reason = '';
                         it.is_picked = true;
                     } else if (req > 0 && picked < req) {
                         allDone = false;
-                        if (it.item_status === 'Thiếu hàng' || it.shortage_reason) {
-                            hasActualShortage = true;
-                            if (!it.shortage_reason) {
-                                it.shortage_reason = 'Hết hàng trên kệ kho';
-                            }
-                        }
+                        it.is_picked = false;
+                        it.item_status = picked > 0 ? 'Đang bốc' : 'Chờ bốc';
                     }
                 });
-                if (!hasActualShortage && o.status === 'Kho báo thiếu hàng') {
-                    o.status = allDone ? 'Đã bốc xong' : 'Soạn hàng';
+                if (o.status === 'Kho báo thiếu hàng' || o.shortage_reported) {
+                    if (o.status === 'Kho báo thiếu hàng') {
+                        o.status = allDone ? 'Đã bốc xong' : 'Đang bốc hàng';
+                    }
                     o.shortage_reported = false;
                 }
             });
@@ -2497,8 +2891,15 @@ function pickingApp() {
             }
             setTimeout(() => {
                 const list = this.filteredOrders;
-                if (list.length > 0 && !list.some(o => o.id === this.activeOrderId)) {
-                    this.activeOrderId = list[0].id;
+                if (list.length > 0) {
+                    const current = list.find(o => o.id === this.activeOrderId);
+                    const isCurrentDone = current ? (tab === 'qc' ? this.isOrderDaKiem(current) : this.isOrderDaBoc(current)) : true;
+                    if (isCurrentDone) {
+                        const firstPending = list.find(o => tab === 'qc' ? !this.isOrderDaKiem(o) : !this.isOrderDaBoc(o));
+                        this.activeOrderId = (firstPending || list[0]).id;
+                    } else if (!list.some(o => o.id === this.activeOrderId)) {
+                        this.activeOrderId = list[0].id;
+                    }
                 }
             }, 50);
         },
@@ -2535,7 +2936,17 @@ function pickingApp() {
 
         isOrderDaKiem(o) {
             if (!o) return false;
-            return ['Đã kiểm hàng', 'Sẵn sàng xuất xe', 'Đã kiểm hàng (Sẵn sàng xuất xe)', 'Kho đã xuất đủ'].includes(o.status) || this.isAllGroupsQcCompleted(o);
+            const completedStatuses = [
+                'Đã kiểm hàng', 
+                'Sẵn sàng xuất xe', 
+                'Đã kiểm hàng (Sẵn sàng xuất xe)', 
+                'Kho đã xuất đủ', 
+                'Đang vận chuyển', 
+                'Đã giao', 
+                'Giao thành công', 
+                'Hoàn thành'
+            ];
+            return completedStatuses.includes(o.status) || this.isAllGroupsQcCompleted(o);
         },
 
         isOrderDangKiem(o) {
@@ -2558,24 +2969,60 @@ function pickingApp() {
 
         isOrderDangBoc(o) {
             if (!o) return false;
-            return (['Kho đang soạn', 'Đang bốc hàng', 'Kho báo thiếu hàng'].includes(o.status) || 
+            return (['Kho đang soạn', 'Đang bốc hàng'].includes(o.status) || 
                    (['Đang kiểm hàng', 'Kiểm hàng'].includes(o.status))) && !this.isAllGroupsPickingCompleted(o);
         },
 
         isOrderDaBoc(o) {
             if (!o) return false;
-            return ['Đã bốc xong', 'Đã kiểm hàng', 'Sẵn sàng xuất xe', 'Đã kiểm hàng (Sẵn sàng xuất xe)', 'Kho đã xuất đủ'].includes(o.status) || this.isAllGroupsPickingCompleted(o);
+            const completedStatuses = [
+                'Đã bốc xong', 
+                'Đã kiểm hàng', 
+                'Sẵn sàng xuất xe', 
+                'Đã kiểm hàng (Sẵn sàng xuất xe)', 
+                'Kho đã xuất đủ', 
+                'Đang vận chuyển', 
+                'Đã giao', 
+                'Giao thành công', 
+                'Hoàn thành'
+            ];
+            return completedStatuses.includes(o.status) || this.isAllGroupsPickingCompleted(o);
+        },
+
+        get totalPendingPickAllDates() {
+            return this.orders.filter(o => !!o.picking_date && (
+                ['Chốt đơn', 'Đã duyệt', 'Chờ bốc', 'Soạn bốc', 'Soạn hàng', 'Kho đang soạn', 'Đang bốc hàng'].includes(o.status) ||
+                ((o.status === 'Đang kiểm hàng' || o.status === 'Kiểm hàng') && !this.isAllGroupsPickingCompleted(o))
+            )).length;
+        },
+
+        get totalReadyQcAllDates() {
+            return this.orders.filter(o => this.isOrderReadyForQc(o) && !this.isOrderDaKiem(o)).length;
         },
 
         get countPendingPick() {
-            return this.orders.filter(o => !!o.picking_date && (
-                ['Chốt đơn', 'Đã duyệt', 'Chờ bốc', 'Soạn bốc', 'Soạn hàng', 'Kho đang soạn', 'Đang bốc hàng', 'Kho báo thiếu hàng'].includes(o.status) ||
+            const list = this.filterPickingDate
+                ? this.orders.filter(o => this.formatDateForInput(o.picking_date) === this.filterPickingDate)
+                : this.orders;
+            return list.filter(o => !!o.picking_date && (
+                ['Chốt đơn', 'Đã duyệt', 'Chờ bốc', 'Soạn bốc', 'Soạn hàng', 'Kho đang soạn', 'Đang bốc hàng'].includes(o.status) ||
                 ((o.status === 'Đang kiểm hàng' || o.status === 'Kiểm hàng') && !this.isAllGroupsPickingCompleted(o))
             )).length;
         },
 
         get countReadyQc() {
-            return this.orders.filter(o => this.isOrderReadyForQc(o) && !this.isOrderDaKiem(o)).length;
+            const list = this.filterPickingDate
+                ? this.orders.filter(o => this.formatDateForInput(o.picking_date) === this.filterPickingDate)
+                : this.orders;
+            return list.filter(o => this.isOrderReadyForQc(o) && !this.isOrderDaKiem(o)).length;
+        },
+
+        get countFilteredPending() {
+            return this.filteredOrders.filter(o => this.activeTab === 'qc' ? !this.isOrderDaKiem(o) : !this.isOrderDaBoc(o)).length;
+        },
+
+        get countFilteredCompleted() {
+            return this.filteredOrders.filter(o => this.activeTab === 'qc' ? this.isOrderDaKiem(o) : this.isOrderDaBoc(o)).length;
         },
 
         get countConsignmentOrders() {
@@ -2603,7 +3050,7 @@ function pickingApp() {
         },
 
         get filteredOrders() {
-            return this.orders.filter(o => {
+            let list = this.orders.filter(o => {
                 // Filter theo loại đơn: Đơn bán thông thường vs Đơn hàng ôm của nhân viên
                 if (this.filterOrderType === 'sales' && o.is_consignment) {
                     return false;
@@ -2642,6 +3089,37 @@ function pickingApp() {
                 }
 
                 return true;
+            });
+
+            // SẮP XẾP: ĐƠN CHƯA HOÀN THÀNH LÊN TRÊN, ĐÃ XONG ĐẨY XUỐNG DƯỚI (TRÁNH SÓT ĐƠN)
+            return list.sort((a, b) => {
+                if (this.activeTab === 'qc') {
+                    // TAB KIỂM QC:
+                    // 1. Đơn đã kiểm xong (isOrderDaKiem = true) ĐẨY XUỐNG DƯỚI CÙNG
+                    const aDone = this.isOrderDaKiem(a) ? 1 : 0;
+                    const bDone = this.isOrderDaKiem(b) ? 1 : 0;
+                    if (aDone !== bDone) {
+                        return aDone - bDone; // 0 (chưa kiểm) đứng trước 1 (đã kiểm xong)
+                    }
+
+                    // 2. Trong các đơn chưa kiểm xong: ưu tiên đơn đã bốc xong / sẵn sàng kiểm lên trước
+                    const aReady = this.isOrderReadyForQc(a) ? 1 : 0;
+                    const bReady = this.isOrderReadyForQc(b) ? 1 : 0;
+                    if (aReady !== bReady) {
+                        return bReady - aReady; // 1 (sẵn sàng kiểm) đứng trước 0 (chưa bốc xong)
+                    }
+                } else if (this.activeTab === 'picking') {
+                    // TAB SOẠN HÀNG:
+                    // 1. Đơn đã bốc xong (isOrderDaBoc = true) ĐẨY XUỐNG DƯỚI CÙNG
+                    const aDone = this.isOrderDaBoc(a) ? 1 : 0;
+                    const bDone = this.isOrderDaBoc(b) ? 1 : 0;
+                    if (aDone !== bDone) {
+                        return aDone - bDone; // 0 (chưa bốc) đứng trước 1 (đã bốc xong)
+                    }
+                }
+
+                // Cùng trạng thái: Đơn có ID lớn hơn (mới hơn) lên trước
+                return Number(b.id || 0) - Number(a.id || 0);
             });
         },
 
@@ -2788,7 +3266,7 @@ function pickingApp() {
             groups.forEach(g => {
                 g.pickedCount = g.items.filter(it => {
                     const req = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
-                    return (it.is_picked || (Number(it.picked_qty) >= req && req > 0)) && it.item_status !== 'Thiếu hàng';
+                    return Number(it.picked_qty || 0) >= req && req > 0;
                 }).length;
                 g.isAllPicked = g.items.length > 0 && g.pickedCount >= g.items.length;
                 g.checkedCount = g.items.filter(it => it.is_checked || Number(it.checked_qty) > 0).length;
@@ -2798,56 +3276,49 @@ function pickingApp() {
             return groups;
         },
 
-        async quickPickCategory(catGroup) {
+        quickPickCategory(catGroup) {
             if (!this.activeOrder || !catGroup || !catGroup.items) return;
-            const itemsToPick = catGroup.items.filter(it => this.canUserPickItem(it) || !it.is_picked);
+            const itemsToPick = catGroup.items.filter(it => this.canUserPickItem(it));
             if (itemsToPick.length === 0) {
                 this.showToast('Bạn không được phân công hoặc không phụ trách loại sản phẩm này!', 'error');
                 return;
             }
             itemsToPick.forEach(it => {
                 const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
-                it.picked_qty = reqTotal;
+                it.picked_qty = this.formatQtyInput(reqTotal, reqTotal);
                 it.is_picked = true;
                 it.item_status = 'Đủ hàng';
-                it.shortage_reason = null;
+                it.shortage_reason = '';
+                it._dirtyPicking = true;
+                if (!it.assigned_staff || it.assigned_staff === 'null') {
+                    it.assigned_staff = this.currentUserName;
+                    if (!Array.isArray(it.assigned_staff_list)) it.assigned_staff_list = [];
+                    if (!it.assigned_staff_list.includes(this.currentUserName)) {
+                        it.assigned_staff_list.push(this.currentUserName);
+                    }
+                }
             });
-
-            const targetItem = itemsToPick[0] || catGroup.items[0];
-            const res = await this.saveItemPickingState(targetItem, {
-                quickPickCategory: true,
-                categoryId: catGroup.id
-            });
-
-            this.showToast('🎉 Đã bốc đủ ' + itemsToPick.length + ' mặt hàng của loại "' + catGroup.name + '"! Bạn có thể kiểm tra ngay loại này ở tab Kiểm Hàng.', 'success');
+            this.showToast('Đã điền đủ ' + itemsToPick.length + ' món loại "' + catGroup.name + '" trên màn hình. Hãy bấm Lưu hoặc Chuyển kiểm!', 'info');
         },
 
-        async qcCheckAllCategory(catGroup) {
+        qcCheckAllCategory(catGroup) {
             if (!this.activeOrder || !catGroup || !catGroup.items) return;
-            const targetItems = catGroup.items.filter(it => it.is_picked || Number(it.picked_qty || 0) > 0);
+            const transferred = this.isOrderTransferredToQc(this.activeOrder);
+            const targetItems = transferred
+                ? catGroup.items
+                : catGroup.items.filter(it => it.is_picked || Number(it.picked_qty || 0) > 0);
             if (targetItems.length === 0) {
-                this.showToast('Loại sản phẩm này chưa có mặt hàng nào được bốc xong để kiểm tra!', 'warning');
+                this.showToast('Loại sản phẩm này chưa có mặt hàng nào được bốc để kiểm!', 'warning');
                 return;
             }
             targetItems.forEach(it => {
-                it.is_checked = true;
                 const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
-                it.checked_qty = Number(it.picked_qty) > 0 ? it.picked_qty : reqTotal;
+                it.is_checked = true;
+                it.checked_qty = this.formatQtyInput(Number(it.picked_qty || 0), reqTotal);
                 it.checked_by = this.qcInspector;
+                it._dirtyQc = true;
             });
-
-            const res = await this.saveItemPickingState(targetItems[0], {
-                qcCategoryChecked: true,
-                categoryId: catGroup.id
-            });
-
-            if (res && res.success) {
-                if (res.allChecked) {
-                    this.showToast('🎉 Toàn bộ các nhóm đã kiểm hàng xong! Đơn đã chuyển sang trạng thái "Đã kiểm hàng".', 'success');
-                } else {
-                    this.showToast('✓ Đã tích kiểm xong loại "' + catGroup.name + '" (' + targetItems.length + ' món)!', 'success');
-                }
-            }
+            this.showToast('Đã tích kiểm loại "' + catGroup.name + '" trên màn hình. Hãy bấm Lưu hoặc Giao xe!', 'info');
         },
 
         async claimItem(item) {
@@ -2903,13 +3374,10 @@ function pickingApp() {
         },
 
         get filteredActiveItems() {
-            if (!this.activeOrder) return [];
+            if (!this.activeOrder || !this.activeOrder.items) return [];
             let items = this.activeOrder.items;
-            if (this.selectedCategoryFilter !== 'all') {
-                items = items.filter(it => String(it.category_id) === String(this.selectedCategoryFilter));
-            }
             if (this.pickerFilter === 'all') return items;
-            if (this.pickerFilter === 'unassigned') return items.filter(it => !it.assigned_staff);
+            if (this.pickerFilter === 'unassigned') return items.filter(it => !it.assigned_staff || it.assigned_staff === 'null');
             return items.filter(it => it.assigned_staff === this.pickerFilter);
         },
 
@@ -2996,9 +3464,15 @@ function pickingApp() {
 
                     // Gom danh sách nhân sự đã được phân công
                     const staffAssigned = [];
-                    if (it.assigned_staff) staffAssigned.push(it.assigned_staff);
+                    if (it.assigned_staff && it.assigned_staff !== 'null' && String(it.assigned_staff).trim() !== '') {
+                        staffAssigned.push(String(it.assigned_staff).trim());
+                    }
                     if (Array.isArray(it.assigned_staff_list)) {
-                        it.assigned_staff_list.forEach(s => { if (s && !staffAssigned.includes(s)) staffAssigned.push(s); });
+                        it.assigned_staff_list.forEach(s => { 
+                            if (s && s !== 'null' && String(s).trim() !== '' && !staffAssigned.includes(String(s).trim())) {
+                                staffAssigned.push(String(s).trim()); 
+                            }
+                        });
                     }
                     staffAssigned.forEach(st => {
                         if (st && !map[key].assignedStaffList.includes(st)) {
@@ -3010,10 +3484,15 @@ function pickingApp() {
 
             const list = Object.values(map);
             list.forEach(ag => {
+                const allContribsTransferred = ag.contributingOrders.length > 0 && ag.contributingOrders.every(c => this.isOrderTransferredToQc(c.orderRef));
                 if (ag.totalPicked >= ag.totalRequired && ag.totalRequired > 0) {
                     ag.status = 'Đã bốc xong';
                     ag.badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-300';
                     ag.isFullyPicked = true;
+                } else if (allContribsTransferred) {
+                    ag.status = 'Đã chuyển kiểm';
+                    ag.badgeClass = 'bg-amber-50 text-amber-800 border-amber-300';
+                    ag.isFullyPicked = false;
                 } else if (ag.totalPicked > 0) {
                     ag.status = 'Đang bốc';
                     ag.badgeClass = 'bg-sky-50 text-sky-700 border-sky-300';
@@ -3024,10 +3503,18 @@ function pickingApp() {
                     ag.isFullyPicked = false;
                 }
 
-                // QC Batch calculations
-                ag.totalChecked = ag.contributingOrders.reduce((sum, c) => sum + (Number(c.itemRef.checked_qty) || (c.itemRef.is_checked ? c.totalReq : 0)), 0);
+                // QC Batch calculations (dựa trên SL đã bốc thực tế, KHÔNG ghi đè bằng SL đặt khi thiếu)
+                ag.totalChecked = ag.contributingOrders.reduce((sum, c) => {
+                    const chk = (c.itemRef.checked_qty !== undefined && c.itemRef.checked_qty !== null)
+                        ? Number(c.itemRef.checked_qty)
+                        : (c.itemRef.is_checked ? Number(c.itemRef.picked_qty || 0) : 0);
+                    return sum + chk;
+                }, 0);
+                ag.totalChecked = this.formatQtyInput(ag.totalChecked, ag.totalRequired);
+                ag.totalPicked = this.formatQtyInput(ag.totalPicked, ag.totalRequired);
+                ag.totalRequired = this.formatQtyInput(ag.totalRequired, ag.totalRequired);
                 ag.isFullyChecked = ag.contributingOrders.length > 0 && ag.contributingOrders.every(c => Boolean(c.itemRef.is_checked));
-                if (ag.isFullyChecked || (ag.totalChecked >= ag.totalRequired && ag.totalRequired > 0)) {
+                if (ag.isFullyChecked || (ag.totalChecked >= ag.totalPicked && ag.totalPicked > 0)) {
                     ag.qcStatus = 'Đã kiểm';
                     ag.qcBadgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-300';
                 } else if (ag.totalChecked > 0) {
@@ -3043,22 +3530,32 @@ function pickingApp() {
             return list;
         },
 
-        async pickFullBatchItem(ag) {
+        pickFullBatchItem(ag) {
             if (!ag || !ag.contributingOrders) return;
             for (const c of ag.contributingOrders) {
                 const req = c.totalReq;
-                c.itemRef.picked_qty = req;
+                c.itemRef.picked_qty = this.formatQtyInput(req, req);
                 c.itemRef.is_picked = true;
                 c.itemRef.item_status = 'Đủ hàng';
                 c.itemRef.shortage_reason = '';
-                await this.saveItemPickingState(c.itemRef, {}, c.orderRef);
+                c.itemRef._dirtyPicking = true;
+                if (!c.itemRef.assigned_staff || c.itemRef.assigned_staff === 'null') {
+                    c.itemRef.assigned_staff = this.currentUserName;
+                    if (!Array.isArray(c.itemRef.assigned_staff_list)) c.itemRef.assigned_staff_list = [];
+                    if (!c.itemRef.assigned_staff_list.includes(this.currentUserName)) {
+                        c.itemRef.assigned_staff_list.push(this.currentUserName);
+                    }
+                }
             }
-            this.showToast('✓ Đã bốc đủ cả lô ' + ag.totalRequired + ' ' + (ag.unit || '') + ' cho mã ' + ag.sku, 'success');
+            if (!ag.assignedStaffList.includes(this.currentUserName)) {
+                ag.assignedStaffList.push(this.currentUserName);
+            }
+            this.showToast('Đã điền đủ ' + ag.sku + ' (' + ag.totalRequired + ' ' + (ag.unit || '') + ') trên màn hình. Hãy bấm Lưu hoặc Chuyển kiểm!', 'info');
         },
 
-        async updateBatchItemPickedQty(ag, val) {
+        updateBatchItemPickedQty(ag, val) {
             if (!ag || !ag.contributingOrders) return;
-            let targetQty = Math.max(0, Number(val) || 0);
+            let targetQty = Math.max(0, this.formatQtyInput(val, ag.totalRequired));
             if (targetQty > ag.totalRequired && ag.totalRequired > 0) {
                 targetQty = ag.totalRequired;
                 this.showToast('Không được nhập quá tổng số lượng cần bốc (' + ag.totalRequired + ')!', 'warning');
@@ -3070,24 +3567,31 @@ function pickingApp() {
                 const give = Math.min(remaining, req);
                 remaining = Math.max(0, remaining - give);
 
-                c.itemRef.picked_qty = give;
+                c.itemRef.picked_qty = this.formatQtyInput(give, req);
+                c.itemRef._dirtyPicking = true;
+                c.itemRef.shortage_reason = '';
                 if (give >= req && req > 0) {
                     c.itemRef.is_picked = true;
                     c.itemRef.item_status = 'Đủ hàng';
-                    c.itemRef.shortage_reason = '';
                 } else if (give > 0) {
-                    c.itemRef.is_picked = true;
-                    c.itemRef.item_status = 'Thiếu hàng';
-                    if (!c.itemRef.shortage_reason) c.itemRef.shortage_reason = 'Hết hàng trên kệ kho';
+                    c.itemRef.is_picked = false;
+                    c.itemRef.item_status = 'Đang bốc';
                 } else {
                     c.itemRef.is_picked = false;
                     c.itemRef.item_status = 'Chờ bốc';
-                    c.itemRef.shortage_reason = '';
                 }
 
-                await this.saveItemPickingState(c.itemRef, { shortageReason: c.itemRef.shortage_reason }, c.orderRef);
+                if (give > 0 && (!c.itemRef.assigned_staff || c.itemRef.assigned_staff === 'null')) {
+                    c.itemRef.assigned_staff = this.currentUserName;
+                    if (!Array.isArray(c.itemRef.assigned_staff_list)) c.itemRef.assigned_staff_list = [];
+                    if (!c.itemRef.assigned_staff_list.includes(this.currentUserName)) {
+                        c.itemRef.assigned_staff_list.push(this.currentUserName);
+                    }
+                }
             }
-            this.showToast('Đã cập nhật số lượng bốc cho ' + ag.sku + ': ' + targetQty + ' / ' + ag.totalRequired + ' ' + (ag.unit || ''));
+            if (targetQty > 0 && !ag.assignedStaffList.includes(this.currentUserName)) {
+                ag.assignedStaffList.push(this.currentUserName);
+            }
         },
 
         openVehicleShortageModal(ag) {
@@ -3102,14 +3606,14 @@ function pickingApp() {
                     customerName: c.customerName || o.customer_name || 'Khách hàng',
                     customerAddress: o.customer_address || '',
                     deliveryRoute: o.assigned_delivery_route || o.assigned_vehicle_plate || ('Đơn #' + (index + 1)),
-                    totalReq: Number(c.totalReq) || 0,
-                    allocatedQty: Number(it.picked_qty) || 0,
+                    totalReq: this.formatQtyInput(c.totalReq, c.totalReq),
+                    allocatedQty: this.formatQtyInput(it.picked_qty, c.totalReq),
                     itemRef: it,
                     orderRef: o
                 };
             });
 
-            const totalAvail = Number(ag.totalPicked) || 0;
+            const totalAvail = this.formatQtyInput(ag.totalPicked, ag.totalRequired);
             const currentAllocSum = allocations.reduce((s, a) => s + (Number(a.allocatedQty) || 0), 0);
 
             this.shortageModal = {
@@ -3121,9 +3625,8 @@ function pickingApp() {
                 warehouse: ag.warehouse,
                 totalRequired: ag.totalRequired,
                 totalAvailable: totalAvail > 0 ? totalAvail : 0,
-                autoCreateBackorder: true,
-                markPickedIfReady: true,
-                note: 'Nhân viên xe tự phân bổ hàng thiếu khi bốc',
+                markPickedIfReady: false,
+                note: 'Phân bổ số lượng thực bốc cho các đơn',
                 allocations: allocations,
                 saving: false
             };
@@ -3170,67 +3673,44 @@ function pickingApp() {
             this.allocateByRouteOrder();
         },
 
-        async confirmVehicleShortageAllocation() {
-            if (this.shortageModal.saving) return;
-
+        confirmVehicleShortageAllocation() {
             const sum = (this.shortageModal.allocations || []).reduce((s, a) => s + (Number(a.allocatedQty) || 0), 0);
             const avail = Number(this.shortageModal.totalAvailable) || 0;
             if (sum > avail) {
-                if (!confirm(`CẢNH BÁO: Tổng số lượng đã phân bổ (${sum}) lớn hơn số thực tế có (${avail})!\nBạn có chắc chắn muốn tiếp tục lưu không?`)) {
+                if (!confirm(`CẢNH BÁO: Tổng số lượng đã phân bổ (${sum}) lớn hơn số thực tế có (${avail})!\nBạn có chắc chắn muốn tiếp tục áp dụng không?`)) {
                     return;
                 }
             }
 
-            this.shortageModal.saving = true;
-            try {
-                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                const payload = {
-                    sku: this.shortageModal.sku,
-                    totalAvailable: avail,
-                    autoCreateBackorder: this.shortageModal.autoCreateBackorder,
-                    markPickedIfReady: this.shortageModal.markPickedIfReady,
-                    note: this.shortageModal.note,
-                    allocations: this.shortageModal.allocations.map(a => ({
-                        order_id: a.orderId,
-                        order_code: a.orderCode,
-                        item_id: a.itemRef.id,
-                        sku: a.itemRef.sku,
-                        req_qty: a.totalReq,
-                        allocated_qty: Number(a.allocatedQty) || 0,
-                        shortage_qty: Math.max(0, a.totalReq - (Number(a.allocatedQty) || 0))
-                    }))
-                };
-
-                const res = await fetch('/inventory/picking/allocate-vehicle-shortage', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': token || ''
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await res.json();
-                if (data.success) {
-                    let backorderMsg = '';
-                    if (data.createdBackorders && data.createdBackorders.length > 0) {
-                        backorderMsg = `\n\n📋 Đã tự động tạo ${data.createdBackorders.length} Đơn Giao Sau:\n` +
-                            data.createdBackorders.map(b => `• ${b.backorder_code} (tách từ ${b.parent_code})`).join('\n');
-                    }
-
-                    alert(`✅ ${data.message}${backorderMsg}\n\nCác đơn đã hoàn tất bốc và sẵn sàng xuất xe mà không cần người lên đơn chỉnh sửa!`);
-                    this.shortageModal.show = false;
-                    window.location.reload();
+            for (const a of (this.shortageModal.allocations || [])) {
+                if (!a.itemRef) continue;
+                const req = Number(a.totalReq || 0);
+                const alloc = Math.max(0, Math.min(req, this.formatQtyInput(a.allocatedQty, req)));
+                a.itemRef.picked_qty = alloc;
+                a.itemRef._dirtyPicking = true;
+                if (alloc >= req && req > 0) {
+                    a.itemRef.is_picked = true;
+                    a.itemRef.item_status = 'Đủ hàng';
+                    a.itemRef.shortage_reason = '';
+                } else if (alloc > 0) {
+                    a.itemRef.is_picked = false;
+                    a.itemRef.item_status = 'Đang bốc';
+                    a.itemRef.shortage_reason = '';
                 } else {
-                    alert('❌ Lỗi: ' + (data.message || 'Không thể lưu phân bổ'));
+                    a.itemRef.is_picked = false;
+                    a.itemRef.item_status = 'Chờ bốc';
+                    a.itemRef.shortage_reason = '';
                 }
-            } catch (e) {
-                console.error('Error confirming vehicle allocation:', e);
-                alert('Lỗi kết nối: ' + e.message);
-            } finally {
-                this.shortageModal.saving = false;
+                if (alloc > 0 && (!a.itemRef.assigned_staff || a.itemRef.assigned_staff === 'null')) {
+                    a.itemRef.assigned_staff = this.currentUserName;
+                    if (!Array.isArray(a.itemRef.assigned_staff_list)) a.itemRef.assigned_staff_list = [];
+                    if (!a.itemRef.assigned_staff_list.includes(this.currentUserName)) {
+                        a.itemRef.assigned_staff_list.push(this.currentUserName);
+                    }
+                }
             }
+            this.shortageModal.show = false;
+            this.showToast('✓ Đã phân bổ ' + this.shortageModal.sku + ' cho ' + this.shortageModal.allocations.length + ' đơn! Hãy bấm Lưu hoặc Chuyển kiểm.', 'success');
         },
 
         async assignBatchItemStaff(ag, staffName) {
@@ -3323,6 +3803,191 @@ function pickingApp() {
             this.showToast('Đã hủy phân công toàn bộ ' + count + ' mặt hàng trong lô!', 'info');
         },
 
+        isOrderTransferredToQc(ord) {
+            if (!ord) return false;
+            return [
+                'Đã bốc xong', 'Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng', 'Đã kiểm',
+                'Sẵn sàng xuất xe', 'Đã kiểm hàng (Sẵn sàng xuất xe)', 'Kho đã xuất đủ',
+                'Đang vận chuyển', 'Đang giao hàng', 'Đã giao', 'Giao thành công'
+            ].includes(ord.status);
+        },
+
+        hasUnsavedPicking(ord) {
+            return Boolean(ord && Array.isArray(ord.items) && ord.items.some(i => i._dirtyPicking));
+        },
+
+        hasUnsavedQc(ord) {
+            return Boolean(ord && Array.isArray(ord.items) && ord.items.some(i => i._dirtyQc));
+        },
+
+        get hasAnyUnsavedBatchPicking() {
+            return (this.batchOrders || []).some(o => this.hasUnsavedPicking(o));
+        },
+
+        get hasAnyUnsavedBatchQc() {
+            return (this.batchOrders || []).some(o => this.hasUnsavedQc(o));
+        },
+
+        get pendingTransferBatchOrders() {
+            return (this.batchOrders || []).filter(o => !this.isOrderTransferredToQc(o));
+        },
+
+        get canHandoverBatchQcToVehicle() {
+            return (this.batchOrders || []).length > 0 && this.pendingTransferBatchOrders.length === 0;
+        },
+
+        async commitPickingOrQc(mode, action, targetOrders) {
+            if (!targetOrders || targetOrders.length === 0 || this.isSavingBatchOrSingle) return null;
+            this.isSavingBatchOrSingle = true;
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const ordersPayload = targetOrders.map(ord => ({
+                    orderId: ord.id,
+                    items: (ord.items || []).map(it => ({
+                        id: it.id,
+                        sku: it.sku,
+                        picked_qty: Number(it.picked_qty || 0),
+                        is_picked: Boolean(it.is_picked),
+                        item_status: it.item_status || 'Chờ bốc',
+                        shortage_reason: it.shortage_reason || '',
+                        assigned_staff: it.assigned_staff || null,
+                        assigned_staff_list: Array.isArray(it.assigned_staff_list) ? it.assigned_staff_list : [],
+                        checked_qty: Number(it.checked_qty || 0),
+                        is_checked: Boolean(it.is_checked),
+                        check_notes: it.check_notes || '',
+                        checked_qty_explicit: it._dirtyQc ? true : false
+                    }))
+                }));
+
+                const res = await fetch('/api/inventory/picking/save-batch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token || ''
+                    },
+                    body: JSON.stringify({
+                        mode: mode,
+                        action: action,
+                        performerName: this.currentUserName,
+                        inspectorName: this.qcInspector,
+                        adminOverride: Boolean(this.isUserAdmin && this.adminOverrideMode),
+                        orders: ordersPayload
+                    })
+                });
+
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    this.showToast(data.message || 'Không thể lưu dữ liệu!', 'error');
+                    return data;
+                }
+
+                // Đồng bộ kết quả từ server vào state local và xóa cờ dirty
+                if (Array.isArray(data.updatedOrders)) {
+                    const updatedMap = new Map(data.updatedOrders.map(u => [Number(u.id), u]));
+                    this.orders = this.orders.map(ord => {
+                        const u = updatedMap.get(Number(ord.id));
+                        if (!u) return ord;
+                        const uItemsById = new Map((u.items || []).map(ui => [String(ui.id), ui]));
+                        const mergedItems = (ord.items || []).map(it => {
+                            const ui = uItemsById.get(String(it.id));
+                            if (!ui) return it;
+                            const req = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
+                            return {
+                                ...it,
+                                picked_qty: this.formatQtyInput(ui.picked_qty, req),
+                                is_picked: Boolean(ui.is_picked),
+                                item_status: ui.item_status,
+                                shortage_reason: ui.shortage_reason || '',
+                                assigned_staff: ui.assigned_staff,
+                                assigned_staff_list: ui.assigned_staff_list || [],
+                                checked_qty: this.formatQtyInput(ui.checked_qty, req),
+                                is_checked: Boolean(ui.is_checked),
+                                check_notes: ui.check_notes || '',
+                                checked_by: ui.checked_by,
+                                checked_at: ui.checked_at,
+                                _dirtyPicking: mode === 'picking' ? false : Boolean(it._dirtyPicking),
+                                _dirtyQc: mode === 'qc' ? false : Boolean(it._dirtyQc),
+                            };
+                        });
+                        return {
+                            ...ord,
+                            status: u.status,
+                            shortage_reported: Boolean(u.shortage_reported),
+                            stock_deducted: u.stock_deducted !== undefined ? Boolean(u.stock_deducted) : Boolean(ord.stock_deducted),
+                            groups_progress: u.groups_progress || ord.groups_progress,
+                            items: mergedItems
+                        };
+                    });
+                }
+
+                this.showToast(data.message || 'Đã lưu thành công!', 'success');
+
+                if (action === 'transfer_to_qc') {
+                    setTimeout(() => {
+                        this.activeTab = 'qc';
+                    }, 500);
+                } else if (action === 'handover_to_vehicle') {
+                    if (typeof BroadcastChannel !== 'undefined') {
+                        try {
+                            const bc = new BroadcastChannel('erp_order_sync');
+                            bc.postMessage({ type: 'QC_ALL_CHECKED', completedCount: targetOrders.length });
+                        } catch(e) {}
+                    }
+                    setTimeout(() => {
+                        const nextPending = this.filteredOrders.find(o => !this.isOrderDaKiem(o));
+                        if (nextPending) {
+                            this.activeOrderId = nextPending.id;
+                            this.showToast('Đã bàn giao xe. Chuyển sang đơn chờ kiểm: ' + nextPending.order_code, 'info');
+                        }
+                    }, 250);
+                }
+
+                return data;
+            } catch (e) {
+                console.error('commitPickingOrQc error:', e);
+                this.showToast('Lỗi kết nối khi lưu: ' + e.message, 'error');
+                return null;
+            } finally {
+                this.isSavingBatchOrSingle = false;
+            }
+        },
+
+        quickPickAllBatchOrders() {
+            const ordersToFill = this.batchOrders.length > 0 ? this.batchOrders : this.filteredOrders;
+            if (ordersToFill.length === 0) {
+                this.showToast('Chưa chọn đơn hàng nào trong lô!', 'warning');
+                return;
+            }
+            ordersToFill.forEach(ord => {
+                (ord.items || []).forEach(it => {
+                    const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
+                    it.picked_qty = this.formatQtyInput(reqTotal, reqTotal);
+                    it.is_picked = true;
+                    it.item_status = 'Đủ hàng';
+                    it.shortage_reason = '';
+                    it._dirtyPicking = true;
+                    if (!it.assigned_staff || it.assigned_staff === 'null') {
+                        it.assigned_staff = this.currentUserName;
+                        if (!Array.isArray(it.assigned_staff_list)) it.assigned_staff_list = [];
+                        if (!it.assigned_staff_list.includes(this.currentUserName)) {
+                            it.assigned_staff_list.push(this.currentUserName);
+                        }
+                    }
+                });
+            });
+            this.showToast('Đã điền đủ SL trên màn hình cho ' + ordersToFill.length + ' đơn. Hãy bấm Lưu hoặc Chuyển kiểm!', 'info');
+        },
+
+        async saveBatchPickingOrders() {
+            const ordersToSave = this.batchOrders.length > 0 ? this.batchOrders : this.filteredOrders;
+            if (ordersToSave.length === 0) {
+                this.showToast('Không có đơn hàng nào được chọn!', 'warning');
+                return;
+            }
+            await this.commitPickingOrQc('picking', 'save', ordersToSave);
+        },
+
         async completeAllBatchOrders() {
             const ordersToComplete = this.batchOrders.length > 0
                 ? this.batchOrders
@@ -3333,194 +3998,125 @@ function pickingApp() {
                 return;
             }
 
-            if (!confirm('Xác nhận hoàn tất bốc hàng cho toàn bộ ' + ordersToComplete.length + ' đơn đã chọn và chuyển sang bước Kiểm Hàng?')) {
+            let shortSkus = 0;
+            (this.aggregatedItems || []).forEach(ag => {
+                if (ag.totalPicked < ag.totalRequired) shortSkus++;
+            });
+
+            const msg = shortSkus > 0
+                ? 'Đơn gộp đang có ' + shortSkus + ' mặt hàng bốc thiếu so với đặt hàng.\n\nBạn có chắc chắn muốn lưu số lượng đã phân bổ hiện tại và CHUYỂN KIỂM (vẫn được Giao xe nếu thiếu)?'
+                : 'Xác nhận lưu số lượng đã bốc và CHUYỂN KIỂM cho toàn bộ ' + ordersToComplete.length + ' đơn đã chọn?';
+
+            if (!confirm(msg)) {
                 return;
             }
 
-            try {
-                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                for (const ord of ordersToComplete) {
-                    (ord.items || []).forEach(it => {
-                        const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
-                        it.picked_qty = reqTotal;
-                        it.is_picked = true;
-                        it.item_status = 'Đủ hàng';
-                        it.shortage_reason = null;
-                    });
-                    // 1. Lưu trạng thái bốc đủ cho items vào CSDL trước
-                    if (ord.items && ord.items.length > 0) {
-                        await this.saveItemPickingState(ord.items[0], { quickPickAll: true }, ord);
-                    }
-
-                    // 2. Cập nhật trạng thái đơn hàng sang "Đã bốc xong"
-                    ord.status = 'Đã bốc xong';
-                    await fetch('/api/orders/update-status', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token || '' },
-                        body: JSON.stringify({
-                            id: ord.id,
-                            status: 'Đã bốc xong'
-                        })
-                    });
-                }
-
-                this.showToast('🎉 Hoàn tất bốc cả lô ' + ordersToComplete.length + ' đơn! Tất cả đã chuyển sang trạng thái "Đã bốc xong".', 'success');
-                setTimeout(() => {
-                    this.activeTab = 'qc';
-                }, 800);
-            } catch(e) {
-                console.error('Error completing batch orders:', e);
-                this.showToast('Lỗi khi hoàn tất bốc cả lô', 'error');
-            }
+            await this.commitPickingOrQc('picking', 'transfer_to_qc', ordersToComplete);
         },
 
         // ========================================================
         // TAB 2: BATCH QC HANDLERS (KIỂM HÀNG GỘP NHIỀU ĐƠN)
         // ========================================================
-        async qcCheckAllBatchItems() {
+        qcCheckAllBatchItems() {
             if (!this.aggregatedItems || this.aggregatedItems.length === 0) return;
-            try {
-                for (const ag of this.aggregatedItems) {
-                    for (const c of ag.contributingOrders) {
-                        c.itemRef.is_checked = true;
-                        const reqTotal = c.totalReq;
-                        const picked = Number(c.itemRef.picked_qty) || 0;
-                        c.itemRef.checked_qty = picked > 0 ? picked : reqTotal;
-                        c.itemRef.checked_by = this.qcInspector;
-                        c.itemRef.checked_at = new Date().toLocaleString('vi-VN');
-                        await this.saveItemPickingState(c.itemRef, {
-                            isQc: true,
-                            isChecked: true,
-                            checkedQty: c.itemRef.checked_qty,
-                            checkedBy: this.qcInspector,
-                            checkedAt: c.itemRef.checked_at
-                        }, c.orderRef);
-                    }
-                }
-                this.showToast('✓ Đã tích kiểm toàn bộ lô ' + this.aggregatedItems.length + ' mặt hàng gộp!', 'success');
-            } catch(e) {
-                console.error('Error qcCheckAllBatchItems:', e);
-                this.showToast('Lỗi khi tích kiểm cả lô', 'error');
-            }
-        },
-
-        async uncheckAllBatchItems() {
-            if (!this.aggregatedItems || this.aggregatedItems.length === 0) return;
-            try {
-                for (const ag of this.aggregatedItems) {
-                    for (const c of ag.contributingOrders) {
-                        c.itemRef.is_checked = false;
-                        c.itemRef.checked_qty = 0;
-                        await this.saveItemPickingState(c.itemRef, {
-                            isQc: true,
-                            isChecked: false,
-                            checkedQty: 0
-                        }, c.orderRef);
-                    }
-                }
-                this.showToast('Đã bỏ tích kiểm cả lô hàng', 'info');
-            } catch(e) {
-                console.error('Error uncheckAllBatchItems:', e);
-                this.showToast('Lỗi khi bỏ tích kiểm cả lô', 'error');
-            }
-        },
-
-        async toggleBatchItemQc(ag, checked) {
-            if (!ag || !ag.contributingOrders) return;
-            try {
+            for (const ag of this.aggregatedItems) {
                 for (const c of ag.contributingOrders) {
-                    c.itemRef.is_checked = checked;
-                    if (checked) {
-                        const picked = Number(c.itemRef.picked_qty) || 0;
-                        c.itemRef.checked_qty = picked > 0 ? picked : c.totalReq;
-                        c.itemRef.checked_by = this.qcInspector;
-                        c.itemRef.checked_at = new Date().toLocaleString('vi-VN');
-                    } else {
-                        c.itemRef.checked_qty = 0;
-                    }
-                    await this.saveItemPickingState(c.itemRef, {
-                        isQc: true,
-                        isChecked: checked,
-                        checkedQty: c.itemRef.checked_qty,
-                        checkedBy: this.qcInspector,
-                        checkedAt: c.itemRef.checked_at
-                    }, c.orderRef);
-                }
-                this.showToast((checked ? '✓ Đã kiểm mặt hàng ' : 'Đã bỏ kiểm mặt hàng ') + ag.sku);
-            } catch(e) {
-                console.error('Error toggleBatchItemQc:', e);
-            }
-        },
-
-        async qcCheckFullBatchItem(ag) {
-            if (!ag || !ag.contributingOrders) return;
-            try {
-                for (const c of ag.contributingOrders) {
+                    const picked = Number(c.itemRef.picked_qty || 0);
                     c.itemRef.is_checked = true;
-                    const picked = Number(c.itemRef.picked_qty) || 0;
-                    c.itemRef.checked_qty = picked > 0 ? picked : c.totalReq;
+                    c.itemRef.checked_qty = this.formatQtyInput(picked, c.totalReq);
                     c.itemRef.checked_by = this.qcInspector;
                     c.itemRef.checked_at = new Date().toLocaleString('vi-VN');
-                    await this.saveItemPickingState(c.itemRef, {
-                        isQc: true,
-                        isChecked: true,
-                        checkedQty: c.itemRef.checked_qty,
-                        checkedBy: this.qcInspector,
-                        checkedAt: c.itemRef.checked_at
-                    }, c.orderRef);
+                    c.itemRef._dirtyQc = true;
                 }
-                this.showToast('✓ Đã xác nhận kiểm đủ cả lô cho mã: ' + ag.sku, 'success');
-            } catch(e) {
-                console.error('Error qcCheckFullBatchItem:', e);
+            }
+            this.showToast('Đã tích kiểm theo SL đã bốc cho cả lô trên màn hình. Hãy bấm Lưu hoặc Giao xe!', 'info');
+        },
+
+        uncheckAllBatchItems() {
+            if (!this.aggregatedItems || this.aggregatedItems.length === 0) return;
+            for (const ag of this.aggregatedItems) {
+                for (const c of ag.contributingOrders) {
+                    c.itemRef.is_checked = false;
+                    c.itemRef.checked_qty = 0;
+                    c.itemRef._dirtyQc = true;
+                }
+            }
+            this.showToast('Đã bỏ tích kiểm cả lô trên màn hình (chưa lưu).', 'info');
+        },
+
+        toggleBatchItemQc(ag, checked) {
+            if (!ag || !ag.contributingOrders) return;
+            for (const c of ag.contributingOrders) {
+                c.itemRef.is_checked = checked;
+                c.itemRef._dirtyQc = true;
+                if (checked) {
+                    const picked = Number(c.itemRef.picked_qty || 0);
+                    c.itemRef.checked_qty = this.formatQtyInput(picked, c.totalReq);
+                    c.itemRef.checked_by = this.qcInspector;
+                    c.itemRef.checked_at = new Date().toLocaleString('vi-VN');
+                } else {
+                    c.itemRef.checked_qty = 0;
+                }
             }
         },
 
-        async updateBatchItemCheckedQty(ag, val) {
+        qcCheckFullBatchItem(ag) {
             if (!ag || !ag.contributingOrders) return;
-            let targetQty = Math.max(0, Number(val) || 0);
-            if (targetQty > ag.totalRequired && ag.totalRequired > 0) {
-                targetQty = ag.totalRequired;
-                this.showToast('Không được nhập quá tổng số lượng cần kiểm (' + ag.totalRequired + ')!', 'warning');
+            for (const c of ag.contributingOrders) {
+                const picked = Number(c.itemRef.picked_qty || 0);
+                c.itemRef.is_checked = true;
+                c.itemRef.checked_qty = this.formatQtyInput(picked, c.totalReq);
+                c.itemRef.checked_by = this.qcInspector;
+                c.itemRef.checked_at = new Date().toLocaleString('vi-VN');
+                c.itemRef._dirtyQc = true;
+            }
+            this.showToast('Đã điền đủ SL kiểm theo SL đã bốc cho ' + ag.sku + '. Hãy bấm Lưu hoặc Giao xe!', 'info');
+        },
+
+        updateBatchItemCheckedQty(ag, val) {
+            if (!ag || !ag.contributingOrders) return;
+            const maxCap = Number(ag.totalPicked || 0);
+            let targetQty = Math.max(0, this.formatQtyInput(val, ag.totalRequired));
+            if (targetQty > maxCap) {
+                targetQty = maxCap;
+                this.showToast('Không được kiểm quá số lượng đã bốc (' + maxCap + ')!', 'warning');
             }
 
             let remain = targetQty;
             for (let i = 0; i < ag.contributingOrders.length; i++) {
                 const c = ag.contributingOrders[i];
-                const req = c.totalReq;
+                const pickedCap = Number(c.itemRef.picked_qty || 0);
                 let allocated = 0;
                 if (i === ag.contributingOrders.length - 1) {
-                    allocated = remain;
+                    allocated = Math.min(pickedCap, remain);
                 } else {
-                    allocated = Math.min(req, remain);
-                    remain -= allocated;
+                    allocated = Math.min(pickedCap, remain);
+                    remain = Math.max(0, remain - allocated);
                 }
 
-                c.itemRef.checked_qty = allocated;
-                c.itemRef.is_checked = allocated >= req && req > 0;
+                c.itemRef.checked_qty = this.formatQtyInput(allocated, c.totalReq);
+                c.itemRef.is_checked = (pickedCap > 0 && allocated >= pickedCap) || (pickedCap === 0 && allocated === 0 && Boolean(c.itemRef.is_checked));
                 c.itemRef.checked_by = this.qcInspector;
                 c.itemRef.checked_at = new Date().toLocaleString('vi-VN');
-
-                await this.saveItemPickingState(c.itemRef, {
-                    isQc: true,
-                    isChecked: c.itemRef.is_checked,
-                    checkedQty: allocated,
-                    checkedBy: this.qcInspector,
-                    checkedAt: c.itemRef.checked_at
-                }, c.orderRef);
+                c.itemRef._dirtyQc = true;
             }
-            this.showToast('Đã lưu SL thực kiểm ' + targetQty + ' cho mã ' + ag.sku);
         },
 
-        async updateBatchItemCheckNotes(ag, val) {
+        updateBatchItemCheckNotes(ag, val) {
             if (!ag || !ag.contributingOrders) return;
             for (const c of ag.contributingOrders) {
                 c.itemRef.check_notes = val;
-                await this.saveItemPickingState(c.itemRef, {
-                    isQc: true,
-                    checkNotes: val
-                }, c.orderRef);
+                c.itemRef._dirtyQc = true;
             }
-            this.showToast('Đã lưu ghi chú kiểm hàng cho mã ' + ag.sku);
+        },
+
+        async saveBatchQcOrders() {
+            const ordersToSave = this.batchOrders;
+            if (!ordersToSave || ordersToSave.length === 0) {
+                this.showToast('Chưa chọn đơn hàng nào trong danh sách gộp!', 'warning');
+                return;
+            }
+            await this.commitPickingOrQc('qc', 'save', ordersToSave);
         },
 
         async completeAllBatchQcOrders() {
@@ -3530,53 +4126,33 @@ function pickingApp() {
                 return;
             }
 
-            if (!confirm('Bạn có chắc chắn muốn hoàn tất kiểm hàng (QC) cho cả ' + ordersToComplete.length + ' đơn gộp này để chuyển sang trạng thái "Sẵn sàng xuất xe"?')) {
+            if (this.pendingTransferBatchOrders.length > 0) {
+                this.showToast('Không thể Giao xe! Còn đơn chưa bấm Chuyển kiểm: ' + this.pendingTransferBatchOrders.map(o => o.order_code).join(', '), 'error');
                 return;
             }
 
-            try {
-                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                for (const ord of ordersToComplete) {
-                    (ord.items || []).forEach(it => {
-                        const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
-                        it.is_checked = true;
-                        it.checked_qty = Number(it.picked_qty) > 0 ? it.picked_qty : reqTotal;
-                        it.picked_qty = it.checked_qty;
-                        it.is_picked = true;
-                        it.item_status = 'Đủ hàng';
-                        it.checked_by = this.qcInspector;
-                        it.checked_at = new Date().toLocaleString('vi-VN');
-                    });
-
-                    // 1. Đồng thời gửi sự kiện qcAllChecked để lưu kiểm hàng vào CSDL trước
-                    if (ord.items && ord.items.length > 0) {
-                        await this.saveItemPickingState(ord.items[0], { isQc: true, qcAllChecked: true }, ord);
-                    }
-
-                    // 2. Gửi API cập nhật trạng thái đơn sang "Đã kiểm hàng"
-                    ord.status = 'Đã kiểm hàng';
-                    await fetch('/api/orders/update-status', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token || '' },
-                        body: JSON.stringify({
-                            id: ord.id,
-                            status: 'Đã kiểm hàng'
-                        })
-                    });
-                }
-
-                this.showToast('🎉 Hoàn tất kiểm hàng (QC) cả lô ' + ordersToComplete.length + ' đơn! Tất cả đã chuyển sang trạng thái "Đã kiểm hàng" sẵn sàng xuất xe.', 'success');
-                if (typeof BroadcastChannel !== 'undefined') {
-                    const bc = new BroadcastChannel('erp_order_sync');
-                    bc.postMessage({ type: 'QC_ALL_CHECKED', completedCount: ordersToComplete.length });
-                }
-            } catch(e) {
-                console.error('Error completing batch QC orders:', e);
-                this.showToast('Lỗi khi hoàn tất kiểm cả lô', 'error');
+            if (!confirm('Xác nhận Kiểm xong & GIAO XE cho cả ' + ordersToComplete.length + ' đơn gộp này?')) {
+                return;
             }
+
+            await this.commitPickingOrQc('qc', 'handover_to_vehicle', ordersToComplete);
         },
 
         // Format Helpers
+        isIntegerQty(reqQty) {
+            const num = Number(reqQty || 0);
+            return Math.abs(num - Math.round(num)) < 0.0001;
+        },
+
+        formatQtyInput(val, reqQty = null) {
+            let num = Number(val || 0);
+            if (isNaN(num)) num = 0;
+            if (reqQty !== null && this.isIntegerQty(reqQty)) {
+                return Math.round(num);
+            }
+            return Number(num.toFixed(2));
+        },
+
         formatDate(dateStr) {
             if (!dateStr) return '';
             try {
@@ -3592,13 +4168,13 @@ function pickingApp() {
 
         getAssignedStaffText(ord) {
             if (!ord.items || ord.items.length === 0) return 'Chưa phân công';
-            const first = ord.items.find(i => i.assigned_staff);
-            return first ? first.assigned_staff : 'Chưa phân công';
+            const first = ord.items.find(i => i.assigned_staff && i.assigned_staff !== 'null' && String(i.assigned_staff).trim() !== '');
+            return (first && first.assigned_staff) ? first.assigned_staff : 'Chưa phân công';
         },
 
         getAssignedItemsCount(ord) {
             if (!ord.items) return 0;
-            return ord.items.filter(i => i.assigned_staff).length;
+            return ord.items.filter(i => i.assigned_staff && i.assigned_staff !== 'null' && String(i.assigned_staff).trim() !== '').length;
         },
 
         getProgressRatio(ord) {
@@ -3650,13 +4226,13 @@ function pickingApp() {
 
         getItemStatusBadgeClass(it) {
             const req = Number(it.quantity) + Number(it.gift_quantity || 0);
-            if (it.item_status === 'Đủ hàng' || it.is_picked || (Number(it.picked_qty) >= req && req > 0)) {
+            if (it.item_status === 'Đủ hàng' || (Number(it.picked_qty) >= req && req > 0)) {
                 return 'bg-emerald-50 text-emerald-700 border-emerald-200';
             }
-            if (it.item_status === 'Thiếu hàng') {
-                return 'bg-rose-50 text-rose-700 border-rose-200';
+            if (Number(it.picked_qty || 0) > 0 || it.item_status === 'Đang bốc') {
+                return 'bg-sky-50 text-sky-700 border-sky-200';
             }
-            return 'bg-slate-100 text-slate-700 border-slate-200';
+            return 'bg-amber-50 text-amber-800 border-amber-200';
         },
 
         isOrderLockedForPicking(ord) {
@@ -3666,13 +4242,18 @@ function pickingApp() {
         isItemStaffLocked(it) {
             if (!it) return false;
             if (it._forceUnlock) return false;
-            if (this.isOrderLockedForPicking(this.activeOrder)) return true;
+
+            // BẮT BUỘC: Phải có tên người bốc hợp lệ mới khóa hiển thị badge người bốc. Nếu chưa có người bốc thì tuyệt đối không khóa!
+            const staffName = (typeof it.assigned_staff === 'string' && it.assigned_staff.trim() !== 'null' && it.assigned_staff.trim() !== '') 
+                ? it.assigned_staff.trim() 
+                : null;
+            if (!staffName) return false;
 
             // 1. Khi thay đổi số lượng (_justModified), LUÔN MỞ PHÂN CÔNG để phân công lại!
             if (it._justModified) return false;
 
-            // 2. Nếu chưa phân công thì không bao giờ khóa phân công
-            if (!it.assigned_staff && (!it.assigned_staff_list || it.assigned_staff_list.length === 0)) return false;
+            // 2. Nếu đơn đã bị khóa (đã kiểm xong / xuất bến) thì khóa người bốc
+            if (this.isOrderLockedForPicking(this.activeOrder)) return true;
 
             // 3. Nếu số lượng đã bốc < số lượng cần bốc (chưa bốc xong hoặc thiếu hàng), MỞ PHÂN CÔNG
             const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
@@ -3692,18 +4273,27 @@ function pickingApp() {
             // Nếu là Admin và bật chế độ can thiệp trực tiếp
             if (this.isUserAdmin && this.adminOverrideMode) return true;
 
-            // Chưa phân công -> Không ai được nhập số lượng bốc (phải chỉ định người bốc trước)
-            if (!it.assigned_staff && (!it.assigned_staff_list || it.assigned_staff_list.length === 0)) {
-                return false;
+            // Lấy tên người được phân công hợp lệ (bỏ qua chuỗi null / rỗng)
+            const staffName = (typeof it.assigned_staff === 'string' && it.assigned_staff.trim() !== 'null' && it.assigned_staff.trim() !== '') 
+                ? it.assigned_staff.trim() 
+                : null;
+
+            const validList = Array.isArray(it.assigned_staff_list) 
+                ? it.assigned_staff_list.filter(s => s && String(s).trim() !== '' && String(s).trim() !== 'null').map(s => String(s).trim())
+                : [];
+
+            // Nếu chưa phân công cho ai -> Tự động cho phép người bấm Đủ / nhập số bốc (hệ thống sẽ tự nhận cho người này)
+            if (!staffName && validList.length === 0) {
+                return true;
             }
 
             // Chỉ người được phân công vào mặt hàng này mới được nhập số lượng bốc
             const curName = (this.currentUserName || '').trim().toLowerCase();
-            if (it.assigned_staff && it.assigned_staff.trim().toLowerCase() === curName) {
+            if (staffName && staffName.toLowerCase() === curName) {
                 return true;
             }
-            if (Array.isArray(it.assigned_staff_list)) {
-                return it.assigned_staff_list.some(st => st && st.trim().toLowerCase() === curName);
+            if (validList.some(st => st.toLowerCase() === curName)) {
+                return true;
             }
             return false;
         },
@@ -3788,6 +4378,16 @@ function pickingApp() {
                     payload.pickedQty = item.picked_qty;
                     payload.itemStatus = item.item_status;
                     payload.shortageReason = item.shortage_reason;
+                    // Chưa phân công -> Tự động ăn theo người thao tác
+                    if (!item.assigned_staff || item.assigned_staff === 'null') {
+                        item.assigned_staff = this.currentUserName;
+                        if (!Array.isArray(item.assigned_staff_list)) item.assigned_staff_list = [];
+                        if (!item.assigned_staff_list.includes(this.currentUserName)) {
+                            item.assigned_staff_list.push(this.currentUserName);
+                        }
+                    }
+                    payload.assignedStaff = item.assigned_staff;
+                    payload.assignedStaffList = item.assigned_staff_list;
                 }
                 const res = await fetch('/api/inventory/picking/update-item', {
                     method: 'POST',
@@ -3815,17 +4415,50 @@ function pickingApp() {
             }
         },
 
-        pickFullItem(it) {
+        incrementPickedQty(it) {
             if (!this.canUserPickItem(it)) {
                 this.showToast('Bạn không được phân công soạn mặt hàng này!', 'error');
                 return;
             }
             const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
-            it.picked_qty = reqTotal;
+            let val = Number(it.picked_qty || 0);
+            if (val < reqTotal || reqTotal === 0) {
+                it.picked_qty = this.formatQtyInput(val + 1, reqTotal);
+                this.validateAndSavePickedQty(it);
+            }
+        },
+
+        decrementPickedQty(it) {
+            if (!this.canUserPickItem(it)) {
+                this.showToast('Bạn không được phân công soạn mặt hàng này!', 'error');
+                return;
+            }
+            const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
+            let val = Number(it.picked_qty || 0);
+            if (val > 0) {
+                it.picked_qty = Math.max(0, this.formatQtyInput(val - 1, reqTotal));
+                this.validateAndSavePickedQty(it);
+            }
+        },
+
+        pickFullItem(it) {
+            if (!this.canUserPickItem(it)) {
+                this.showToast('Mặt hàng này đã được giao cho ' + it.assigned_staff + '!', 'error');
+                return;
+            }
+            if (!it.assigned_staff || it.assigned_staff === 'null') {
+                it.assigned_staff = this.currentUserName;
+                if (!Array.isArray(it.assigned_staff_list)) it.assigned_staff_list = [];
+                if (!it.assigned_staff_list.includes(this.currentUserName)) {
+                    it.assigned_staff_list.push(this.currentUserName);
+                }
+            }
+            const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
+            it.picked_qty = this.formatQtyInput(reqTotal, reqTotal);
             it.is_picked = true;
             it.item_status = 'Đủ hàng';
-            this.saveItemPickingState(it);
-            this.showToast('Đã bốc đủ ' + reqTotal + ' ' + (it.unit || '') + ' cho ' + it.sku);
+            it.shortage_reason = '';
+            it._dirtyPicking = true;
         },
 
         handlePickCheckChange(it) {
@@ -3836,73 +4469,38 @@ function pickingApp() {
             }
             const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
             const picked = Number(it.picked_qty || 0);
+            it.shortage_reason = '';
             if (it.is_picked) {
                 if (picked <= 0) {
-                    it.picked_qty = reqTotal;
+                    it.picked_qty = this.formatQtyInput(reqTotal, reqTotal);
                     it.item_status = 'Đủ hàng';
-                    it.shortage_reason = '';
                 } else if (picked < reqTotal) {
-                    it.item_status = 'Thiếu hàng';
-                    if (!it.shortage_reason) {
-                        it.shortage_reason = 'Hết hàng trên kệ kho';
-                    }
+                    it.item_status = 'Đang bốc';
                 } else {
                     it.item_status = 'Đủ hàng';
-                    it.shortage_reason = '';
+                }
+                if (!it.assigned_staff || it.assigned_staff === 'null') {
+                    it.assigned_staff = this.currentUserName;
+                    if (!Array.isArray(it.assigned_staff_list)) it.assigned_staff_list = [];
+                    if (!it.assigned_staff_list.includes(this.currentUserName)) {
+                        it.assigned_staff_list.push(this.currentUserName);
+                    }
                 }
             } else {
                 if (picked > 0 && picked < reqTotal) {
-                    it.item_status = 'Thiếu hàng';
-                    if (!it.shortage_reason) {
-                        it.shortage_reason = 'Hết hàng trên kệ kho';
-                    }
+                    it.item_status = 'Đang bốc';
                 } else if (picked >= reqTotal && reqTotal > 0) {
                     it.item_status = 'Đủ hàng';
                 } else {
                     it.item_status = 'Chờ bốc';
                 }
             }
-            this.saveItemPickingState(it, {
-                shortageReason: it.shortage_reason
-            });
+            it._dirtyPicking = true;
         },
 
         getOrderSupervisor(ord) {
             if (!ord) return 'Quản trị viên';
             return ord.supervisor || ord.order_creator || (ord.dealer && ord.dealer.staff_in_charge) || 'Quản lý';
-        },
-
-        isItemShort(it) {
-            if (!it) return false;
-            const req = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
-            const picked = Number(it.picked_qty || 0);
-            // Nếu đã bốc đủ hoặc bốc dư số lượng cần, TUYỆT ĐỐI KHÔNG THIẾU
-            if (req > 0 && picked >= req) {
-                if (it.item_status === 'Thiếu hàng' || it.shortage_reason) {
-                    it.item_status = 'Đủ hàng';
-                    it.shortage_reason = '';
-                    it.is_picked = true;
-                }
-                return false;
-            }
-            // Chỉ coi là thiếu khi số lượng thực tế bốc < số lượng cần bốc
-            return (picked < req) && (it.item_status === 'Thiếu hàng' || Boolean(it.shortage_reason));
-        },
-
-        getShortageQty(it) {
-            if (!it) return 0;
-            const req = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
-            const picked = Number(it.picked_qty || 0);
-            return Math.max(0, req - picked);
-        },
-
-        getShortageItems(ord) {
-            if (!ord || !ord.items) return [];
-            return ord.items.filter(it => this.isItemShort(it));
-        },
-
-        countShortageItems(ord) {
-            return this.getShortageItems(ord).length;
         },
 
         validateAndSavePickedQty(it) {
@@ -3911,14 +4509,29 @@ function pickingApp() {
                 return;
             }
             const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
-            let val = Number(it.picked_qty || 0);
+            
+            // Chuẩn hóa giá trị nhập vào (loại bỏ số thập phân nếu SL cần là số nguyên)
+            let val = this.formatQtyInput(it.picked_qty, reqTotal);
+            it.picked_qty = val;
 
             if (val > reqTotal && reqTotal > 0) {
+                val = reqTotal;
                 it.picked_qty = reqTotal;
                 this.showToast('Không được nhập quá số lượng cần bốc (' + reqTotal + ' ' + (it.unit || '') + ')!', 'warning');
             } else if (val < 0) {
+                val = 0;
                 it.picked_qty = 0;
             }
+
+            // Nếu mặt hàng chưa phân công và người dùng nhập số lượng > 0 -> Tự động nhận việc cho người này
+            if (val > 0 && (!it.assigned_staff || it.assigned_staff === 'null')) {
+                it.assigned_staff = this.currentUserName;
+                if (!Array.isArray(it.assigned_staff_list)) it.assigned_staff_list = [];
+                if (!it.assigned_staff_list.includes(this.currentUserName)) {
+                    it.assigned_staff_list.push(this.currentUserName);
+                }
+            }
+
             this.saveItemPickedQty(it);
         },
 
@@ -3927,246 +4540,38 @@ function pickingApp() {
                 return;
             }
             const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
-            let picked = Number(it.picked_qty || 0);
+            let picked = this.formatQtyInput(it.picked_qty, reqTotal);
 
             if (picked > reqTotal && reqTotal > 0) {
                 picked = reqTotal;
-                it.picked_qty = reqTotal;
             } else if (picked < 0) {
                 picked = 0;
-                it.picked_qty = 0;
+            }
+            it.picked_qty = picked;
+
+            // Đảm bảo nếu chưa phân công mà bốc > 0 thì tự nhận
+            if (picked > 0 && (!it.assigned_staff || it.assigned_staff === 'null')) {
+                it.assigned_staff = this.currentUserName;
+                if (!Array.isArray(it.assigned_staff_list)) it.assigned_staff_list = [];
+                if (!it.assigned_staff_list.includes(this.currentUserName)) {
+                    it.assigned_staff_list.push(this.currentUserName);
+                }
             }
 
+            it.shortage_reason = '';
             if (picked >= reqTotal && reqTotal > 0) {
                 it.is_picked = true;
                 it.item_status = 'Đủ hàng';
-                it.shortage_reason = '';
             } else if (picked > 0 && picked < reqTotal) {
-                it.is_picked = true;
-                it.item_status = 'Thiếu hàng';
-                if (!it.shortage_reason) {
-                    it.shortage_reason = 'Hết hàng trên kệ kho';
-                }
+                it.is_picked = false;
+                it.item_status = 'Đang bốc';
             } else {
                 it.is_picked = false;
                 it.item_status = 'Chờ bốc';
-                it.shortage_reason = '';
             }
 
-            this.saveItemPickingState(it, {
-                shortageReason: it.shortage_reason
-            });
-        },
-
-        saveItemShortageReason(it) {
-            it.item_status = 'Thiếu hàng';
-            this.saveItemPickingState(it, {
-                shortageReason: it.shortage_reason
-            });
-            this.showToast('Đã lưu lý do thiếu: ' + it.shortage_reason);
-        },
-
-        async reportShortageActiveOrder() {
-            if (!this.activeOrder) return;
-            const shortItems = this.getShortageItems(this.activeOrder);
-            if (shortItems.length === 0) {
-                this.showToast('Không có sản phẩm nào bị thiếu trong đơn này!', 'warning');
-                return;
-            }
-
-            const supervisor = this.getOrderSupervisor(this.activeOrder);
-            const payloadItems = shortItems.map(it => ({
-                id: it.id,
-                sku: it.sku,
-                name: it.name,
-                unit: it.unit || 'cây',
-                req_qty: Number(it.quantity || 0) + Number(it.gift_quantity || 0),
-                picked_qty: Number(it.picked_qty || 0),
-                shortage_qty: this.getShortageQty(it),
-                reason: it.shortage_reason || 'Hết hàng trên kệ kho'
-            }));
-
-            try {
-                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                const res = await fetch('/api/inventory/picking/report-shortage', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': token || ''
-                    },
-                    body: JSON.stringify({
-                        orderId: this.activeOrder.id,
-                        reporterName: '{{ $currentUser->name }}',
-                        shortageItems: payloadItems
-                    })
-                });
-
-                const data = await res.json();
-                if (data.success) {
-                    this.activeOrder.status = 'Kho báo thiếu hàng';
-                    this.activeOrder.shortage_reported = true;
-
-                    // Phát tín hiệu đồng bộ tức thì cho các tab khác
-                    try {
-                        const bc = new BroadcastChannel('erp_order_sync');
-                        bc.postMessage({
-                            type: 'SHORTAGE_REPORTED',
-                            orderId: this.activeOrder.id,
-                            orderCode: this.activeOrder.order_code,
-                            supervisor: supervisor,
-                            reporter: '{{ $currentUser->name }}',
-                            shortageItems: payloadItems,
-                            timestamp: Date.now()
-                        });
-                    } catch(e) {}
-                    try {
-                        localStorage.setItem('erp_order_sync_trigger', JSON.stringify({
-                            time: Date.now(),
-                            type: 'SHORTAGE_REPORTED',
-                            orderId: this.activeOrder.id,
-                            supervisor: supervisor
-                        }));
-                    } catch(e) {}
-
-                    this.showToast('🔔 ĐÃ GỬI THÔNG BÁO THIẾU HÀNG TỚI NGƯỜI PHỤ TRÁCH ĐƠN: ' + supervisor + '!', 'warning');
-                    this.playAlertSound();
-                } else {
-                    this.showToast(data.message || 'Lỗi gửi cảnh báo thiếu hàng', 'error');
-                }
-            } catch (e) {
-                console.error('Error reporting shortage:', e);
-                this.showToast('Không thể gửi cảnh báo thiếu hàng', 'error');
-            }
-        },
-
-        async autoSplitBackOrderActiveOrder() {
-            if (!this.activeOrder) return;
-            const shortItems = this.getShortageItems(this.activeOrder);
-            if (shortItems.length === 0) {
-                this.showToast('Không có sản phẩm nào bị thiếu trong đơn này!', 'warning');
-                return;
-            }
-
-            const confirmMsg = `Xác nhận Xuất kho theo số lượng thực tế và TỰ ĐỘNG TÁCH ĐƠN NỢ HÀNG (Backorder)?\n\n` +
-                `• Đơn gốc #${this.activeOrder.order_code} sẽ chốt theo số lượng thực bốc để giao đợt 1.\n` +
-                `• Hệ thống sẽ tự động sinh 1 đơn mới cho ${shortItems.length} sản phẩm thiếu (trạng thái: Giao sau).\n` +
-                `• Khi nhập hàng về kho, hệ thống sẽ tự động quét và báo đơn sẵn sàng giao.`;
-
-            if (!confirm(confirmMsg)) return;
-
-            const payloadItems = shortItems.map(it => ({
-                id: it.id,
-                sku: it.sku,
-                name: it.name,
-                unit: it.unit || 'cây',
-                req_qty: Number(it.quantity || 0) + Number(it.gift_quantity || 0),
-                picked_qty: Number(it.picked_qty || 0),
-                shortage_qty: this.getShortageQty(it),
-                reason: it.shortage_reason || 'Hết hàng trên kệ kho'
-            }));
-
-            try {
-                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                const res = await fetch('/inventory/picking/split-backorder', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': token || ''
-                    },
-                    body: JSON.stringify({
-                        orderId: this.activeOrder.id,
-                        shortageItems: payloadItems,
-                        note: 'Tách tự động tại màn hình Soạn hàng'
-                    })
-                });
-
-                const data = await res.json();
-                if (data.success) {
-                    alert(`✅ ${data.message}\n\nMã đơn nợ hàng mới: ${data.backorder?.order_code || 'Giao sau'}`);
-                    window.location.reload();
-                } else {
-                    alert('Lỗi: ' + (data.message || 'Không thể tách đơn nợ hàng'));
-                }
-            } catch (err) {
-                alert('Lỗi kết nối: ' + err.message);
-            }
-        },
-
-        async reportShortageItem(it) {
-            if (!this.activeOrder) return;
-            const supervisor = this.getOrderSupervisor(this.activeOrder);
-            const shortQty = this.getShortageQty(it);
-            const reason = it.shortage_reason || 'Hết hàng trên kệ kho';
-
-            try {
-                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                const res = await fetch('/api/inventory/picking/report-shortage', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': token || ''
-                    },
-                    body: JSON.stringify({
-                        orderId: this.activeOrder.id,
-                        reporterName: '{{ $currentUser->name }}',
-                        shortageItems: [{
-                            id: it.id,
-                            sku: it.sku,
-                            name: it.name,
-                            unit: it.unit || 'cây',
-                            req_qty: Number(it.quantity || 0) + Number(it.gift_quantity || 0),
-                            picked_qty: Number(it.picked_qty || 0),
-                            shortage_qty: shortQty,
-                            reason: reason
-                        }]
-                    })
-                });
-
-                const data = await res.json();
-                if (data.success) {
-                    this.activeOrder.status = 'Kho báo thiếu hàng';
-                    it.item_status = 'Thiếu hàng';
-                    it.shortage_reason = reason;
-
-                    try {
-                        const bc = new BroadcastChannel('erp_order_sync');
-                        bc.postMessage({
-                            type: 'SHORTAGE_REPORTED',
-                            orderId: this.activeOrder.id,
-                            orderCode: this.activeOrder.order_code,
-                            supervisor: supervisor,
-                            reporter: '{{ $currentUser->name }}',
-                            shortageItems: [{
-                                sku: it.sku,
-                                name: it.name,
-                                unit: it.unit || 'cây',
-                                shortage_qty: shortQty,
-                                reason: reason
-                            }],
-                            timestamp: Date.now()
-                        });
-                    } catch(e) {}
-                    try {
-                        localStorage.setItem('erp_order_sync_trigger', JSON.stringify({
-                            time: Date.now(),
-                            type: 'SHORTAGE_REPORTED',
-                            orderId: this.activeOrder.id,
-                            supervisor: supervisor
-                        }));
-                    } catch(e) {}
-
-                    this.showToast('🔔 ĐÃ GỬI CẢNH BÁO THIẾU ' + shortQty + ' ' + (it.unit || '') + ' (' + it.sku + ') TỚI NGƯỜI PHỤ TRÁCH ĐƠN: ' + supervisor, 'warning');
-                    this.playAlertSound();
-                } else {
-                    this.showToast(data.message || 'Lỗi gửi cảnh báo thiếu hàng', 'error');
-                }
-            } catch(e) {
-                console.error('Error reporting shortage item:', e);
-                this.showToast('Không thể gửi cảnh báo thiếu hàng', 'error');
-            }
+            // Chỉ cập nhật tạm trên giao diện, không tự lưu lên server cho đến khi bấm [Lưu] hoặc [Chuyển kiểm]
+            it._dirtyPicking = true;
         },
 
         isAllGroupsPickingCompleted(ord) {
@@ -4174,10 +4579,10 @@ function pickingApp() {
             if (ord.groups_progress && ord.groups_progress.length > 0) {
                 return ord.groups_progress.every(g => g.is_picking_completed);
             }
-            if (!ord.items || ord.items.length === 0) return true;
+            if (!ord.items || ord.items.length === 0) return false;
             return ord.items.every(it => {
                 const req = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
-                return (it.is_picked || Number(it.picked_qty) >= req) && it.item_status !== 'Thiếu hàng';
+                return Number(it.picked_qty || 0) >= req && req > 0;
             });
         },
 
@@ -4186,7 +4591,7 @@ function pickingApp() {
             if (ord.groups_progress && ord.groups_progress.length > 0) {
                 return ord.groups_progress.every(g => g.is_qc_completed);
             }
-            if (!ord.items || ord.items.length === 0) return true;
+            if (!ord.items || ord.items.length === 0) return false;
             return ord.items.every(it => {
                 const req = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
                 return it.is_checked || Number(it.checked_qty) >= req;
@@ -4205,7 +4610,7 @@ function pickingApp() {
             return pending.map(g => g.group_name + ' (' + g.checked_count + '/' + g.items_count + ')').join(', ');
         },
 
-        async quickPickAllActiveOrder() {
+        quickPickAllActiveOrder() {
             if (!this.activeOrder) return;
             const itemsToPick = this.activeOrder.items.filter(it => this.canUserPickItem(it));
             if (itemsToPick.length === 0) {
@@ -4214,121 +4619,130 @@ function pickingApp() {
             }
             itemsToPick.forEach(it => {
                 const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
-                it.picked_qty = reqTotal;
+                it.picked_qty = this.formatQtyInput(reqTotal, reqTotal);
                 it.is_picked = true;
                 it.item_status = 'Đủ hàng';
-                it.shortage_reason = null;
-            });
-
-            const res = await this.saveItemPickingState(itemsToPick[0], {
-                quickPickAll: true
-            });
-
-            if (res && res.success) {
-                if (res.allPicked) {
-                    this.showToast('🎉 TẤT CẢ các nhóm đã bốc xong! Đơn đã chuyển sang trạng thái "Đã bốc xong".', 'success');
-                } else {
-                    const pendingText = this.getPendingPickingGroupsText(this.activeOrder);
-                    this.showToast('Đã bốc đủ ' + itemsToPick.length + ' món của nhóm bạn! Đơn đang chờ nhóm: ' + (pendingText || 'khác') + ' hoàn tất để chuyển trạng thái.', 'warning');
+                it.shortage_reason = '';
+                it._dirtyPicking = true;
+                if (!it.assigned_staff || it.assigned_staff === 'null') {
+                    it.assigned_staff = this.currentUserName;
+                    if (!Array.isArray(it.assigned_staff_list)) it.assigned_staff_list = [];
+                    if (!it.assigned_staff_list.includes(this.currentUserName)) {
+                        it.assigned_staff_list.push(this.currentUserName);
+                    }
                 }
-            } else {
-                this.showToast('Đã bốc đủ ' + itemsToPick.length + ' mặt hàng được phân công cho bạn!');
-            }
+            });
+            this.showToast('Đã điền đủ ' + itemsToPick.length + ' mặt hàng trên màn hình. Hãy bấm Lưu hoặc Chuyển kiểm!', 'info');
         },
 
-        async completePickingAndSendToQc() {
+        async savePickingActiveOrder() {
             if (!this.activeOrder) return;
-            const itemsToPick = this.activeOrder.items.filter(it => this.canUserPickItem(it) || !it.is_picked);
-            itemsToPick.forEach(it => {
-                const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
-                if (Number(it.picked_qty || 0) <= 0) {
-                    it.picked_qty = reqTotal;
-                }
-                it.is_picked = true;
-                it.item_status = 'Đủ hàng';
-                it.shortage_reason = null;
-            });
-
-            const targetItem = itemsToPick[0] || this.activeOrder.items[0];
-            const res = await this.saveItemPickingState(targetItem, {
-                quickPickAll: true
-            });
-
-            if (res && res.success) {
-                if (res.allPicked) {
-                    this.showToast('🎉 TẤT CẢ các nhóm đã bốc xong! Đơn đã chuyển sang trạng thái "Đã bốc xong" & sẵn sàng kiểm hàng.', 'success');
-                    setTimeout(() => {
-                        this.activeTab = 'qc';
-                    }, 600);
-                } else {
-                    const pendingText = this.getPendingPickingGroupsText(this.activeOrder);
-                    this.showToast('Nhóm của bạn đã hoàn thành phần việc! Đơn hàng đang chờ nhóm [' + (pendingText || 'các nhóm khác') + '] hoàn tất để chuyển sang "Đã bốc xong".', 'warning');
-                }
-            }
+            await this.commitPickingOrQc('picking', 'save', [this.activeOrder]);
         },
 
-        // Tab 2 QC Functions
+        async transferPickingToQcActiveOrder() {
+            if (!this.activeOrder) return;
+            const shortItems = (this.activeOrder.items || []).filter(it => {
+                const req = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
+                return Number(it.picked_qty || 0) < req;
+            });
+            if (shortItems.length > 0) {
+                const ok = confirm('Đơn hàng có ' + shortItems.length + ' mặt hàng bốc thiếu so với đơn đặt.\n\nXác nhận vẫn lưu số lượng thực bốc hiện tại và CHUYỂN KIỂM? (Sau khi chuyển, bên Kiểm vẫn được phép Giao xe).');
+                if (!ok) return;
+            }
+            await this.commitPickingOrQc('picking', 'transfer_to_qc', [this.activeOrder]);
+        },
+
+        // Tab 2 QC Functions (local-only until bấm Lưu hoặc Giao xe)
         handleQcCheckChange(it) {
             const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
+            const pickedCap = Number(it.picked_qty || 0);
             if (it.is_checked) {
-                if (!it.checked_qty || Number(it.checked_qty) <= 0) {
-                    it.checked_qty = Number(it.picked_qty) > 0 ? it.picked_qty : reqTotal;
-                }
+                it.checked_qty = this.formatQtyInput(pickedCap, reqTotal);
+            } else {
+                it.checked_qty = 0;
             }
-            this.saveItemQcQty(it);
+            it._dirtyQc = true;
+        },
+
+        incrementCheckedQty(it) {
+            const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
+            const maxVal = this.isOrderTransferredToQc(this.activeOrder)
+                ? Number(it.picked_qty || 0)
+                : (Number(it.picked_qty) > 0 ? Number(it.picked_qty) : reqTotal);
+            let val = Number(it.checked_qty || 0);
+            if (val < maxVal) {
+                it.checked_qty = Math.min(maxVal, this.formatQtyInput(val + 1, reqTotal));
+                it.is_checked = (it.checked_qty >= maxVal && maxVal > 0);
+                it._dirtyQc = true;
+            }
+        },
+
+        decrementCheckedQty(it) {
+            const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
+            let val = Number(it.checked_qty || 0);
+            if (val > 0) {
+                it.checked_qty = Math.max(0, this.formatQtyInput(val - 1, reqTotal));
+                const maxVal = Number(it.picked_qty || 0);
+                it.is_checked = (it.checked_qty >= maxVal && maxVal > 0);
+                it._dirtyQc = true;
+            }
+        },
+
+        checkFullItemQc(it) {
+            const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
+            const pickedCap = this.isOrderTransferredToQc(this.activeOrder)
+                ? Number(it.picked_qty || 0)
+                : (Number(it.picked_qty) > 0 ? Number(it.picked_qty) : reqTotal);
+            it.checked_qty = this.formatQtyInput(pickedCap, reqTotal);
+            it.is_checked = true;
+            it._dirtyQc = true;
         },
 
         saveItemQcQty(it) {
-            this.saveItemPickingState(it, {
-                isChecked: it.is_checked,
-                checkedQty: it.checked_qty,
-                checkedBy: this.qcInspector,
-                checkedAt: new Date().toLocaleString('vi-VN')
-            });
+            const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
+            const maxVal = this.isOrderTransferredToQc(this.activeOrder)
+                ? Number(it.picked_qty || 0)
+                : (Number(it.picked_qty) > 0 ? Number(it.picked_qty) : reqTotal);
+            let val = this.formatQtyInput(it.checked_qty, reqTotal);
+            if (val < 0) val = 0;
+            if (val > maxVal) {
+                val = maxVal;
+                this.showToast('Không được kiểm quá số lượng đã bốc (' + maxVal + ' ' + (it.unit || '') + ')!', 'warning');
+            }
+            it.checked_qty = val;
+            it.is_checked = (val >= maxVal && maxVal > 0) || (maxVal === 0 && Boolean(it.is_checked));
+            it._dirtyQc = true;
         },
 
         saveItemCheckNotes(it) {
-            this.saveItemPickingState(it, {
-                checkNotes: it.check_notes
-            });
+            it._dirtyQc = true;
         },
 
-        async qcCheckAllActiveOrder() {
+        qcCheckAllActiveOrder() {
             if (!this.activeOrder) return;
             this.activeOrder.items.forEach(it => {
-                it.is_checked = true;
                 const reqTotal = Number(it.quantity || 0) + Number(it.gift_quantity || 0);
-                it.checked_qty = Number(it.picked_qty) > 0 ? it.picked_qty : reqTotal;
+                const pickedCap = Number(it.picked_qty || 0);
+                it.is_checked = true;
+                it.checked_qty = this.formatQtyInput(pickedCap, reqTotal);
+                it._dirtyQc = true;
             });
-
-            const res = await this.saveItemPickingState(this.activeOrder.items[0], {
-                qcAllChecked: true
-            });
-
-            if (res && res.success) {
-                if (res.allChecked) {
-                    this.showToast('🎉 Toàn bộ các nhóm đã kiểm hàng (QC) xong! Đơn đã chuyển sang trạng thái "Đã kiểm hàng".', 'success');
-                } else {
-                    const pendingText = this.getPendingQcGroupsText(this.activeOrder);
-                    this.showToast('Đã tích kiểm xong phần hàng của nhóm bạn! Đơn đang chờ nhóm [' + (pendingText || 'các nhóm khác') + '] kiểm tra đạt chuẩn.', 'warning');
-                }
-            }
+            this.showToast('Đã tích kiểm theo SL đã bốc trên màn hình. Hãy bấm Lưu hoặc Giao xe!', 'info');
         },
 
-        async confirmQcAndReadyForDelivery() {
+        async saveQcActiveOrder() {
             if (!this.activeOrder) return;
-            const res = await this.saveItemPickingState(this.activeOrder.items[0], {
-                qcAllChecked: true
-            });
+            await this.commitPickingOrQc('qc', 'save', [this.activeOrder]);
+        },
 
-            if (res && res.success) {
-                if (res.allChecked) {
-                    this.showToast('✅ Xác nhận hoàn tất QC toàn đơn! Tất cả các nhóm đã xong, đơn hàng sẵn sàng xuất bến xếp lên xe.', 'success');
-                } else {
-                    const pendingText = this.getPendingQcGroupsText(this.activeOrder);
-                    this.showToast('⚠️ Chưa thể chuyển trạng thái "Đã kiểm hàng"! Còn các nhóm chưa hoàn thành kiểm tra: ' + pendingText, 'warning');
-                }
+        async handoverQcActiveOrderToVehicle() {
+            if (!this.activeOrder) return;
+            if (!this.isOrderTransferredToQc(this.activeOrder)) {
+                this.showToast('Không thể Giao xe! Đơn hàng chưa bốc xong hoặc bên Bốc chưa bấm "Chuyển kiểm".', 'error');
+                return;
             }
+            await this.commitPickingOrQc('qc', 'handover_to_vehicle', [this.activeOrder]);
         },
 
         // ==========================================
@@ -4477,15 +4891,43 @@ function pickingApp() {
                         });
                     } catch(e) {}
                 }
-            } else if (ev.eventType === 'ORDER_STATUS_CHANGED') {
+            } else if (ev.eventType === 'ORDER_STATUS_CHANGED' || ev.eventType === 'ORDER_PROGRESS_SAVED') {
                 const orderId = Number(ev.orderId);
                 const extra = ev.extraData || {};
                 const newStatus = extra.newStatus || ev.orderStatus;
+                const evItems = Array.isArray(extra.items) ? extra.items : null;
                 this.orders = this.orders.map(o => {
                     if (Number(o.id) === orderId || o.order_code === extra.orderCode) {
+                        let mergedItems = o.items || [];
+                        if (evItems) {
+                            const evMap = new Map(evItems.map(ei => [String(ei.id), ei]));
+                            mergedItems = mergedItems.map(cur => {
+                                const ei = evMap.get(String(cur.id));
+                                if (!ei) return cur;
+                                const req = Number(cur.quantity || 0) + Number(cur.gift_quantity || 0);
+                                return {
+                                    ...cur,
+                                    picked_qty: cur._dirtyPicking ? cur.picked_qty : this.formatQtyInput(ei.picked_qty, req),
+                                    is_picked: cur._dirtyPicking ? cur.is_picked : Boolean(ei.is_picked),
+                                    item_status: cur._dirtyPicking ? cur.item_status : ei.item_status,
+                                    shortage_reason: cur._dirtyPicking ? cur.shortage_reason : (ei.shortage_reason || ''),
+                                    assigned_staff: ei.assigned_staff,
+                                    assigned_staff_list: ei.assigned_staff_list || [],
+                                    checked_qty: cur._dirtyQc ? cur.checked_qty : this.formatQtyInput(ei.checked_qty, req),
+                                    is_checked: cur._dirtyQc ? cur.is_checked : Boolean(ei.is_checked),
+                                    check_notes: cur._dirtyQc ? cur.check_notes : (ei.check_notes || ''),
+                                    checked_by: ei.checked_by,
+                                    checked_at: ei.checked_at,
+                                };
+                            });
+                        }
                         return {
                             ...o,
-                            status: newStatus || o.status
+                            status: newStatus || o.status,
+                            shortage_reported: ev.shortageReported !== undefined ? Boolean(ev.shortageReported) : o.shortage_reported,
+                            stock_deducted: extra.stockDeducted !== undefined ? Boolean(extra.stockDeducted) : Boolean(o.stock_deducted),
+                            groups_progress: extra.groupProgress?.groups || o.groups_progress,
+                            items: mergedItems
                         };
                     }
                     return o;
@@ -4504,17 +4946,17 @@ function pickingApp() {
                         const newItems = (targetOrder.items || []).map(targetItem => {
                             if ((ev.itemId && targetItem.id == ev.itemId) || (ev.sku && targetItem.sku == ev.sku)) {
                                 const updated = { ...targetItem };
+                                const req = Number(updated.quantity || 0) + Number(updated.gift_quantity || 0);
                                 if (ev.pickedQty !== undefined && ev.pickedQty !== null) {
-                                    updated.picked_qty = ev.pickedQty;
-                                    const req = Number(updated.quantity || 0) + Number(updated.gift_quantity || 0);
-                                    updated.is_picked = ev.pickedQty >= req && req > 0;
+                                    updated.picked_qty = this.formatQtyInput(ev.pickedQty, req);
+                                    updated.is_picked = updated.picked_qty >= req && req > 0;
                                 }
                                 if (ev.itemStatus) updated.item_status = ev.itemStatus;
                                 if (ev.assignedStaff !== undefined) updated.assigned_staff = ev.assignedStaff;
                                 if (ev.assignedStaffList !== undefined) updated.assigned_staff_list = ev.assignedStaffList;
                                 if (ev.shortageReason !== undefined) updated.shortage_reason = ev.shortageReason;
                                 if (ev.extraData?.isChecked !== undefined) updated.is_checked = ev.extraData.isChecked;
-                                if (ev.extraData?.checkedQty !== undefined) updated.checked_qty = ev.extraData.checkedQty;
+                                if (ev.extraData?.checkedQty !== undefined) updated.checked_qty = this.formatQtyInput(ev.extraData.checkedQty, req);
                                 return updated;
                             }
                             return targetItem;
@@ -4554,36 +4996,6 @@ function pickingApp() {
                     }
                     return targetOrder;
                 });
-            } else if (ev.eventType === 'SHORTAGE_REPORTED') {
-                const orderId = Number(ev.orderId);
-                const extra = ev.extraData || {};
-                const supervisor = extra.supervisor || 'Admin Kho';
-                const reporter = extra.reporter || ev.performerName || 'Nhân sự kho';
-
-                this.orders = this.orders.map(targetOrder => {
-                    if (Number(targetOrder.id) === orderId || targetOrder.order_code === extra.orderCode) {
-                        return {
-                            ...targetOrder,
-                            status: 'Kho báo thiếu hàng',
-                            shortage_reported: true
-                        };
-                    }
-                    return targetOrder;
-                });
-
-                this.playAlertSound();
-                const shortSum = (extra.shortageItems || []).map(i => i.name + ' (thiếu ' + (i.shortage_qty || i.shortageQty) + ' ' + (i.unit || '') + ')').join('; ');
-                const notifMsg = '⚠️ CẢNH BÁO THIẾU HÀNG: Đơn ' + (extra.orderCode || orderId) + ' do ' + reporter + ' báo tới người phụ trách ' + supervisor + (shortSum ? ' [' + shortSum + ']' : '');
-                this.showToast(notifMsg, 'warning');
-
-                if (window.Notification && Notification.permission === 'granted') {
-                    try {
-                        new Notification('ERP Đại Sơn - Cảnh báo thiếu hàng ' + (extra.orderCode || orderId), {
-                            body: 'Gửi người phụ trách: ' + supervisor + '\n' + shortSum,
-                            icon: '/favicon.ico'
-                        });
-                    } catch(e) {}
-                }
             } else if (ev.eventType === 'DELIVERY_DISCREPANCY_REPORTED') {
                 const extra = ev.extraData || {};
                 this.playAlertSound();

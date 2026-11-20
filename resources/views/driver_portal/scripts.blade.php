@@ -928,20 +928,25 @@ function deliveryExecutionApp() {
 
         getItemDeliveredQty(order, it) {
             if (!it) return 0;
+            const baseQty = (it.effective_qty !== undefined && it.effective_qty !== null)
+                ? Number(it.effective_qty)
+                : Number(it.quantity || 0);
             if (!this.hasReturns(order)) {
-                return Number(it.quantity || 0);
+                return baseQty;
             }
             if (it.delivered_qty !== undefined && it.delivered_qty !== null && it.delivered_qty !== '') {
                 return Number(it.delivered_qty);
             }
-            const q = Number(it.quantity || 0);
             const r = Number(it.returned_qty || 0);
-            return Math.max(0, q - r);
+            return Math.max(0, baseQty - r);
         },
 
         getItemAmount(order, it) {
             if (!it) return 0;
             if (!this.hasReturns(order)) {
+                if (it.effective_amount !== undefined && it.effective_amount !== null) {
+                    return Number(it.effective_amount);
+                }
                 return Number(it.amount || (Number(it.quantity || 0) * Number(it.unit_price || 0)));
             }
             const delivQty = this.getItemDeliveredQty(order, it);
@@ -951,12 +956,15 @@ function deliveryExecutionApp() {
 
         getOrderNetDeliveryAmount(order) {
             if (!order) return 0;
-            if (!this.hasReturns(order)) return Number(order.total_amount || 0);
+            const baseTotal = (order.has_picked_shortage && order.effective_total_amount !== undefined && order.effective_total_amount !== null)
+                ? Number(order.effective_total_amount)
+                : Number(order.total_amount || 0);
+            if (!this.hasReturns(order)) return baseTotal;
             if (Array.isArray(order.items) && order.items.length > 0) {
                 return order.items.reduce((s, it) => s + this.getItemAmount(order, it), 0);
             }
             const retAmt = Number(order.total_returned_amount || 0);
-            return Math.max(0, Number(order.total_amount || 0) - retAmt);
+            return Math.max(0, baseTotal - retAmt);
         },
 
         getCollectionAmountDisplay(order) {

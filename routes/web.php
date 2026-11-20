@@ -126,6 +126,8 @@ Route::prefix('api')->group(function () {
     Route::get('/api/inventory/picking/latest-state', [PickingSyncController::class, 'getLatestState']);
     Route::post('/inventory/picking/update-item', [PickingSyncController::class, 'updateItem']);
     Route::post('/api/inventory/picking/update-item', [PickingSyncController::class, 'updateItem']);
+    Route::post('/inventory/picking/save-batch', [PickingSyncController::class, 'savePickingOrQc']);
+    Route::post('/api/inventory/picking/save-batch', [PickingSyncController::class, 'savePickingOrQc']);
     Route::post('/inventory/picking/report-shortage', [PickingSyncController::class, 'reportShortage']);
     Route::post('/api/inventory/picking/report-shortage', [PickingSyncController::class, 'reportShortage']);
     Route::post('/inventory/picking/split-backorder', [PickingSyncController::class, 'splitBackorder']);
@@ -371,6 +373,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/delivery-execution', [DeliveryController::class, 'deliveryExecution'])->name('delivery.execution')->middleware('permission:delivery_dispatch.view,fleet.view,driver_debt.view');
     Route::get('/shipments', function() { return redirect('/driver-portal'); });
     Route::get('/delivery/execution', function() { return redirect('/driver-portal'); });
+    Route::get('/driver/portal', function() { return redirect('/driver-portal'); });
     Route::get('/delivery/orders/{id}/confirm', [DeliveryController::class, 'confirmDeliveryPage'])->name('delivery.confirm')->middleware('permission:delivery_dispatch.view,fleet.view');
     Route::get('/delivery-orders/{id}/confirm', [DeliveryController::class, 'confirmDeliveryPage'])->middleware('permission:delivery_dispatch.view,fleet.view');
     Route::post('/delivery/transfer-order-vehicle', [DeliveryController::class, 'transferOrderVehicle'])->middleware('permission:delivery_dispatch.assign,delivery_dispatch.dispatch');
@@ -422,10 +425,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/orders/bulk-delete', [OrderController::class, 'bulkDeleteOrders'])->middleware('permission:orders.delete');
     Route::post('/api/orders/bulk-delete', [OrderController::class, 'bulkDeleteOrders'])->middleware('permission:orders.delete');
 
-    // Inventory Picking & Checking (Soáº¡n Ä‘Æ¡n & Kiá»ƒm hĂ ng xuáº¥t kho)
+    // Inventory Picking & Checking (Soạn đơn & Kiểm hàng xuất kho)
     Route::get('/inventory/picking', [PickingSyncController::class, 'pickingView'])->name('inventory.picking')->middleware('permission:inv_picking.view,inv_qc.view');
     Route::get('/picking', [PickingSyncController::class, 'pickingView'])->middleware('permission:inv_picking.view,inv_qc.view');
     Route::get('/orders/picking', [PickingSyncController::class, 'pickingView'])->middleware('permission:inv_picking.view,inv_qc.view');
+    Route::get('/inventory/picking/stream', [PickingSyncController::class, 'stream']);
+    Route::get('/inventory/picking/events', [PickingSyncController::class, 'getEvents']);
+    Route::get('/inventory/picking/latest-state', [PickingSyncController::class, 'getLatestState']);
+    Route::post('/inventory/picking/update-item', [PickingSyncController::class, 'updateItem']);
+    Route::post('/inventory/picking/save-batch', [PickingSyncController::class, 'savePickingOrQc']);
+    Route::post('/inventory/picking/report-shortage', [PickingSyncController::class, 'reportShortage']);
+    Route::post('/inventory/picking/split-backorder', [PickingSyncController::class, 'splitBackorder']);
+    Route::post('/inventory/picking/allocate-vehicle-shortage', [PickingSyncController::class, 'allocateVehicleShortage']);
 
     // 1. Quáº£n lĂ½ Phiáº¿u Nháº­p kho (Goods Receipt - PNK)
     Route::get('/inventory/receipts', [WarehouseTransactionController::class, 'receipts'])->name('inventory.receipts')->middleware('permission:inventory.view,inv_import.view');
@@ -480,9 +491,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/staff-groups', [StaffGroupController::class, 'index'])->name('staff_groups.index');
     Route::post('/staff-groups', [StaffGroupController::class, 'store'])->name('staff_groups.store');
     Route::put('/staff-groups/{id}', [StaffGroupController::class, 'update'])->name('staff_groups.update');
-    Route::delete('/staff-groups/{id}', [StaffGroupController::class, 'destroy'])->name('staff_groups.destroy');
+    Route::delete('/staff-groups/{id}', [StaffGroupController::class, 'destroy'])->name('staff_groups.destroy')->middleware('permission:permissions.manage_role,danhmuc.manage');
     Route::post('/staff-group-classifications', [StaffGroupController::class, 'storeClassification'])->name('staff_group_classifications.store');
-    Route::delete('/staff-group-classifications/{id}', [StaffGroupController::class, 'destroyClassification'])->name('staff_group_classifications.destroy');
+    Route::delete('/staff-group-classifications/{id}', [StaffGroupController::class, 'destroyClassification'])->name('staff_group_classifications.destroy')->middleware('permission:permissions.manage_role,danhmuc.manage');
 
     Route::get('/payroll', [WebViewController::class, 'payroll'])->name('payroll.index')->middleware('permission:payroll.view');
 
@@ -506,7 +517,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/system-settings/bank-accounts', [SystemSettingController::class, 'storeBankAccount'])->name('system_settings.bank_accounts.store');
     Route::post('/system-settings/bank-accounts/{id}', [SystemSettingController::class, 'updateBankAccount'])->name('system_settings.bank_accounts.update');
     Route::put('/system-settings/bank-accounts/{id}', [SystemSettingController::class, 'updateBankAccount']);
-    Route::delete('/system-settings/bank-accounts/{id}', [SystemSettingController::class, 'deleteBankAccount'])->name('system_settings.bank_accounts.delete');
+    Route::delete('/system-settings/bank-accounts/{id}', [SystemSettingController::class, 'deleteBankAccount'])->name('system_settings.bank_accounts.delete')->middleware('permission:danhmuc.manage');
     Route::post('/system-settings/bank-accounts/{id}/default', [SystemSettingController::class, 'setDefaultBankAccount'])->name('system_settings.bank_accounts.default');
     Route::post('/system-settings/bank-accounts/{id}/toggle-active', [SystemSettingController::class, 'toggleActiveBankAccount'])->name('system_settings.bank_accounts.toggle_active');
 
@@ -617,12 +628,12 @@ Route::middleware('auth')->group(function () {
             // Machine Models
             Route::get('/machine-models', [WaterFilterController::class, 'getMachineModels']);
             Route::post('/machine-models', [WaterFilterController::class, 'saveMachineModel']);
-            Route::delete('/machine-models/{id}', [WaterFilterController::class, 'deleteMachineModel']);
+            Route::delete('/machine-models/{id}', [WaterFilterController::class, 'deleteMachineModel'])->middleware('permission:water_filter.models_manage,danhmuc.manage');
 
             // Parts Warehouse
             Route::get('/parts', [WaterFilterController::class, 'getParts']);
             Route::post('/parts', [WaterFilterController::class, 'savePart']);
-            Route::delete('/parts/{id}', [WaterFilterController::class, 'deletePart']);
+            Route::delete('/parts/{id}', [WaterFilterController::class, 'deletePart'])->middleware('permission:water_filter.parts_delete');
             Route::post('/parts/import', [WaterFilterController::class, 'importStock']);
             Route::get('/transactions', [WaterFilterController::class, 'getTransactions']);
             Route::post('/parts/tech-export', [WaterFilterController::class, 'exportPartsForTechnician']);
@@ -634,21 +645,21 @@ Route::middleware('auth')->group(function () {
             Route::post('/installations/{id}/status', [WaterFilterController::class, 'updateInstallationStatus']);
             Route::post('/installations/{id}/bind-qr', [WaterFilterController::class, 'bindQrToInstallation']);
             Route::post('/installations/bind-qr', [WaterFilterController::class, 'bindQrToInstallation']);
-            Route::delete('/installations/{id}', [WaterFilterController::class, 'deleteInstallation']);
+            Route::delete('/installations/{id}', [WaterFilterController::class, 'deleteInstallation'])->middleware('permission:water_filter.install_delete');
 
             // Installed Machines & Warranty Management
             Route::get('/installed-machines', [WaterFilterController::class, 'getInstalledMachines']);
             Route::post('/installed-machines/generate-qr', [WaterFilterController::class, 'generateBlankQrCodes']);
             Route::post('/installed-machines/{id}/activate', [WaterFilterController::class, 'activateMachine']);
             Route::post('/installed-machines/{id}/update', [WaterFilterController::class, 'updateInstalledMachine']);
-            Route::delete('/installed-machines/{id}', [WaterFilterController::class, 'deleteInstalledMachine']);
+            Route::delete('/installed-machines/{id}', [WaterFilterController::class, 'deleteInstalledMachine'])->middleware('permission:water_filter.install_delete');
             Route::post('/installed-machines/{id}/warranty', [WaterFilterController::class, 'updateMachineWarranty']);
 
             // Repairs
             Route::get('/repairs', [WaterFilterController::class, 'getRepairs']);
             Route::post('/repairs', [WaterFilterController::class, 'saveRepair']);
             Route::post('/repairs/{id}/status', [WaterFilterController::class, 'updateRepairStatus']);
-            Route::delete('/repairs/{id}', [WaterFilterController::class, 'deleteRepair']);
+            Route::delete('/repairs/{id}', [WaterFilterController::class, 'deleteRepair'])->middleware('permission:water_filter.repair_delete');
 
             // Maintenance Schedule
             Route::get('/maintenance', [WaterFilterController::class, 'getMaintenanceSchedule']);

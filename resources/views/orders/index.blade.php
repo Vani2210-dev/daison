@@ -389,22 +389,6 @@
         })->count(),
         'Soạn hàng' => \App\Models\Order::companyOrders()->whereIn('status', ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong', 'Đang kiểm hàng'])->count(),
         'Soạn bốc' => \App\Models\Order::companyOrders()->whereIn('status', ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong', 'Đang kiểm hàng'])->count(),
-        'Đơn thiếu' => \App\Models\Order::companyOrders()->where(function ($q) {
-            $q->where('shortage_reported', true)
-              ->orWhereIn('status', ['Kho báo thiếu hàng', 'Báo thiếu']);
-        })->count(),
-        'Giao sau' => \App\Models\Order::companyOrders()->where(function ($q) {
-            $q->where('order_type', 'backorder')
-              ->orWhereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng']);
-        })->count(),
-        'Đơn nợ' => \App\Models\Order::companyOrders()->where(function ($q) {
-            $q->where('order_type', 'backorder')
-              ->orWhereIn('status', ['Giao sau', 'Đơn giao sau', 'Nợ hàng']);
-        })->count(),
-        'Đã đủ hàng' => \App\Models\Order::companyOrders()->where(function ($q) {
-            $q->where('backorder_status', 'ready_to_deliver')
-              ->orWhere('status', 'Đã đủ hàng');
-        })->count(),
         'Kiểm hàng' => \App\Models\Order::companyOrders()->whereIn('status', ['Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng', 'Sẵn sàng xuất xe'])->count(),
         'Đang vận chuyển' => \App\Models\Order::companyOrders()->whereIn('status', ['Đang vận chuyển', 'Đang giao hàng'])->count(),
         'Đã giao' => \App\Models\Order::companyOrders()->whereIn('status', ['Đã giao', 'Giao thành công'])->count(),
@@ -568,48 +552,26 @@
         
         <!-- Status Tabs (Pills) -->
         <div class="orders-status-pills flex items-center gap-2 overflow-x-auto pb-1">
-            @foreach(['Tất cả', 'Báo giá', 'Chốt đơn', 'Chờ hàng', 'Soạn hàng', 'Đơn thiếu', 'Giao sau', 'Đã đủ hàng', 'Kiểm hàng', 'Đang vận chuyển', 'Đã giao', 'Hủy'] as $pill)
+            @foreach(['Tất cả', 'Báo giá', 'Chốt đơn', 'Chờ hàng', 'Soạn hàng', 'Kiểm hàng', 'Đang vận chuyển', 'Đã giao', 'Hủy'] as $pill)
                 @php
                     $isSel = (request('status') === $pill) 
                         || (!request('status') && $pill === 'Tất cả') 
                         || (request('status') === 'Soạn bốc' && $pill === 'Soạn hàng')
-                        || (in_array(request('status'), ['Chờ hàng', 'Chờ hàng về']) && $pill === 'Chờ hàng')
-                        || (in_array(request('status'), ['Đơn nợ', 'Nợ hàng', 'Đơn giao sau']) && $pill === 'Giao sau');
+                        || (in_array(request('status'), ['Chờ hàng', 'Chờ hàng về']) && $pill === 'Chờ hàng');
                     $badgeCount = $counts[$pill] ?? 0;
 
                     $pillClass = match($pill) {
                         'Chờ hàng' => $isSel 
                             ? 'bg-amber-600 text-white shadow-2xs ring-2 ring-amber-600/30 font-black' 
                             : ($badgeCount > 0 ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-400 font-black' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'),
-                        'Đơn thiếu' => $isSel 
-                            ? 'bg-rose-600 text-white shadow-2xs ring-2 ring-rose-600/30 font-black' 
-                            : ($badgeCount > 0 ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-300 font-bold' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'),
-                        'Giao sau', 'Đơn nợ' => $isSel 
-                            ? 'bg-amber-600 text-white shadow-2xs ring-2 ring-amber-600/30 font-black' 
-                            : ($badgeCount > 0 ? 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-300 font-bold' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'),
-                        'Đã đủ hàng' => $isSel 
-                            ? 'bg-emerald-600 text-white shadow-2xs ring-2 ring-emerald-600/30 font-black' 
-                            : ($badgeCount > 0 ? 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300 font-bold' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'),
                         default => $isSel 
                             ? 'bg-sky-600 text-white shadow-2xs ring-2 ring-sky-600/20' 
                             : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
                     };
 
-                    $badgePillClass = match($pill) {
-                        'Đơn thiếu' => $isSel ? 'bg-white/25 text-white' : ($badgeCount > 0 ? 'bg-rose-200 text-rose-800 font-black' : 'bg-slate-200 text-slate-600'),
-                        'Giao sau', 'Đơn nợ' => $isSel ? 'bg-white/25 text-white' : ($badgeCount > 0 ? 'bg-amber-200 text-amber-900 font-black' : 'bg-slate-200 text-slate-600'),
-                        'Đã đủ hàng' => $isSel ? 'bg-white/25 text-white' : ($badgeCount > 0 ? 'bg-emerald-200 text-emerald-900 font-black' : 'bg-slate-200 text-slate-600'),
-                        default => $isSel ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-600'
-                    };
+                    $badgePillClass = $isSel ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-600';
                 @endphp
                 <a href="{{ url('/orders' . ($pill === 'Tất cả' ? '' : '?status=' . urlencode($pill))) }}" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 {{ $pillClass }}">
-                    @if($pill === 'Đơn thiếu' && $badgeCount > 0)
-                        <i class="fa-solid fa-triangle-exclamation text-[11px] {{ $isSel ? 'text-white' : 'text-rose-600 animate-pulse' }}"></i>
-                    @elseif(in_array($pill, ['Giao sau', 'Đơn nợ']) && $badgeCount > 0)
-                        <i class="fa-solid fa-clipboard-list text-[11px] {{ $isSel ? 'text-white' : 'text-amber-600' }}"></i>
-                    @elseif($pill === 'Đã đủ hàng' && $badgeCount > 0)
-                        <i class="fa-solid fa-circle-check text-[11px] {{ $isSel ? 'text-white' : 'text-emerald-600' }}"></i>
-                    @endif
                     <span>{{ $pill }}</span>
                     <span class="px-1.5 py-0.2 rounded-full text-[10px] font-black {{ $badgePillClass }}">
                         {{ $badgeCount }}
@@ -689,8 +651,8 @@
                 <label class="font-bold text-slate-500 text-[11px]">Trạng thái</label>
                 <select name="status" class="w-full p-2 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:outline-none focus:border-sky-500 bg-white cursor-pointer">
                     <option value="">Tất cả trạng thái</option>
-                    @foreach(['Báo giá', 'Chốt đơn', 'Chờ hàng', 'Soạn hàng', 'Đơn thiếu', 'Giao sau', 'Kiểm hàng', 'Đang vận chuyển', 'Đã giao', 'Hủy'] as $st)
-                        <option value="{{ $st }}" {{ (request('status') === $st || (request('status') === 'Soạn bốc' && $st === 'Soạn hàng') || (in_array(request('status'), ['Chờ hàng', 'Chờ hàng về']) && $st === 'Chờ hàng') || (in_array(request('status'), ['Đơn nợ', 'Nợ hàng', 'Đơn giao sau']) && $st === 'Giao sau')) ? 'selected' : '' }}>{{ $st }}</option>
+                    @foreach(['Báo giá', 'Chốt đơn', 'Chờ hàng', 'Soạn hàng', 'Kiểm hàng', 'Đang vận chuyển', 'Đã giao', 'Hủy'] as $st)
+                        <option value="{{ $st }}" {{ (request('status') === $st || (request('status') === 'Soạn bốc' && $st === 'Soạn hàng') || (in_array(request('status'), ['Chờ hàng', 'Chờ hàng về']) && $st === 'Chờ hàng')) ? 'selected' : '' }}>{{ $st }}</option>
                     @endforeach
                 </select>
             </div>
@@ -894,16 +856,7 @@
                             $payMethod = $order->payment_method ?: 'Ghi nợ đại lý';
                             $creator = $order->order_creator ?: ($order->creator?->name ?? 'Hệ thống');
                             $st = $order->status ?: 'Báo giá';
-                            $isBackOrder = in_array($st, ['Giao sau', 'Đơn giao sau', 'Nợ hàng', 'Đã đủ hàng']) || ($order->order_type === 'backorder');
-                            $isReadyBackOrder = ($isBackOrder && ($order->backorder_status === 'ready_to_deliver' || $order->status === 'Đã đủ hàng'));
                             $rowClass = 'hover:bg-sky-50/50';
-                            if ($isReadyBackOrder) {
-                                $rowClass = 'bg-emerald-50/70 hover:bg-emerald-100/70 border-l-4 border-emerald-500';
-                            } elseif ($order->shortage_reported) {
-                                $rowClass = 'bg-rose-50/60 hover:bg-rose-100/60 border-l-4 border-rose-500';
-                            } elseif ($isBackOrder) {
-                                $rowClass = 'bg-amber-50/60 hover:bg-amber-100/60 border-l-4 border-amber-500';
-                            }
                         @endphp
                         <tr class="order-table-row {{ $rowClass }} transition-colors">
                             <!-- Checkbox -->
@@ -943,21 +896,6 @@
                                             <span class="text-[10px] text-purple-800 font-extrabold max-w-[130px] truncate" title="{{ $order->project_name }}">
                                                 {{ $order->project_name }}
                                             </span>
-                                        @endif
-                                    </div>
-                                @elseif($isBackOrder)
-                                    <div class="flex flex-col items-start gap-0.5">
-                                        @if($isReadyBackOrder)
-                                            <span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 font-black text-[10px] border border-emerald-300 shadow-2xs shrink-0 inline-flex items-center gap-1" title="Kho đã có đủ hàng, có thể xuất giao ngay!">
-                                                <span>🟢 Đã đủ hàng</span>
-                                            </span>
-                                        @else
-                                            <span class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-extrabold text-[10px] border border-amber-300 shadow-2xs shrink-0 inline-flex items-center gap-1" title="Đơn giao sau / nợ hàng đang chờ hàng về">
-                                                <span>📋 Giao sau</span>
-                                            </span>
-                                        @endif
-                                        @if($order->parent_order_code)
-                                            <span class="text-[9px] text-slate-500 font-mono">Nợ từ: {{ $order->parent_order_code }}</span>
                                         @endif
                                     </div>
                                 @else
@@ -1024,7 +962,6 @@
                                                 $isWaitingStock => ['bg' => 'bg-amber-100 text-amber-900 border-amber-300 font-black', 'icon' => '⏳', 'label' => 'Chờ hàng', 'sub' => 'Kho chưa đủ hàng'],
                                                 $st === 'Báo giá' => ['bg' => 'bg-amber-50 text-amber-800 border-amber-300', 'icon' => '📋', 'label' => 'Báo giá', 'sub' => 'Phiếu báo giá'],
                                                 in_array($st, ['Chốt đơn', 'Đã duyệt']) => ['bg' => 'bg-blue-50 text-blue-800 border-blue-300', 'icon' => '🤝', 'label' => 'Chốt đơn', 'sub' => 'Đơn bán hàng'],
-                                                in_array($st, ['Giao sau', 'Đơn giao sau', 'Nợ hàng']) => ['bg' => 'bg-amber-50 text-amber-800 border-amber-300', 'icon' => '📋', 'label' => 'Giao sau', 'sub' => 'Đơn giao sau'],
                                                 in_array($st, ['Soạn hàng', 'Đang bốc hàng', 'Soạn bốc', 'Kho đang soạn']) => ['bg' => 'bg-purple-50 text-purple-800 border-purple-300', 'icon' => '📦', 'label' => 'Soạn hàng', 'sub' => 'Đơn bán hàng'],
                                                 in_array($st, ['Đã bốc xong', 'Kho đã xuất đủ']) => ['bg' => 'bg-indigo-50 text-indigo-800 border-indigo-300', 'icon' => '📦', 'label' => 'Đã bốc xong', 'sub' => 'Đơn bán hàng'],
                                                 in_array($st, ['Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng']) => ['bg' => 'bg-teal-50 text-teal-800 border-teal-300', 'icon' => '🛡️', 'label' => 'Đang kiểm hàng', 'sub' => 'Đơn bán hàng'],
@@ -1042,12 +979,6 @@
                                         <div class="text-[10px] text-slate-400 font-medium whitespace-nowrap pl-0.5">
                                             {{ $badgeConfig['sub'] }}
                                         </div>
-                                        @if($order->shortage_reported)
-                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-600 text-white font-black text-[9px] tracking-wide shadow-sm mt-0.5 animate-pulse">
-                                                <i class="fa-solid fa-triangle-exclamation text-[8px]"></i>
-                                                KHO BÁO THIẾU
-                                            </span>
-                                        @endif
                                     </div>
 
                                     <!-- Quick Action Pill button: "Chốt đơn" khi Báo giá / "Soạn hàng" khi Chốt đơn / "Bổ sung" khi Soạn hàng -->
@@ -1068,7 +999,7 @@
                                                 <i class="fa-solid fa-boxes-stacked text-slate-400 text-xs"></i>
                                                 <span>Soạn hàng</span>
                                             </button>
-                                        @elseif(in_array($st, ['Chốt đơn', 'Đã duyệt', 'Giao sau', 'Đơn giao sau', 'Nợ hàng']))
+                                        @elseif(in_array($st, ['Chốt đơn', 'Đã duyệt']))
                                             <button type="button" 
                                                     @click="openPickingModal({
                                                         id: '{{ $order->id }}',

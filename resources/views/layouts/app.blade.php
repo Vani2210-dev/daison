@@ -633,13 +633,13 @@
             @endif
 
             <!-- 3. Bán hàng (Active in Orders) -->
-            @if(!$authUser || $authUser->hasAnyPermission('orders.view', 'orders.create', 'quotation.view', 'quotation.create', 'returns.view', 'supplier_orders.view'))
+            @if(!$authUser || $authUser->hasAnyPermission('orders.view', 'orders.create', 'quotation.view', 'quotation.create', 'returns.view', 'supplier_orders.view', 'delivery_dispatch.view'))
             <div class="nav-item-group relative shrink-0">
-                <button type="button" class="flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-bold transition-colors select-none rounded-t-lg relative whitespace-nowrap cursor-pointer {{ request()->is('orders*') || request()->is('promotion-advances*') ? 'bg-white text-[#1b4a8c] shadow-md' : 'text-white hover:bg-white/15' }}">
-                    <i class="fa-solid fa-cart-shopping text-sm {{ request()->is('orders*') || request()->is('promotion-advances*') ? 'text-[#1b4a8c]' : 'text-sky-200' }}"></i>
+                <button type="button" class="flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-bold transition-colors select-none rounded-t-lg relative whitespace-nowrap cursor-pointer {{ request()->is('orders*') || request()->is('promotion-advances*') || request()->is('delivery-dispatch*') ? 'bg-white text-[#1b4a8c] shadow-md' : 'text-white hover:bg-white/15' }}">
+                    <i class="fa-solid fa-cart-shopping text-sm {{ request()->is('orders*') || request()->is('promotion-advances*') || request()->is('delivery-dispatch*') ? 'text-[#1b4a8c]' : 'text-sky-200' }}"></i>
                     <span>Bán hàng</span>
-                    <i class="fa-solid fa-chevron-down text-[10px] ml-0.5 {{ request()->is('orders*') || request()->is('promotion-advances*') ? 'text-[#1b4a8c]' : 'opacity-70' }}"></i>
-                    @if(request()->is('orders*') || request()->is('promotion-advances*'))
+                    <i class="fa-solid fa-chevron-down text-[10px] ml-0.5 {{ request()->is('orders*') || request()->is('promotion-advances*') || request()->is('delivery-dispatch*') ? 'text-[#1b4a8c]' : 'opacity-70' }}"></i>
+                    @if(request()->is('orders*') || request()->is('promotion-advances*') || request()->is('delivery-dispatch*'))
                         <span class="absolute bottom-0 left-2 right-2 h-0.5 bg-amber-400 rounded-full"></span>
                     @endif
                 </button>
@@ -654,6 +654,12 @@
                         <i class="fa-solid fa-cash-register text-purple-600 w-4"></i><span>Bán hàng (POS)</span>
                     </a>
                     @endif
+                    @if(!$authUser || $authUser->hasPermission('delivery_dispatch.view'))
+                    <a href="{{ url('/delivery-dispatch') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center gap-2.5 border-b border-slate-100 font-semibold text-slate-700 {{ request()->is('delivery-dispatch*') ? 'bg-sky-100/80 text-[#1b4a8c] font-bold border-l-4 border-l-[#1b4a8c]' : '' }}">
+                        <i class="fa-solid fa-route text-sky-600 w-4"></i><span>Điều phối xe</span>
+                    </a>
+                    @endif
+                    @if(!$authUser || $authUser->hasAnyPermission('driver_debt.view', 'orders.view', 'delivery_dispatch.view'))
                     <a href="{{ url('/orders/cod-verification') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center justify-between border-b border-slate-100 font-semibold text-slate-700 {{ request()->is('orders/cod-verification*') || request()->is('sales/cod-verification*') || request()->is('cod-verification*') ? 'bg-sky-100/80 text-[#1b4a8c] font-bold border-l-4 border-l-[#1b4a8c]' : '' }}">
                         <div class="flex items-center gap-2.5">
                             <i class="fa-solid fa-money-bill-transfer text-emerald-600 w-4"></i><span>Kiểm COD</span>
@@ -662,6 +668,7 @@
                             <span class="px-2 py-0.5 bg-rose-500 text-white rounded-full text-[10px] font-bold shadow-xs animate-pulse">{{ $pendingCodBadge }}</span>
                         @endif
                     </a>
+                    @endif
                     @if(!$authUser || $authUser->hasPermission('returns.view'))
                     <a href="{{ url('/inventory/returns') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center justify-between border-b border-slate-100 font-semibold text-slate-700 {{ request()->is('inventory/returns*') || request()->is('returns*') ? 'bg-sky-100/80 text-[#1b4a8c] font-bold border-l-4 border-l-[#1b4a8c]' : '' }}">
                         <div class="flex items-center gap-2.5">
@@ -677,9 +684,11 @@
                         <i class="fa-solid fa-cart-shopping text-blue-600 w-4"></i><span>Đặt hàng NCC</span>
                     </a>
                     @endif
+                    @if(!$authUser || $authUser->hasAnyPermission('orders.view', 'inventory.view'))
                     <a href="{{ url('/promotion-advances') }}" class="w-full text-left px-4 py-2.5 hover:bg-sky-50 flex items-center gap-2.5 font-semibold text-slate-700 {{ request()->is('promotion-advances*') ? 'bg-amber-100/80 text-amber-800 font-bold border-l-4 border-l-amber-600' : '' }}">
                         <i class="fa-solid fa-gift text-amber-600 w-4"></i><span>Ứng khuyến mãi kho</span>
                     </a>
+                    @endif
                 </div>
             </div>
             @endif
@@ -1093,6 +1102,7 @@
     <nav class="mobile-bottom-nav hidden fixed bottom-0 left-0 right-0 z-[9990] bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-2 py-1 items-center justify-around" style="padding-bottom: max(6px, env(safe-area-inset-bottom, 6px));">
         
         <!-- 1. Bán hàng -->
+        @if(!$authUser || $authUser->hasAnyPermission('orders.view', 'orders.create', 'quotation.view', 'quotation.create', 'returns.view', 'supplier_orders.view', 'delivery_dispatch.view'))
         <button type="button" 
                 @click="mobileDrawerTab = (mobileDrawerTab === 'sales' ? null : 'sales')" 
                 class="flex flex-col items-center justify-center flex-1 py-1 px-1 transition-all select-none relative cursor-pointer" 
@@ -1111,8 +1121,10 @@
                 <span class="w-1.5 h-1.5 mt-0.5 opacity-0"></span>
             </template>
         </button>
+        @endif
 
         <!-- 2. Kho hàng -->
+        @if(!$authUser || $authUser->hasAnyPermission('inventory.view', 'orders.view', 'inv_picking.view', 'inv_qc.view', 'inv_import.view', 'inv_export.view', 'inv_transfer.view', 'supplier_orders.view', 'returns.view', 'inv_audit.view', 'delivery_dispatch.view', 'driver_debt.view'))
         <button type="button" 
                 @click="mobileDrawerTab = (mobileDrawerTab === 'inventory' ? null : 'inventory')" 
                 class="flex flex-col items-center justify-center flex-1 py-1 px-1 transition-all select-none relative cursor-pointer" 
@@ -1128,8 +1140,10 @@
                 <span class="w-1.5 h-1.5 mt-0.5 opacity-0"></span>
             </template>
         </button>
+        @endif
 
         <!-- 3. Máy Lọc Nước (Phân hệ đặc thù Đại Sơn) -->
+        @if(!$authUser || $authUser->hasAnyPermission('water_filter.view', 'water_filter.install_view', 'water_filter.repair_view', 'water_filter.parts_view'))
         <button type="button" 
                 @click="mobileDrawerTab = (mobileDrawerTab === 'water_filter' ? null : 'water_filter')" 
                 class="flex flex-col items-center justify-center flex-1 py-1 px-1 transition-all select-none relative cursor-pointer" 
@@ -1147,8 +1161,10 @@
                 <span class="w-1.5 h-1.5 mt-0.5 opacity-0"></span>
             </template>
         </button>
+        @endif
 
         <!-- 4. Công việc & Đại lý -->
+        @if(!$authUser || $authUser->hasAnyPermission('task_assignment.view', 'dealers.view', 'dealer_care.view', 'dealers.create', 'proposals.view'))
         <button type="button" 
                 @click="mobileDrawerTab = (mobileDrawerTab === 'tasks' ? null : 'tasks')" 
                 class="flex flex-col items-center justify-center flex-1 py-1 px-1 transition-all select-none relative cursor-pointer" 
@@ -1164,6 +1180,7 @@
                 <span class="w-1.5 h-1.5 mt-0.5 opacity-0"></span>
             </template>
         </button>
+        @endif
 
         <!-- 5. Thêm -->
         <button type="button" 
@@ -1233,22 +1250,37 @@
             <div class="p-4 overflow-y-auto max-h-[70vh]">
                 <div class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
                     <!-- 1. Danh sách đơn hàng -->
+                    @if(!$authUser || $authUser->hasPermission('orders.view'))
                     <a href="{{ url('/orders') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('orders') && !request()->is('orders/create') && !request()->is('orders/pos') ? 'border-[#1b4a8c] bg-sky-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-sky-200 bg-slate-50/70 hover:bg-sky-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-box"></i>
                         </div>
                         <span class="text-xs font-bold text-slate-800 leading-tight">DS đơn hàng</span>
                     </a>
+                    @endif
 
                     <!-- 2. Bán hàng (POS) -->
+                    @if(!$authUser || $authUser->hasAnyPermission('orders.create', 'orders.view', 'quotation.create'))
                     <a href="{{ url('/orders/pos') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('orders/pos*') || request()->is('ban-hang*') ? 'border-[#1b4a8c] bg-purple-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-purple-200 bg-slate-50/70 hover:bg-purple-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-cash-register"></i>
                         </div>
-                        <span class="text-xs font-bold text-slate-800 leading-tight">Bán hàng</span>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Bán hàng (POS)</span>
                     </a>
+                    @endif
+
+                    <!-- 2b. Điều phối xe -->
+                    @if(!$authUser || $authUser->hasPermission('delivery_dispatch.view'))
+                    <a href="{{ url('/delivery-dispatch') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('delivery-dispatch*') ? 'border-[#1b4a8c] bg-sky-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-sky-200 bg-slate-50/70 hover:bg-sky-50/40' }}">
+                        <div class="w-11 h-11 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-route"></i>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Điều phối xe</span>
+                    </a>
+                    @endif
 
                     <!-- 3. Kiểm COD -->
+                    @if(!$authUser || $authUser->hasAnyPermission('driver_debt.view', 'orders.view', 'delivery_dispatch.view'))
                     <a href="{{ url('/orders/cod-verification') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('*cod-verification*') ? 'border-[#1b4a8c] bg-emerald-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-emerald-200 bg-slate-50/70 hover:bg-emerald-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform relative">
                             <i class="fa-solid fa-money-bill-transfer"></i>
@@ -1258,8 +1290,10 @@
                         </div>
                         <span class="text-xs font-bold text-slate-800 leading-tight">Kiểm COD</span>
                     </a>
+                    @endif
 
                     <!-- 4. Hàng hoàn -->
+                    @if(!$authUser || $authUser->hasPermission('returns.view'))
                     <a href="{{ url('/returns') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('returns*') ? 'border-[#1b4a8c] bg-rose-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-rose-200 bg-slate-50/70 hover:bg-rose-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform relative">
                             <i class="fa-solid fa-rotate-left"></i>
@@ -1269,30 +1303,37 @@
                         </div>
                         <span class="text-xs font-bold text-slate-800 leading-tight">Hàng hoàn</span>
                     </a>
+                    @endif
 
                     <!-- 5. Đặt hàng NCC -->
+                    @if(!$authUser || $authUser->hasPermission('supplier_orders.view'))
                     <a href="{{ url('/supplier-orders') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('supplier-orders*') ? 'border-[#1b4a8c] bg-amber-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-amber-200 bg-slate-50/70 hover:bg-amber-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-truck-field"></i>
                         </div>
                         <span class="text-xs font-bold text-slate-800 leading-tight">Đặt hàng NCC</span>
                     </a>
+                    @endif
 
                     <!-- 5b. Ứng KM Kho -->
+                    @if(!$authUser || $authUser->hasAnyPermission('orders.view', 'inventory.view'))
                     <a href="{{ url('/promotion-advances') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('promotion-advances*') ? 'border-amber-600 bg-amber-50/70 ring-2 ring-amber-600/20 shadow-xs' : 'border-slate-100 hover:border-amber-200 bg-slate-50/70 hover:bg-amber-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-gift"></i>
                         </div>
                         <span class="text-xs font-bold text-slate-800 leading-tight">Ứng KM kho</span>
                     </a>
+                    @endif
 
                     <!-- 6. Giao hàng & Chuyến xe -->
+                    @if(!$authUser || $authUser->hasAnyPermission('delivery_dispatch.view', 'driver_debt.view', 'fleet.view'))
                     <a href="{{ url('/driver-portal') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('driver-portal*') || request()->is('delivery*') || request()->is('shipments*') ? 'border-[#1b4a8c] bg-indigo-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-indigo-200 bg-slate-50/70 hover:bg-indigo-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-truck-ramp-box"></i>
                         </div>
                         <span class="text-xs font-bold text-slate-800 leading-tight">Giao hàng</span>
                     </a>
+                    @endif
                 </div>
             </div>
         </div>
@@ -1319,6 +1360,7 @@
             <div class="p-4 overflow-y-auto max-h-[70vh]">
                 <div class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
                     <!-- 1. Tồn kho vật tư -->
+                    @if(!$authUser || $authUser->hasPermission('inventory.view'))
                     <a href="{{ url('/inventory/stock') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/stock*') ? 'border-[#1b4a8c] bg-teal-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-teal-200 bg-slate-50/70 hover:bg-teal-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-boxes-stacked"></i>
@@ -1326,8 +1368,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Tồn kho</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Số dư vật tư</span>
                     </a>
+                    @endif
 
                     <!-- 2. Soạn hàng / Bốc hàng -->
+                    @if(!$authUser || $authUser->hasAnyPermission('inv_picking.view', 'inv_qc.view', 'orders.view'))
                     <a href="{{ url('/inventory/picking') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('*picking*') ? 'border-[#1b4a8c] bg-amber-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-amber-200 bg-slate-50/70 hover:bg-amber-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-dolly"></i>
@@ -1335,8 +1379,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Soạn đơn</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Bốc hàng theo đơn</span>
                     </a>
+                    @endif
 
                     <!-- 3. Nhập kho -->
+                    @if(!$authUser || $authUser->hasPermission('inv_import.view'))
                     <a href="{{ route('inventory.receipts') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/receipts*') ? 'border-[#1b4a8c] bg-sky-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-sky-200 bg-slate-50/70 hover:bg-sky-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-arrow-down-to-bracket"></i>
@@ -1344,8 +1390,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Nhập kho</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Phiếu nhập NCC</span>
                     </a>
+                    @endif
 
                     <!-- 4. Xuất kho -->
+                    @if(!$authUser || $authUser->hasPermission('inv_export.view'))
                     <a href="{{ url('/inventory/export') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/export*') ? 'border-[#1b4a8c] bg-rose-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-rose-200 bg-slate-50/70 hover:bg-rose-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-arrow-up-from-bracket"></i>
@@ -1353,8 +1401,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Xuất kho</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Phiếu xuất hàng</span>
                     </a>
+                    @endif
 
                     <!-- 5. Chuyển kho -->
+                    @if(!$authUser || $authUser->hasPermission('inv_transfer.view'))
                     <a href="{{ url('/inventory/transfer') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/transfer*') ? 'border-[#1b4a8c] bg-indigo-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-indigo-200 bg-slate-50/70 hover:bg-indigo-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-right-left"></i>
@@ -1362,8 +1412,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Chuyển kho</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Điều chuyển nội bộ</span>
                     </a>
+                    @endif
 
                     <!-- 6. Lắp ráp / Đóng gói -->
+                    @if(!$authUser || $authUser->hasAnyPermission('inventory.view', 'cat_products.manage'))
                     <a href="{{ url('/inventory/assembly') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/assembly*') ? 'border-[#1b4a8c] bg-purple-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-purple-200 bg-slate-50/70 hover:bg-purple-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-screwdriver-wrench"></i>
@@ -1371,6 +1423,7 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Lắp ráp</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Gói combo máy</span>
                     </a>
+                    @endif
                 </div>
             </div>
         </div>
@@ -1397,6 +1450,7 @@
             <div class="p-4 overflow-y-auto max-h-[70vh]">
                 <div class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
                     <!-- 1. Tổng quan Máy Lọc Nước -->
+                    @if(!$authUser || $authUser->hasPermission('water_filter.view'))
                     <a href="{{ url('/water-filter') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('water-filter') && !request()->has('tab') ? 'border-cyan-600 bg-cyan-50/80 ring-2 ring-cyan-600/20 shadow-xs' : 'border-slate-100 hover:border-cyan-200 bg-slate-50/70 hover:bg-cyan-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-faucet-drip"></i>
@@ -1404,8 +1458,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Tổng quan</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Trung tâm máy lọc</span>
                     </a>
+                    @endif
 
                     <!-- 2. Lên đơn lắp đặt mới -->
+                    @if(!$authUser || $authUser->hasAnyPermission('water_filter.view', 'water_filter.install_view'))
                     <a href="{{ url('/water-filter/installations/create') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('water-filter/installations/create') ? 'border-sky-600 bg-sky-50/80 ring-2 ring-sky-600/20 shadow-xs' : 'border-slate-100 hover:border-sky-200 bg-slate-50/70 hover:bg-sky-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-screwdriver-wrench"></i>
@@ -1413,8 +1469,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">+ Lắp đặt mới</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Tạo đơn đi lắp máy</span>
                     </a>
+                    @endif
 
                     <!-- 3. Quản lý tem QR & Kích hoạt -->
+                    @if(!$authUser || $authUser->hasPermission('water_filter.view'))
                     <a href="{{ url('/bao-hanh-may-loc') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('bao-hanh-may-loc') && !request()->is('bao-hanh-may-loc/print-qr') ? 'border-blue-600 bg-blue-50/80 ring-2 ring-blue-600/20 shadow-xs' : 'border-slate-100 hover:border-blue-200 bg-slate-50/70 hover:bg-blue-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-qrcode"></i>
@@ -1422,8 +1480,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Mã QR & BH</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Quản lý tem dán QR</span>
                     </a>
+                    @endif
 
                     <!-- 4. Tiếp nhận sửa chữa -->
+                    @if(!$authUser || $authUser->hasAnyPermission('water_filter.view', 'water_filter.repair_view'))
                     <a href="{{ url('/water-filter?tab=repairs') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 border-slate-100 hover:border-amber-200 bg-slate-50/70 hover:bg-amber-50/40">
                         <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-wrench"></i>
@@ -1431,8 +1491,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Sửa chữa BH</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Phiếu sửa máy</span>
                     </a>
+                    @endif
 
                     <!-- 5. Lịch bảo dưỡng & thay lõi định kỳ -->
+                    @if(!$authUser || $authUser->hasPermission('water_filter.view'))
                     <a href="{{ url('/water-filter?tab=maintenance') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('water-filter*') && request('tab') === 'maintenance' ? 'border-purple-600 bg-purple-50/80 ring-2 ring-purple-600/20 shadow-xs' : 'border-slate-100 hover:border-purple-200 bg-slate-50/70 hover:bg-purple-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-calendar-check"></i>
@@ -1440,8 +1502,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Lịch bảo dưỡng</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Hẹn thay lõi định kỳ</span>
                     </a>
+                    @endif
 
                     <!-- 6. Kho phụ tùng linh kiện -->
+                    @if(!$authUser || $authUser->hasAnyPermission('water_filter.view', 'water_filter.parts_view'))
                     <a href="{{ url('/water-filter?tab=parts') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 border-slate-100 hover:border-teal-200 bg-slate-50/70 hover:bg-teal-50/40">
                         <div class="w-11 h-11 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-boxes-packing"></i>
@@ -1449,6 +1513,7 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Kho linh kiện</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Lõi lọc & phụ kiện</span>
                     </a>
+                    @endif
                 </div>
             </div>
         </div>
@@ -1475,6 +1540,7 @@
             <div class="p-4 overflow-y-auto max-h-[70vh]">
                 <div class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
                     <!-- 1. Giao việc -->
+                    @if(!$authUser || $authUser->hasPermission('task_assignment.view'))
                     <a href="{{ url('/tasks') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('tasks') && !request()->has('view') ? 'border-[#1b4a8c] bg-indigo-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-indigo-200 bg-slate-50/70 hover:bg-indigo-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-tasks"></i>
@@ -1491,8 +1557,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Việc của tôi</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Nhiệm vụ cá nhân</span>
                     </a>
+                    @endif
 
                     <!-- 3. Đại lý & KH -->
+                    @if(!$authUser || $authUser->hasAnyPermission('dealers.view', 'dealer_care.view'))
                     <a href="{{ url('/dealers') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('dealers') ? 'border-[#1b4a8c] bg-amber-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-amber-200 bg-slate-50/70 hover:bg-amber-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-store"></i>
@@ -1500,8 +1568,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Đại lý & KH</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Chăm sóc & GPS</span>
                     </a>
+                    @endif
 
                     <!-- 4. Thêm Đại lý mới -->
+                    @if(!$authUser || $authUser->hasPermission('dealers.create'))
                     <a href="{{ url('/dealers/create') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 border-slate-100 hover:border-sky-200 bg-slate-50/70 hover:bg-sky-50/40">
                         <div class="w-11 h-11 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-user-plus"></i>
@@ -1509,8 +1579,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Thêm đại lý</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Mở mới điểm bán</span>
                     </a>
+                    @endif
 
                     <!-- 5. Duyệt đề xuất & Trình ký -->
+                    @if(!$authUser || $authUser->hasPermission('proposals.view'))
                     <a href="{{ url('/proposals') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('proposals*') ? 'border-[#1b4a8c] bg-purple-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-purple-200 bg-slate-50/70 hover:bg-purple-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-file-circle-check"></i>
@@ -1518,6 +1590,7 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Đề xuất</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Trình ký duyệt</span>
                     </a>
+                    @endif
                 </div>
             </div>
         </div>
@@ -1545,6 +1618,7 @@
                 <div class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
                     
                     <!-- Dashboard -->
+                    @if(!$authUser || $authUser->hasPermission('dashboard.view'))
                     <a href="{{ url('/dashboard') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('dashboard') || request()->is('/') ? 'border-[#1b4a8c] bg-slate-200/80 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-slate-300 bg-slate-50/70 hover:bg-slate-100/60' }}">
                         <div class="w-11 h-11 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-chart-pie"></i>
@@ -1552,8 +1626,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Dashboard</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Tổng quan ERP</span>
                     </a>
+                    @endif
 
                     <!-- Công trình / DA -->
+                    @if(!$authUser || $authUser->hasPermission('projects.view'))
                     <a href="{{ url('/projects') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('projects*') ? 'border-[#1b4a8c] bg-indigo-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-indigo-200 bg-slate-50/70 hover:bg-indigo-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-helmet-safety"></i>
@@ -1561,8 +1637,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Công trình</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Dự án công trình</span>
                     </a>
+                    @endif
 
                     <!-- Nhà cung cấp -->
+                    @if(!$authUser || $authUser->hasPermission('suppliers.view'))
                     <a href="{{ url('/suppliers') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('suppliers*') ? 'border-[#1b4a8c] bg-amber-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-amber-200 bg-slate-50/70 hover:bg-amber-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-truck-field"></i>
@@ -1570,8 +1648,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Nhà cung cấp</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Đối tác vật tư</span>
                     </a>
+                    @endif
 
                     <!-- Sổ quỹ, Thu chi -->
+                    @if(!$authUser || $authUser->hasPermission('funds.view'))
                     <a href="{{ url('/funds') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('funds*') ? 'border-[#1b4a8c] bg-teal-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-teal-200 bg-slate-50/70 hover:bg-teal-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-wallet"></i>
@@ -1579,8 +1659,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Sổ quỹ</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Thu chi & quỹ tiền</span>
                     </a>
+                    @endif
 
                     <!-- Công nợ đại lý -->
+                    @if(!$authUser || $authUser->hasPermission('debt.view'))
                     <a href="{{ url('/debt') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('debt*') ? 'border-[#1b4a8c] bg-rose-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-rose-200 bg-slate-50/70 hover:bg-rose-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-credit-card"></i>
@@ -1588,8 +1670,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Công nợ</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Hạn mức nợ KH</span>
                     </a>
+                    @endif
 
                     <!-- Báo cáo bán hàng -->
+                    @if(!$authUser || $authUser->hasAnyPermission('reports.view', 'orders.view'))
                     <a href="{{ url('/reports/sales') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('reports/sales*') ? 'border-[#1b4a8c] bg-blue-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-blue-200 bg-slate-50/70 hover:bg-blue-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-chart-line"></i>
@@ -1597,8 +1681,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">BC Doanh thu</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Báo cáo bán hàng</span>
                     </a>
+                    @endif
 
                     <!-- Báo cáo tồn kho -->
+                    @if(!$authUser || $authUser->hasAnyPermission('reports.view', 'inventory.view'))
                     <a href="{{ url('/reports/inventory') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('reports/inventory*') ? 'border-[#1b4a8c] bg-amber-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-amber-200 bg-slate-50/70 hover:bg-amber-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-boxes-stacked"></i>
@@ -1606,8 +1692,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">BC Tồn kho</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Xuất nhập tồn kho</span>
                     </a>
+                    @endif
 
                     <!-- Nhân sự -->
+                    @if(!$authUser || $authUser->hasPermission('staff_list.view'))
                     <a href="{{ url('/staff') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('staff*') ? 'border-[#1b4a8c] bg-blue-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-blue-200 bg-slate-50/70 hover:bg-blue-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-users"></i>
@@ -1615,8 +1703,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Nhân sự</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Danh sách nhân sự</span>
                     </a>
+                    @endif
 
                     <!-- Chấm công GPS -->
+                    @if(!$authUser || $authUser->hasAnyPermission('attendance.view', 'attendance.checkin'))
                     <a href="{{ url('/attendance') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('attendance*') ? 'border-[#1b4a8c] bg-rose-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-rose-200 bg-slate-50/70 hover:bg-rose-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-map-location-dot"></i>
@@ -1624,8 +1714,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Chấm công</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Điểm danh GPS</span>
                     </a>
+                    @endif
 
                     <!-- Bảng lương -->
+                    @if(!$authUser || $authUser->hasPermission('payroll.view'))
                     <a href="{{ url('/payroll') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('payroll*') ? 'border-[#1b4a8c] bg-emerald-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-emerald-200 bg-slate-50/70 hover:bg-emerald-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-money-check-dollar"></i>
@@ -1633,8 +1725,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Bảng lương</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Lương & phụ cấp</span>
                     </a>
+                    @endif
 
                     <!-- Phân quyền vai trò -->
+                    @if(!$authUser || $authUser->hasPermission('permissions.view'))
                     <a href="{{ url('/roles') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('roles*') ? 'border-[#1b4a8c] bg-purple-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-purple-200 bg-slate-50/70 hover:bg-purple-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-shield-halved"></i>
@@ -1642,8 +1736,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Phân quyền</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Vai trò chức năng</span>
                     </a>
+                    @endif
 
                     <!-- Nhật ký System Audit -->
+                    @if(!$authUser || $authUser->hasPermission('audit.view'))
                     <a href="{{ url('/audit-logs') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('audit*') ? 'border-[#1b4a8c] bg-sky-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-sky-200 bg-slate-50/70 hover:bg-sky-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-clock-rotate-left"></i>
@@ -1651,8 +1747,10 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Nhật ký Audit</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Truy vết hệ thống</span>
                     </a>
+                    @endif
 
                     <!-- Cấu hình Hệ thống & Công ty -->
+                    @if(!$authUser || $authUser->hasPermission('settings.view'))
                     <a href="{{ url('/system-settings') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('system-settings*') || request()->is('settings*') ? 'border-[#1b4a8c] bg-amber-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-amber-200 bg-slate-50/70 hover:bg-amber-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-sliders"></i>
@@ -1660,6 +1758,7 @@
                         <span class="text-xs font-bold text-slate-800 leading-tight">Cấu hình</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Công ty & Ngân hàng</span>
                     </a>
+                    @endif
 
                 </div>
 
@@ -1806,7 +1905,7 @@
     <!-- ====================================================================
          Global ERP Realtime Notification Engine
          Hoạt động trên MỌI trang - không phụ thuộc route
-         Xử lý: SHORTAGE_REPORTED, ORDER_ITEMS_MODIFIED, ORDER_UPDATED
+         Xử lý: ORDER_ITEMS_MODIFIED, ORDER_UPDATED, CREDIT_OVERRUN, DELIVERY_DISCREPANCY
          ==================================================================== -->
     <div id="erp-notif-container" class="fixed top-4 right-4 z-[99999] flex flex-col gap-2.5 pointer-events-none max-w-sm w-full"></div>
 
@@ -1896,7 +1995,7 @@
         }
 
         /* ─── Core: Hiển thị toast ───────────────────────────────────── */
-        function showToast({ type = 'shortage', orderCode, supervisor, reporter, changes, shortageItems, orderId, orderCreator, customerName, driverName, overrunAmount, reason }) {
+        function showToast({ type = 'order_modified', orderCode, supervisor, reporter, changes, orderId, orderCreator, customerName, driverName, overrunAmount, reason }) {
             const container = document.getElementById('erp-notif-container');
             if (!container) return;
 
@@ -1972,25 +2071,16 @@
                 return;
             }
 
-            const isShortage  = type === 'shortage';
-            const gradFrom    = isShortage ? '#7f1d1d' : '#1e3a5f';
-            const gradTo      = isShortage ? '#b91c1c' : '#1e40af';
-            const borderClr   = isShortage ? '#fca5a5' : '#93c5fd';
-            const badgeText   = isShortage ? '⚠️ KHO BÁO THIẾU HÀNG' : '🔔 CẬP NHẬT ĐƠN HÀNG';
-            const badgeBg     = isShortage ? 'rgba(0,0,0,.35)' : 'rgba(255,255,255,.15)';
-            const badgeColor  = isShortage ? '#fde68a' : '#bae6fd';
+            const gradFrom    = '#1e3a5f';
+            const gradTo      = '#1e40af';
+            const borderClr   = '#93c5fd';
+            const badgeText   = '🔔 CẬP NHẬT ĐƠN HÀNG';
+            const badgeBg     = 'rgba(255,255,255,.15)';
+            const badgeColor  = '#bae6fd';
 
             // Nội dung chi tiết
             let detailHtml = '';
-            if (isShortage && shortageItems && shortageItems.length) {
-                const rows = shortageItems.map(i =>
-                    `<div style="display:flex;gap:6px;align-items:center;">
-                        <span style="width:5px;height:5px;border-radius:50%;background:#fca5a5;flex-shrink:0;"></span>
-                        <span>${i.name || i.sku} — thiếu <strong>${i.shortage_qty ?? i.shortageQty ?? ''} ${i.unit || ''}</strong></span>
-                    </div>`
-                ).join('');
-                detailHtml = `<div style="background:rgba(0,0,0,.28);border-radius:10px;padding:8px 10px;font-size:11px;color:#fecaca;line-height:1.6;margin-top:2px;">${rows}</div>`;
-            } else if (!isShortage && changes && changes.length) {
+            if (changes && changes.length) {
                 const rows = changes.slice(0, 4).map(c =>
                     `<div style="display:flex;gap:6px;align-items:flex-start;">
                         <span style="width:5px;height:5px;border-radius:50%;background:#93c5fd;flex-shrink:0;margin-top:5px;"></span>
@@ -2001,28 +2091,22 @@
             }
 
             // Link hành động
-            const actionLink = orderId
-                ? (isShortage ? `/orders?search=${encodeURIComponent(orderCode||'')}` : `/inventory/picking?order_id=${orderId}`)
-                : '#';
-            const actionLabel = isShortage ? '👁 Xem đơn hàng' : '📦 Mở trang bốc hàng';
+            const actionLink = orderId ? `/inventory/picking?order_id=${orderId}` : '#';
+            const actionLabel = '📦 Mở trang bốc hàng';
 
             const wrap = document.createElement('div');
             wrap.style.cssText = `pointer-events:auto;background:linear-gradient(135deg,${gradFrom},${gradTo});color:#fff;padding:14px 16px;border-radius:18px;box-shadow:0 8px 32px rgba(0,0,0,.45);border:1.5px solid ${borderClr};display:flex;flex-direction:column;gap:8px;animation:erpSlideIn .3s ease;`;
             wrap.innerHTML = `
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
                     <div style="display:flex;align-items:flex-start;gap:10px;min-width:0;">
-                        <div style="width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${isShortage ? '🚨' : '📝'}</div>
+                        <div style="width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📝</div>
                         <div style="min-width:0;">
                             <div style="display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-bottom:3px;">
                                 <span style="padding:2px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:9px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;">${badgeText}</span>
                                 <strong style="font-family:monospace;font-size:13px;">${orderCode || ''}</strong>
                             </div>
-                            <div style="font-size:11px;opacity:.85;">${isShortage
-                                ? `Gửi người phụ trách: <strong style="color:${badgeColor}">${supervisor || ''}</strong>`
-                                : `Cập nhật bởi: <strong style="color:${badgeColor}">${reporter || ''}</strong>`}
-                            </div>
-                            ${!isShortage && supervisor ? `<div style="font-size:10px;opacity:.7;margin-top:1px;">Người phụ trách đơn: ${supervisor}</div>` : ''}
-                            ${isShortage && reporter ? `<div style="font-size:10px;opacity:.7;margin-top:1px;">Báo bởi: ${reporter}</div>` : ''}
+                            <div style="font-size:11px;opacity:.85;">Cập nhật bởi: <strong style="color:${badgeColor}">${reporter || ''}</strong></div>
+                            ${supervisor ? `<div style="font-size:10px;opacity:.7;margin-top:1px;">Người phụ trách đơn: ${supervisor}</div>` : ''}
                         </div>
                     </div>
                     <button onclick="this.closest('[data-erp-toast]').remove()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:18px;font-weight:900;cursor:pointer;padding:0;line-height:1;flex-shrink:0;">&times;</button>
@@ -2178,10 +2262,6 @@
                 return true;
             }
 
-            // Reporter chính là mình (tự báo) → không cần nhận thêm
-            const reporter = extra.reporter || ev.performerName || '';
-            if (reporter && reporter.includes(CURRENT_USER) && ev.eventType === 'SHORTAGE_REPORTED') return false;
-
             return false;
         }
 
@@ -2229,36 +2309,6 @@
                     }, 4000);
                 }
                 window.dispatchEvent(new CustomEvent('erp:credit-override-decided', { detail: ev }));
-
-            } else if (ev.eventType === 'SHORTAGE_REPORTED') {
-                // Thiếu hàng → luôn hiển thị cho mọi người (admin/kinh doanh/nhóm trưởng)
-                // Chỉ ẩn với chính người báo thiếu
-                const extra = ev.extraData || {};
-                const reporter = extra.reporter || ev.performerName || '';
-                const isSelfReport = reporter && CURRENT_USER && reporter.includes(CURRENT_USER);
-
-                // Trang picking đã có UI riêng nhưng vẫn cần show toast nếu người đó là supervisor
-                const supervisor = extra.supervisor || extra.orderCreator || '';
-                const isMyOrder = supervisor && CURRENT_USER && supervisor.includes(CURRENT_USER);
-                const isOnPickingPage = window.location.pathname.includes('/inventory/picking') || window.location.pathname.includes('/picking');
-
-                // Hiển thị nếu: không phải tự báo VÀ (là supervisor HOẶC không ở trang picking)
-                if (!isSelfReport && (isMyOrder || !isOnPickingPage)) {
-                    showToast({
-                        type: 'shortage',
-                        orderCode: extra.orderCode || ('Đơn #' + (ev.orderId || '')),
-                        supervisor: extra.supervisor || 'Người phụ trách',
-                        reporter: extra.reporter || ev.performerName || 'Nhân sự kho',
-                        shortageItems: extra.shortageItems || [],
-                        orderId: ev.orderId
-                    });
-                    playBeep('warning');
-                    desktopNotif(
-                        '⚠️ Kho báo thiếu hàng – Đơn ' + (extra.orderCode || ev.orderId),
-                        'Người phụ trách: ' + (extra.supervisor || '') + '\nBáo bởi: ' + (extra.reporter || ev.performerName || '')
-                    );
-                }
-                window.dispatchEvent(new CustomEvent('erp:shortage-reported', { detail: ev }));
 
             } else if (ev.eventType === 'ORDER_ITEMS_MODIFIED' || ev.eventType === 'ORDER_UPDATED') {
                 const extra = ev.extraData || {};
@@ -2358,7 +2408,7 @@
                 if (d.type === 'CREDIT_OVERRUN_REQUESTED') {
                     checkPendingCreditOverrides();
                     poll();
-                } else if (d.type === 'SHORTAGE_REPORTED' || d.type === 'CREDIT_OVERRUN_DECIDED') {
+                } else if (d.type === 'CREDIT_OVERRUN_DECIDED') {
                     poll();
                 } else if (d.type === 'ORDER_SAVED' || d.type === 'ORDER_MODIFIED' || d.type === 'DELIVERY_DISCREPANCY_REPORTED' || d.type === 'DELIVERY_DISCREPANCY_RESPONDED' || d.type === 'DISCREPANCY_REPORTED' || d.type === 'DISCREPANCY_RESPONDED') {
                     poll();

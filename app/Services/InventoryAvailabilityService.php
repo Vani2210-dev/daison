@@ -240,6 +240,7 @@ class InventoryAvailabilityService
                 $targetWh = Warehouse::where('name', $exOrder->warehouse)->orWhere('code', $exOrder->warehouse)->first()
                     ?: Warehouse::first();
                 $targetWhId = $targetWh?->id;
+                $exBreakdown = $exOrder->computePickedDeliveryBreakdown();
 
                 foreach ($exOrder->items as $it) {
                     $pId = $it->product_id;
@@ -249,7 +250,9 @@ class InventoryAvailabilityService
                     }
                     if (!$pId) continue;
 
-                    $qty = (float)$it->quantity + (float)($it->gift_quantity ?? 0);
+                    $qty = isset($exBreakdown['items'][$it->id])
+                        ? ((float)$exBreakdown['items'][$it->id]['sold_qty'] + (float)$exBreakdown['items'][$it->id]['gift_qty'])
+                        : ((float)$it->quantity + (float)($it->gift_quantity ?? 0));
                     if ($qty <= 0) continue;
 
                     $pObj = Product::find($pId);

@@ -796,10 +796,13 @@
         <div class="order-form-title-bar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2 border-b border-slate-100">
             <div>
                 <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+                    <button type="button" @click="goBack()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition cursor-pointer shrink-0" :title="isFromPos() ? 'Quay lại Bán Hàng POS' : 'Quay lại danh sách'">
+                        <i class="fa-solid fa-arrow-left text-xs sm:text-sm"></i>
+                    </button>
                     <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Đơn hàng</h1>
+                    <span x-show="isFromPos()" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-purple-100 text-purple-800 border border-purple-200">🏪 Từ POS</span>
                     <span class="hidden sm:inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200">ERP Form Standard</span>
-                    <span x-show="formData.order_type === 'backorder' || formData.status === 'Giao sau'" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-300">📋 Đơn giao sau</span>
-                    <span x-show="orderId" class="px-2.5 py-0.5 rounded-full text-xs font-bold" :class="formData.status === 'Giao sau' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'" x-text="formData.status"></span>
+                    <span x-show="orderId" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300" x-text="formData.status"></span>
                 </div>
                 <p class="hidden sm:block text-xs text-slate-500 mt-1">
                     Quản lý đơn hàng theo quy trình: Chốt đơn &bull; Soạn hàng &bull; Đang vận chuyển &bull; Đã giao &bull; Hủy
@@ -1157,99 +1160,6 @@
                 </div>
             </div>
 
-            <!-- BANNER NHẮC GỢI Ý GỘP ĐƠN GIAO SAU (NỢ HÀNG) CỦA KHÁCH HÀNG -->
-            <template x-if="pendingMergeOrders && pendingMergeOrders.length > 0 && !dismissedPendingAlert">
-                <div class="mb-4 bg-gradient-to-r from-indigo-50 via-purple-50 to-sky-50 border-2 border-indigo-300 rounded-2xl p-4 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in duration-200">
-                    <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md text-lg">
-                            <i class="fa-solid fa-code-merge"></i>
-                        </div>
-                        <div>
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-600 text-white shadow-2xs">
-                                    Gợi ý gộp đơn
-                                </span>
-                                <span class="font-extrabold text-indigo-950 text-sm">
-                                    Khách hàng có <span class="text-indigo-600 underline font-black text-base" x-text="pendingMergeOrders.length"></span> đơn giao sau (nợ hàng) chưa hoàn thành!
-                                </span>
-                            </div>
-                            <div class="text-xs text-indigo-900 mt-1.5 flex flex-wrap items-center gap-2">
-                                <template x-for="pOrd in pendingMergeOrders" :key="pOrd.id">
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold shadow-2xs bg-amber-100 text-amber-900 border border-amber-300">
-                                        <i class="fa-solid fa-clipboard-list text-amber-600"></i>
-                                        <span class="font-bold font-mono" x-text="pOrd.order_code"></span>
-                                        <span x-text="'(' + pOrd.type_label + ' - ' + pOrd.items_count + ' SP)'"></span>
-                                    </span>
-                                </template>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2.5 w-full md:w-auto shrink-0">
-                        <button type="button" 
-                                @click="showMergeModal = true" 
-                                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
-                            <i class="fa-solid fa-layer-group"></i>
-                            <span>Xem & Gộp đơn</span>
-                        </button>
-                        <button type="button" 
-                                @click="mergeAllPendingOrders()" 
-                                class="px-3.5 py-2 bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-300 font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer">
-                            <i class="fa-solid fa-circle-check text-indigo-600"></i>
-                            <span>Gộp tất cả</span>
-                        </button>
-                        <button type="button" 
-                                @click="dismissedPendingAlert = true" 
-                                class="p-2 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer transition-colors" title="Ẩn thông báo này">
-                            <i class="fa-solid fa-xmark text-sm"></i>
-                        </button>
-                    </div>
-                </div>
-            </template>
-
-            <!-- BANNER XỬ LÝ THIẾU HÀNG TỔNG (Hiện khi đang ở giai đoạn soạn hàng và có ít nhất 1 sản phẩm bốc thiếu) -->
-            <template x-if="isPickingStage() && getShortageItems().length > 0">
-                <div class="mb-4 bg-gradient-to-r from-rose-50 via-amber-50 to-rose-50 border-2 border-rose-300 rounded-2xl p-4 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in duration-200">
-                    <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-md text-lg animate-bounce">
-                            <i class="fa-solid fa-triangle-exclamation"></i>
-                        </div>
-                        <div>
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-2xs">
-                                    Kho Báo Thiếu Hàng
-                                </span>
-                                <span class="font-extrabold text-rose-900 text-sm">
-                                    Có <span class="text-rose-600 underline font-black text-base" x-text="getShortageItems().length"></span> sản phẩm bốc thiếu!
-                                </span>
-                            </div>
-                            <div class="text-xs text-rose-700 mt-1 leading-relaxed">
-                                Bạn có thể <strong>cắt tất cả theo SL bốc</strong> hoặc <strong>tách tạo đơn giao sau (nợ hàng)</strong> cho các mặt hàng thiếu.
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2.5 w-full md:w-auto shrink-0">
-                        <!-- Nút Cắt Tổng -->
-                        <button type="button" 
-                                @click="cutAllToPickedQty()" 
-                                class="flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-rose-50 text-rose-700 font-bold text-xs rounded-xl border-2 border-rose-300 shadow-sm hover:border-rose-400 active:scale-95 transition-all cursor-pointer"
-                                title="Cắt giảm SL các sản phẩm thiếu theo đúng số lượng kho thực tế đã bốc">
-                            <i class="fa-solid fa-scissors text-rose-600"></i>
-                            <span>Cắt tất cả theo SL bốc (<span x-text="getShortageItems().length"></span>)</span>
-                        </button>
-                        <!-- Nút Tạo Đơn Giao Sau Tổng -->
-                        <button type="button" 
-                                @click="createBackOrderAll()" 
-                                :disabled="backorderSaving"
-                                class="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white font-extrabold text-xs rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-                                title="Cắt đơn này theo số bốc và tự động tạo đơn giao sau (nợ hàng) cho toàn bộ phần thiếu">
-                            <svg x-show="backorderSaving" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
-                            <i class="fa-solid fa-boxes-packing" x-show="!backorderSaving"></i>
-                            <span>Tạo đơn giao sau tổng (<span x-text="getShortageItems().length"></span> SP)</span>
-                        </button>
-                    </div>
-                </div>
-            </template>
-
             <div class="order-items-table-container rounded-xl border border-slate-200">
                 <table class="order-items-table w-full text-left border-collapse text-xs">
                     <thead>
@@ -1515,15 +1425,6 @@
                                             <div class="text-[9px] text-slate-400 mt-0.5"
                                                  x-show="Number(item.picked_qty||0) > 0"
                                                  x-text="'/' + (Number(item.quantity||0)+Number(item.gift_quantity||0)) + ' ' + (item.unit||'')"></div>
-                                            <!-- Badge Thiếu -->
-                                            <template x-if="isItemShortage(item)">
-                                                <button type="button"
-                                                        @click="openShortageModal(item, getItemIndex(item))"
-                                                        class="mt-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-rose-100 hover:bg-rose-200 text-rose-700 font-black text-[9px] border border-rose-300 cursor-pointer transition-colors">
-                                                    <i class="fa-solid fa-scissors text-[8px]"></i>
-                                                    <span>Thiếu <span x-text="getShortageQty(item)"></span></span>
-                                                </button>
-                                            </template>
                                         </div>
                                     </td>
                                 </template>
@@ -1531,13 +1432,6 @@
                                 <!-- Thành tiền -->
                                 <td class="col-amount py-2 px-3 text-right align-top">
                                     <div class="h-8 flex items-center justify-end font-bold text-xs text-slate-900 whitespace-nowrap" x-text="formatNumber(item.amount) + ' đ'"></div>
-                                    <!-- Hiển thị thiếu hàng dưới thành tiền khi có -->
-                                    <template x-if="isItemShortage(item)">
-                                        <div class="mt-0.5 text-[9px] text-rose-600 font-bold flex items-center justify-end gap-0.5">
-                                            <i class="fa-solid fa-triangle-exclamation text-[8px]"></i>
-                                            <span>Thiếu <span x-text="getShortageQty(item)"></span> <span x-text="item.unit"></span></span>
-                                        </div>
-                                    </template>
                                 </td>
 
                                 <!-- Nút Xóa -->
@@ -1882,109 +1776,6 @@
 
     </div>
 
-    <!-- ===== Modal xử lý Thiếu Hàng ===== -->
-    <div x-show="shortageModal.show" x-cloak
-         class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-         style="background:rgba(0,0,0,.55);backdrop-filter:blur(3px);">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-slate-200 overflow-hidden" @click.stop>
-            <!-- Header -->
-            <div class="bg-gradient-to-r from-rose-700 to-rose-500 p-5 text-white">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl">🚨</div>
-                    <div>
-                        <div class="font-black text-base">Xử lý thiếu hàng kho</div>
-                        <div class="text-rose-100 text-xs mt-0.5" x-text="shortageModal.item ? '[' + shortageModal.item.sku + '] ' + shortageModal.item.name : ''"></div>
-                    </div>
-                </div>
-            </div>
-            <!-- Body -->
-            <template x-if="shortageModal.item">
-            <div class="p-5 space-y-4">
-                <!-- Thông tin SL -->
-                <div class="grid grid-cols-3 gap-3 text-center">
-                    <div class="bg-slate-50 rounded-xl p-3 border border-slate-200">
-                        <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wide mb-1">SL đặt</div>
-                        <div class="text-2xl font-black text-slate-800" x-text="Number(shortageModal.item.quantity||0)+Number(shortageModal.item.gift_quantity||0)"></div>
-                        <div class="text-[11px] text-slate-400" x-text="shortageModal.item.unit || ''"></div>
-                    </div>
-                    <div class="bg-orange-50 rounded-xl p-3 border border-orange-200">
-                        <div class="text-[10px] text-orange-600 font-bold uppercase tracking-wide mb-1">Kho đã bốc</div>
-                        <div class="text-2xl font-black text-orange-700" x-text="shortageModal.item.picked_qty || 0"></div>
-                        <div class="text-[11px] text-orange-400" x-text="shortageModal.item.unit || ''"></div>
-                    </div>
-                    <div class="bg-rose-50 rounded-xl p-3 border border-rose-300">
-                        <div class="text-[10px] text-rose-600 font-bold uppercase tracking-wide mb-1">Thiếu</div>
-                        <div class="text-2xl font-black text-rose-700" x-text="getShortageQty(shortageModal.item)"></div>
-                        <div class="text-[11px] text-rose-400" x-text="shortageModal.item.unit || ''"></div>
-                    </div>
-                </div>
-
-                <!-- Lý do thiếu (nếu có) -->
-                <template x-if="shortageModal.item._shortageReason">
-                    <div class="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center gap-2">
-                        <i class="fa-solid fa-circle-info text-amber-500"></i>
-                        <span>Lý do: <strong x-text="shortageModal.item._shortageReason"></strong></span>
-                    </div>
-                </template>
-
-                <!-- Lựa chọn xử lý -->
-                <div class="space-y-3">
-                    <!-- Ưu tiên 1: Cắt SL theo bốc -->
-                    <button type="button" @click="cutToPickedQty()"
-                            :disabled="backorderSaving"
-                            class="w-full flex items-start gap-3 p-4 bg-orange-50 hover:bg-orange-100 border-2 border-orange-300 rounded-xl text-left transition-all cursor-pointer group disabled:opacity-60">
-                        <div class="w-9 h-9 rounded-lg bg-orange-500 text-white flex items-center justify-center shrink-0 font-black text-base group-hover:scale-110 transition-transform">✂</div>
-                        <div>
-                            <div class="font-black text-slate-800 text-sm">Cắt số lượng theo số đã bốc</div>
-                            <div class="text-xs text-slate-500 mt-0.5">Chỉnh SL xuống bằng số kho đã bốc (<span x-text="shortageModal.item.picked_qty||0" class="font-bold text-orange-700"></span> <span x-text="shortageModal.item.unit||''"></span>). Phần thiếu sẽ bị xóa khỏi đơn này.</div>
-                        </div>
-                    </button>
-
-                    <!-- Ưu tiên 2: Tạo đơn giao sau -->
-                    <button type="button" @click="createBackOrder()"
-                            :disabled="backorderSaving"
-                            class="w-full flex items-start gap-3 p-4 bg-blue-50 hover:bg-blue-100 border-2 border-blue-300 rounded-xl text-left transition-all cursor-pointer group disabled:opacity-60">
-                        <div class="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 font-black text-base group-hover:scale-110 transition-transform">📋</div>
-                        <div>
-                            <div class="font-black text-slate-800 text-sm">Tạo đơn giao sau (nợ hàng)</div>
-                            <div class="text-xs text-slate-500 mt-0.5">Cắt đơn này xuống bằng số đã bốc VÀ tự động tạo đơn nợ hàng mới cho phần thiếu (<span x-text="getShortageQty(shortageModal.item)" class="font-bold text-blue-700"></span> <span x-text="shortageModal.item.unit||''"></span>).</div>
-                        </div>
-                    </button>
-
-                    <!-- Lựa chọn ÁP DỤNG TẤT CẢ khi có nhiều hơn 1 SP thiếu -->
-                    <template x-if="getShortageItems().length > 1">
-                        <div class="pt-2 border-t border-slate-200 space-y-2">
-                            <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
-                                <span>Hoặc áp dụng cho tất cả sản phẩm thiếu:</span>
-                                <span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-black" x-text="getShortageItems().length + ' SP'"></span>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <button type="button" @click="cutAllToPickedQty()" :disabled="backorderSaving" class="px-2.5 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-bold text-xs rounded-xl border border-orange-300 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50">
-                                    <i class="fa-solid fa-scissors text-xs"></i>
-                                    <span>Cắt tất cả (<span x-text="getShortageItems().length"></span>)</span>
-                                </button>
-                                <button type="button" @click="createBackOrderAll()" :disabled="backorderSaving" class="px-2.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50">
-                                    <i class="fa-solid fa-boxes-packing text-xs"></i>
-                                    <span>Đơn giao sau tổng</span>
-                                </button>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-
-                <div class="flex items-center justify-between pt-1">
-                    <span x-show="backorderSaving" class="text-xs text-blue-600 font-bold flex items-center gap-1">
-                        <i class="fa-solid fa-spinner animate-spin"></i> Đang xử lý...
-                    </span>
-                    <button type="button" @click="shortageModal.show = false"
-                            :disabled="backorderSaving"
-                            class="ml-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl border border-slate-300 cursor-pointer transition-colors">Hủy</button>
-                </div>
-            </div>
-            </template>
-        </div>
-    </div>
-
     </fieldset>
 
     <!-- 6. Floating / Sticky Action Bar (Bottom Bar: 0 MẶT HÀNG | Đóng Esc | Lưu & In Ctrl+F9 | Lưu F9) -->
@@ -2022,7 +1813,8 @@
         <div class="flex items-center gap-2.5">
             <button type="button" @click="confirmClose()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer">
                 <i class="fa-solid fa-arrow-left text-xs"></i>
-                <span>Đóng<span class="shortcut-hint hidden md:inline"> (Esc)</span></span>
+                <span x-text="isFromPos() ? 'Quay lại POS' : 'Đóng'"></span>
+                <span class="shortcut-hint hidden md:inline"> (Esc)</span>
             </button>
 
             <!-- Readonly Mode Actions -->
@@ -2041,39 +1833,25 @@
                 </div>
             </template>
 
-            <!-- Bulk Shortage Actions in Bottom Bar -->
-            <template x-if="!isReadonly && isPickingStage() && getShortageItems().length > 0">
-                <div class="flex items-center gap-1.5 border-r border-slate-200 pr-2.5">
-                    <button type="button" @click="cutAllToPickedQty()" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 shadow-2xs transition-all flex items-center gap-1 cursor-pointer" title="Cắt tất cả sản phẩm thiếu theo SL kho đã bốc">
-                        <i class="fa-solid fa-scissors"></i>
-                        <span>Cắt tổng (<span x-text="getShortageItems().length"></span>)</span>
-                    </button>
-                    <button type="button" @click="createBackOrderAll()" :disabled="backorderSaving" class="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50" title="Tạo đơn giao sau (nợ hàng) cho toàn bộ phần thiếu">
-                        <i class="fa-solid fa-boxes-packing"></i>
-                        <span>Tạo đơn nợ tổng</span>
-                    </button>
-                </div>
-            </template>
-
             <!-- Normal Edit / Create Mode Actions -->
             <template x-if="!isReadonly">
                 <div class="flex items-center gap-2.5">
                     <button type="button" @click="submitOrder(true)" 
-                            :disabled="saving || isNoTaxCodeLimitReached() || (formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0)" 
+                            :disabled="saving || isNoTaxCodeLimitReached() || getOverStockItems().length > 0" 
                             class="btn-save-print hidden sm:inline-flex px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
-                            :title="isNoTaxCodeLimitReached() ? 'Chặn lên đơn: Khách hàng chưa có MST và đã đạt 3 đơn' : ((formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0) ? 'Không thể lưu: Hết tồn kho khả dụng' : 'Lưu đơn và in chứng từ (Ctrl+F9)')">
+                            :title="isNoTaxCodeLimitReached() ? 'Chặn lên đơn: Khách hàng chưa có MST và đã đạt 3 đơn' : (getOverStockItems().length > 0 ? 'Không thể lưu: Hết tồn kho khả dụng' : 'Lưu đơn và in chứng từ (Ctrl+F9)')">
                         <i class="fa-solid fa-print"></i>
                         <span>Lưu & In<span class="shortcut-hint hidden md:inline"> (Ctrl+F9)</span></span>
                     </button>
                     <button type="button" @click="submitOrder(false)" 
-                            :disabled="saving || isNoTaxCodeLimitReached() || (formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0)" 
-                            :class="isNoTaxCodeLimitReached() || (formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0) ? 'bg-rose-600 hover:bg-rose-700' : 'bg-sky-600 hover:bg-sky-700'"
+                            :disabled="saving || isNoTaxCodeLimitReached() || getOverStockItems().length > 0" 
+                            :class="isNoTaxCodeLimitReached() || getOverStockItems().length > 0 ? 'bg-rose-600 hover:bg-rose-700' : 'bg-sky-600 hover:bg-sky-700'"
                             class="px-6 py-2.5 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
-                            :title="isNoTaxCodeLimitReached() ? 'Chặn lên đơn: Khách hàng chưa có MST và đã đạt 3 đơn' : ((formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0) ? 'Không thể lên đơn do hết tồn kho khả dụng' : 'Lưu đơn hàng (F9)')">
-                        <i class="fa-solid fa-ban" x-show="!saving && (isNoTaxCodeLimitReached() || (formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0))"></i>
-                        <i class="fa-solid fa-floppy-disk" x-show="!saving && !isNoTaxCodeLimitReached() && (formData.order_type === 'backorder' || formData.status === 'Giao sau' || getOverStockItems().length === 0)"></i>
+                            :title="isNoTaxCodeLimitReached() ? 'Chặn lên đơn: Khách hàng chưa có MST và đã đạt 3 đơn' : (getOverStockItems().length > 0 ? 'Không thể lên đơn do hết tồn kho khả dụng' : 'Lưu đơn hàng (F9)')">
+                        <i class="fa-solid fa-ban" x-show="!saving && (isNoTaxCodeLimitReached() || getOverStockItems().length > 0)"></i>
+                        <i class="fa-solid fa-floppy-disk" x-show="!saving && !isNoTaxCodeLimitReached() && getOverStockItems().length === 0"></i>
                         <i class="fa-solid fa-circle-notch fa-spin" x-show="saving" x-cloak></i>
-                        <span><span x-text="saving ? 'Đang lưu...' : (isNoTaxCodeLimitReached() ? 'Chặn: Cần MST (đã 3 đơn)' : ((formData.order_type !== 'backorder' && formData.status !== 'Giao sau' && getOverStockItems().length > 0) ? 'Hết tồn khả dụng (' + getOverStockItems().length + ' SP)' : 'Lưu'))"></span><span class="shortcut-hint hidden md:inline" x-show="!saving && !isNoTaxCodeLimitReached() && (formData.order_type === 'backorder' || formData.status === 'Giao sau' || getOverStockItems().length === 0)"> (F9)</span></span>
+                        <span><span x-text="saving ? 'Đang lưu...' : (isNoTaxCodeLimitReached() ? 'Chặn: Cần MST (đã 3 đơn)' : (getOverStockItems().length > 0 ? 'Hết tồn khả dụng (' + getOverStockItems().length + ' SP)' : 'Lưu'))"></span><span class="shortcut-hint hidden md:inline" x-show="!saving && !isNoTaxCodeLimitReached() && getOverStockItems().length === 0"> (F9)</span></span>
                     </button>
                 </div>
             </template>
@@ -2102,7 +1880,6 @@
                     <input type="text" x-model="newDealer.phone" placeholder="Nhập số điện thoại..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none">
                 </div>
                 <div>
-                    <div>
                     <label class="block text-slate-600 font-semibold mb-1">Mã số thuế (MST)</label>
                     <input type="text" x-model="newDealer.tax_code" placeholder="Nhập mã số thuế..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none">
                 </div>
@@ -2125,102 +1902,6 @@
                     <i class="fa-solid fa-spinner fa-spin" x-show="addingDealer" x-cloak></i>
                     <span x-text="addingDealer ? 'Đang lưu...' : 'Lưu & Áp dụng'"></span>
                 </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Chi tiết và Gộp đơn Giao sau (Nợ hàng) -->
-    <div x-show="showMergeModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs" @click.self="showMergeModal = false">
-        <div class="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <!-- Modal Header -->
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
-                        <i class="fa-solid fa-code-merge text-sm"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-extrabold text-slate-900 text-sm">Danh Sách Đơn Giao Sau (Nợ Hàng) Chờ Gộp</h3>
-                        <p class="text-[11px] text-slate-500">Khách hàng: <span class="font-bold text-slate-800" x-text="formData.customer_name"></span></p>
-                    </div>
-                </div>
-                <button type="button" @click="showMergeModal = false" class="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
-                    <i class="fa-solid fa-xmark text-base"></i>
-                </button>
-            </div>
-
-            <!-- Modal Body -->
-            <div class="p-6 overflow-y-auto space-y-4 flex-1">
-                <template x-if="!pendingMergeOrders || pendingMergeOrders.length === 0">
-                    <div class="text-center py-8 text-slate-400 italic">
-                        Không có đơn nợ hàng nào cần gộp.
-                    </div>
-                </template>
-                <template x-for="(pOrd, pIdx) in pendingMergeOrders" :key="pOrd.id">
-                    <div class="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-                        <div class="flex items-center justify-between px-4 py-3 bg-slate-100/80 border-b border-slate-200">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="font-mono font-black text-slate-900 text-xs" x-text="pOrd.order_code"></span>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800"
-                                      x-text="pOrd.type_label"></span>
-                                <span class="text-[11px] text-slate-400" x-text="'Tạo ngày: ' + pOrd.created_at"></span>
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <span class="text-xs font-bold text-slate-700">Tổng: <span class="font-mono text-indigo-700 font-extrabold" x-text="formatNumber(pOrd.total_amount) + ' đ'"></span></span>
-                                <button type="button" 
-                                        @click="mergeOrder(pOrd)" 
-                                        class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs transition-colors flex items-center gap-1 cursor-pointer">
-                                    <i class="fa-solid fa-plus text-[10px]"></i>
-                                    <span>Gộp đơn này</span>
-                                </button>
-                            </div>
-                        </div>
-                        <!-- Table items of order -->
-                        <div class="p-3 bg-white overflow-x-auto">
-                            <table class="w-full text-xs text-left">
-                                <thead class="text-[10px] text-slate-500 uppercase bg-slate-50">
-                                    <tr>
-                                        <th class="px-2 py-1.5">Sản phẩm</th>
-                                        <th class="px-2 py-1.5 text-center">ĐVT</th>
-                                        <th class="px-2 py-1.5 text-right">Số lượng</th>
-                                        <th class="px-2 py-1.5 text-right">Đơn giá</th>
-                                        <th class="px-2 py-1.5 text-right">Thành tiền</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-100">
-                                    <template x-for="item in pOrd.items" :key="item.id">
-                                        <tr class="hover:bg-slate-50/50">
-                                            <td class="px-2 py-1.5 font-medium text-slate-800">
-                                                <span class="font-mono text-[10px] text-slate-400 mr-1" x-text="'[' + item.sku + ']'"></span>
-                                                <span x-text="item.name"></span>
-                                            </td>
-                                            <td class="px-2 py-1.5 text-center text-slate-600" x-text="item.unit"></td>
-                                            <td class="px-2 py-1.5 text-right font-bold text-indigo-600" x-text="item.quantity"></td>
-                                            <td class="px-2 py-1.5 text-right font-mono text-slate-600" x-text="formatNumber(item.unit_price) + ' đ'"></td>
-                                            <td class="px-2 py-1.5 text-right font-mono font-bold text-slate-800" x-text="formatNumber(item.amount) + ' đ'"></td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </template>
-            </div>
-
-            <!-- Modal Footer -->
-            <div class="flex items-center justify-between px-6 py-3 border-t border-slate-200 bg-slate-50">
-                <span class="text-xs text-slate-500">Các mặt hàng sẽ được thêm vào bảng sản phẩm của đơn hiện tại.</span>
-                <div class="flex items-center gap-2">
-                    <button type="button" @click="showMergeModal = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer">
-                        Đóng
-                    </button>
-                    <button type="button" 
-                            x-show="pendingMergeOrders && pendingMergeOrders.length > 0"
-                            @click="mergeAllPendingOrders()" 
-                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer">
-                        <i class="fa-solid fa-code-merge"></i>
-                        <span>Gộp tất cả vào đơn này</span>
-                    </button>
-                </div>
             </div>
         </div>
     </div>
@@ -2248,8 +1929,6 @@ function orderFormApp() {
         isReadonly: {{ (request('readonly') == '1' || request('mode') === 'readonly') ? 'true' : 'false' }},
         saving: false,
         errorMessage: '',
-        shortageModal: { show: false, item: null, index: -1 },
-        backorderSaving: false,
         showAddDealer: false,
         addingDealer: false,
         newDealer: {
@@ -2260,11 +1939,6 @@ function orderFormApp() {
             tax_code: ''
         },
         originalDealerId: '{{ $order ? $order->dealer_id : "" }}',
-        pendingMergeOrders: [],
-        isLoadingMergeOrders: false,
-        showMergeModal: false,
-        mergedOrderIds: [],
-        dismissedPendingAlert: false,
         dealersData: [..._rawDealersData],
         warehousesCatalog: @json($warehouses ?? []),
         mainCompanyWarehouse: '{{ $mainCompanyWarehouse ?? ($warehouses->first()?->name ?? "Kho Tổng") }}',
@@ -2303,7 +1977,7 @@ function orderFormApp() {
         tickets: [
             {
                 id: 1,
-                title: '{{ $order ? ($order->order_code ?: "Phiếu đơn hàng") : (request("order_type") === "backorder" ? "Đơn giao sau mới" : "Phiếu 1") }}',
+                title: '{{ $order ? ($order->order_code ?: "Phiếu đơn hàng") : "Phiếu 1" }}',
                 orderId: '{{ $order ? $order->id : "" }}',
                 orderDiscountPercent: {{ $orderDiscPct }},
                 bulkDiscountPercent: '',
@@ -2326,12 +2000,11 @@ function orderFormApp() {
                     dealer_tier: '{{ ($order && !empty($order->dealer_tier)) ? $order->dealer_tier : "Nguyên Giá" }}',
                     warehouse: '{{ $order ? $order->warehouse : ((request("order_type") === "consignment") ? ($employeeWarehouse ?? "") : ($mainCompanyWarehouse ?? ($warehouses->first()?->name ?? "Kho Tổng"))) }}',
                     payment_method: '{{ $order ? $order->payment_method : "Ghi nợ đại lý" }}',
-                    status: '{{ $order ? $order->status : (request("order_type") === "backorder" ? "Giao sau" : "Chốt đơn") }}',
+                    status: '{{ $order ? $order->status : "Chốt đơn" }}',
                     notes: '{{ $order ? addslashes(str_replace(["\r", "\n"], ["", "\\n"], $order->notes)) : "" }}',
                     discount_percent: {{ $orderDiscPct }},
                     discount_amount: {{ $order ? (float)$order->discount_amount : 0 }},
                     tax_amount: {{ $order ? (float)$order->tax_amount : 0 }},
-                    shortage_reported: {{ ($order && $order->shortage_reported) ? 'true' : 'false' }},
                     sales_rep_name: '{{ $order ? addslashes($order->salesRep?->name ?: ($order->dealer?->salesRep?->name ?: ($order->order_creator ?: ($order->creator?->name ?: "")))) : addslashes(auth()->user()->name ?? "") }}',
                 },
                 items: @json($initialItems)
@@ -2377,44 +2050,20 @@ function orderFormApp() {
 
             this.recalculatePromotionalGifts();
             this.calculateTotals();
-            if (this.formData.dealer_id || this.formData.customer_name || this.formData.customer_phone) {
-                this.checkPendingMergeOrders();
-            }
 
             // Nạp sản phẩm từ Giao diện Bán hàng (POS) nếu có giỏ hàng tạm
             this.loadItemsFromPosCart();
 
             const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('from_pos') === '1') {
+                sessionStorage.setItem('order_from_pos', '1');
+                sessionStorage.setItem('order_return_url', '{{ route('orders.pos') }}');
+            }
             if (urlParams.get('print') === '1') {
                 this.$nextTick(() => {
                     setTimeout(() => this.printCurrentOrder(), 500);
                 });
             }
-
-            // Lắng nghe sự kiện Kho báo thiếu hàng Realtime
-            window.addEventListener('erp:shortage-reported', (e) => {
-                const detail = e.detail || {};
-                const evOrder = detail.extraData || detail;
-                const orderId = Number(detail.orderId || evOrder.orderId);
-                const orderCode = evOrder.orderCode;
-
-                if ((this.orderId && Number(this.orderId) === orderId) || (this.formData && this.formData.order_code === orderCode)) {
-                    this.formData.status = 'Kho báo thiếu hàng';
-                    if (this.tickets && this.tickets[this.activeTicketIndex]) {
-                        this.tickets[this.activeTicketIndex].formData.status = 'Kho báo thiếu hàng';
-                    }
-                    if (Array.isArray(evOrder.shortageItems)) {
-                        for (const sIt of evOrder.shortageItems) {
-                            const matched = this.items.find(it => it.sku === sIt.sku || (sIt.id && it.id == sIt.id));
-                            if (matched) {
-                                matched._isShortage = true;
-                                matched._shortageQty = sIt.shortage_qty || sIt.shortageQty;
-                                matched._shortageReason = sIt.reason;
-                            }
-                        }
-                    }
-                }
-            });
         },
 
         // Nạp các sản phẩm từ Giỏ hàng Bán hàng (POS) chuyển sang
@@ -2587,6 +2236,37 @@ function orderFormApp() {
             this.switchTicket(this.tickets.length - 1);
         },
 
+        isFromPos() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('from_pos') === '1' || sessionStorage.getItem('order_from_pos') === '1' || document.referrer.includes('/orders/pos');
+        },
+
+        getReturnUrl() {
+            if (this.isFromPos()) {
+                return '{{ route('orders.pos') }}';
+            }
+            const returnUrl = sessionStorage.getItem('order_return_url');
+            if (returnUrl) {
+                return returnUrl;
+            }
+            return '{{ route('orders.index') }}';
+        },
+
+        goBack() {
+            const returnUrl = this.getReturnUrl();
+            const t = this.tickets ? this.tickets[this.activeTicketIndex] : null;
+            const hasData = t && ((t.items && t.items.some(it => it.name || it.unitPrice > 0)) || (t.formData && t.formData.customer_name));
+            if (hasData) {
+                const destName = this.isFromPos() ? 'trang Bán Hàng POS' : 'danh sách đơn hàng';
+                if (!confirm(`Dữ liệu chưa lưu sẽ bị mất. Bạn có chắc muốn quay lại ${destName}?`)) {
+                    return;
+                }
+            }
+            sessionStorage.removeItem('order_from_pos');
+            sessionStorage.removeItem('order_return_url');
+            window.location.href = returnUrl;
+        },
+
         closeTicket(index) {
             const t = this.tickets[index];
             if (!t) return;
@@ -2600,8 +2280,12 @@ function orderFormApp() {
             }
 
             if (this.tickets.length === 1) {
-                if (confirm('Đây là phiếu duy nhất đang mở. Bạn muốn quay lại danh sách đơn hàng (OK) hay làm mới phiếu này (Hủy)?')) {
-                    window.location.href = '/orders';
+                const targetName = this.isFromPos() ? 'trang Bán Hàng POS' : 'danh sách đơn hàng';
+                if (confirm(`Đây là phiếu duy nhất đang mở. Bạn muốn quay lại ${targetName} (OK) hay làm mới phiếu này (Hủy)?`)) {
+                    const targetUrl = this.getReturnUrl();
+                    sessionStorage.removeItem('order_from_pos');
+                    sessionStorage.removeItem('order_return_url');
+                    window.location.href = targetUrl;
                 } else {
                     this.tickets = [];
                     this.ticketCounter = 0;
@@ -2733,7 +2417,6 @@ function orderFormApp() {
                 this.showAddDealer = false;
                 this.newDealer = { name: '', phone: '', tier: '', address: '', tax_code: '' };
                 this.recalculateItemPrices();
-                this.checkPendingMergeOrders();
             }
         },
 
@@ -2764,8 +2447,6 @@ function orderFormApp() {
             if (curT) {
                 curT.title = dealer.name;
             }
-            this.dismissedPendingAlert = false;
-            this.checkPendingMergeOrders();
             // this.checkAndApplyPromotions(true);
         },
 
@@ -2775,9 +2456,6 @@ function orderFormApp() {
             this.formData.customer_name = '';
             this.formData.customer_phone = '';
             this.formData.customer_address = '';
-            this.pendingMergeOrders = [];
-            this.mergedOrderIds = [];
-            this.dismissedPendingAlert = false;
             const curT = this.tickets[this.activeTicketIndex];
             if (curT) {
                 curT.title = 'Phiếu ' + (this.activeTicketIndex + 1);
@@ -4304,131 +3982,10 @@ function orderFormApp() {
                 this.formData.warehouse = this.mainCompanyWarehouse || 'Kho Tổng';
             }
 
-            if (this.formData.order_type === 'backorder') {
-                this.formData.status = 'Giao sau';
-            } else if (this.formData.status === 'Giao sau') {
-                this.formData.status = 'Chốt đơn';
-            }
             this.recalculateItemPrices();
             // this.checkAndApplyPromotions(true);
             this.calculateTotals();
             this.onWarehouseChange();
-        },
-
-        async checkPendingMergeOrders() {
-            const dealerId = this.formData.dealer_id;
-            const custName = this.formData.customer_name;
-            const custPhone = this.formData.customer_phone;
-            const excludeId = this.orderId || '';
-
-            if (!dealerId && !custName && !custPhone) {
-                this.pendingMergeOrders = [];
-                return;
-            }
-
-            this.isLoadingMergeOrders = true;
-            try {
-                const params = new URLSearchParams();
-                if (dealerId) params.append('dealer_id', dealerId);
-                if (custName) params.append('customer_name', custName);
-                if (custPhone) params.append('customer_phone', custPhone);
-                if (excludeId) params.append('exclude_id', excludeId);
-
-                const res = await fetch(`/api/orders/pending-debts-and-borrows?${params.toString()}`);
-                const data = await res.json();
-                if (data.success && Array.isArray(data.orders)) {
-                    // Loại các đơn đã được gộp trong phiên này
-                    this.pendingMergeOrders = data.orders.filter(o => !this.mergedOrderIds.includes(o.id));
-                } else {
-                    this.pendingMergeOrders = [];
-                }
-            } catch(err) {
-                console.error('Error fetching pending debt/borrow orders:', err);
-            } finally {
-                this.isLoadingMergeOrders = false;
-            }
-        },
-
-        mergeOrder(order) {
-            if (!order || !order.items || order.items.length === 0) {
-                alert('Đơn hàng này không có sản phẩm để gộp.');
-                return;
-            }
-
-            // Nếu dòng đầu tiên đang trống hoàn toàn, loại bỏ dòng trống đó
-            if (this.items.length === 1 && !this.items[0].product_id && !this.items[0].name) {
-                this.items = [];
-            }
-
-            let mergedCount = 0;
-            for (const it of order.items) {
-                const prodId = it.product_id;
-                const price = Number(it.unit_price) || 0;
-                const qty = Number(it.quantity) || 0;
-
-                // Tìm dòng hiện có cùng sản phẩm & cùng đơn giá
-                const existing = this.items.find(row => row.product_id == prodId && Number(row.unitPrice) === price && !row.isPromotionalGift);
-                if (existing) {
-                    existing.quantity = (Number(existing.quantity) || 0) + qty;
-                    const idx = this.items.indexOf(existing);
-                    this.updateLineTotal(idx, 'quantity');
-                } else {
-                    const newRow = {
-                        id: '',
-                        itemId: String(prodId),
-                        product_id: prodId,
-                        sku: it.sku || '',
-                        name: it.name || '',
-                        searchQuery: it.name || '',
-                        unit: it.unit || 'cái',
-                        quantity: qty,
-                        gift_quantity: 0,
-                        unitPrice: price,
-                        originalPrice: price,
-                        costPrice: 0,
-                        discount_percent: Number(it.discount_percent) || 0,
-                        discount_amount: Number(it.discount_amount) || 0,
-                        vat_percent: Number(it.vat_percent) || 0,
-                        vat_amount: Number(it.vat_amount) || 0,
-                        appliedTierPolicy: it.price_type || 'Theo phiếu',
-                        price_type: it.price_type || 'Theo phiếu',
-                        amount: Number(it.amount) || (qty * price),
-                        checked: true,
-                    };
-                    this.items.push(newRow);
-                    this.updateLineTotal(this.items.length - 1);
-                }
-                mergedCount++;
-            }
-
-            // Ghi chú gộp đơn
-            const mergeNote = `[Gộp từ ${order.order_code} (${order.type_label})]`;
-            if (!this.formData.notes) {
-                this.formData.notes = mergeNote;
-            } else if (!this.formData.notes.includes(order.order_code)) {
-                this.formData.notes = this.formData.notes.trim() + ' ' + mergeNote;
-            }
-
-            // Đánh dấu id đơn đã gộp
-            if (!this.mergedOrderIds.includes(order.id)) {
-                this.mergedOrderIds.push(order.id);
-            }
-
-            // Loại đơn này khỏi danh sách gợi ý
-            this.pendingMergeOrders = this.pendingMergeOrders.filter(o => o.id !== order.id);
-
-            this.calculateTotals();
-            alert(`Đã gộp thành công ${mergedCount} mặt hàng từ đơn ${order.order_code} vào đơn hiện tại!`);
-        },
-
-        mergeAllPendingOrders() {
-            if (!this.pendingMergeOrders || this.pendingMergeOrders.length === 0) return;
-            const count = this.pendingMergeOrders.length;
-            const toMerge = [...this.pendingMergeOrders];
-            for (const ord of toMerge) {
-                this.mergeOrder(ord);
-            }
-            this.showMergeModal = false;
         },
 
         calculateTotals() {
@@ -4522,10 +4079,9 @@ function orderFormApp() {
             }
 
             // 2. Chặn lên đơn khi hết / vượt quá tồn kho khả dụng (áp dụng cho mọi trạng thái kể cả Báo giá)
-            const isBackorder = this.formData.order_type === 'backorder' || this.formData.status === 'Giao sau';
             const overStockList = this.getOverStockItems();
 
-            if (!isBackorder && overStockList.length > 0) {
+            if (overStockList.length > 0) {
                 const targetWh = this.formData.warehouse || 'Kho xuất';
                 const itemsDesc = overStockList.map((it, i) => {
                     const avail = this.getItemAvailableStockInUnit(it);
@@ -4660,26 +4216,6 @@ function orderFormApp() {
                         }));
                     } catch(e) {}
 
-                    // Nếu có đơn giao sau được gộp vào đơn này, cập nhật trạng thái đơn đó thành "Đã gộp đơn"
-                    if (this.mergedOrderIds && this.mergedOrderIds.length > 0) {
-                        try {
-                            await fetch('/api/orders/mark-merged', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Accept': 'application/json',
-                                    'X-CSRF-TOKEN': token || ''
-                                },
-                                body: JSON.stringify({
-                                    merged_order_ids: this.mergedOrderIds,
-                                    target_order_code: finalOrdCode
-                                })
-                            });
-                        } catch(mErr) {
-                            console.error('Error marking orders as merged:', mErr);
-                        }
-                    }
-
                     if (andPrint) {
                         alert('Lưu đơn thành công! Đang chuyển sang chế độ in chứng từ...');
                         this.printCurrentOrder();
@@ -4692,7 +4228,10 @@ function orderFormApp() {
                         this.tickets.splice(savedIdx, 1);
                         this.switchTicket(Math.min(savedIdx, this.tickets.length - 1));
                     } else {
-                window.location.href = '/orders';
+                        const targetUrl = this.getReturnUrl();
+                        sessionStorage.removeItem('order_from_pos');
+                        sessionStorage.removeItem('order_return_url');
+                        window.location.href = targetUrl;
                     }
                 } else {
                     this.errorMessage = data.message || 'Lưu đơn thất bại, vui lòng kiểm tra lại.';
@@ -4705,375 +4244,12 @@ function orderFormApp() {
             }
         },
 
-        // ─── Helpers: Giai đoạn soạn hàng & Xử lý thiếu hàng ──────
+        // ─── Helpers: Giai đoạn soạn hàng ─────────────────────────
         isPickingStage() {
             const st = this.formData.status || '';
             return ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong',
-                    'Kiểm hàng', 'Đã kiểm hàng', 'Kho báo thiếu hàng'].includes(st);
+                    'Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng'].includes(st);
         },
-
-        isItemShortage(item) {
-            if (!item || (!item.name && !item.sku && !item.product_id)) return false;
-            const req = Number(item.quantity || 0) + Number(item.gift_quantity || 0);
-            if (req <= 0) return false;
-            const picked = Number(item.picked_qty || 0);
-
-            // QUAN TRỌNG: Nếu kho đã bốc >= số lượng đặt (đã bốc đủ hoặc đã cắt đơn theo bốc), CHẮC CHẮN KHÔNG THIẾU
-            if (picked >= req) return false;
-
-            return (item.item_status === 'Thiếu hàng') ||
-                   Boolean(item.shortage_reason) ||
-                   (picked < req && (picked > 0 || this.formData.shortage_reported || this.formData.status === 'Kho báo thiếu hàng'));
-        },
-
-        getShortageQty(item) {
-            if (!item) return 0;
-            const req = Number(item.quantity || 0) + Number(item.gift_quantity || 0);
-            const picked = Number(item.picked_qty || 0);
-            return Math.max(0, req - picked);
-        },
-
-        getShortageItems() {
-            return (this.items || []).filter(it => (it.name || it.sku || it.product_id) && this.isItemShortage(it));
-        },
-
-        openShortageModal(item, index) {
-            this.shortageModal = { show: true, item: item, index: index };
-        },
-
-        // ─── Cắt SL theo số đã bốc (cho 1 món đơn lẻ) ─────────────
-        cutToPickedQty() {
-            const { item, index } = this.shortageModal;
-            if (!item) return;
-            const picked = Number(item.picked_qty || 0);
-            if (picked <= 0) {
-                if (!confirm('Số lượng kho đã bốc là 0. Bạn có chắc muốn cắt số lượng sản phẩm này về 0?')) return;
-            }
-            // Cắt quantity xuống bằng picked, gift_quantity về 0, xóa trạng thái thiếu
-            this.items[index].quantity = picked;
-            this.items[index].gift_quantity = 0;
-            this.items[index].shortage_reason = '';
-            this.items[index].item_status = picked > 0 ? 'Đủ hàng' : 'Chờ bốc';
-            this.items[index].is_picked = picked > 0;
-            this.updateLineTotal(index);
-            this.calculateTotals();
-            this.shortageModal.show = false;
-            alert('Đã cắt số lượng [' + (item.name || '') + '] xuống còn ' + picked + ' ' + (item.unit || '') + '.\n\nNhớ bấm "' + (this.isMobileViewport ? 'Lưu' : 'Lưu (F9)') + '" để xác nhận!');
-        },
-
-        // ─── Cắt TẤT CẢ sản phẩm thiếu theo SL kho đã bốc (CẮT TỔNG) ───
-        cutAllToPickedQty() {
-            const shortageList = this.getShortageItems();
-            if (shortageList.length === 0) {
-                alert('Không có sản phẩm nào đang bị thiếu!');
-                return;
-            }
-
-            const zeroCount = shortageList.filter(it => Number(it.picked_qty || 0) <= 0).length;
-            let confirmMsg = 'Xác nhận CẮT TẤT CẢ ' + shortageList.length + ' sản phẩm thiếu theo số lượng kho thực tế đã bốc?';
-            if (zeroCount > 0) {
-                confirmMsg += '\n\n(Lưu ý: Có ' + zeroCount + ' sản phẩm kho chưa bốc được cái nào - SL sẽ về 0)';
-            }
-
-            if (!confirm(confirmMsg)) return;
-
-            let count = 0;
-            this.items.forEach((it, index) => {
-                if (this.isItemShortage(it)) {
-                    it.quantity = Math.max(0, Number(it.picked_qty || 0));
-                    it.gift_quantity = 0;
-                    it.shortage_reason = '';
-                    it.item_status = it.quantity > 0 ? 'Đủ hàng' : 'Chờ bốc';
-                    it.is_picked = it.quantity > 0;
-                    this.updateLineTotal(index);
-                    count++;
-                }
-            });
-
-            this.calculateTotals();
-            if (this.shortageModal) this.shortageModal.show = false;
-            alert('✅ ĐÃ CẮT TỔNG ' + count + ' SẢN PHẨM THIẾU!\n\nSố lượng đã được chỉnh về đúng số kho đã bốc.\nVui lòng kiểm tra lại tổng tiền và bấm nút "' + (this.isMobileViewport ? 'LƯU' : 'LƯU (F9)') + '" để lưu thay đổi.');
-        },
-
-        // ─── Tạo đơn nợ hàng mới cho 1 món đơn lẻ ─────────────────
-        async createBackOrder() {
-            const { item, index } = this.shortageModal;
-            if (!item) return;
-            const picked      = Number(item.picked_qty || 0);
-            const needed      = Number(item.quantity || 0) + Number(item.gift_quantity || 0);
-            const shortage    = Math.max(0, needed - picked);
-            if (shortage <= 0) { alert('Không có hàng thiếu!'); return; }
-            if (picked <= 0) {
-                if (!confirm('Kho chưa bốc được cái nào. Vẫn muốn tạo đơn nợ hàng?')) return;
-            }
-
-            this.backorderSaving = true;
-            try {
-                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                // 1. Lưu đơn hiện tại với SL đã bốc (cắt)
-                const currentItems = this.items.map((it, i) => {
-                    if (i === index) {
-                        return { 
-                            ...it, 
-                            quantity: picked > 0 ? picked : it.quantity, 
-                            gift_quantity: 0,
-                            shortage_reason: '',
-                            item_status: picked > 0 ? 'Đủ hàng' : 'Chờ bốc',
-                            is_picked: picked > 0
-                        };
-                    }
-                    return it;
-                }).filter(it => it.name || it.sku || it.product_id);
-
-                const saveRes = await fetch('/api/orders/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token || '' },
-                    body: JSON.stringify({
-                        id: this.orderId || undefined,
-                        orderCode: this.formData.order_code || undefined,
-                        dealerName: this.formData.customer_name,
-                        customer_name: this.formData.customer_name,
-                        customerPhone: this.formData.customer_phone,
-                        address: this.formData.customer_address,
-                        warehouse: this.formData.warehouse,
-                        paymentMethod: this.formData.payment_method,
-                        payment_method: this.formData.payment_method,
-                        status: this.formData.status === 'Kho báo thiếu hàng' ? 'Soạn hàng' : this.formData.status,
-                        shortage_reported: false,
-                        shortageReported: false,
-                        notes: (this.formData.notes || '') + '\n[Đã tách phần thiếu sang phiếu giao sau lúc ' + new Date().toLocaleTimeString('vi-VN') + ']',
-                        subtotal: this.subtotal,
-                        totalAmount: this.totalAmount,
-                        items: currentItems.map(it => ({
-                            id: it.id || undefined,
-                            itemId: it.product_id, product_id: it.product_id,
-                            sku: it.sku, name: it.name, unit: it.unit,
-                            quantity: it.quantity, gift_quantity: Number(it.gift_quantity)||0,
-                            unitPrice: it.unitPrice, amount: it.amount,
-                            appliedTierPolicy: it.price_type || it.appliedTierPolicy,
-                            shortage_reason: '',
-                            item_status: Number(it.quantity) > 0 ? 'Đủ hàng' : 'Chờ bốc',
-                            is_picked: Number(it.quantity) > 0,
-                        }))
-                    })
-                });
-                const saveData = await saveRes.json();
-                if (!saveData.success && !saveRes.ok) throw new Error(saveData.message || 'Lỗi lưu đơn gốc');
-
-                // 2. Tạo đơn nợ hàng mới cho phần thiếu
-                const backOrderItems = [{
-                    itemId: item.product_id, product_id: item.product_id,
-                    sku: item.sku, name: item.name, unit: item.unit,
-                    quantity: shortage, gift_quantity: 0,
-                    unitPrice: item.unitPrice, amount: shortage * Number(item.unitPrice || 0),
-                    appliedTierPolicy: item.price_type || item.appliedTierPolicy,
-                }];
-                const parentCode = this.formData.order_code || this.orderId || '';
-                const backRes = await fetch('/api/orders/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token || '' },
-                    body: JSON.stringify({
-                        dealerName: this.formData.customer_name,
-                        customer_name: this.formData.customer_name,
-                        customerPhone: this.formData.customer_phone,
-                        address: this.formData.customer_address,
-                        warehouse: this.formData.warehouse,
-                        paymentMethod: this.formData.payment_method,
-                        payment_method: this.formData.payment_method,
-                        orderType: 'backorder',
-                        order_type: 'backorder',
-                        status: 'Giao sau',
-                        deliveryDate: null,
-                        delivery_date: null,
-                        pickingDate: null,
-                        picking_date: null,
-                        notes: '[ĐƠN GIAO SAU] Tách từ đơn gốc ' + parentCode + ' do kho thiếu hàng.\n' + (item.name || '') + ' thiếu ' + shortage + ' ' + (item.unit || ''),
-                        parentOrderCode: parentCode,
-                        items: backOrderItems
-                    })
-                });
-                const backData = await backRes.json();
-
-                this.shortageModal.show = false;
-                if (backData.success || backRes.ok) {
-                    const newCode = backData.order?.order_code || backData.order_code || '';
-                    alert('✅ Đã tạo đơn giao sau mới' + (newCode ? ' (' + newCode + ')' : '') + ' cho ' + shortage + ' ' + (item.unit || '') + ' ' + (item.name || '') + '!\n\nĐơn gốc đã được cắt xuống ' + (picked > 0 ? picked : needed) + ' ' + (item.unit || '') + '.');
-                    window.location.href = '/orders';
-                } else {
-                    alert('Lưu đơn gốc thành công, nhưng tạo đơn giao sau thất bại: ' + (backData.message || ''));
-                }
-            } catch (e) {
-                alert('Lỗi: ' + e.message);
-            } finally {
-                this.backorderSaving = false;
-            }
-        },
-
-        // ─── Tạo đơn nợ hàng TỔNG cho TẤT CẢ sản phẩm thiếu (ĐƠN GIAO SAU TỔNG) ───
-        async createBackOrderAll() {
-            const shortageList = this.getShortageItems();
-            if (shortageList.length === 0) {
-                alert('Không có sản phẩm nào đang bị thiếu!');
-                return;
-            }
-
-            const confirmMsg = 'Xác nhận tạo ĐƠN GIAO SAU (nợ hàng) TỔNG cho toàn bộ ' + shortageList.length + ' sản phẩm bốc thiếu?\n\n' +
-                '- Đơn hiện tại sẽ tự động cắt số lượng theo số thực bốc và lưu lại.\n' +
-                '- Một đơn giao sau mới (trạng thái Giao sau) sẽ tự động tạo cho toàn bộ phần thiếu.';
-            if (!confirm(confirmMsg)) return;
-
-            this.backorderSaving = true;
-            try {
-                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-
-                // 1. Chuẩn bị danh sách sản phẩm nợ hàng
-                const backOrderItems = [];
-                shortageList.forEach(it => {
-                    const shortage = this.getShortageQty(it);
-                    if (shortage > 0) {
-                        const price = Number(it.unitPrice || 0);
-                        backOrderItems.push({
-                            itemId: it.product_id,
-                            product_id: it.product_id,
-                            sku: it.sku,
-                            name: it.name,
-                            unit: it.unit,
-                            quantity: shortage,
-                            gift_quantity: 0,
-                            unitPrice: price,
-                            originalPrice: it.originalPrice || price,
-                            costPrice: it.costPrice || 0,
-                            discount_percent: 0,
-                            discount_amount: 0,
-                            vat_percent: 0,
-                            vat_amount: 0,
-                            amount: Math.round(shortage * price),
-                            appliedTierPolicy: it.price_type || it.appliedTierPolicy || 'Theo phiếu',
-                        });
-                    }
-                });
-
-                if (backOrderItems.length === 0) {
-                    alert('Không tính được số lượng thiếu hợp lệ để tạo đơn nợ hàng!');
-                    return;
-                }
-
-                // 2. Cắt đơn hiện tại theo số lượng thực bốc
-                this.items.forEach((it, index) => {
-                    if (this.isItemShortage(it)) {
-                        it.quantity = Math.max(0, Number(it.picked_qty || 0));
-                        it.gift_quantity = 0;
-                        it.shortage_reason = '';
-                        it.item_status = it.quantity > 0 ? 'Đủ hàng' : 'Chờ bốc';
-                        it.is_picked = it.quantity > 0;
-                        this.updateLineTotal(index);
-                    }
-                });
-                this.calculateTotals();
-
-                // Payload sản phẩm còn lại cho đơn gốc (gỡ bỏ cờ thiếu hàng)
-                const currentItemsPayload = this.items
-                    .filter(it => (it.name || it.sku || it.product_id) && Number(it.quantity || 0) > 0)
-                    .map(it => ({
-                        id: it.id || undefined,
-                        itemId: it.product_id,
-                        product_id: it.product_id,
-                        sku: it.sku,
-                        name: it.name,
-                        unit: it.unit,
-                        quantity: it.quantity,
-                        gift_quantity: Number(it.gift_quantity) || 0,
-                        unitPrice: it.unitPrice,
-                        originalPrice: it.originalPrice,
-                        costPrice: it.costPrice,
-                        discount_percent: it.discount_percent || 0,
-                        discount_amount: it.discount_amount || 0,
-                        vat_percent: 0,
-                        vat_amount: 0,
-                        amount: it.amount,
-                        appliedTierPolicy: it.price_type || it.appliedTierPolicy,
-                        shortage_reason: '',
-                        item_status: Number(it.quantity) > 0 ? 'Đủ hàng' : 'Chờ bốc',
-                        is_picked: Number(it.quantity) > 0,
-                    }));
-
-                const parentCode = this.formData.order_code || this.orderId || '';
-
-                // 3. Lưu đơn gốc đã cắt
-                const saveRes = await fetch('/api/orders/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token || '' },
-                    body: JSON.stringify({
-                        id: this.orderId || undefined,
-                        orderCode: this.formData.order_code || undefined,
-                        dealerName: this.formData.customer_name,
-                        customer_name: this.formData.customer_name,
-                        customerPhone: this.formData.customer_phone,
-                        address: this.formData.customer_address,
-                        warehouse: this.formData.warehouse,
-                        paymentMethod: this.formData.payment_method,
-                        payment_method: this.formData.payment_method,
-                        status: this.formData.status === 'Kho báo thiếu hàng' ? 'Soạn hàng' : this.formData.status,
-                        shortage_reported: false,
-                        shortageReported: false,
-                        notes: (this.formData.notes || '') + '\n[Đã tách ' + backOrderItems.length + ' SP thiếu sang đơn giao sau lúc ' + new Date().toLocaleTimeString('vi-VN') + ']',
-                        subtotal: this.subtotal,
-                        totalAmount: this.totalAmount,
-                        items: currentItemsPayload
-                    })
-                });
-                const saveData = await saveRes.json();
-                if (!saveData.success && !saveRes.ok) {
-                    throw new Error(saveData.message || 'Lỗi khi cập nhật đơn gốc');
-                }
-
-                // 4. Lưu đơn giao sau mới
-                const backNotes = '[ĐƠN GIAO SAU TỔNG] Tách từ đơn gốc ' + parentCode + ' do kho báo thiếu hàng:\n' +
-                    backOrderItems.map(b => '- ' + b.name + ': thiếu ' + b.quantity + ' ' + (b.unit || '')).join('\n');
-
-                const backRes = await fetch('/api/orders/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token || '' },
-                    body: JSON.stringify({
-                        dealerName: this.formData.customer_name,
-                        customer_name: this.formData.customer_name,
-                        customerPhone: this.formData.customer_phone,
-                        address: this.formData.customer_address,
-                        warehouse: this.formData.warehouse,
-                        paymentMethod: this.formData.payment_method,
-                        payment_method: this.formData.payment_method,
-                        orderType: 'backorder',
-                        order_type: 'backorder',
-                        status: 'Giao sau',
-                        deliveryDate: null,
-                        delivery_date: null,
-                        pickingDate: null,
-                        picking_date: null,
-                        notes: backNotes,
-                        parentOrderCode: parentCode,
-                        items: backOrderItems
-                    })
-                });
-                const backData = await backRes.json();
-
-                if (this.shortageModal) this.shortageModal.show = false;
-                if (backData.success || backRes.ok) {
-                    const newCode = backData.order?.order_code || backData.order_code || '';
-                    alert('🎉 ĐÃ XỬ LÝ THIẾU HÀNG TỔNG THÀNH CÔNG!\n\n1. Đơn gốc ' + parentCode + ' đã được cắt số lượng theo số thực bốc và lưu lại.\n2. Đã tự động tạo đơn giao sau mới ' + (newCode ? 'MÃ: ' + newCode : '') + ' cho toàn bộ ' + backOrderItems.length + ' sản phẩm thiếu.');
-                    window.location.href = '/orders';
-                } else {
-                    alert('Đơn gốc đã được cắt, nhưng tạo đơn giao sau mới thất bại: ' + (backData.message || ''));
-                }
-            } catch (e) {
-                console.error(e);
-                alert('Lỗi: ' + e.message);
-            } finally {
-                this.backorderSaving = false;
-            }
-        },
-
-
-
 
         convertNumberToVietnameseWords(number) {
             const num = Math.round(Number(number) || 0);

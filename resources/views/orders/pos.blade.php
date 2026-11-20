@@ -1049,6 +1049,8 @@ function posApp() {
             }
 
             this.saveCartToStorage();
+            sessionStorage.setItem('order_from_pos', '1');
+            sessionStorage.setItem('order_return_url', window.location.href);
             window.location.href = "{{ route('orders.create') }}?from_pos=1";
         },
 

@@ -857,7 +857,6 @@ class SupplierOrderController extends Controller
 
             DB::commit();
             \App\Services\InventoryAvailabilityService::clearCache();
-            \App\Services\BackorderService::checkAndNotifyBackordersOnStockArrival();
 
             return response()->json([
                 'success'        => true,

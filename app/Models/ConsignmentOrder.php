@@ -182,7 +182,41 @@ class ConsignmentOrder extends Model
         })
         ->select('product_id', \Illuminate\Support\Facades\DB::raw('SUM(remaining_quantity) as total_remaining'))
         ->groupBy('product_id')
-        ->pluck('total_remaining', 'product_id');
+        ->pluck('total_remaining', 'product_id')
+        ->toArray();
+
+        // Bổ sung các mặt hàng từ các phiếu hoàn trả mà tài xế đã nhận ôm hàng vào kho này
+        $holdingReturns = \App\Models\DeliveryReturn::with('items')
+            ->where('status', 'Tài xế đã nhận ôm hàng')
+            ->where(function ($q) use ($staffId, $wh) {
+                $q->where('intake_by_user_id', $staffId)
+                  ->orWhere('intake_warehouse_id', $wh->id);
+            })->get();
+
+        foreach ($holdingReturns as $hr) {
+            foreach ($hr->items as $hritem) {
+                $prodId = $hritem->product_id;
+                if (!$prodId && !empty($hritem->sku)) {
+                    $prodId = Product::where('sku', $hritem->sku)->value('id');
+                }
+                if ($prodId) {
+                    $prod = Product::find($prodId);
+                    $qty = (float)($hritem->returned_qty ?? 0);
+                    if ($qty > 0) {
+                        $baseQty = $qty;
+                        if ($prod && $prod->hasConversionUnit() && (float)$prod->conversion_rate > 0) {
+                            $itemUnit = mb_strtolower(trim($hritem->unit ?? ''));
+                            $convUnit = mb_strtolower(trim($prod->conversion_unit ?? ''));
+                            $baseUnit = mb_strtolower(trim($prod->unit ?? ''));
+                            if ($itemUnit === $convUnit && $convUnit !== $baseUnit) {
+                                $baseQty = $prod->toBaseQuantity((float)$qty);
+                            }
+                        }
+                        $activeItemSums[$prodId] = ($activeItemSums[$prodId] ?? 0) + $baseQty;
+                    }
+                }
+            }
+        }
 
         // Cập nhật hoặc thêm mới vào WarehouseStock
         $existingStocks = WarehouseStock::where('warehouse_id', $wh->id)->get()->keyBy('product_id');
@@ -204,7 +238,7 @@ class ConsignmentOrder extends Model
 
         // Đặt về 0 các mặt hàng mà nhân viên không còn ôm trong đơn nào
         foreach ($existingStocks as $productId => $stockRow) {
-            if (!$activeItemSums->has($productId) && (float)$stockRow->stock_quantity > 0) {
+            if (!array_key_exists($productId, $activeItemSums) && (float)$stockRow->stock_quantity > 0) {
                 $stockRow->update(['stock_quantity' => 0]);
             }
         }

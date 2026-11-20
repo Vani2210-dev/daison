@@ -140,11 +140,30 @@ class User extends Authenticatable
     }
 
     /**
+     * Cache trong vòng đời request để tránh N+1 query khi kiểm tra quyền trên menu & layout
+     */
+    protected ?array $cachedRoleSlugs = null;
+    protected ?array $cachedPermissionSlugs = null;
+
+    public function clearPermissionCache(): void
+    {
+        $this->cachedRoleSlugs = null;
+        $this->cachedPermissionSlugs = null;
+    }
+
+    /**
      * Kiểm tra User có vai trò cụ thể không
      */
     public function hasRole(string $roleSlug): bool
     {
-        return $this->roles()->where('slug', $roleSlug)->exists();
+        if ($this->cachedRoleSlugs === null) {
+            if ($this->relationLoaded('roles')) {
+                $this->cachedRoleSlugs = $this->roles->pluck('slug')->toArray();
+            } else {
+                $this->cachedRoleSlugs = $this->roles()->pluck('slug')->toArray();
+            }
+        }
+        return in_array($roleSlug, $this->cachedRoleSlugs, true);
     }
 
     /**
@@ -161,22 +180,15 @@ class User extends Authenticatable
             return true;
         }
 
-        // 1. Nếu người dùng có cấu hình phân quyền riêng trong user_role_permissions
-        $hasCustom = UserRolePermission::where('user_id', $this->id)->exists();
-        if ($hasCustom) {
-            return UserRolePermission::where('user_id', $this->id)
-                ->whereHas('permission', function ($q) use ($permissionSlug) {
-                    $q->where('slug', $permissionSlug);
-                })
-                ->exists();
+        if ($this->cachedPermissionSlugs === null) {
+            $this->cachedPermissionSlugs = $this->getEffectivePermissions();
         }
 
-        // 2. Mặc định lấy theo các quyền của vai trò (Role)
-        return $this->roles()
-            ->whereHas('permissions', function ($q) use ($permissionSlug) {
-                $q->where('slug', $permissionSlug);
-            })
-            ->exists();
+        if (in_array('all', $this->cachedPermissionSlugs, true)) {
+            return true;
+        }
+
+        return in_array($permissionSlug, $this->cachedPermissionSlugs, true);
     }
 
     /**
@@ -215,17 +227,32 @@ class User extends Authenticatable
      */
     public function getEffectivePermissions(): array
     {
-        if ($this->hasRole('Manager')) {
+        if ($this->hasRole('Manager') || $this->hasRole('Admin') || (isset($this->department) && in_array($this->department, ['Ban Giám Đốc', 'Quản Lý']))) {
             return ['all'];
         }
 
-        $hasCustom = UserRolePermission::where('user_id', $this->id)->exists();
-        if ($hasCustom) {
-            return UserRolePermission::where('user_id', $this->id)
-                ->with('permission')
-                ->get()
-                ->pluck('permission.slug')
-                ->filter()
+        if ($this->relationLoaded('userRolePermissions')) {
+            $custom = $this->userRolePermissions;
+            if ($custom->isNotEmpty()) {
+                return $custom->map(fn($urp) => $urp->permission?->slug)->filter()->values()->toArray();
+            }
+        } else {
+            $hasCustom = UserRolePermission::where('user_id', $this->id)->exists();
+            if ($hasCustom) {
+                return UserRolePermission::where('user_id', $this->id)
+                    ->with('permission')
+                    ->get()
+                    ->pluck('permission.slug')
+                    ->filter()
+                    ->values()
+                    ->toArray();
+            }
+        }
+
+        if ($this->relationLoaded('roles')) {
+            return $this->roles
+                ->flatMap(fn ($r) => $r->relationLoaded('permissions') ? $r->permissions->pluck('slug') : $r->permissions()->pluck('slug'))
+                ->unique()
                 ->values()
                 ->toArray();
         }
@@ -289,6 +316,7 @@ class User extends Authenticatable
 
         // 3. Cập nhật bảng user_role_permissions
         $this->syncRolePermissions($roleModel->id, $permissionIds);
+        $this->clearPermissionCache();
 
         return $this;
     }
@@ -298,6 +326,7 @@ class User extends Authenticatable
      */
     public function syncRolePermissions(int $roleId, array $permissionIds): self
     {
+        $this->clearPermissionCache();
         // Xóa các quyền cũ của role này đối với user
         UserRolePermission::where('user_id', $this->id)
             ->where('role_id', $roleId)

@@ -42,6 +42,13 @@
                                 <i class="fa-regular fa-clock text-[9px]"></i>
                                 <span x-text="order.payment_status || 'Chưa thu tiền'"></span>
                             </span>
+                            <template x-if="order.has_picked_shortage">
+                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 shrink-0"
+                                      title="Giao tự động theo số lượng thực bốc từ kho">
+                                    <i class="fa-solid fa-boxes-packing text-[8px]"></i>
+                                    <span>GIAO THEO SL BỐC</span>
+                                </span>
+                            </template>
                             <template x-if="hasReturns(order)">
                                 <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 shrink-0">
                                     <i class="fa-solid fa-rotate-left text-[8px]"></i>
@@ -184,6 +191,11 @@
                                 (Gốc: <span x-text="formatNumber(order.total_amount) + ' đ'"></span>)
                             </div>
                         </template>
+                        <template x-if="!hasReturns(order) && order.has_picked_shortage">
+                            <div class="text-[10px] text-amber-800 font-semibold truncate mt-0.5">
+                                (Đặt gốc: <span x-text="formatNumber(order.total_amount) + ' đ'"></span>)
+                            </div>
+                        </template>
                     </div>
 
                     <!-- Box 2 (Desktop only): Tổng tiền gốc -->
@@ -239,8 +251,12 @@
                                         <td x-show="hasReturns(order)" class="p-2 text-right font-mono text-slate-500" x-text="formatNumber(it.quantity)"></td>
                                         <td x-show="hasReturns(order)" class="p-2 text-right font-bold font-mono text-rose-600" x-text="formatNumber(it.returned_qty || 0)"></td>
                                         <td class="p-2 text-right font-black font-mono"
-                                            :class="hasReturns(order) ? 'text-emerald-700' : 'text-purple-700'"
-                                            x-text="formatNumber(getItemDeliveredQty(order, it))"></td>
+                                            :class="hasReturns(order) ? 'text-emerald-700' : (Number(it.ordered_quantity || it.quantity) > getItemDeliveredQty(order, it) ? 'text-amber-700' : 'text-purple-700')">
+                                            <div x-text="formatNumber(getItemDeliveredQty(order, it))"></div>
+                                            <template x-if="Number(it.ordered_quantity || it.quantity) > getItemDeliveredQty(order, it) && !hasReturns(order)">
+                                                <div class="text-[9px] text-slate-400 font-semibold" x-text="'Đặt: ' + formatNumber(it.ordered_quantity || it.quantity)"></div>
+                                            </template>
+                                        </td>
                                         <td x-show="!hasReturns(order)" class="p-2 text-right font-mono text-slate-700" x-text="formatNumber(it.unit_price) + ' đ'"></td>
                                         <td class="p-2 text-right font-black font-mono text-slate-900"
                                             x-text="formatNumber(getItemAmount(order, it)) + ' đ'"></td>
