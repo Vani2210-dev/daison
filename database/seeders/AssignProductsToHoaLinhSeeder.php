@@ -22,14 +22,14 @@ class AssignProductsToHoaLinhSeeder extends Seeder
             $supplier = Supplier::create([
                 'code' => 'NCC-HL',
                 'name' => 'CÔNG TY CỔ PHẦN DƯỢC PHẨM HOA LINH',
-                'status' => 'active',
+                'is_active' => true,
             ]);
         } else {
             $supplier->name = 'CÔNG TY CỔ PHẦN DƯỢC PHẨM HOA LINH';
             if (empty($supplier->code)) {
                 $supplier->code = 'NCC-HL';
             }
-            $supplier->status = 'active';
+            $supplier->is_active = true;
             $supplier->save();
         }
 
