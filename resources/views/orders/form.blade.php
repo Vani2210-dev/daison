@@ -906,8 +906,7 @@
                                                selectDealer(dList[highlightedDealerIndex]);
                                                openDealerDropdown = false;
                                                $nextTick(() => {
-                                                   const pInput = document.getElementById('row-product-input-0');
-                                                   if (pInput) pInput.focus();
+                                                   if ($refs.customerSearchInput) $refs.customerSearchInput.blur();
                                                });
                                            }
                                        }
@@ -933,7 +932,7 @@
                                     <div>
                                         <template x-for="(d, dIdx) in filteredDealers(dealerSearch)" :key="d.id">
                                             <div :id="'dealer-opt-' + dIdx"
-                                                 @click="selectDealer(d); openDealerDropdown = false; $nextTick(() => { const p = document.getElementById('row-product-input-0'); if(p) p.focus(); })" 
+                                                 @click="selectDealer(d); openDealerDropdown = false; activeProdDropdownIndex = null; $nextTick(() => { if ($refs.customerSearchInput) $refs.customerSearchInput.blur(); })" 
                                                  @mouseenter="highlightedDealerIndex = dIdx"
                                                  class="px-3 py-2 cursor-pointer transition-colors border-b border-slate-100 last:border-0"
                                                  :class="highlightedDealerIndex === dIdx ? 'bg-sky-50 text-sky-950 ring-1 ring-sky-300' : (formData.dealer_id == d.id ? 'bg-sky-50/80 font-bold text-sky-700' : 'hover:bg-slate-50')">
@@ -2584,6 +2583,7 @@ function orderFormApp() {
             if (curT) {
                 curT.title = dealer.name;
             }
+            this.activeProdDropdownIndex = null;
             this.sanitizeSelectedPoliciesForCustomer();
             this.evaluateOrderPolicies();
         },
@@ -2598,6 +2598,7 @@ function orderFormApp() {
             if (curT) {
                 curT.title = 'Phiếu ' + (this.activeTicketIndex + 1);
             }
+            this.activeProdDropdownIndex = null;
             this.sanitizeSelectedPoliciesForCustomer();
             this.evaluateOrderPolicies();
         },
