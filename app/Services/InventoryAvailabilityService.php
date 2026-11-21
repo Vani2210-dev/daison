@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 class InventoryAvailabilityService
 {
-    const CACHE_KEY_POS_CATALOG = 'orders_products_catalog_v1';
+    const CACHE_KEY_POS_CATALOG = 'orders_products_catalog_v2';
     const CACHE_TTL_SECONDS = 900; // 15 phút
 
     /**
@@ -23,15 +23,17 @@ class InventoryAvailabilityService
      * 2. Đơn hàng ôm (ConsignmentOrder) chưa trừ kho (stock_deducted = false) và không thuộc diện 'rejected' / 'cancelled'.
      * 
      * @param int|null $excludeOrderId Bỏ qua đơn hàng cụ thể (dùng khi đang chỉnh sửa đơn hàng cũ)
+     * @param \Illuminate\Support\Collection|null $preloadedWarehouses
+     * @param \Illuminate\Support\Collection|null $preloadedProducts Keyed by id
      * @return array [
      *    'by_warehouse'      => [warehouse_id => [product_id => reserved_qty]],
      *    'total_by_product'  => [product_id => total_reserved_qty],
      *    'order_details'     => [warehouse_id => [product_id => [ ['code' => ..., 'customer' => ..., 'qty' => ..., 'status' => ...] ]]]
      * ]
      */
-    public static function getReservedQuantitiesMap(?int $excludeOrderId = null): array
+    public static function getReservedQuantitiesMap(?int $excludeOrderId = null, $preloadedWarehouses = null, $preloadedProducts = null): array
     {
-        $warehouses = Warehouse::orderBy('id')->get(['id', 'name', 'code']);
+        $warehouses = $preloadedWarehouses ?? Warehouse::orderBy('id')->get(['id', 'name', 'code']);
         $whNameToId = [];
         foreach ($warehouses as $wh) {
             $nameKey = mb_strtolower(trim($wh->name));
@@ -47,7 +49,13 @@ class InventoryAvailabilityService
         $defaultWh = $warehouses->first();
         $defaultWhId = $defaultWh?->id ?? 1;
 
-        $products = Product::all(['id', 'sku', 'unit', 'conversion_unit', 'conversion_rate'])->keyBy('id');
+        $products = $preloadedProducts ?? Product::all(['id', 'sku', 'unit', 'conversion_unit', 'conversion_rate'])->keyBy('id');
+        $productsBySku = [];
+        foreach ($products as $prod) {
+            if (!empty($prod->sku)) {
+                $productsBySku[mb_strtolower(trim($prod->sku))] = $prod->id;
+            }
+        }
 
         $byWarehouse = [];
         $totalByProduct = [];
@@ -100,8 +108,7 @@ class InventoryAvailabilityService
             foreach ($order->items as $item) {
                 $pId = $item->product_id;
                 if (!$pId && $item->sku) {
-                    $matchedProd = Product::where('sku', $item->sku)->first(['id']);
-                    $pId = $matchedProd?->id;
+                    $pId = $productsBySku[mb_strtolower(trim($item->sku))] ?? null;
                 }
                 if (!$pId) continue;
 
@@ -149,8 +156,7 @@ class InventoryAvailabilityService
             foreach ($cOrder->items as $item) {
                 $pId = $item->product_id;
                 if (!$pId && $item->sku) {
-                    $matchedProd = Product::where('sku', $item->sku)->first(['id']);
-                    $pId = $matchedProd?->id;
+                    $pId = $productsBySku[mb_strtolower(trim($item->sku))] ?? null;
                 }
                 if (!$pId) continue;
 
@@ -213,6 +219,7 @@ class InventoryAvailabilityService
      */
     public static function clearCache(): void
     {
+        Cache::forget('orders_products_catalog_v1');
         Cache::forget(self::CACHE_KEY_POS_CATALOG);
     }
 
@@ -221,10 +228,27 @@ class InventoryAvailabilityService
      */
     private static function buildPosCatalog(?int $excludeOrderId = null): array
     {
-        $warehouses = Warehouse::where('is_active', true)->get(['id', 'name', 'code'])->keyBy('id');
+        $allWarehouses = Warehouse::orderBy('id')->get(['id', 'name', 'code', 'is_active']);
+        $warehouses = $allWarehouses->where('is_active', true)->keyBy('id');
         $stocks = WarehouseStock::select('product_id', 'warehouse_id', 'stock_quantity', 'reserved_quantity')->get();
 
-        $reservedData = self::getReservedQuantitiesMap($excludeOrderId);
+        // Tải bảng products 1 lần duy nhất (bỏ cột price_tiers không dùng) và tái sử dụng cho cả reserved map & output
+        $allProducts = Product::select(
+                'id', 'sku', 'name', 'brand_id', 'supplier_id',
+                'unit', 'conversion_unit', 'conversion_rate', 'conversion_price',
+                'cost_price', 'price', 'vat_rate', 'stock_quantity', 'reserved_quantity', 'is_active'
+            )
+            ->orderBy('name')
+            ->get();
+        $productsById = $allProducts->keyBy('id');
+        $productsBySku = [];
+        foreach ($allProducts as $prod) {
+            if (!empty($prod->sku)) {
+                $productsBySku[mb_strtolower(trim($prod->sku))] = $prod->id;
+            }
+        }
+
+        $reservedData = self::getReservedQuantitiesMap($excludeOrderId, $allWarehouses, $productsById);
         $reservedByWh = $reservedData['by_warehouse'];
         $reservedByProd = $reservedData['total_by_product'];
         $orderDetails = $reservedData['order_details'];
@@ -237,16 +261,16 @@ class InventoryAvailabilityService
         if ($excludeOrderId) {
             $exOrder = Order::with('items')->find($excludeOrderId);
             if ($exOrder && $exOrder->stock_deducted) {
-                $targetWh = Warehouse::where('name', $exOrder->warehouse)->orWhere('code', $exOrder->warehouse)->first()
-                    ?: Warehouse::first();
+                $targetWh = $allWarehouses->first(function ($w) use ($exOrder) {
+                    return $w->name === $exOrder->warehouse || $w->code === $exOrder->warehouse;
+                }) ?: $allWarehouses->first();
                 $targetWhId = $targetWh?->id;
                 $exBreakdown = $exOrder->computePickedDeliveryBreakdown();
 
                 foreach ($exOrder->items as $it) {
                     $pId = $it->product_id;
                     if (!$pId && $it->sku) {
-                        $pObj = Product::where('sku', $it->sku)->first();
-                        if ($pObj) $pId = $pObj->id;
+                        $pId = $productsBySku[mb_strtolower(trim($it->sku))] ?? null;
                     }
                     if (!$pId) continue;
 
@@ -255,7 +279,7 @@ class InventoryAvailabilityService
                         : ((float)$it->quantity + (float)($it->gift_quantity ?? 0));
                     if ($qty <= 0) continue;
 
-                    $pObj = Product::find($pId);
+                    $pObj = $productsById->get($pId);
                     if ($pObj && $pObj->hasConversionUnit() && (float)$pObj->conversion_rate > 0) {
                         $itemUnit = mb_strtolower(trim($it->unit ?? ''));
                         $convUnit = mb_strtolower(trim($pObj->conversion_unit ?? ''));
@@ -273,6 +297,8 @@ class InventoryAvailabilityService
             }
         }
 
+        // Chỉ lưu tồn kho theo TÊN KHO ($wh->name) cho các kho có phát sinh tồn/giữ > 0
+        // Tránh phình JSON & DB cache do nhân bản 3 key (code/id/name) và 30 kho tồn 0
         $stockMap = [];
         foreach ($stocks as $s) {
             if (!isset($warehouses[$s->warehouse_id])) continue;
@@ -283,19 +309,19 @@ class InventoryAvailabilityService
             // Ưu tiên số lượng tính toán động từ các đơn hàng thực tế đang mở
             $reserved = (float) ($reservedByWh[$s->warehouse_id][$s->product_id] ?? (float)$s->reserved_quantity);
             $available = max(0, $onHand - $reserved);
-
             $detailList = $orderDetails[$s->warehouse_id][$s->product_id] ?? [];
 
+            if ($onHand == 0.0 && $reserved == 0.0 && $available == 0.0 && empty($detailList)) {
+                continue;
+            }
+
             $info = [
-                'on_hand'      => round($onHand, 2),
-                'reserved'     => round($reserved, 2),
-                'available'    => round($available, 2),
+                'on_hand'        => round($onHand, 2),
+                'reserved'       => round($reserved, 2),
+                'available'      => round($available, 2),
                 'holding_orders' => array_slice($detailList, 0, 5), // Top 5 đơn đang giữ
             ];
 
-            // Lưu theo Mã kho, ID kho và cộng gộp an toàn theo Tên kho (tránh ghi đè nếu trùng tên kho)
-            $stockMap[$s->product_id][$wh->code] = $info;
-            $stockMap[$s->product_id][$wh->id]   = $info;
             if (isset($stockMap[$s->product_id][$wh->name])) {
                 $prev = $stockMap[$s->product_id][$wh->name];
                 $mergedOnHand = round($prev['on_hand'] + $onHand, 2);
@@ -311,30 +337,35 @@ class InventoryAvailabilityService
             }
         }
 
-        return Product::where('is_active', true)
-            ->select('id', 'sku', 'name', 'brand_id', 'supplier_id', 'unit', 'conversion_unit', 'conversion_rate', 'conversion_price', 'cost_price', 'price', 'price_tiers', 'vat_rate', 'stock_quantity', 'reserved_quantity')
-            ->orderBy('name')
-            ->get()
-            ->map(function ($p) use ($stockMap, $reservedByProd, $warehouses, $deductedDeltasByProd) {
+        // Bổ sung trường hợp đơn đang giữ hàng tại kho chưa có dòng warehouse_stocks
+        foreach ($reservedByWh as $whId => $prodMap) {
+            if (!isset($warehouses[$whId])) continue;
+            $wh = $warehouses[$whId];
+            foreach ($prodMap as $pId => $reservedQty) {
+                if (isset($stockMap[$pId][$wh->name])) continue;
+                $restoredDeduction = (float)($deductedDeltasByWh[$whId][$pId] ?? 0);
+                $onHand = $restoredDeduction;
+                $reserved = (float)$reservedQty;
+                $detailList = $orderDetails[$whId][$pId] ?? [];
+                if ($onHand == 0.0 && $reserved == 0.0 && empty($detailList)) continue;
+                $stockMap[$pId][$wh->name] = [
+                    'on_hand'        => round($onHand, 2),
+                    'reserved'       => round($reserved, 2),
+                    'available'      => round(max(0, $onHand - $reserved), 2),
+                    'holding_orders' => array_slice($detailList, 0, 5),
+                ];
+            }
+        }
+
+        return $allProducts
+            ->where('is_active', true)
+            ->values()
+            ->map(function ($p) use ($stockMap, $reservedByProd, $deductedDeltasByProd) {
                 $totalOnHand = (float)$p->stock_quantity + (float)($deductedDeltasByProd[$p->id] ?? 0);
                 $totalReserved = (float)($reservedByProd[$p->id] ?? (float)$p->reserved_quantity);
                 $totalAvailable = max(0, $totalOnHand - $totalReserved);
 
                 $pStockMap = $stockMap[$p->id] ?? [];
-
-                // Đảm bảo mọi kho đang hoạt động đều có record đầy đủ ngay cả khi chưa có dòng trong warehouse_stocks
-                foreach ($warehouses as $wh) {
-                    if (!isset($pStockMap[$wh->name])) {
-                        $pStockMap[$wh->name] = [
-                            'on_hand'        => 0,
-                            'reserved'       => 0,
-                            'available'      => 0,
-                            'holding_orders' => [],
-                        ];
-                        $pStockMap[$wh->code] = $pStockMap[$wh->name];
-                        $pStockMap[$wh->id]   = $pStockMap[$wh->name];
-                    }
-                }
 
                 return [
                     'id'               => $p->id,
@@ -355,7 +386,7 @@ class InventoryAvailabilityService
                     'on_hand_stock'    => round($totalOnHand, 2),
                     'reserved_stock'   => round($totalReserved, 2),
                     'available_stock'  => round($totalAvailable, 2),
-                    // Tồn chi tiết theo từng kho
+                    // Tồn chi tiết theo từng kho có phát sinh (kho không có trong map = 0)
                     'warehouse_stocks' => $pStockMap,
                 ];
             })
@@ -438,6 +469,16 @@ class InventoryAvailabilityService
     {
         $catalog = collect(self::getPosCatalogWithAvailability($excludeOrderId))->keyBy('id');
         $targetWhKey = trim((string)$targetWarehouse);
+        $resolvedWhName = $targetWhKey;
+        if ($targetWhKey !== '') {
+            $matchedWh = Warehouse::where('name', $targetWhKey)
+                ->orWhere('code', $targetWhKey)
+                ->orWhere('id', is_numeric($targetWhKey) ? (int)$targetWhKey : -1)
+                ->first(['name']);
+            if ($matchedWh) {
+                $resolvedWhName = $matchedWh->name;
+            }
+        }
 
         $shortages = [];
         $hasOverAvailable = false;
@@ -479,20 +520,32 @@ class InventoryAvailabilityService
             $whStocks = $prod['warehouse_stocks'] ?? [];
             $stockData = null;
 
-            if (isset($whStocks[$targetWhKey])) {
+            if (isset($whStocks[$resolvedWhName])) {
+                $stockData = $whStocks[$resolvedWhName];
+            } elseif ($resolvedWhName !== $targetWhKey && isset($whStocks[$targetWhKey])) {
                 $stockData = $whStocks[$targetWhKey];
             } else {
                 foreach ($whStocks as $k => $v) {
-                    if (str_contains(mb_strtolower($k), mb_strtolower($targetWhKey)) || str_contains(mb_strtolower($targetWhKey), mb_strtolower($k))) {
+                    if (str_contains(mb_strtolower($k), mb_strtolower($resolvedWhName)) || str_contains(mb_strtolower($resolvedWhName), mb_strtolower($k))) {
                         $stockData = $v;
                         break;
                     }
                 }
             }
 
-            $onHand = is_array($stockData) ? (float)($stockData['on_hand'] ?? 0) : (float)$prod['stock_quantity'];
-            $reserved = is_array($stockData) ? (float)($stockData['reserved'] ?? 0) : 0;
-            $available = is_array($stockData) ? (float)($stockData['available'] ?? 0) : $onHand;
+            if (is_array($stockData)) {
+                $onHand = (float)($stockData['on_hand'] ?? 0);
+                $reserved = (float)($stockData['reserved'] ?? 0);
+                $available = (float)($stockData['available'] ?? 0);
+            } elseif (array_key_exists('warehouse_stocks', $prod) && $resolvedWhName !== '') {
+                $onHand = 0.0;
+                $reserved = 0.0;
+                $available = 0.0;
+            } else {
+                $onHand = (float)$prod['stock_quantity'];
+                $reserved = 0.0;
+                $available = $onHand;
+            }
 
             // Chuyển lại về đơn vị mà nhân viên đang nhập trên form để hiển thị cảnh báo
             if ($isConvUnit && $rate > 0) {

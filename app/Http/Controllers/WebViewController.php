@@ -484,12 +484,31 @@ class WebViewController extends Controller
     {
         $user = auth()->user();
 
+        // Truy vấn 1 lần toàn bộ kho (thường <= 50 dòng), lọc kho công ty & kho hàng ôm trên bộ nhớ
+        $allWarehouses = Warehouse::orderBy('id')->get(['id', 'name', 'code', 'type', 'is_active']);
+
         // 1. Kho vật lý chính thức của công ty
-        $companyWarehouses = Warehouse::companyWarehouses()
-            ->orderBy('id')
-            ->get(['id', 'name', 'code'])
-            ->map(function($w) {
-                return (object)[
+        $companyWarehouses = $allWarehouses
+            ->filter(function ($w) {
+                if (!$w->is_active) {
+                    return false;
+                }
+                if (in_array($w->type, ['Kho hàng ôm', 'Kho xe lưu động'], true)) {
+                    return false;
+                }
+                $nameLower = mb_strtolower((string) $w->name);
+                $codeUpper = strtoupper((string) $w->code);
+                if (str_contains($nameLower, 'kho hàng ôm') || str_contains($nameLower, 'kho xe')) {
+                    return false;
+                }
+                if (str_starts_with($codeUpper, 'KHO-OM-') || str_starts_with($codeUpper, 'KHO-XE-')) {
+                    return false;
+                }
+                return true;
+            })
+            ->values()
+            ->map(function ($w) {
+                return (object) [
                     'id'                   => $w->id,
                     'name'                 => $w->name,
                     'code'                 => $w->code,
@@ -500,11 +519,14 @@ class WebViewController extends Controller
         // 2. Kho hàng ôm / kho gửi của nhân viên (hoàn toàn bỏ kho xe)
         $employeeHoldingWarehouses = collect();
         if ($user) {
-            $myHoldingWh = Warehouse::where('code', 'KHO-OM-' . $user->id)
-                ->orWhere('name', 'like', '%Kho Hàng Ôm - ' . $user->name . '%')
-                ->first();
+            $expectedCode = 'KHO-OM-' . $user->id;
+            $expectedNameFragment = mb_strtolower('Kho Hàng Ôm - ' . $user->name);
+            $myHoldingWh = $allWarehouses->firstWhere('code', $expectedCode)
+                ?: $allWarehouses->first(function ($w) use ($expectedNameFragment) {
+                    return str_contains(mb_strtolower((string) $w->name), $expectedNameFragment);
+                });
             if ($myHoldingWh) {
-                $employeeHoldingWarehouses->push((object)[
+                $employeeHoldingWarehouses->push((object) [
                     'id'                   => $myHoldingWh->id,
                     'name'                 => $myHoldingWh->name,
                     'code'                 => $myHoldingWh->code,
@@ -517,8 +539,8 @@ class WebViewController extends Controller
         // Chỉ gồm kho công ty + kho hàng ôm nhân viên (chỉ có kho ôm nhân viên và kho công ty)
         $warehouses = $companyWarehouses->concat($employeeHoldingWarehouses);
 
-        $mainCompanyWarehouse = $companyWarehouses->first()?->name ?? (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng');
-        $employeeWarehouse = $employeeHoldingWarehouses->first()?->name 
+        $mainCompanyWarehouse = $companyWarehouses->first()?->name ?? ($allWarehouses->first()?->name ?? 'Kho Tổng');
+        $employeeWarehouse = $employeeHoldingWarehouses->first()?->name
             ?? ($user ? 'Kho Hàng Ôm - ' . $user->name : $mainCompanyWarehouse);
 
         return [$warehouses, false, null, $mainCompanyWarehouse, $employeeWarehouse];
@@ -581,10 +603,36 @@ class WebViewController extends Controller
             'warehouses',
             'isDriverUser',
             'driverVehicle',
+            'mainCompanyWarehouse',
+            'employeeWarehouse',
             'priceTiers',
             'userRestrictedBrandId',
             'userRestrictedBrandName'
         ));
+    }
+
+    /**
+     * Đếm số đơn hàng đang hiệu lực theo đại lý bằng 1 truy vấn GROUP BY (thay cho correlated subquery withCount)
+     */
+    private function attachDealerActiveOrderCounts($dealers): void
+    {
+        if ($dealers->isEmpty()) {
+            return;
+        }
+
+        $query = Order::whereNotIn('status', ['Hủy', 'Đã hủy'])
+            ->whereNotNull('dealer_id')
+            ->groupBy('dealer_id')
+            ->selectRaw('dealer_id, COUNT(*) as cnt');
+
+        if ($dealers->count() <= 200) {
+            $query->whereIn('dealer_id', $dealers->pluck('id'));
+        }
+
+        $counts = $query->pluck('cnt', 'dealer_id');
+        foreach ($dealers as $dealer) {
+            $dealer->setAttribute('orders_count', (int) ($counts[$dealer->id] ?? 0));
+        }
     }
 
     public function orderCreate()
@@ -592,11 +640,10 @@ class WebViewController extends Controller
         $user = auth()->user();
         $dealers = Dealer::accessibleBy()
             ->select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit', 'tax_code')
-            ->withCount(['orders as orders_count' => function($q) {
-                $q->whereNotIn('status', ['Hủy', 'Đã hủy']);
-            }])
             ->orderBy('name')
             ->get();
+        $this->attachDealerActiveOrderCounts($dealers);
+
         [$warehouses, $isDriverUser, $driverVehicle, $mainCompanyWarehouse, $employeeWarehouse] = $this->getAvailableWarehousesForUser();
 
         $allProducts = self::getPosProductsCatalog();
@@ -618,7 +665,6 @@ class WebViewController extends Controller
             $products = $allProducts;
         }
 
-        $drivers = User::select('id', 'name', 'phone')->get();
         $priceTiers = PriceTier::where('status', 'Hoạt động')
             ->orderByRaw("CASE WHEN name LIKE '%Nguyên Giá%' THEN 0 ELSE 1 END")
             ->orderBy('order_num')
@@ -626,6 +672,13 @@ class WebViewController extends Controller
             ->get();
         $today = date('Y-m-d');
         $salesPolicies = SalesPolicy::with('freeProduct:id,name,sku,unit,cost_price,price')
+            ->select([
+                'id', 'code', 'name', 'policy_type', 'apply_scope',
+                'buy_qty', 'free_qty', 'free_product_id', 'gift_tiers',
+                'discount_percent', 'discount_amount', 'min_order_value',
+                'target_customer_ids', 'target_product_ids',
+                'start_date', 'end_date', 'status',
+            ])
             ->where('status', 'Hoạt động')
             ->where(function($q) use ($today) {
                 $q->whereNull('start_date')->orWhere('start_date', '<=', $today);
@@ -647,7 +700,6 @@ class WebViewController extends Controller
             'mainCompanyWarehouse' => $mainCompanyWarehouse,
             'employeeWarehouse' => $employeeWarehouse,
             'products' => $products,
-            'drivers' => $drivers,
             'priceTiers' => $priceTiers,
             'salesPolicies' => $salesPolicies,
         ]);
@@ -660,14 +712,12 @@ class WebViewController extends Controller
     {
         $order = Order::with(['items.product', 'dealer.salesRep', 'salesRep', 'creator'])->findOrFail($id);
         $dealers = Dealer::select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit', 'tax_code')
-            ->withCount(['orders as orders_count' => function($q) {
-                $q->whereNotIn('status', ['Hủy', 'Đã hủy']);
-            }])
             ->orderBy('name')
             ->get();
+        $this->attachDealerActiveOrderCounts($dealers);
+
         [$warehouses, $isDriverUser, $driverVehicle, $mainCompanyWarehouse, $employeeWarehouse] = $this->getAvailableWarehousesForUser();
         $products = self::getPosProductsCatalog($order->id);
-        $drivers = User::select('id', 'name', 'phone')->get();
         $priceTiers = PriceTier::where('status', 'Hoạt động')
             ->orderByRaw("CASE WHEN name LIKE '%Nguyên Giá%' THEN 0 ELSE 1 END")
             ->orderBy('order_num')
@@ -675,6 +725,13 @@ class WebViewController extends Controller
             ->get();
         $today = date('Y-m-d');
         $salesPolicies = SalesPolicy::with('freeProduct:id,name,sku,unit,cost_price,price')
+            ->select([
+                'id', 'code', 'name', 'policy_type', 'apply_scope',
+                'buy_qty', 'free_qty', 'free_product_id', 'gift_tiers',
+                'discount_percent', 'discount_amount', 'min_order_value',
+                'target_customer_ids', 'target_product_ids',
+                'start_date', 'end_date', 'status',
+            ])
             ->where('status', 'Hoạt động')
             ->where(function($q) use ($today) {
                 $q->whereNull('start_date')->orWhere('start_date', '<=', $today);
@@ -694,7 +751,6 @@ class WebViewController extends Controller
             'mainCompanyWarehouse' => $mainCompanyWarehouse,
             'employeeWarehouse' => $employeeWarehouse,
             'products' => $products,
-            'drivers' => $drivers,
             'priceTiers' => $priceTiers,
             'salesPolicies' => $salesPolicies,
         ]);

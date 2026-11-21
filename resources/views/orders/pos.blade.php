@@ -682,7 +682,7 @@ function posApp() {
         stockFilter: 'all',
         sortBy: 'name_asc',
         viewMode: 'grid', // 'grid' | 'list'
-        selectedWarehouse: '{{ \App\Models\Warehouse::first()?->name ?? "Kho Tổng" }}',
+        selectedWarehouse: @json($mainCompanyWarehouse ?? 'Kho Tổng'),
         selectedDealerId: '',
         isCartOpen: false,
 
@@ -792,8 +792,9 @@ function posApp() {
         // Tính tồn kho khả dụng của sản phẩm theo kho đang chọn
         getProductAvailableStock(product) {
             if (!product) return 0;
-            if (product.warehouse_stocks && this.selectedWarehouse && product.warehouse_stocks[this.selectedWarehouse]) {
-                return Number(product.warehouse_stocks[this.selectedWarehouse].available || 0);
+            if (product.warehouse_stocks !== undefined && product.warehouse_stocks !== null && this.selectedWarehouse) {
+                const whStock = !Array.isArray(product.warehouse_stocks) ? product.warehouse_stocks[this.selectedWarehouse] : null;
+                return whStock ? Number(whStock.available || 0) : 0;
             }
             return Number(product.available_stock !== undefined ? product.available_stock : (product.stock_quantity || 0));
         },

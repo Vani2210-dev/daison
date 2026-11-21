@@ -929,45 +929,48 @@
                                     <span>Chọn khách hàng / đại lý có sẵn ({{ count($dealers) }})</span>
                                     <span class="shortcut-hint text-sky-600 font-normal lowercase hidden md:inline">dùng phím &uarr; &darr; &bull; Enter chọn</span>
                                 </div>
-                                <template x-for="(d, dIdx) in filteredDealers(dealerSearch)" :key="d.id">
-                                    <div :id="'dealer-opt-' + dIdx"
-                                         @click="selectDealer(d); openDealerDropdown = false; $nextTick(() => { const p = document.getElementById('row-product-input-0'); if(p) p.focus(); })" 
-                                         @mouseenter="highlightedDealerIndex = dIdx"
-                                         class="px-3 py-2 cursor-pointer transition-colors border-b border-slate-100 last:border-0"
-                                         :class="highlightedDealerIndex === dIdx ? 'bg-sky-50 text-sky-950 ring-1 ring-sky-300' : (formData.dealer_id == d.id ? 'bg-sky-50/80 font-bold text-sky-700' : 'hover:bg-slate-50')">
-                                        <!-- Dòng 1: Tên khách hàng & Cấp đại lý -->
-                                        <div class="flex items-center justify-between gap-2">
-                                            <span class="font-bold text-slate-900 text-sm sm:text-xs truncate" x-text="d.name"></span>
-                                            <span class="px-2 py-0.5 rounded-full text-xs sm:text-[10px] font-bold bg-sky-100 text-sky-800 shrink-0 whitespace-nowrap" x-text="d.tier || 'Cấp 1'"></span>
+                                <template x-if="openDealerDropdown">
+                                    <div>
+                                        <template x-for="(d, dIdx) in filteredDealers(dealerSearch)" :key="d.id">
+                                            <div :id="'dealer-opt-' + dIdx"
+                                                 @click="selectDealer(d); openDealerDropdown = false; $nextTick(() => { const p = document.getElementById('row-product-input-0'); if(p) p.focus(); })" 
+                                                 @mouseenter="highlightedDealerIndex = dIdx"
+                                                 class="px-3 py-2 cursor-pointer transition-colors border-b border-slate-100 last:border-0"
+                                                 :class="highlightedDealerIndex === dIdx ? 'bg-sky-50 text-sky-950 ring-1 ring-sky-300' : (formData.dealer_id == d.id ? 'bg-sky-50/80 font-bold text-sky-700' : 'hover:bg-slate-50')">
+                                                <!-- Dòng 1: Tên khách hàng & Cấp đại lý -->
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <span class="font-bold text-slate-900 text-sm sm:text-xs truncate" x-text="d.name"></span>
+                                                    <span class="px-2 py-0.5 rounded-full text-xs sm:text-[10px] font-bold bg-sky-100 text-sky-800 shrink-0 whitespace-nowrap" x-text="d.tier || 'Cấp 1'"></span>
+                                                </div>
+                                                <!-- Dòng 2: MST badge, Số điện thoại (ngăn vỡ dòng), Địa chỉ -->
+                                                <div class="flex items-center gap-2 mt-1 text-xs sm:text-[11px] text-slate-500 flex-wrap">
+                                                    <template x-if="d.tax_code && d.tax_code.trim()">
+                                                        <span class="px-1.5 py-0.5 rounded text-[11px] sm:text-[9.5px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 whitespace-nowrap" :title="'MST: ' + d.tax_code">
+                                                            ✓ MST: <span x-text="d.tax_code"></span>
+                                                        </span>
+                                                    </template>
+                                                    <template x-if="!d.tax_code || !d.tax_code.trim()">
+                                                        <span class="px-1.5 py-0.5 rounded text-[11px] sm:text-[9.5px] font-bold shrink-0 whitespace-nowrap"
+                                                              :class="(d.orders_count || 0) >= 3 ? 'bg-rose-100 text-rose-700 border border-rose-300' : 'bg-amber-100 text-amber-800 border border-amber-300'"
+                                                              :title="(d.orders_count || 0) >= 3 ? 'Đã đạt giới hạn 3 đơn - Chặn lên đơn thứ 4 vì chưa có MST' : 'Chưa có MST (Đã lên ' + (d.orders_count || 0) + '/3 đơn)'">
+                                                            Chưa MST (<span x-text="(d.orders_count || 0) + '/3'"></span>)
+                                                        </span>
+                                                    </template>
+                                                    <span x-show="d.code || d.phone" class="font-mono text-slate-700 font-semibold shrink-0 whitespace-nowrap flex items-center gap-1 text-xs sm:text-[11px]" :title="'Mã khách hàng: ' + (d.code || d.phone)">
+                                                        <i class="fa-solid fa-id-card text-[10px] text-slate-400"></i>
+                                                        <span x-text="d.code || d.phone"></span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </template>
+                                        <div x-show="filteredDealers(dealerSearch).length >= 60" class="px-3 py-1.5 bg-slate-50 text-[11px] text-slate-400 text-center border-t border-slate-100">
+                                            Hiển thị 60 kết quả đầu. Gõ tên, mã hoặc SĐT để tìm nhanh hơn.
                                         </div>
-                                        <!-- Dòng 2: MST badge, Số điện thoại (ngăn vỡ dòng), Địa chỉ -->
-                                        <div class="flex items-center gap-2 mt-1 text-xs sm:text-[11px] text-slate-500 flex-wrap">
-                                            <template x-if="d.tax_code && d.tax_code.trim()">
-                                                <span class="px-1.5 py-0.5 rounded text-[11px] sm:text-[9.5px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 whitespace-nowrap" :title="'MST: ' + d.tax_code">
-                                                    ✓ MST: <span x-text="d.tax_code"></span>
-                                                </span>
-                                            </template>
-                                            <template x-if="!d.tax_code || !d.tax_code.trim()">
-                                                <span class="px-1.5 py-0.5 rounded text-[11px] sm:text-[9.5px] font-bold shrink-0 whitespace-nowrap"
-                                                      :class="(d.orders_count || 0) >= 3 ? 'bg-rose-100 text-rose-700 border border-rose-300' : 'bg-amber-100 text-amber-800 border border-amber-300'"
-                                                      :title="(d.orders_count || 0) >= 3 ? 'Đã đạt giới hạn 3 đơn - Chặn lên đơn thứ 4 vì chưa có MST' : 'Chưa có MST (Đã lên ' + (d.orders_count || 0) + '/3 đơn)'">
-                                                    Chưa MST (<span x-text="(d.orders_count || 0) + '/3'"></span>)
-                                                </span>
-                                            </template>
-                                            <span x-show="d.code || d.phone" class="font-mono text-slate-700 font-semibold shrink-0 whitespace-nowrap flex items-center gap-1 text-xs sm:text-[11px]" :title="'Mã khách hàng: ' + (d.code || d.phone)">
-                                                <i class="fa-solid fa-id-card text-[10px] text-slate-400"></i>
-                                                <span x-text="d.code || d.phone"></span>
-                                            </span>
-                                        </div>
-                                                <i class="fa-solid fa-id-card text-[10px] text-slate-400"></i>
-                                                <span x-text="d.code || d.phone"></span>
-                                            </span>
+                                        <div x-show="filteredDealers(dealerSearch).length === 0" class="px-3 py-6 text-center text-slate-400 italic">
+                                            Không tìm thấy khách hàng. Bấm nút [+] để thêm mới.
                                         </div>
                                     </div>
                                 </template>
-                                <div x-show="filteredDealers(dealerSearch).length === 0" class="px-3 py-6 text-center text-slate-400 italic">
-                                    Không tìm thấy khách hàng. Bấm nút [+] để thêm mới.
-                                </div>
                             </div>
                         </div>
 
@@ -1284,38 +1287,42 @@
                                         <div x-show="activeProdDropdownIndex === index && getFilteredProducts(item.searchQuery, getItemIndex(item)).length > 0" 
                                              x-cloak 
                                              class="order-product-dropdown absolute left-0 top-full mt-1 w-[460px] max-w-[90vw] z-50 bg-white rounded-xl shadow-2xl border border-slate-200 max-h-60 overflow-y-auto py-1 text-xs">
-                                            <template x-for="(p, pIdx) in getFilteredProducts(item.searchQuery, getItemIndex(item))" :key="p.id">
-                                                <div :id="'prod-opt-' + index + '-' + pIdx"
-                                                     @mousedown.prevent="selectProductForRow(getItemIndex(item), p); activeProdDropdownIndex = null; $nextTick(() => { const q = document.getElementById('row-qty-input-' + index); if(q) { q.focus(); q.select(); } })"
-                                                     @click="selectProductForRow(getItemIndex(item), p); activeProdDropdownIndex = null; $nextTick(() => { const q = document.getElementById('row-qty-input-' + index); if(q) { q.focus(); q.select(); } })"
-                                                     @mouseenter="prodHighlightIndex = pIdx"
-                                                     class="px-3 py-2 cursor-pointer flex items-center justify-between transition-colors border-b border-slate-50 last:border-0"
-                                                     :class="prodHighlightIndex === pIdx ? 'bg-sky-100 text-sky-950 font-bold ring-1 ring-sky-300' : 'hover:bg-slate-50'">
-                                                    <div class="min-w-0 pr-3 flex-1">
-                                                        <div class="font-bold text-slate-900 leading-snug break-words">
-                                                            <span class="text-sky-600 font-mono mr-1 shrink-0" x-text="'[' + p.sku + ']'"></span>
-                                                            <span x-text="p.name"></span>
-                                                        </div>
-                                                        <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5 flex-wrap">
-                                                            <span class="font-semibold text-slate-700" x-text="'ĐVT: ' + (p.unit || '') + (p.conversion_unit && p.conversion_unit.trim().toLowerCase() !== (p.unit || '').trim().toLowerCase() ? ' / ' + p.conversion_unit : '')"></span>
-                                                            <span>&bull;</span>
-                                                            <span class="inline-flex items-center gap-1.5">
-                                                                <template x-if="getProductStockData(p, formData.warehouse).available <= 0">
-                                                                    <span class="px-1.5 py-0.2 rounded bg-rose-600 text-white font-black text-[9px] uppercase tracking-wider flex items-center gap-1">
-                                                                        <i class="fa-solid fa-ban text-[8px]"></i> Hết khả dụng
+                                            <template x-if="activeProdDropdownIndex === index">
+                                                <div>
+                                                    <template x-for="(p, pIdx) in getFilteredProducts(item.searchQuery, getItemIndex(item))" :key="p.id">
+                                                        <div :id="'prod-opt-' + index + '-' + pIdx"
+                                                             @mousedown.prevent="selectProductForRow(getItemIndex(item), p); activeProdDropdownIndex = null; $nextTick(() => { const q = document.getElementById('row-qty-input-' + index); if(q) { q.focus(); q.select(); } })"
+                                                             @click="selectProductForRow(getItemIndex(item), p); activeProdDropdownIndex = null; $nextTick(() => { const q = document.getElementById('row-qty-input-' + index); if(q) { q.focus(); q.select(); } })"
+                                                             @mouseenter="prodHighlightIndex = pIdx"
+                                                             class="px-3 py-2 cursor-pointer flex items-center justify-between transition-colors border-b border-slate-50 last:border-0"
+                                                             :class="prodHighlightIndex === pIdx ? 'bg-sky-100 text-sky-950 font-bold ring-1 ring-sky-300' : 'hover:bg-slate-50'">
+                                                            <div class="min-w-0 pr-3 flex-1">
+                                                                <div class="font-bold text-slate-900 leading-snug break-words">
+                                                                    <span class="text-sky-600 font-mono mr-1 shrink-0" x-text="'[' + p.sku + ']'"></span>
+                                                                    <span x-text="p.name"></span>
+                                                                </div>
+                                                                <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5 flex-wrap">
+                                                                    <span class="font-semibold text-slate-700" x-text="'ĐVT: ' + (p.unit || '') + (p.conversion_unit && p.conversion_unit.trim().toLowerCase() !== (p.unit || '').trim().toLowerCase() ? ' / ' + p.conversion_unit : '')"></span>
+                                                                    <span>&bull;</span>
+                                                                    <span class="inline-flex items-center gap-1.5">
+                                                                        <template x-if="getProductStockData(p, formData.warehouse).available <= 0">
+                                                                            <span class="px-1.5 py-0.2 rounded bg-rose-600 text-white font-black text-[9px] uppercase tracking-wider flex items-center gap-1">
+                                                                                <i class="fa-solid fa-ban text-[8px]"></i> Hết khả dụng
+                                                                            </span>
+                                                                        </template>
+                                                                        <span class="px-1.5 py-0.2 rounded font-bold text-[10px]"
+                                                                              :class="getProductStockData(p, formData.warehouse).available > 0 ? 'bg-emerald-100 text-emerald-800' : (getProductStockData(p, formData.warehouse).on_hand > 0 ? 'bg-amber-100 text-amber-900 ring-1 ring-amber-300' : 'bg-rose-100 text-rose-700')"
+                                                                              x-text="'Khả dụng: ' + formatNumber(getProductStockData(p, formData.warehouse).available) + ' ' + (p.unit || '')"></span>
+                                                                        <span class="text-slate-400 text-[10px]"
+                                                                              x-text="'(Kho: ' + formatNumber(getProductStockData(p, formData.warehouse).on_hand) + (getProductStockData(p, formData.warehouse).reserved > 0 ? ' | Giữ: ' + formatNumber(getProductStockData(p, formData.warehouse).reserved) : '') + ')'"></span>
                                                                     </span>
-                                                                </template>
-                                                                <span class="px-1.5 py-0.2 rounded font-bold text-[10px]"
-                                                                      :class="getProductStockData(p, formData.warehouse).available > 0 ? 'bg-emerald-100 text-emerald-800' : (getProductStockData(p, formData.warehouse).on_hand > 0 ? 'bg-amber-100 text-amber-900 ring-1 ring-amber-300' : 'bg-rose-100 text-rose-700')"
-                                                                      x-text="'Khả dụng: ' + formatNumber(getProductStockData(p, formData.warehouse).available) + ' ' + (p.unit || '')"></span>
-                                                                <span class="text-slate-400 text-[10px]"
-                                                                      x-text="'(Kho: ' + formatNumber(getProductStockData(p, formData.warehouse).on_hand) + (getProductStockData(p, formData.warehouse).reserved > 0 ? ' | Giữ: ' + formatNumber(getProductStockData(p, formData.warehouse).reserved) : '') + ')'"></span>
-                                                            </span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="shrink-0 text-right">
+                                                                <div class="font-black text-sky-700 text-xs" x-text="formatNumber(getProductPrice(p)) + ' đ'"></div>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div class="shrink-0 text-right">
-                                                        <div class="font-black text-sky-700 text-xs" x-text="formatNumber(getProductPrice(p)) + ' đ'"></div>
-                                                    </div>
+                                                    </template>
                                                 </div>
                                             </template>
                                         </div>
@@ -1634,23 +1641,27 @@
                                 <div x-show="activeGiftDropdownIndex === gIdx && getFilteredPromoProducts(gItem.searchQuery).length > 0"
                                      x-cloak
                                      class="absolute left-0 top-full mt-1.5 w-full z-50 bg-white rounded-xl shadow-2xl border border-slate-200 max-h-64 overflow-y-auto py-1 text-xs divide-y divide-slate-100">
-                                    <template x-for="(p, pIdx) in getFilteredPromoProducts(gItem.searchQuery)" :key="'gift-opt-' + gIdx + '-' + p.id">
-                                        <div :id="'gift-opt-' + gIdx + '-' + pIdx"
-                                             @mousedown.prevent="selectGiftProductForRow(gItem, p)"
-                                             @mouseenter="giftHighlightIndex = pIdx"
-                                             class="px-3 py-2.5 cursor-pointer transition-colors"
-                                             :class="giftHighlightIndex === pIdx ? 'bg-emerald-100 text-emerald-950 font-bold ring-1 ring-emerald-300' : 'hover:bg-slate-50'">
-                                            <div class="font-bold text-slate-900 leading-snug break-words">
-                                                <span class="text-emerald-700 font-mono mr-1 shrink-0" x-text="'[' + p.sku + ']'"></span>
-                                                <span x-text="p.name"></span>
-                                            </div>
-                                            <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-1 flex-wrap">
-                                                <span class="whitespace-nowrap font-medium" x-text="'ĐVT: ' + (p.unit || '')"></span>
-                                                <span>&bull;</span>
-                                                <span class="text-emerald-700 font-semibold whitespace-nowrap" x-text="'Khả dụng: ' + formatNumber(getProductStockData(p, formData.warehouse).available) + ' ' + (p.unit || '')"></span>
-                                                <span>&bull;</span>
-                                                <span class="text-emerald-600 font-bold whitespace-nowrap">Đơn giá: 0đ</span>
-                                            </div>
+                                    <template x-if="activeGiftDropdownIndex === gIdx">
+                                        <div>
+                                            <template x-for="(p, pIdx) in getFilteredPromoProducts(gItem.searchQuery)" :key="'gift-opt-' + gIdx + '-' + p.id">
+                                                <div :id="'gift-opt-' + gIdx + '-' + pIdx"
+                                                     @mousedown.prevent="selectGiftProductForRow(gItem, p)"
+                                                     @mouseenter="giftHighlightIndex = pIdx"
+                                                     class="px-3 py-2.5 cursor-pointer transition-colors"
+                                                     :class="giftHighlightIndex === pIdx ? 'bg-emerald-100 text-emerald-950 font-bold ring-1 ring-emerald-300' : 'hover:bg-slate-50'">
+                                                    <div class="font-bold text-slate-900 leading-snug break-words">
+                                                        <span class="text-emerald-700 font-mono mr-1 shrink-0" x-text="'[' + p.sku + ']'"></span>
+                                                        <span x-text="p.name"></span>
+                                                    </div>
+                                                    <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-1 flex-wrap">
+                                                        <span class="whitespace-nowrap font-medium" x-text="'ĐVT: ' + (p.unit || '')"></span>
+                                                        <span>&bull;</span>
+                                                        <span class="text-emerald-700 font-semibold whitespace-nowrap" x-text="'Khả dụng: ' + formatNumber(getProductStockData(p, formData.warehouse).available) + ' ' + (p.unit || '')"></span>
+                                                        <span>&bull;</span>
+                                                        <span class="text-emerald-600 font-bold whitespace-nowrap">Đơn giá: 0đ</span>
+                                                    </div>
+                                                </div>
+                                            </template>
                                         </div>
                                     </template>
                                 </div>
@@ -1746,24 +1757,28 @@
                                         <div x-show="activeGiftDropdownIndex === gIdx && getFilteredPromoProducts(gItem.searchQuery).length > 0"
                                              x-cloak
                                              class="absolute left-3 top-full mt-1 w-[460px] z-50 bg-white rounded-xl shadow-2xl border border-emerald-200 max-h-56 overflow-y-auto py-1 text-xs">
-                                            <template x-for="(p, pIdx) in getFilteredPromoProducts(gItem.searchQuery)" :key="'gift-desk-opt-' + gIdx + '-' + p.id">
-                                                <div :id="'gift-desk-opt-' + gIdx + '-' + pIdx"
-                                                     @mousedown.prevent="selectGiftProductForRow(gItem, p)"
-                                                     @mouseenter="giftHighlightIndex = pIdx"
-                                                     class="px-3 py-2 cursor-pointer flex items-center justify-between transition-colors border-b border-slate-50 last:border-0"
-                                                     :class="giftHighlightIndex === pIdx ? 'bg-emerald-100 text-emerald-950 font-bold ring-1 ring-emerald-300' : 'hover:bg-slate-50'">
-                                                    <div class="min-w-0 pr-3 flex-1">
-                                                        <div class="font-bold text-slate-900 leading-snug break-words">
-                                                            <span class="text-emerald-700 font-mono mr-1" x-text="'[' + p.sku + ']'"></span>
-                                                            <span x-text="p.name"></span>
+                                            <template x-if="activeGiftDropdownIndex === gIdx">
+                                                <div>
+                                                    <template x-for="(p, pIdx) in getFilteredPromoProducts(gItem.searchQuery)" :key="'gift-desk-opt-' + gIdx + '-' + p.id">
+                                                        <div :id="'gift-desk-opt-' + gIdx + '-' + pIdx"
+                                                             @mousedown.prevent="selectGiftProductForRow(gItem, p)"
+                                                             @mouseenter="giftHighlightIndex = pIdx"
+                                                             class="px-3 py-2 cursor-pointer flex items-center justify-between transition-colors border-b border-slate-50 last:border-0"
+                                                             :class="giftHighlightIndex === pIdx ? 'bg-emerald-100 text-emerald-950 font-bold ring-1 ring-emerald-300' : 'hover:bg-slate-50'">
+                                                            <div class="min-w-0 pr-3 flex-1">
+                                                                <div class="font-bold text-slate-900 leading-snug break-words">
+                                                                    <span class="text-emerald-700 font-mono mr-1" x-text="'[' + p.sku + ']'"></span>
+                                                                    <span x-text="p.name"></span>
+                                                                </div>
+                                                                <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                                                    <span x-text="'ĐVT: ' + (p.unit || '')"></span>
+                                                                    <span>&bull;</span>
+                                                                    <span class="text-emerald-700 font-semibold" x-text="'Khả dụng: ' + formatNumber(getProductStockData(p, formData.warehouse).available) + ' ' + (p.unit || '')"></span>
+                                                                </div>
+                                                            </div>
+                                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 shrink-0">KM 0đ</span>
                                                         </div>
-                                                        <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
-                                                            <span x-text="'ĐVT: ' + (p.unit || '')"></span>
-                                                            <span>&bull;</span>
-                                                            <span class="text-emerald-700 font-semibold" x-text="'Khả dụng: ' + formatNumber(getProductStockData(p, formData.warehouse).available) + ' ' + (p.unit || '')"></span>
-                                                        </div>
-                                                    </div>
-                                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 shrink-0">KM 0đ</span>
+                                                    </template>
                                                 </div>
                                             </template>
                                         </div>
@@ -2018,6 +2033,9 @@ const _rawSalesPolicies = JSON.parse(document.getElementById('orders-policies-js
 const _productsMap = new Map();
 for (let i = 0; i < _rawProductsCatalog.length; i++) {
     _productsMap.set(String(_rawProductsCatalog[i].id), _rawProductsCatalog[i]);
+}
+for (let i = 0; i < _rawDealersData.length; i++) {
+    Object.freeze(_rawDealersData[i]);
 }
 
 function orderFormApp() {
@@ -2507,7 +2525,7 @@ function orderFormApp() {
                 });
                 const data = await res.json();
                 if (data.success && data.dealer) {
-                    const d = {
+                    const d = Object.freeze({
                         id: Number(data.dealer.id),
                         name: data.dealer.name,
                         code: data.dealer.code,
@@ -2518,7 +2536,7 @@ function orderFormApp() {
                         credit_limit: Number(data.dealer.creditLimit || 100000000),
                         tax_code: data.dealer.taxCode || '',
                         orders_count: 0
-                    };
+                    });
                     this.dealersData = [d, ...(this.dealersData || [])];
                     this.selectDealer(d);
                 } else {
@@ -2540,14 +2558,14 @@ function orderFormApp() {
         },
 
         filteredDealers(keyword) {
-            if (!keyword) return this.dealersData;
+            if (!keyword) return (this.dealersData || []).slice(0, 60);
             const q = keyword.toLowerCase().trim();
-            return this.dealersData.filter(d => 
+            return (this.dealersData || []).filter(d => 
                 (d.name && d.name.toLowerCase().includes(q)) || 
                 (d.code && d.code.toLowerCase().includes(q)) || 
                 (d.phone && d.phone.includes(q)) ||
                 (d.address && d.address.toLowerCase().includes(q))
-            );
+            ).slice(0, 60);
         },
 
         selectDealer(dealer) {
@@ -2686,30 +2704,35 @@ function orderFormApp() {
         getProductStockData(p, whName) {
             if (!p) return { on_hand: 0, reserved: 0, available: 0, holding_orders: [] };
             const targetWarehouse = (whName || this.formData.warehouse || '').trim();
-            if (targetWarehouse && p.warehouse_stocks && typeof p.warehouse_stocks === 'object') {
-                let found = p.warehouse_stocks[targetWarehouse];
-                if (!found) {
-                    const matchedKey = Object.keys(p.warehouse_stocks).find(k => 
-                        k.toLowerCase().includes(targetWarehouse.toLowerCase()) || 
-                        targetWarehouse.toLowerCase().includes(k.toLowerCase())
-                    );
-                    if (matchedKey !== undefined) {
-                        found = p.warehouse_stocks[matchedKey];
+            if (targetWarehouse && p.warehouse_stocks !== undefined && p.warehouse_stocks !== null) {
+                if (typeof p.warehouse_stocks === 'object' && !Array.isArray(p.warehouse_stocks)) {
+                    let found = p.warehouse_stocks[targetWarehouse];
+                    if (found === undefined) {
+                        const targetLower = targetWarehouse.toLowerCase();
+                        const matchedKey = Object.keys(p.warehouse_stocks).find(k => {
+                            const kl = k.toLowerCase();
+                            return kl.includes(targetLower) || targetLower.includes(kl);
+                        });
+                        if (matchedKey !== undefined) {
+                            found = p.warehouse_stocks[matchedKey];
+                        }
+                    }
+                    if (found !== undefined) {
+                        if (typeof found === 'object' && found !== null) {
+                            return {
+                                on_hand: Number(found.on_hand) || 0,
+                                reserved: Number(found.reserved) || 0,
+                                available: Number(found.available) || 0,
+                                holding_orders: Array.isArray(found.holding_orders) ? found.holding_orders : [],
+                            };
+                        } else {
+                            const num = Number(found) || 0;
+                            return { on_hand: num, reserved: 0, available: num, holding_orders: [] };
+                        }
                     }
                 }
-                if (found !== undefined) {
-                    if (typeof found === 'object' && found !== null) {
-                        return {
-                            on_hand: Number(found.on_hand) || 0,
-                            reserved: Number(found.reserved) || 0,
-                            available: Number(found.available) || 0,
-                            holding_orders: Array.isArray(found.holding_orders) ? found.holding_orders : [],
-                        };
-                    } else {
-                        const num = Number(found) || 0;
-                        return { on_hand: num, reserved: 0, available: num, holding_orders: [] };
-                    }
-                }
+                // Sản phẩm đã có bản đồ kho nhưng kho đang chọn không có dòng tồn => tồn tại kho này = 0
+                return { on_hand: 0, reserved: 0, available: 0, holding_orders: [] };
             }
             const onHand = Number(p.stock_quantity) || 0;
             const reserved = Number(p.reserved_stock) || 0;
