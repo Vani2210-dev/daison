@@ -845,7 +845,6 @@
                         <i class="fa-solid fa-arrow-left text-xs sm:text-sm"></i>
                     </button>
                     <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Đơn hàng</h1>
-                    <span x-show="isFromPos()" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-purple-100 text-purple-800 border border-purple-200">🏪 Từ POS</span>
                     <span class="hidden sm:inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200">ERP Form Standard</span>
                     <span x-show="orderId" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300" x-text="formData.status"></span>
                 </div>
