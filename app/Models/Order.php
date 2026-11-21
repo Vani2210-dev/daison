@@ -44,6 +44,8 @@ class Order extends Model
         'subtotal',
         'discount_percent',
         'discount_amount',
+        'sales_policy_id',
+        'sales_policy_ids',
         'tax_amount',
         'total_amount',
         'status',
@@ -98,7 +100,13 @@ class Order extends Model
         'has_shortage_warning' => 'boolean',
         'stock_deducted' => 'boolean',
         'delivery_documents' => 'array',
+        'sales_policy_ids' => 'array',
     ];
+
+    public function salesPolicy()
+    {
+        return $this->belongsTo(SalesPolicy::class, 'sales_policy_id');
+    }
 
     public function parentOrder()
     {

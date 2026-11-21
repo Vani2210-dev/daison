@@ -119,6 +119,8 @@ class OrderController extends Controller
                     'items'                 => $items,
                     'subtotal'              => (float) ($o->subtotal > 0 ? $o->subtotal : ($items->sum('amount') > 0 ? $items->sum('amount') : 0)),
                     'discountAmount'        => (float) $o->discount_amount,
+                    'salesPolicyId'         => $o->sales_policy_id ? (string)$o->sales_policy_id : null,
+                    'salesPolicyIds'        => is_array($o->sales_policy_ids) ? array_values(array_map('strval', $o->sales_policy_ids)) : ($o->sales_policy_id ? [(string)$o->sales_policy_id] : []),
                     'taxAmount'             => (float) $o->tax_amount,
                     'totalAmount'           => (float) ($o->total_amount > 0 ? $o->total_amount : max(0, ($o->subtotal > 0 ? $o->subtotal : $items->sum('amount')) - (float)$o->discount_amount + (float)$o->tax_amount)),
                     'status'                => $o->status,
@@ -709,6 +711,22 @@ class OrderController extends Controller
 
         $resolvedOrderType = $isHoldingStockSale ? 'holding_sale' : ($data['orderType'] ?? ($data['order_type'] ?? ($order?->order_type ?? 'normal')));
 
+        $hasPolicyIdsInput = array_key_exists('salesPolicyIds', $data) || array_key_exists('sales_policy_ids', $data);
+        $hasPolicyIdInput = array_key_exists('salesPolicyId', $data) || array_key_exists('sales_policy_id', $data);
+        $resolvedPolicyIds = $order?->sales_policy_ids ?? ($order?->sales_policy_id ? [(int)$order->sales_policy_id] : []);
+        if ($hasPolicyIdsInput) {
+            $rawPIds = $data['salesPolicyIds'] ?? ($data['sales_policy_ids'] ?? []);
+            if (is_string($rawPIds)) {
+                $decoded = json_decode($rawPIds, true);
+                $rawPIds = is_array($decoded) ? $decoded : [];
+            }
+            $resolvedPolicyIds = array_values(array_unique(array_filter(array_map('intval', is_array($rawPIds) ? $rawPIds : []), fn($id) => $id > 0)));
+        } elseif ($hasPolicyIdInput) {
+            $singlePId = $data['salesPolicyId'] ?? ($data['sales_policy_id'] ?? null);
+            $resolvedPolicyIds = (!empty($singlePId) && is_numeric($singlePId) && (int)$singlePId > 0) ? [(int)$singlePId] : [];
+        }
+        $resolvedPolicyId = !empty($resolvedPolicyIds) ? (int)$resolvedPolicyIds[0] : null;
+
         $orderAttributes = [
             'order_code'             => $orderCode ?: ($order ? $order->order_code : 'DH-' . date('Y') . '-' . rand(1000, 9999)),
             'dealer_id'              => $dealerId,
@@ -755,6 +773,8 @@ class OrderController extends Controller
             'subtotal'               => $subtotal,
             'discount_percent'       => (float)($discountPercent ?? 0),
             'discount_amount'        => $discount,
+            'sales_policy_id'        => $resolvedPolicyId,
+            'sales_policy_ids'       => $resolvedPolicyIds,
             'tax_amount'             => $tax,
             'total_amount'           => $total,
             'shortage_reported'      => false,

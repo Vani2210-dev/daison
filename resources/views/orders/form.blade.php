@@ -168,7 +168,6 @@
             "stt . action"
             "product product product"
             "unit qty price"
-            "policy policy policy"
             "discount discount discount"
             "picking picking picking"
             "amount amount amount";
@@ -356,42 +355,7 @@
         pointer-events: none !important;
     }
 
-    /* Dòng 4: Ô chọn Chính sách (chiếm trọn 100% bề ngang) */
-    .order-items-table td.col-policy {
-        grid-area: policy !important;
-        min-width: 0 !important;
-        max-width: 100% !important;
-        width: 100% !important;
-        overflow: hidden !important;
-        box-sizing: border-box !important;
-    }
-    .order-items-table td.col-policy::before {
-        content: "CHÍNH SÁCH";
-        display: block;
-        font-size: 11.5px !important;
-        font-weight: 800 !important;
-        color: #0284c7 !important;
-        letter-spacing: 0.025em;
-        margin-bottom: 3px;
-    }
-    .order-items-table td.col-policy select {
-        height: 40px !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 0.5rem !important;
-        font-size: 13.5px !important;
-        font-weight: 700 !important;
-        color: #0f172a !important;
-        background: #ffffff !important;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
-        box-sizing: border-box !important;
-    }
-
-    /* Dòng 5: Chiết khấu & VAT (Gom nhãn và các ô nhập lên 1 hàng) */
+    /* Dòng 4: Chiết khấu & VAT (Gom nhãn và các ô nhập lên 1 hàng) */
     .order-items-table td.col-discount {
         grid-area: discount !important;
         display: flex !important;
@@ -639,6 +603,14 @@
             $orderDiscPct = (float)$order->discount_percent;
         } elseif ((float)$order->discount_amount > 0 && (float)$order->subtotal > 0) {
             $orderDiscPct = round(((float)$order->discount_amount / (float)$order->subtotal) * 100, 2);
+        }
+    }
+    $initialPolicyIds = [];
+    if ($order) {
+        if (is_array($order->sales_policy_ids) && count($order->sales_policy_ids) > 0) {
+            $initialPolicyIds = array_values(array_map('strval', $order->sales_policy_ids));
+        } elseif (!empty($order->sales_policy_id)) {
+            $initialPolicyIds = [(string)$order->sales_policy_id];
         }
     }
     $initialItems = [];
@@ -1216,7 +1188,7 @@
                                 <div class="flex items-center justify-center gap-1">
                                     <input type="checkbox" 
                                            :checked="items.length > 0 && items.every(it => it.checked !== false)" 
-                                           @change="const val = $event.target.checked; items.forEach(it => it.checked = val); calculateTotals();"
+                                           @change="const val = $event.target.checked; items.forEach(it => it.checked = val); evaluateOrderPolicies();"
                                            class="rounded text-sky-600 focus:ring-0 cursor-pointer">
                                     <span>STT</span>
                                 </div>
@@ -1225,13 +1197,8 @@
                             <th class="py-2.5 px-2 text-center w-20">ĐVT</th>
                             <th class="py-2.5 px-2 text-right w-28">ĐƠN GIÁ</th>
                             <th class="py-2.5 px-2 text-center w-16">SL</th>
-                            <!-- Cột Chính Sách Áp Dụng -->
-                            <th class="py-2.5 px-2 text-center w-44 bg-sky-50/40 border-x border-slate-200">
-                                <div class="text-sky-900 font-bold">CHÍNH SÁCH</div>
-                                <div class="text-[9px] text-sky-600 font-normal lowercase tracking-normal">(áp dụng theo SP)</div>
-                            </th>
                             <!-- Tiền chiết khấu cột -->
-                            <th class="py-2 px-2 text-center w-52 bg-sky-50/60 border-r border-slate-200">
+                            <th class="py-2 px-2 text-center w-52 bg-sky-50/60 border-x border-slate-200">
                                 <div class="text-[11px] font-bold text-slate-700 uppercase">TIỀN CHIẾT KHẤU</div>
                                 <div class="mt-1 flex items-center justify-center">
                                     <div class="inline-flex items-center gap-1 bg-white border border-sky-300 rounded px-1.5 py-0.5 shadow-2xs hover:border-sky-400 focus-within:ring-1 focus-within:ring-sky-400 transition-all">
@@ -1266,7 +1233,7 @@
                                 <!-- STT + Checkbox -->
                                 <td class="col-stt py-2 px-3 text-center align-top">
                                     <div class="h-8 flex items-center justify-center gap-1.5">
-                                        <input type="checkbox" x-model="item.checked" @change="calculateTotals()" class="rounded text-sky-600 focus:ring-0 cursor-pointer">
+                                        <input type="checkbox" x-model="item.checked" @change="evaluateOrderPolicies()" class="rounded text-sky-600 focus:ring-0 cursor-pointer">
                                         <span class="font-bold text-slate-700" x-text="index + 1"></span>
                                     </div>
                                 </td>
@@ -1408,26 +1375,6 @@
                                     </div>
                                 </td>
 
-                                <!-- Cột Chọn Chính Sách Áp Dụng -->
-                                <td class="col-policy py-2 px-2 text-center align-top bg-sky-50/20 border-x border-slate-200">
-                                    <div class="relative">
-                                        <select x-model="item.policy_id" 
-                                                @change="onItemPolicyChange(getItemIndex(item))" 
-                                                class="w-full h-8 px-2 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none transition-colors shadow-2xs truncate cursor-pointer"
-                                                :title="item.appliedPolicyName || 'Chọn chính sách áp dụng'">
-                                            <option value="">-- Mặc định --</option>
-                                            <template x-for="p in getApplicablePoliciesForItem(item)" :key="p.id">
-                                                <option :value="p.id" 
-                                                        :selected="String(item.policy_id) === String(p.id)"
-                                                        x-text="p.name"></option>
-                                            </template>
-                                        </select>
-                                        <template x-if="item.policy_id && getPolicySummaryText(item)">
-                                            <div class="mt-0.5 text-[9px] text-emerald-700 font-bold truncate text-center" x-text="getPolicySummaryText(item)"></div>
-                                        </template>
-                                    </div>
-                                </td>
-
                                 <!-- Tiền chiết khấu (% mỗi dòng hoặc VNĐ) -->
                                 <td class="col-discount py-2 px-2 bg-sky-50/30 border-x border-slate-200 align-top">
                                     <div>
@@ -1513,6 +1460,108 @@
                     <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">F9</kbd> lưu
                     <span class="text-slate-300">&bull;</span>
                     <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">Ctrl+F9</kbd> lưu và in
+                </div>
+            </div>
+
+            <!-- KHỐI CHỌN CHÍNH SÁCH BÁN HÀNG TẬP TRUNG (1 VỊ TRÍ PHÍA DƯỚI) -->
+            <div class="order-policy-section mt-3 rounded-xl border border-sky-200 bg-sky-50/40 p-3 sm:p-4 space-y-2.5 shadow-2xs">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="w-6 h-6 rounded-lg bg-sky-600 text-white flex items-center justify-center text-xs shadow-2xs shrink-0">
+                            <i class="fa-solid fa-tags"></i>
+                        </span>
+                        <label class="text-xs sm:text-[11px] font-extrabold text-sky-950 uppercase tracking-wide m-0">
+                            Chính sách bán hàng / Khuyến mại
+                        </label>
+                        <template x-if="!formData.dealer_id">
+                            <span class="text-xs sm:text-[11px] text-amber-700 font-semibold italic">
+                                (Chọn Khách hàng để lọc chính sách theo nhóm đại lý)
+                            </span>
+                        </template>
+                        <template x-if="formData.dealer_id && getApplicableOrderPolicies().length > 0">
+                            <span class="px-2 py-0.5 rounded-full text-[11px] sm:text-[10px] font-bold bg-sky-100 text-sky-800 border border-sky-200"
+                                  x-text="getApplicableOrderPolicies().length + ' chính sách phù hợp'"></span>
+                        </template>
+                        <template x-if="formData.dealer_id && getApplicableOrderPolicies().length === 0">
+                            <span class="text-xs sm:text-[11px] text-slate-500 italic">
+                                (Chưa có chính sách áp dụng cho khách hàng / sản phẩm hiện tại)
+                            </span>
+                        </template>
+                    </div>
+
+                    <!-- Nếu đã chọn 1 chính sách và còn chính sách nhóm sản phẩm khác không xung đột -->
+                    <template x-if="(formData.sales_policy_ids || []).length > 0 && getRemainingAddablePolicies().length > 0">
+                        <button type="button"
+                                @click="addAnotherPolicySlot()"
+                                class="self-start sm:self-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white hover:bg-sky-100 text-sky-700 border border-sky-300 text-xs sm:text-[11px] font-bold transition cursor-pointer shadow-2xs">
+                            <i class="fa-solid fa-plus text-[10px]"></i>
+                            <span>Thêm chính sách nhóm SP khác</span>
+                        </button>
+                    </template>
+                </div>
+
+                <!-- Ô chọn chính sách chính (1 vị trí tập trung phía dưới) -->
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <select x-effect="const _c = getApplicableOrderPoliciesForSlot(0).length; const _v = String((formData.sales_policy_ids && formData.sales_policy_ids[0]) || ''); $nextTick(() => { $el.value = _v; })"
+                                @change="onPrimaryOrderPolicyChange($event.target.value)"
+                                class="w-full h-10 sm:h-9 px-3 bg-white border border-slate-300 hover:border-sky-400 focus:border-sky-500 rounded-xl text-sm sm:text-xs font-bold text-slate-800 focus:outline-none cursor-pointer shadow-2xs">
+                            <option value="">-- Không áp dụng chính sách --</option>
+                            <template x-for="p in getApplicableOrderPoliciesForSlot(0)" :key="p.id">
+                                <option :value="p.id"
+                                        :selected="String((formData.sales_policy_ids && formData.sales_policy_ids[0]) || '') === String(p.id)"
+                                        x-text="formatPolicyOptionLabel(p)"></option>
+                            </template>
+                        </select>
+                        <template x-if="(formData.sales_policy_ids || []).some(id => !!id)">
+                            <button type="button"
+                                    @click="clearAllOrderPolicies()"
+                                    class="h-10 sm:h-9 px-3 rounded-xl bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-slate-300 hover:border-rose-300 text-xs font-bold transition cursor-pointer shrink-0"
+                                    title="Bỏ chọn toàn bộ chính sách">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </template>
+                    </div>
+
+                    <!-- Các ô chọn phụ khi đơn áp dụng nhiều nhóm sản phẩm không xung đột -->
+                    <template x-for="(extraId, slotIdx) in (formData.sales_policy_ids || []).slice(1)" :key="'policy-slot-' + (slotIdx + 1)">
+                        <div class="flex items-center gap-2">
+                            <select x-effect="const _c = getApplicableOrderPoliciesForSlot(slotIdx + 1).length; const _v = String((formData.sales_policy_ids && formData.sales_policy_ids[slotIdx + 1]) || ''); $nextTick(() => { $el.value = _v; })"
+                                    @change="onExtraOrderPolicyChange(slotIdx + 1, $event.target.value)"
+                                    class="w-full h-10 sm:h-9 px-3 bg-white border border-slate-300 hover:border-sky-400 focus:border-sky-500 rounded-xl text-sm sm:text-xs font-bold text-slate-800 focus:outline-none cursor-pointer shadow-2xs">
+                                <option value="">-- Chọn chính sách bổ sung --</option>
+                                <template x-for="p in getApplicableOrderPoliciesForSlot(slotIdx + 1)" :key="p.id">
+                                    <option :value="p.id"
+                                            :selected="String(extraId || '') === String(p.id)"
+                                            x-text="formatPolicyOptionLabel(p)"></option>
+                                </template>
+                            </select>
+                            <button type="button"
+                                    @click="removePolicySlot(slotIdx + 1)"
+                                    class="h-10 sm:h-9 px-3 rounded-xl bg-white hover:bg-rose-50 text-rose-500 border border-slate-300 hover:border-rose-300 text-xs font-bold transition cursor-pointer shrink-0"
+                                    title="Xóa chính sách này">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </template>
+
+                    <!-- Hiển thị tóm tắt trạng thái đạt/chưa đạt & quyền lợi đang áp dụng -->
+                    <template x-if="getSelectedPoliciesSummary().length > 0">
+                        <div class="flex flex-col gap-1.5 pt-0.5">
+                            <template x-for="info in getSelectedPoliciesSummary()" :key="'sum-' + info.id">
+                                <div class="px-3 py-2 rounded-xl border text-xs sm:text-[11px] flex items-center justify-between gap-2 flex-wrap"
+                                     :class="info.eligible ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <i class="fa-solid shrink-0" :class="info.eligible ? 'fa-circle-check text-emerald-600' : 'fa-circle-exclamation text-amber-600'"></i>
+                                        <span class="font-bold" x-text="info.name"></span>
+                                    </div>
+                                    <span class="font-extrabold px-2 py-0.5 rounded-lg text-[11px] shrink-0"
+                                          :class="info.eligible ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
+                                          x-text="info.statusText"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
                 </div>
             </div>
 
@@ -1999,6 +2048,7 @@ function orderFormApp() {
         appliedPromotionNotices: [],
         appliedPromoPolicyIds: [],
         _isApplyingPromotions: false,
+        _isApplyingOrderPolicies: false,
         _autoOrderDiscount: false,
         _manualOrderDiscount: false,
         activeProdDropdownIndex: null,
@@ -2052,6 +2102,8 @@ function orderFormApp() {
                     notes: '{{ $order ? addslashes(str_replace(["\r", "\n"], ["", "\\n"], $order->notes)) : "" }}',
                     discount_percent: {{ $orderDiscPct }},
                     discount_amount: {{ $order ? (float)$order->discount_amount : 0 }},
+                    sales_policy_id: '{{ !empty($initialPolicyIds[0]) ? $initialPolicyIds[0] : "" }}',
+                    sales_policy_ids: @json($initialPolicyIds),
                     tax_amount: {{ $order ? (float)$order->tax_amount : 0 }},
                     sales_rep_name: '{{ $order ? addslashes($order->salesRep?->name ?: ($order->dealer?->salesRep?->name ?: ($order->order_creator ?: ($order->creator?->name ?: "")))) : addslashes(auth()->user()->name ?? "") }}',
                 },
@@ -2096,7 +2148,8 @@ function orderFormApp() {
                 this.showPromoSection = true;
             }
 
-            this.recalculatePromotionalGifts();
+            // Liên kết lại các quà tặng / chiết khấu đã lưu với chính sách của đơn (nếu đang mở sửa đơn)
+            this.rebindSavedOrderPolicies();
             this.calculateTotals();
 
             // Nạp sản phẩm từ Giao diện Bán hàng (POS) nếu có giỏ hàng tạm
@@ -2189,6 +2242,7 @@ function orderFormApp() {
                     for (let i = 0; i < this.items.length; i++) {
                         this.updateLineTotal(i);
                     }
+                    this.evaluateOrderPolicies();
                     this.calculateTotals();
                 }
 
@@ -2209,6 +2263,9 @@ function orderFormApp() {
         syncCurrentTicket() {
             const t = this.tickets[this.activeTicketIndex];
             if (t) {
+                if (!Array.isArray(t.formData.sales_policy_ids)) {
+                    t.formData.sales_policy_ids = t.formData.sales_policy_id ? [String(t.formData.sales_policy_id)] : [];
+                }
                 this.formData = t.formData;
                 this.items = t.items;
                 this.orderId = t.orderId || '';
@@ -2253,6 +2310,8 @@ function orderFormApp() {
                     status: 'Chốt đơn',
                     notes: '',
                     discount_amount: 0,
+                    sales_policy_id: '',
+                    sales_policy_ids: [],
                     tax_amount: 0,
                 },
                 items: [
@@ -2495,7 +2554,8 @@ function orderFormApp() {
             if (curT) {
                 curT.title = dealer.name;
             }
-            // this.checkAndApplyPromotions(true);
+            this.sanitizeSelectedPoliciesForCustomer();
+            this.evaluateOrderPolicies();
         },
 
         clearCustomer() {
@@ -2508,7 +2568,8 @@ function orderFormApp() {
             if (curT) {
                 curT.title = 'Phiếu ' + (this.activeTicketIndex + 1);
             }
-            // this.checkAndApplyPromotions(true);
+            this.sanitizeSelectedPoliciesForCustomer();
+            this.evaluateOrderPolicies();
         },
 
         hasTaxCode() {
@@ -2897,8 +2958,6 @@ function orderFormApp() {
 
             this.activeProdDropdownIndex = null;
             this.updateLineTotal(index);
-            this.recalculatePromotionalGifts();
-            this.calculateTotals();
         },
 
         onItemSearch(index, val) {
@@ -2929,92 +2988,125 @@ function orderFormApp() {
             }
         },
 
-        getApplicablePoliciesForItem(item) {
-            if (!item || !item.product_id) return [];
+        getSalesPolicyById(id) {
+            if (!id) return null;
+            return (this.salesPoliciesCatalog || []).find(p => String(p.id) === String(id)) || null;
+        },
+
+        getNormalizedPolicyProductIds(policy) {
+            if (!policy) return [];
+            let prodIds = policy.target_product_ids;
+            if (typeof prodIds === 'string') {
+                try { prodIds = JSON.parse(prodIds); } catch(e) { prodIds = []; }
+            }
+            if (!Array.isArray(prodIds)) return [];
+            return prodIds.map(id => String(id));
+        },
+
+        isPolicyTargetOverlapping(policyA, policyB) {
+            if (!policyA || !policyB) return false;
+            if (String(policyA.id) === String(policyB.id)) return true;
+
+            const idsA = this.getNormalizedPolicyProductIds(policyA);
+            const idsB = this.getNormalizedPolicyProductIds(policyB);
+            if (idsA.length === 0 || idsB.length === 0) return true;
+
+            const setB = new Set(idsB);
+            return idsA.some(id => setB.has(id));
+        },
+
+        getActiveSalesProductIds() {
+            const set = new Set();
+            (this.items || []).forEach(it => {
+                if (!it.isPromotionalGift && it.checked !== false && it.product_id) {
+                    set.add(String(it.product_id));
+                }
+            });
+            return set;
+        },
+
+        getApplicableOrderPolicies() {
+            const activeProdIds = this.getActiveSalesProductIds();
             return (this.salesPoliciesCatalog || []).filter(p => {
                 if (!this.isCustomerEligibleForPolicy(p)) return false;
-                if (!this.isProductInPolicy(p, item.product_id)) return false;
+                const pTargets = this.getNormalizedPolicyProductIds(p);
+                if (activeProdIds.size > 0) {
+                    if (pTargets.length === 0) return true;
+                    return pTargets.some(id => activeProdIds.has(id));
+                }
                 return true;
             });
         },
 
-        getPolicySummaryText(item) {
-            if (!item || !item.policy_id) return '';
-            const p = (this.salesPoliciesCatalog || []).find(x => String(x.id) === String(item.policy_id));
-            if (!p) return '';
-            if (p.policy_type === 'quantity') {
-                const buy = Number(p.buy_qty) || 0;
-                const free = Number(p.free_qty) || 0;
-                const q = Number(item.quantity) || 0;
-                if (q < buy) {
-                    return `Mua thêm ${buy - q} để nhận ${free} quà`;
-                }
-                const mult = Math.floor(q / buy);
-                return `Đạt tặng +${mult * free}`;
+        getApplicableOrderPoliciesForSlot(slotIndex) {
+            const applicable = this.getApplicableOrderPolicies();
+            const currentIds = (this.formData.sales_policy_ids || []).map(id => String(id || ''));
+            const currentSlotId = currentIds[slotIndex] || '';
+
+            if (slotIndex === 0) {
+                return applicable;
             }
-            if (p.policy_type === 'percentage') {
-                return `CK: -${p.discount_percent}%`;
-            }
-            if (p.policy_type === 'amount') {
-                return `Giảm: -${this.formatNumber(p.discount_amount)}đ`;
-            }
-            return '';
+
+            const otherPolicies = currentIds
+                .filter((id, idx) => idx !== slotIndex && id)
+                .map(id => this.getSalesPolicyById(id))
+                .filter(Boolean);
+
+            return applicable.filter(p => {
+                if (currentSlotId && String(p.id) === currentSlotId) return true;
+                return !otherPolicies.some(op => this.isPolicyTargetOverlapping(p, op));
+            });
         },
 
-        onItemPolicyChange(index) {
-            const item = this.items[index];
-            if (!item) return;
-            const p = (this.salesPoliciesCatalog || []).find(x => String(x.id) === String(item.policy_id));
-            if (p) {
-                item.appliedPolicyName = p.name;
-                item._manualPolicy = true;
-                if (p.policy_type === 'percentage') {
-                    item.discount_percent = Number(p.discount_percent) || 0;
-                    this.updateLineTotal(index, 'from_percent');
-                } else if (p.policy_type === 'amount') {
-                    item.discount_amount = Number(p.discount_amount) || 0;
-                    this.updateLineTotal(index, 'from_amount');
-                }
-            } else {
-                item.policy_id = '';
-                item.appliedPolicyName = '';
-                item._manualPolicy = false;
-                if (!item._manualDiscount) {
-                    item.discount_percent = 0;
-                    item.discount_amount = 0;
-                    this.updateLineTotal(index, 'from_amount');
-                }
-            }
-            this.recalculatePromotionalGifts();
-            this.calculateTotals();
+        getRemainingAddablePolicies() {
+            const applicable = this.getApplicableOrderPolicies();
+            const selectedPolicies = (this.formData.sales_policy_ids || [])
+                .filter(Boolean)
+                .map(id => this.getSalesPolicyById(id))
+                .filter(Boolean);
+
+            return applicable.filter(p => !selectedPolicies.some(sp => this.isPolicyTargetOverlapping(p, sp)));
         },
 
-        recalculatePromotionalGifts() {
-            const activeGiftKeys = [];
+        getPolicyEvaluation(policy) {
+            if (!policy) {
+                return { eligible: false, reason: 'Chưa xác định', benefitText: '', statusText: '', totalMatchedQty: 0, matchedSubtotal: 0, matchingItems: [], totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
+            }
+            if (!this.isCustomerEligibleForPolicy(policy)) {
+                return { eligible: false, reason: 'Chỉ áp dụng đại lý chỉ định', benefitText: '', statusText: 'Không thuộc đối tượng đại lý', totalMatchedQty: 0, matchedSubtotal: 0, matchingItems: [], totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
+            }
 
-            this.items.forEach((item, idx) => {
-                if (item.isPromotionalGift || !item.product_id) return;
+            const matchingItems = (this.items || []).filter(it =>
+                !it.isPromotionalGift &&
+                it.checked !== false &&
+                it.product_id &&
+                this.isProductInPolicy(policy, it.product_id)
+            );
 
+            if (matchingItems.length === 0) {
+                return { eligible: false, reason: 'Chưa có SP phù hợp', benefitText: '', statusText: 'Đơn chưa có SP thuộc nhóm áp dụng', totalMatchedQty: 0, matchedSubtotal: 0, matchingItems: [], totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
+            }
 
+            const totalMatchedQty = matchingItems.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0);
+            const matchedSubtotal = matchingItems.reduce((sum, it) => {
+                const lineBase = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
+                const manualDisc = (it._manualDiscount && !it._autoPromoDiscount) ? (Number(it.discount_amount) || 0) : 0;
+                return sum + Math.max(0, lineBase - manualDisc);
+            }, 0);
 
-                if (!item.policy_id) return;
-                const policy = (this.salesPoliciesCatalog || []).find(p => String(p.id) === String(item.policy_id));
-                if (!policy || policy.policy_type !== 'quantity') return;
-
+            if (policy.policy_type === 'quantity') {
                 const buyQty = Number(policy.buy_qty) || 0;
                 const freeQty = Number(policy.free_qty) || 0;
                 let freeProductId = policy.free_product_id || null;
-                const itemQty = Number(item.quantity) || 0;
 
-                // Kiểm tra xem chính sách có cấu hình các phân khúc bậc tặng quà (gift_tiers) hay không
-                let matchedTier = null;
                 let tiersList = policy.gift_tiers;
                 if (typeof tiersList === 'string') {
                     try { tiersList = JSON.parse(tiersList); } catch(e) { tiersList = []; }
                 }
 
+                let matchedTier = null;
+                let minBuyRequired = buyQty;
                 if (Array.isArray(tiersList) && tiersList.length > 0) {
-                    // Sắp xếp phân khúc giảm dần theo buy_qty để tìm bậc cao nhất đạt được
                     const sortedTiers = [...tiersList]
                         .map(t => ({
                             buy_qty: Number(t.buy_qty) || 0,
@@ -3023,90 +3115,443 @@ function orderFormApp() {
                         }))
                         .filter(t => t.buy_qty > 0 && t.free_qty > 0)
                         .sort((a, b) => b.buy_qty - a.buy_qty);
-
-                    matchedTier = sortedTiers.find(t => itemQty >= t.buy_qty);
+                    if (sortedTiers.length > 0) {
+                        minBuyRequired = sortedTiers[sortedTiers.length - 1].buy_qty;
+                        matchedTier = sortedTiers.find(t => totalMatchedQty >= t.buy_qty);
+                    }
                 }
 
                 let totalFree = 0;
-                let tierPolicyLabel = `[TẶNG KÈM] ${policy.name}`;
-
+                let giftLabel = `[TẶNG KÈM] ${policy.name}`;
                 if (matchedTier) {
-                    // Tính số lượng quà tặng theo phân khúc bậc đạt được cao nhất
-                    const mult = Math.floor(itemQty / matchedTier.buy_qty);
+                    const mult = Math.floor(totalMatchedQty / matchedTier.buy_qty);
                     totalFree = mult * matchedTier.free_qty;
                     if (matchedTier.free_product_id) {
                         freeProductId = matchedTier.free_product_id;
                     }
-                    tierPolicyLabel = `[TẶNG KÈM MUA ${matchedTier.buy_qty} TẶNG ${matchedTier.free_qty}] ${policy.name}`;
-                } else if (buyQty > 0 && itemQty >= buyQty && freeQty > 0) {
-                    // Fallback theo tỉ lệ buy_qty & free_qty thông thường
-                    const mult = Math.floor(itemQty / buyQty);
+                    giftLabel = `[TẶNG KÈM MUA ${matchedTier.buy_qty} TẶNG ${matchedTier.free_qty}] ${policy.name}`;
+                } else if (buyQty > 0 && freeQty > 0 && totalMatchedQty >= buyQty) {
+                    const mult = Math.floor(totalMatchedQty / buyQty);
                     totalFree = mult * freeQty;
                 }
 
-                if (totalFree <= 0) return;
+                if (totalFree <= 0) {
+                    const needMore = Math.max(1, Math.ceil((minBuyRequired || 1) - totalMatchedQty));
+                    return {
+                        eligible: false,
+                        reason: `Thiếu ${needMore} SP`,
+                        benefitText: '',
+                        statusText: `Chưa đạt (cần thêm ${needMore} SP, hiện có ${this.formatNumber(totalMatchedQty)})`,
+                        totalMatchedQty, matchedSubtotal, matchingItems, totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0
+                    };
+                }
 
                 let freeProd = null;
-                if (freeProductId) {
-                    freeProd = this.getProduct(freeProductId);
-                }
-                if (!freeProd && policy.free_product) {
-                    freeProd = policy.free_product;
-                }
+                if (freeProductId) freeProd = this.getProduct(freeProductId);
+                if (!freeProd && policy.free_product) freeProd = policy.free_product;
                 if (!freeProd) {
-                    freeProd = this.getProduct(item.product_id);
+                    const bestItem = [...matchingItems].sort((a, b) => (Number(b.quantity) || 0) - (Number(a.quantity) || 0))[0];
+                    if (bestItem) freeProd = this.getProduct(bestItem.product_id);
                 }
 
-                const freeSku = freeProd?.sku || item.sku || 'KM-SP';
-                const freeName = freeProd?.name || item.name || 'Hàng tặng khuyến mại';
-                const freeUnit = freeProd?.unit || item.unit || 'cái';
-                const giftKey = `${policy.id}_${item.sku}_${freeSku}`;
-                activeGiftKeys.push(giftKey);
+                const freeName = freeProd?.name || 'quà tặng';
+                return {
+                    eligible: true,
+                    reason: '',
+                    benefitText: `Tặng +${totalFree}`,
+                    statusText: `Đạt: Tặng +${totalFree} ${freeProd?.unit || 'SP'} (${freeName})`,
+                    totalMatchedQty, matchedSubtotal, matchingItems, totalFree, freeProd, giftLabel, discountAmt: 0, discountPct: 0
+                };
+            }
 
-                const existing = this.items.find(g => g.isPromotionalGift && g._giftKey === giftKey);
-                if (existing) {
-                    if (!existing._manualQty) {
-                        existing.quantity = totalFree;
-                    }
-                    existing.unit = freeUnit;
-                    existing.appliedTierPolicy = tierPolicyLabel;
-                } else {
-                    this.items.push({
-                        _rowKey: 'gift-' + Date.now() + '-' + Math.random(),
-                        id: '',
-                        itemId: freeProd?.id ? String(freeProd.id) : String(item.product_id),
-                        product_id: freeProd?.id || item.product_id,
-                        sku: freeSku,
-                        name: freeName,
-                        searchQuery: freeName,
-                        unit: freeUnit,
-                        quantity: totalFree,
-                        gift_quantity: 0,
-                        unitPrice: 0,
-                        originalPrice: 0,
-                        costPrice: Number(freeProd?.cost_price || 0),
-                        discount_percent: 0,
-                        discount_amount: 0,
-                        vat_percent: 0,
-                        vat_amount: 0,
-                        appliedTierPolicy: tierPolicyLabel,
-                        price_type: 'Khuyến mại',
-                        amount: 0,
-                        checked: true,
-                        isPromotionalGift: true,
-                        promoPolicyId: policy.id,
-                        _giftKey: giftKey,
-                        parentItemSku: item.sku,
+            const minVal = Number(policy.min_order_value) || 0;
+            const buyQty = Number(policy.buy_qty) || 0;
+
+            if (buyQty > 0 && totalMatchedQty < buyQty) {
+                const needMore = Math.max(1, Math.ceil(buyQty - totalMatchedQty));
+                return {
+                    eligible: false,
+                    reason: `Thiếu ${needMore} SP`,
+                    benefitText: '',
+                    statusText: `Chưa đạt (cần thêm ${needMore} SP, tối thiểu ${buyQty} SP)`,
+                    totalMatchedQty, matchedSubtotal, matchingItems, totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0
+                };
+            }
+
+            if (minVal > 0 && matchedSubtotal < minVal) {
+                const needAmt = Math.max(0, minVal - matchedSubtotal);
+                return {
+                    eligible: false,
+                    reason: `Thiếu ${this.formatNumber(needAmt)}đ`,
+                    benefitText: '',
+                    statusText: `Chưa đạt (cần mua thêm ${this.formatNumber(needAmt)} đ nhóm SP này)`,
+                    totalMatchedQty, matchedSubtotal, matchingItems, totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0
+                };
+            }
+
+            if (policy.policy_type === 'percentage') {
+                const discPct = Number(policy.discount_percent) || 0;
+                const estAmt = Math.round((matchedSubtotal * discPct) / 100);
+                return {
+                    eligible: discPct > 0 && matchedSubtotal > 0,
+                    reason: '',
+                    benefitText: `CK -${discPct}%`,
+                    statusText: `Đạt: Chiết khấu ${discPct}% (-${this.formatNumber(estAmt)} đ)`,
+                    totalMatchedQty, matchedSubtotal, matchingItems, totalFree: 0, freeProd: null, giftLabel: '', discountAmt: estAmt, discountPct: discPct
+                };
+            }
+
+            if (policy.policy_type === 'amount') {
+                const discAmt = Math.min(matchedSubtotal, Number(policy.discount_amount) || 0);
+                return {
+                    eligible: discAmt > 0 && matchedSubtotal > 0,
+                    reason: '',
+                    benefitText: `-${this.formatNumber(discAmt)}đ`,
+                    statusText: `Đạt: Giảm trực tiếp ${this.formatNumber(discAmt)} đ`,
+                    totalMatchedQty, matchedSubtotal, matchingItems, totalFree: 0, freeProd: null, giftLabel: '', discountAmt: discAmt, discountPct: 0
+                };
+            }
+
+            return { eligible: false, reason: 'Chưa hỗ trợ', benefitText: '', statusText: 'Không hợp lệ', totalMatchedQty, matchedSubtotal, matchingItems, totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
+        },
+
+        formatPolicyOptionLabel(policy) {
+            if (!policy) return '';
+            const ev = this.getPolicyEvaluation(policy);
+            const prefix = ev.eligible ? `[Đạt${ev.benefitText ? ': ' + ev.benefitText : ''}]` : `[${ev.reason}]`;
+            return `${prefix} ${policy.name}`;
+        },
+
+        getSelectedPoliciesSummary() {
+            const ids = (this.formData.sales_policy_ids || []).filter(Boolean);
+            return ids.map(id => {
+                const p = this.getSalesPolicyById(id);
+                if (!p) return null;
+                const ev = this.getPolicyEvaluation(p);
+                return {
+                    id: p.id,
+                    name: p.name,
+                    eligible: ev.eligible,
+                    statusText: ev.statusText,
+                };
+            }).filter(Boolean);
+        },
+
+        sanitizeSelectedPoliciesForCustomer() {
+            if (!Array.isArray(this.formData.sales_policy_ids)) {
+                this.formData.sales_policy_ids = [];
+            }
+            const oldIds = [...this.formData.sales_policy_ids];
+            const filtered = oldIds.filter(id => {
+                if (!id) return false;
+                const p = this.getSalesPolicyById(id);
+                return p && this.isCustomerEligibleForPolicy(p);
+            });
+            oldIds.forEach(oldId => {
+                if (oldId && !filtered.includes(oldId)) {
+                    this.cleanupEffectsOfRemovedPolicy(oldId);
+                }
+            });
+            this.formData.sales_policy_ids = filtered;
+            this.formData.sales_policy_id = filtered[0] || '';
+        },
+
+        rebindSavedOrderPolicies() {
+            if (!this.orderId) return;
+            const ids = (this.formData.sales_policy_ids || []).filter(Boolean);
+            if (ids.length === 0) return;
+
+            ids.forEach(pid => {
+                const p = this.getSalesPolicyById(pid);
+                if (!p) return;
+
+                if (p.policy_type === 'quantity') {
+                    (this.items || []).forEach(g => {
+                        if (g.isPromotionalGift && (g.appliedTierPolicy || '').includes(p.name)) {
+                            g.promoPolicyId = p.id;
+                            g._giftKey = `order_policy_${p.id}_${g.sku}`;
+                            g._manualGift = false;
+                        }
+                    });
+                } else if (p.apply_scope === 'order' && Number(this.formData.discount_amount) > 0) {
+                    this._autoOrderDiscount = true;
+                } else if (p.apply_scope === 'product') {
+                    (this.items || []).forEach(it => {
+                        if (!it.isPromotionalGift && it.product_id && this.isProductInPolicy(p, it.product_id)) {
+                            if (Number(it.discount_amount) > 0 || Number(it.discount_percent) > 0) {
+                                it._appliedPromoPolicyId = p.id;
+                                it._autoPromoDiscount = true;
+                                it._manualDiscount = false;
+                            }
+                        }
                     });
                 }
             });
+        },
 
-            // Xóa các quà tặng tự động gắn với key này nếu điều kiện không còn thỏa mãn (xóa in-place để không làm đứt reactive Alpine)
+        onPrimaryOrderPolicyChange(newId) {
+            const idStr = String(newId || '');
+            const prevIds = [...(this.formData.sales_policy_ids || [])];
+            if (!idStr) {
+                this.clearAllOrderPolicies();
+                return;
+            }
+            const newPolicy = this.getSalesPolicyById(idStr);
+            const currentExtra = prevIds.slice(1).filter(id => {
+                if (!id || String(id) === idStr) return false;
+                const op = this.getSalesPolicyById(id);
+                return op && (!newPolicy || !this.isPolicyTargetOverlapping(newPolicy, op));
+            });
+
+            const nextIds = [idStr, ...currentExtra];
+            prevIds.forEach(oldId => {
+                if (oldId && !nextIds.includes(String(oldId))) {
+                    this.cleanupEffectsOfRemovedPolicy(oldId);
+                }
+            });
+
+            this.formData.sales_policy_ids = nextIds;
+            this.formData.sales_policy_id = idStr;
+
+            if (newPolicy && newPolicy.apply_scope === 'order' && (newPolicy.policy_type === 'percentage' || newPolicy.policy_type === 'amount')) {
+                this._manualOrderDiscount = false;
+            } else if (newPolicy && newPolicy.apply_scope === 'product' && (newPolicy.policy_type === 'percentage' || newPolicy.policy_type === 'amount')) {
+                (this.items || []).forEach(it => {
+                    if (!it.isPromotionalGift && it.product_id && this.isProductInPolicy(newPolicy, it.product_id)) {
+                        it._manualDiscount = false;
+                    }
+                });
+            }
+            this.evaluateOrderPolicies();
+        },
+
+        onExtraOrderPolicyChange(slotIndex, newId) {
+            if (!Array.isArray(this.formData.sales_policy_ids)) return;
+            const prevId = this.formData.sales_policy_ids[slotIndex];
+            const idStr = String(newId || '');
+            if (!idStr) {
+                this.removePolicySlot(slotIndex);
+                return;
+            }
+            if (prevId && String(prevId) !== idStr) {
+                this.cleanupEffectsOfRemovedPolicy(prevId);
+            }
+            this.formData.sales_policy_ids[slotIndex] = idStr;
+            const newPolicy = this.getSalesPolicyById(idStr);
+            if (newPolicy && newPolicy.apply_scope === 'order' && (newPolicy.policy_type === 'percentage' || newPolicy.policy_type === 'amount')) {
+                this._manualOrderDiscount = false;
+            } else if (newPolicy && newPolicy.apply_scope === 'product' && (newPolicy.policy_type === 'percentage' || newPolicy.policy_type === 'amount')) {
+                (this.items || []).forEach(it => {
+                    if (!it.isPromotionalGift && it.product_id && this.isProductInPolicy(newPolicy, it.product_id)) {
+                        it._manualDiscount = false;
+                    }
+                });
+            }
+            this.formData.sales_policy_id = this.formData.sales_policy_ids[0] || '';
+            this.evaluateOrderPolicies();
+        },
+
+        addAnotherPolicySlot() {
+            if (!Array.isArray(this.formData.sales_policy_ids)) {
+                this.formData.sales_policy_ids = [];
+            }
+            if (!this.formData.sales_policy_ids.includes('')) {
+                this.formData.sales_policy_ids.push('');
+            }
+        },
+
+        removePolicySlot(slotIndex) {
+            if (!Array.isArray(this.formData.sales_policy_ids)) return;
+            const removedId = this.formData.sales_policy_ids[slotIndex];
+            this.formData.sales_policy_ids.splice(slotIndex, 1);
+            this.formData.sales_policy_ids = this.formData.sales_policy_ids.filter(Boolean);
+            this.formData.sales_policy_id = this.formData.sales_policy_ids[0] || '';
+            this.cleanupEffectsOfRemovedPolicy(removedId);
+            this.evaluateOrderPolicies();
+        },
+
+        clearAllOrderPolicies() {
+            const oldIds = [...(this.formData.sales_policy_ids || [])];
+            this.formData.sales_policy_ids = [];
+            this.formData.sales_policy_id = '';
+            oldIds.forEach(id => this.cleanupEffectsOfRemovedPolicy(id));
+            this.evaluateOrderPolicies();
+        },
+
+        cleanupEffectsOfRemovedPolicy(policyId) {
+            if (!policyId) return;
+            const p = this.getSalesPolicyById(policyId);
             for (let i = this.items.length - 1; i >= 0; i--) {
                 const g = this.items[i];
-                if (g.isPromotionalGift && g._giftKey && !activeGiftKeys.includes(g._giftKey)) {
+                if (g.isPromotionalGift && (String(g.promoPolicyId || '') === String(policyId) || (p && (g.appliedTierPolicy || '').includes(p.name)))) {
                     this.items.splice(i, 1);
                 }
+            }
+            (this.items || []).forEach(it => {
+                if (!it.isPromotionalGift && String(it._appliedPromoPolicyId || '') === String(policyId)) {
+                    it.discount_percent = 0;
+                    it.discount_amount = 0;
+                    it._autoPromoDiscount = false;
+                    it._manualDiscount = false;
+                    it._appliedPromoPolicyId = null;
+                    it.amount = Math.max(0, Math.round((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0)));
+                }
+            });
+            if (p && p.apply_scope === 'order' && (p.policy_type === 'percentage' || p.policy_type === 'amount') && this._autoOrderDiscount) {
+                this.orderDiscountPercent = 0;
+                this.formData.discount_amount = 0;
+                this._autoOrderDiscount = false;
+            }
+        },
+
+        evaluateOrderPolicies() {
+            if (this._isApplyingOrderPolicies) return;
+            this._isApplyingOrderPolicies = true;
+
+            try {
+                const activeGiftKeys = [];
+                const selectedPolicies = (this.formData.sales_policy_ids || [])
+                    .filter(Boolean)
+                    .map(id => this.getSalesPolicyById(id))
+                    .filter(Boolean);
+
+                // 1. Dọn dẹp chiết khấu dòng tự động cũ (chưa sửa tay) trước khi tính lại
+                (this.items || []).forEach(it => {
+                    if (!it.isPromotionalGift && it._autoPromoDiscount && !it._manualDiscount) {
+                        it.discount_percent = 0;
+                        it.discount_amount = 0;
+                        it._autoPromoDiscount = false;
+                        it._appliedPromoPolicyId = null;
+                        it.amount = Math.max(0, Math.round((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0)));
+                    }
+                });
+
+                // Reset chiết khấu toàn đơn tự động cũ trước khi tính lại
+                if (this._autoOrderDiscount && !this._manualOrderDiscount) {
+                    this.orderDiscountPercent = 0;
+                    this.formData.discount_amount = 0;
+                    this._autoOrderDiscount = false;
+                }
+
+                let accumulatedOrderDiscount = 0;
+                let hasOrderDiscountPolicy = false;
+
+                // 2. Áp dụng lần lượt các chính sách đã chọn ở vị trí phía dưới
+                selectedPolicies.forEach(policy => {
+                    const ev = this.getPolicyEvaluation(policy);
+
+                    if (policy.policy_type === 'quantity') {
+                        if (!ev.eligible || ev.totalFree <= 0) return;
+
+                        const freeProd = ev.freeProd;
+                        const freeSku = freeProd?.sku || ev.matchingItems[0]?.sku || 'KM-SP';
+                        const freeName = freeProd?.name || ev.matchingItems[0]?.name || 'Hàng tặng khuyến mại';
+                        const freeUnit = freeProd?.unit || ev.matchingItems[0]?.unit || 'cái';
+                        const giftKey = `order_policy_${policy.id}_${freeSku}`;
+                        activeGiftKeys.push(giftKey);
+
+                        const existing = this.items.find(g => g.isPromotionalGift && (g._giftKey === giftKey || String(g.promoPolicyId || '') === String(policy.id)));
+                        if (existing) {
+                            existing._giftKey = giftKey;
+                            existing.promoPolicyId = policy.id;
+                            if (!existing._manualQty) {
+                                existing.quantity = ev.totalFree;
+                            }
+                            existing.sku = freeSku;
+                            existing.name = freeName;
+                            existing.searchQuery = freeName;
+                            existing.unit = freeUnit;
+                            existing.appliedTierPolicy = ev.giftLabel;
+                        } else {
+                            this.items.push({
+                                _rowKey: 'gift-' + Date.now() + '-' + Math.random(),
+                                id: '',
+                                itemId: freeProd?.id ? String(freeProd.id) : String(ev.matchingItems[0]?.product_id || ''),
+                                product_id: freeProd?.id || ev.matchingItems[0]?.product_id || '',
+                                sku: freeSku,
+                                name: freeName,
+                                searchQuery: freeName,
+                                unit: freeUnit,
+                                quantity: ev.totalFree,
+                                gift_quantity: 0,
+                                unitPrice: 0,
+                                originalPrice: 0,
+                                costPrice: Number(freeProd?.cost_price || 0),
+                                discount_percent: 0,
+                                discount_amount: 0,
+                                vat_percent: 0,
+                                vat_amount: 0,
+                                appliedTierPolicy: ev.giftLabel,
+                                price_type: 'Khuyến mại',
+                                amount: 0,
+                                checked: true,
+                                isPromotionalGift: true,
+                                promoPolicyId: policy.id,
+                                _giftKey: giftKey,
+                            });
+                        }
+                        this.showPromoSection = true;
+                    } else if (policy.apply_scope === 'order' && (policy.policy_type === 'percentage' || policy.policy_type === 'amount')) {
+                        hasOrderDiscountPolicy = true;
+                        if (ev.eligible && ev.discountAmt > 0) {
+                            accumulatedOrderDiscount += ev.discountAmt;
+                        }
+                    } else if (policy.apply_scope === 'product' && (policy.policy_type === 'percentage' || policy.policy_type === 'amount')) {
+                        if (!ev.eligible) return;
+
+                        ev.matchingItems.forEach(it => {
+                            if (it._manualDiscount) return;
+                            const qty = Number(it.quantity) || 0;
+                            const price = Number(it.unitPrice) || 0;
+                            const lineBase = qty * price;
+
+                            it._appliedPromoPolicyId = policy.id;
+                            it._autoPromoDiscount = true;
+
+                            if (policy.policy_type === 'percentage') {
+                                const discPct = Number(policy.discount_percent) || 0;
+                                it.discount_percent = discPct;
+                                it.discount_amount = Math.round((lineBase * discPct) / 100);
+                            } else {
+                                const appliedAmt = Math.min(lineBase, Number(policy.discount_amount) || 0);
+                                it.discount_amount = Math.round(appliedAmt);
+                                it.discount_percent = lineBase > 0 ? Math.round((appliedAmt / lineBase) * 100 * 10) / 10 : 0;
+                            }
+                            it.amount = Math.max(0, Math.round(lineBase - it.discount_amount));
+                        });
+                    }
+                });
+
+                // 3. Xóa các dòng quà tặng tự sinh không còn thỏa điều kiện (dùng splice in-place để giữ reactive)
+                for (let i = this.items.length - 1; i >= 0; i--) {
+                    const g = this.items[i];
+                    if (g.isPromotionalGift && g._giftKey && !activeGiftKeys.includes(g._giftKey)) {
+                        this.items.splice(i, 1);
+                    }
+                }
+                if (this.getGiftItems().length === 0) {
+                    const hasManualPromoSection = (this.items || []).some(it => it.isPromotionalGift);
+                    if (!hasManualPromoSection) {
+                        this.showPromoSection = false;
+                    }
+                }
+
+                // 4. Cập nhật chiết khấu cấp đơn hàng nếu có chính sách scope 'order'
+                if (hasOrderDiscountPolicy && !this._manualOrderDiscount) {
+                    const rawSub = (this.items || [])
+                        .filter(it => it.checked !== false && !it.isPromotionalGift)
+                        .reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+                    const finalOrderDisc = Math.min(rawSub, Math.round(accumulatedOrderDiscount));
+                    this.formData.discount_amount = finalOrderDisc;
+                    this._autoOrderDiscount = finalOrderDisc > 0;
+                    this.orderDiscountPercent = (rawSub > 0 && finalOrderDisc > 0)
+                        ? Math.round((finalOrderDisc / rawSub) * 100 * 10) / 10
+                        : 0;
+                }
+
+                this.calculateTotals();
+            } finally {
+                this._isApplyingOrderPolicies = false;
             }
         },
 
@@ -3267,8 +3712,6 @@ function orderFormApp() {
                 unit: '',
                 quantity: 1,
                 gift_quantity: 0,
-                policy_id: '',
-                appliedPolicyName: '',
                 unitPrice: 0,
                 originalPrice: 0,
                 costPrice: 0,
@@ -3330,8 +3773,7 @@ function orderFormApp() {
             } else {
                 this.items.splice(index, 1);
             }
-            this.recalculatePromotionalGifts();
-            this.calculateTotals();
+            this.evaluateOrderPolicies();
         },
 
         recalculateItemPrices() {
@@ -3443,8 +3885,7 @@ function orderFormApp() {
                 it.vat_amount = 0;
                 it.amount = Math.round(lineAfterDiscount);
             }
-            this.recalculatePromotionalGifts();
-            this.calculateTotals();
+            this.evaluateOrderPolicies();
         },
 
         onOrderDiscountPercentChange() {
@@ -4121,6 +4562,10 @@ function orderFormApp() {
             this.saving = true;
             this.errorMessage = '';
 
+            const cleanPolicyIds = (this.formData.sales_policy_ids || [])
+                .map(id => Number(id))
+                .filter(id => Number.isFinite(id) && id > 0);
+
             const payload = {
                 id: this.orderId ? this.orderId : undefined,
                 orderCode: this.formData.order_code || undefined,
@@ -4148,6 +4593,10 @@ function orderFormApp() {
                 discountPercent: this.orderDiscountPercent,
                 discount_amount: this.formData.discount_amount,
                 discount_percent: this.orderDiscountPercent,
+                salesPolicyId: cleanPolicyIds[0] || null,
+                sales_policy_id: cleanPolicyIds[0] || null,
+                salesPolicyIds: cleanPolicyIds,
+                sales_policy_ids: cleanPolicyIds,
                 taxAmount: this.formData.tax_amount,
                 totalAmount: this.totalAmount,
                 hasShortageWarning: this.getOverStockItems().length > 0,
