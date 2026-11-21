@@ -2152,14 +2152,18 @@ function orderFormApp() {
             this.rebindSavedOrderPolicies();
             this.calculateTotals();
 
-            // Nạp sản phẩm từ Giao diện Bán hàng (POS) nếu có giỏ hàng tạm
-            this.loadItemsFromPosCart();
-
             const urlParams = new URLSearchParams(window.location.search);
+            const isFromPosEntry = !this.orderId && (urlParams.get('from_pos') === '1');
             if (urlParams.get('from_pos') === '1') {
                 sessionStorage.setItem('order_from_pos', '1');
                 sessionStorage.setItem('order_return_url', '{{ route('orders.pos') }}');
             }
+
+            // Nạp sản phẩm từ Giao diện Bán hàng (POS) nếu đi từ luồng POS (chỉ xóa storage khi đã lưu đơn thành công)
+            if (isFromPosEntry) {
+                this.loadItemsFromPosCart();
+            }
+
             if (urlParams.get('print') === '1') {
                 this.$nextTick(() => {
                     setTimeout(() => this.printCurrentOrder(), 500);
@@ -2177,6 +2181,7 @@ function orderFormApp() {
 
                 const targetTicket = this.tickets[this.activeTicketIndex];
                 if (!targetTicket) return;
+                targetTicket._fromPos = true;
 
                 // Nếu có chọn đại lý từ giao diện POS
                 const savedDealerId = sessionStorage.getItem('pos_dealer_id');
@@ -2204,9 +2209,7 @@ function orderFormApp() {
                     const prod = this.getProduct(cIt.product_id) || {};
                     const qty = Number(cIt.quantity) || 1;
                     const price = Number(cIt.price !== undefined ? cIt.price : (prod.price || 0));
-                    const vatRate = 0;
                     const lineBase = qty * price;
-                    const vatAmt = 0;
 
                     newItems.push({
                         id: '',
@@ -2244,16 +2247,6 @@ function orderFormApp() {
                     }
                     this.evaluateOrderPolicies();
                     this.calculateTotals();
-                }
-
-                // Xóa giỏ tạm sau khi đã nhập thành công vào đơn hàng
-                sessionStorage.removeItem('pos_cart_items');
-                sessionStorage.removeItem('pos_dealer_id');
-                sessionStorage.removeItem('pos_warehouse');
-
-                // Hiển thị thông báo toast
-                if (window.toast) {
-                    window.toast.success(`Đã thêm thành công ${cart.length} sản phẩm từ giao diện bán hàng!`);
                 }
             } catch (err) {
                 console.error('Lỗi khi nạp giỏ hàng từ POS:', err);
@@ -2362,10 +2355,25 @@ function orderFormApp() {
         goBack() {
             const returnUrl = this.getReturnUrl();
             const t = this.tickets ? this.tickets[this.activeTicketIndex] : null;
+            if (this.isFromPos()) {
+                const hasTypedOrderInfo = t && t.formData && (
+                    t.formData.customer_name ||
+                    t.formData.notes ||
+                    (Array.isArray(t.formData.sales_policy_ids) && t.formData.sales_policy_ids.filter(Boolean).length > 0)
+                );
+                if (hasTypedOrderInfo) {
+                    if (!confirm('Đơn hàng chưa lưu (sản phẩm vẫn được giữ lại trong giỏ hàng POS). Bạn có chắc muốn quay lại trang Bán Hàng POS?')) {
+                        return;
+                    }
+                }
+                sessionStorage.removeItem('order_from_pos');
+                sessionStorage.removeItem('order_return_url');
+                window.location.href = returnUrl;
+                return;
+            }
             const hasData = t && ((t.items && t.items.some(it => it.name || it.unitPrice > 0)) || (t.formData && t.formData.customer_name));
             if (hasData) {
-                const destName = this.isFromPos() ? 'trang Bán Hàng POS' : 'danh sách đơn hàng';
-                if (!confirm(`Dữ liệu chưa lưu sẽ bị mất. Bạn có chắc muốn quay lại ${destName}?`)) {
+                if (!confirm('Dữ liệu chưa lưu sẽ bị mất. Bạn có chắc muốn quay lại danh sách đơn hàng?')) {
                     return;
                 }
             }
@@ -2375,6 +2383,10 @@ function orderFormApp() {
         },
 
         closeTicket(index) {
+            if (this.isFromPos() && this.tickets.length === 1) {
+                this.goBack();
+                return;
+            }
             const t = this.tickets[index];
             if (!t) return;
             const hasData = t.items.some(it => it.name || it.unitPrice > 0) || t.formData.customer_name;
@@ -4658,6 +4670,13 @@ function orderFormApp() {
                             orderId: finalOrdId
                         }));
                     } catch(e) {}
+
+                    const savedTicket = this.tickets[this.activeTicketIndex];
+                    if (savedTicket?._fromPos || this.isFromPos()) {
+                        sessionStorage.removeItem('pos_cart_items');
+                        sessionStorage.removeItem('pos_dealer_id');
+                        sessionStorage.removeItem('pos_warehouse');
+                    }
 
                     if (andPrint) {
                         alert('Lưu đơn thành công! Đang chuyển sang chế độ in chứng từ...');

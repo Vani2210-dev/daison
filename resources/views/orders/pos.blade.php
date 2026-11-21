@@ -701,23 +701,38 @@ function posApp() {
             window.addEventListener('resize', () => {
                 this.isMobileViewport = window.innerWidth <= 768;
             });
+            window.addEventListener('pageshow', () => {
+                this.loadCartFromStorage();
+            });
             // Đặt kho mặc định
             if (this.warehouses && this.warehouses.length > 0) {
                 this.selectedWarehouse = this.warehouses[0].name;
             }
 
-            // Tải giỏ hàng từ sessionStorage nếu có lưu dở trước đó
+            this.loadCartFromStorage();
+        },
+
+        loadCartFromStorage() {
+            // Tải giỏ hàng từ sessionStorage nếu có lưu dở trước đó (chưa lưu đơn)
             try {
+                sessionStorage.removeItem('order_from_pos');
+                sessionStorage.removeItem('order_return_url');
+
                 const savedCart = sessionStorage.getItem('pos_cart_items');
                 if (savedCart) {
                     const parsed = JSON.parse(savedCart);
                     if (Array.isArray(parsed)) {
                         this.cart = parsed;
                     }
+                } else {
+                    this.cart = [];
                 }
                 const savedDealer = sessionStorage.getItem('pos_dealer_id');
-                if (savedDealer) {
-                    this.selectedDealerId = savedDealer;
+                this.selectedDealerId = savedDealer || '';
+
+                const savedWarehouse = sessionStorage.getItem('pos_warehouse');
+                if (savedWarehouse && this.warehouses && this.warehouses.some(w => w.name === savedWarehouse)) {
+                    this.selectedWarehouse = savedWarehouse;
                 }
             } catch (e) {
                 console.error('Lỗi khi tải giỏ tạm:', e);
