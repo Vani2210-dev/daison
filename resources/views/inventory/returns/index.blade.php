@@ -136,7 +136,8 @@
 
     <!-- 5. Returns Slips Data Table -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div class="overflow-x-auto">
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left text-xs divide-y divide-slate-200">
                 <thead class="bg-slate-50 text-slate-600 font-extrabold text-[11px] uppercase tracking-wider">
                     <tr>
@@ -271,6 +272,57 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Cards List -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            @forelse($returns as $r)
+            <div class="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs space-y-2 {{ $r->status === 'Chờ thủ kho duyệt nhập' ? 'bg-amber-50/20' : '' }}">
+                <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+                    <span class="font-mono font-black text-purple-700 text-xs">{{ $r->slip_code }}</span>
+                    <span class="text-[10px] text-slate-400">{{ $r->created_at ? $r->created_at->format('H:i d/m/Y') : '---' }}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <span class="text-[10px] text-slate-400 font-bold block">Người trả</span>
+                        <span class="font-bold text-slate-800">{{ $r->driver->name ?? '---' }}</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 font-bold block">Đơn & Khách</span>
+                        <span class="font-bold text-slate-800">{{ $r->order ? $r->order->order_code : '---' }}</span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between py-1 px-2.5 bg-slate-50 rounded-xl text-xs">
+                    <span class="text-slate-500 font-medium">{{ count($r->items ?? []) }} mặt hàng</span>
+                    <span class="font-bold text-xs {{ $r->status === 'Chờ thủ kho duyệt nhập' ? 'text-amber-700' : 'text-emerald-700' }}">{{ $r->status }}</span>
+                </div>
+                <div class="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100">
+                    @if($r->status === 'Chờ thủ kho duyệt nhập')
+                        <button type="button" @click="openApproveModal(@js($r))"
+                                class="px-3 py-1 bg-emerald-600 text-white font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-check text-xs"></i> Duyệt
+                        </button>
+                        <button type="button" @click="openRejectModal(@js($r))"
+                                class="p-1.5 bg-rose-50 text-rose-600 rounded-lg border border-rose-200 text-xs cursor-pointer">
+                            <i class="fa-solid fa-xmark text-xs"></i>
+                        </button>
+                    @endif
+                    <button type="button" @click="openDetailModal(@js($r))"
+                            class="p-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs cursor-pointer">
+                        <i class="fa-solid fa-eye text-xs"></i>
+                    </button>
+                    <button type="button" @click="printReturnSlip(@js($r))"
+                            class="p-1.5 bg-purple-50 text-purple-700 rounded-lg border border-purple-200 text-xs cursor-pointer">
+                        <i class="fa-solid fa-print text-xs"></i>
+                    </button>
+                </div>
+            </div>
+            @empty
+            <div class="py-8 text-center text-slate-400">
+                <i class="fa-solid fa-box-open text-2xl mb-1 text-slate-300"></i>
+                <p class="text-xs font-semibold">Chưa có phiếu hoàn hàng nào cần xử lý</p>
+            </div>
+            @endforelse
         </div>
 
         @if($returns->hasPages())
@@ -461,7 +513,8 @@
                     </div>
                 </div>
 
-                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                <!-- Desktop Table Detail -->
+                <div class="hidden md:block border border-slate-200 rounded-xl overflow-hidden">
                     <table class="w-full text-left text-xs divide-y divide-slate-200">
                         <thead class="bg-slate-50 text-slate-600 font-bold text-[11px] uppercase">
                             <tr>
@@ -482,6 +535,19 @@
                             </template>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Mobile Cards Detail -->
+                <div class="md:hidden space-y-2">
+                    <template x-for="it in (activeReturn?.items || [])" :key="'m-' + it.id">
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5 text-xs">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-slate-800" x-text="it.name"></span>
+                                <span class="font-mono font-bold text-rose-700" x-text="it.returned_qty + ' ' + (it.unit || '')"></span>
+                            </div>
+                            <div class="text-[11px] text-slate-500 italic" x-text="'Lý do: ' + (it.reason || 'Khách trả hàng')"></div>
+                        </div>
+                    </template>
                 </div>
 
                 <template x-if="activeReturn?.notes">

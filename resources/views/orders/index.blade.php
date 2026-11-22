@@ -840,7 +840,7 @@
 
     <!-- 4. Main Data Table (100% Matching exact React Table Headers & Row Layout) -->
     <div class="orders-table-container bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div class="orders-table-wrapper overflow-x-auto">
+        <div class="orders-table-wrapper hidden md:block overflow-x-auto">
             <table class="orders-table w-full text-left text-xs border-collapse min-w-[1250px]">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold border-b border-slate-300 uppercase tracking-tight text-[11px]">
@@ -1080,6 +1080,142 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Card View (orders) -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            @forelse($orders as $idx => $order)
+                @php
+                    $rowNum = $idx + 1;
+                    $orderCode = $order->order_code;
+                    $isProject = $order->order_type === 'project';
+                    $createdDate = $order->created_at ? $order->created_at->format('d/m/Y') : date('d/m/Y');
+                    $whName = $order->warehouse ?: 'Kho Tổng';
+                    $customerName = $order->dealer?->name ?? $order->customer_name ?? 'Khách hàng';
+                    $customerAddr = $order->customer_address ?: ($order->dealer?->address ?: 'Chưa cập nhật địa chỉ');
+                    $totalAmtFormatted = number_format($order->total_amount, 0, ',', '.') . ' đ';
+                    $creator = $order->order_creator ?: ($order->creator?->name ?? 'Hệ thống');
+                    $st = $order->status ?: 'Báo giá';
+                    $isWaitingStock = in_array($st, ['Chờ hàng', 'Chờ hàng về']) || ($order->has_shortage_warning && !in_array($st, ['Đã giao', 'Hủy', 'Đã hủy', 'Báo giá']));
+                    $badgeConfig = match(true) {
+                        $isWaitingStock => ['bg' => 'bg-amber-100 text-amber-900 border-amber-300 font-black', 'icon' => '⏳', 'label' => 'Chờ hàng'],
+                        $st === 'Báo giá' => ['bg' => 'bg-amber-50 text-amber-800 border-amber-300', 'icon' => '📋', 'label' => 'Báo giá'],
+                        in_array($st, ['Chốt đơn', 'Đã duyệt']) => ['bg' => 'bg-blue-50 text-blue-800 border-blue-300', 'icon' => '🤝', 'label' => 'Chốt đơn'],
+                        in_array($st, ['Soạn hàng', 'Đang bốc hàng', 'Soạn bốc', 'Kho đang soạn']) => ['bg' => 'bg-purple-50 text-purple-800 border-purple-300', 'icon' => '📦', 'label' => 'Soạn hàng'],
+                        in_array($st, ['Đã bốc xong', 'Kho đã xuất đủ']) => ['bg' => 'bg-indigo-50 text-indigo-800 border-indigo-300', 'icon' => '📦', 'label' => 'Đã bốc xong'],
+                        in_array($st, ['Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng']) => ['bg' => 'bg-teal-50 text-teal-800 border-teal-300', 'icon' => '🛡️', 'label' => 'Đang kiểm hàng'],
+                        $st === 'Đang vận chuyển' => ['bg' => 'bg-cyan-50 text-cyan-800 border-cyan-300', 'icon' => '🚚', 'label' => 'Đang vận chuyển'],
+                        $st === 'Đã gộp đơn' => ['bg' => 'bg-indigo-50 text-indigo-800 border-indigo-300', 'icon' => '🔀', 'label' => 'Đã gộp đơn'],
+                        in_array($st, ['Đã giao', 'Đã quyết toán', 'Giao thành công']) => ['bg' => 'bg-emerald-50 text-emerald-800 border-emerald-300', 'icon' => '✅', 'label' => 'Đã giao'],
+                        in_array($st, ['Hủy', 'Đã hủy']) => ['bg' => 'bg-rose-50 text-rose-800 border-rose-300', 'icon' => '❌', 'label' => 'Đã hủy'],
+                        default => ['bg' => 'bg-slate-100 text-slate-800 border-slate-300', 'icon' => '📄', 'label' => $st]
+                    };
+                @endphp
+                <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs space-y-2.5">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" name="selectedOrders[]" :value="'{{ $order->id }}'" x-model="selectedIds" class="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300 cursor-pointer">
+                            <a href="{{ url('/orders/' . $order->id . '/edit') }}" class="font-bold font-mono text-sm text-slate-900 hover:text-sky-700">
+                                {{ $orderCode }}
+                            </a>
+                            @if($order->has_shortage_warning)
+                                <span class="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[9px] font-bold border border-amber-300">⚠️ Thiếu kho</span>
+                            @endif
+                        </div>
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black border shadow-2xs {{ $badgeConfig['bg'] }}">
+                            <span>{{ $badgeConfig['icon'] }}</span>
+                            <span>{{ $badgeConfig['label'] }}</span>
+                        </span>
+                    </div>
+
+                    <div class="space-y-1 text-xs">
+                        <div class="font-bold text-slate-900 text-sm">{{ $customerName }}</div>
+                        <div class="text-slate-500 text-[11px] leading-tight">{{ $customerAddr }}</div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                        <div class="text-slate-500">
+                            <div><i class="fa-solid fa-warehouse text-slate-400 mr-1"></i>{{ $whName }}</div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">Ngày: {{ $createdDate }} • Bởi: {{ $creator }}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-extrabold text-slate-900 text-sm">{{ $totalAmtFormatted }}</div>
+                            @if($isProject)
+                                <span class="text-[9px] font-bold text-purple-700">🏗️ Dự án</span>
+                            @endif
+                        </div>
+                    </div>
+
+                    <!-- Quick action buttons -->
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        @if(in_array($st, ['Báo giá', 'Bản nháp', 'Chờ duyệt', 'Chờ kế toán duyệt']))
+                            <button type="button" 
+                                    @click="confirmLockOrder('{{ $order->id }}', '{{ $order->order_code }}')"
+                                    class="px-2.5 py-1 rounded-lg border border-blue-600 text-blue-700 bg-blue-50 font-black text-xs flex items-center gap-1 shadow-2xs">
+                                <i class="fa-solid fa-circle-check text-blue-600 text-xs"></i>
+                                <span>Chốt đơn</span>
+                            </button>
+                        @elseif($isWaitingStock)
+                            <button type="button" disabled class="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-400 bg-slate-100 font-bold text-xs flex items-center gap-1 opacity-50 cursor-not-allowed">
+                                <i class="fa-solid fa-boxes-stacked text-xs"></i>
+                                <span>Soạn hàng</span>
+                            </button>
+                        @elseif(in_array($st, ['Chốt đơn', 'Đã duyệt']))
+                            <button type="button" 
+                                    @click="openPickingModal({
+                                        id: '{{ $order->id }}',
+                                        code: '{{ $order->order_code }}',
+                                        customer: '{{ addslashes($customerName) }}',
+                                        warehouse: '{{ addslashes($whName) }}',
+                                        total: '{{ $totalAmtFormatted }}',
+                                        picking_date: '{{ $order->picking_date ? \Carbon\Carbon::parse($order->picking_date)->format('Y-m-d') : date('Y-m-d') }}'
+                                    })"
+                                    class="px-2.5 py-1 rounded-lg border border-purple-500 text-purple-900 bg-purple-50 font-black text-xs flex items-center gap-1 shadow-2xs">
+                                <i class="fa-solid fa-boxes-stacked text-purple-600 text-xs"></i>
+                                <span>Soạn hàng</span>
+                            </button>
+                        @elseif(in_array($st, ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong']))
+                            <a href="{{ url('/orders/' . $order->id . '/edit') }}" 
+                               class="px-2.5 py-1 rounded-lg border border-sky-500 text-sky-700 bg-sky-50 font-extrabold text-xs flex items-center gap-1 shadow-2xs">
+                                <i class="fa-solid fa-boxes-packing text-xs"></i>
+                                <span>Bổ sung</span>
+                            </a>
+                        @else
+                            <a href="{{ url('/orders/' . $order->id . '/edit') }}" 
+                               class="px-2.5 py-1 rounded-lg border border-slate-300 text-slate-700 bg-slate-50 font-bold text-xs flex items-center gap-1 shadow-2xs">
+                                <i class="fa-regular fa-eye text-xs"></i>
+                                <span>Chi tiết</span>
+                            </a>
+                        @endif
+
+                        <button type="button" 
+                                @click.stop="openActionMenu({
+                                    id: '{{ $order->id }}',
+                                    code: '{{ $order->order_code }}',
+                                    customer: '{{ addslashes($customerName) }}',
+                                    phone: '{{ addslashes($order->customer_phone ?? '') }}',
+                                    address: '{{ addslashes($customerAddr) }}',
+                                    total: {{ (float)$order->total_amount }},
+                                    status: '{{ $st }}',
+                                    has_shortage_warning: {{ $order->has_shortage_warning ? 'true' : 'false' }},
+                                    picking_date: '{{ $order->picking_date ? \Carbon\Carbon::parse($order->picking_date)->format('Y-m-d') : date('Y-m-d') }}',
+                                    delivery_date: '{{ $order->delivery_date ? \Carbon\Carbon::parse($order->delivery_date)->format('Y-m-d') : '' }}',
+                                    warehouse: '{{ addslashes($whName) }}',
+                                    driver: '{{ addslashes($order->assignedDriver?->name ?? 'Chưa phân công') }}',
+                                    vehicle: '{{ $order->assigned_vehicle_plate ?? 'Chưa có xe' }}',
+                                    date: '{{ $createdDate }}'
+                                }, $event)"
+                                class="p-1 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-black text-xs" 
+                                title="Thao tác chứng từ">
+                            •••
+                        </button>
+                    </div>
+                </div>
+            @empty
+                <div class="py-12 text-center text-slate-400 font-medium">
+                    Không có chứng từ nào khớp điều kiện tìm kiếm.
+                </div>
+            @endforelse
         </div>
 
         @if($orders->hasPages())

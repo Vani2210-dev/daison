@@ -227,7 +227,7 @@
 
                 <!-- Collapsible Items Table -->
                 <div x-show="order._showItems" x-collapse class="pt-2 border-t border-slate-100">
-                    <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <div class="hidden md:block overflow-x-auto rounded-xl border border-slate-200">
                         <table class="w-full text-left text-xs">
                             <thead class="bg-slate-100 text-slate-700 font-bold text-[11px]">
                                 <tr>
@@ -273,6 +273,23 @@
                                 </tr>
                             </tfoot>
                         </table>
+                    </div>
+
+                    <!-- Mobile Items Cards -->
+                    <div class="md:hidden space-y-2">
+                        <template x-for="it in (order.items || [])" :key="'dm_' + it.id">
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs space-y-1.5">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-slate-900" x-text="it.name"></span>
+                                    <span class="font-mono text-[10px] text-slate-400" x-text="it.sku"></span>
+                                </div>
+                                <div class="flex items-center justify-between text-slate-600">
+                                    <span>Giao: <strong class="font-mono font-black" :class="hasReturns(order) ? 'text-emerald-700' : 'text-purple-700'" x-text="formatNumber(getItemDeliveredQty(order, it)) + ' ' + (it.unit || '')"></strong></span>
+                                    <span x-show="hasReturns(order) && Number(it.returned_qty) > 0" class="text-rose-600 font-bold" x-text="'Trả: ' + formatNumber(it.returned_qty)"></span>
+                                    <span class="font-mono font-bold text-slate-900" x-text="formatNumber(getItemAmount(order, it)) + ' đ'"></span>
+                                </div>
+                            </div>
+                        </template>
                     </div>
                 </div>
 

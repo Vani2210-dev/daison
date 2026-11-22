@@ -32,7 +32,7 @@
             </div>
 
             <!-- Table of Repairs -->
-            <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-xs">
+            <div class="hidden md:block overflow-x-auto border border-slate-200 rounded-xl shadow-xs">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="bg-slate-100/80 text-slate-700 uppercase text-[10px] font-extrabold tracking-wider border-b border-slate-200">
@@ -113,6 +113,45 @@
                         </template>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card View: Repairs -->
+            <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+                <template x-if="repairs.length === 0">
+                    <div class="py-8 text-center text-slate-400 text-xs">
+                        <i class="fa-solid fa-inbox text-2xl mb-1 text-slate-300 block"></i>
+                        Chưa có phiếu sửa chữa nào
+                    </div>
+                </template>
+                <template x-for="item in repairs" :key="'m-rep-' + item.id">
+                    <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-amber-700 text-xs" x-text="item.code"></span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase" :class="getRepairStatusBadge(item.status)" x-text="getRepairStatusText(item.status)"></span>
+                        </div>
+                        <div class="text-xs space-y-1">
+                            <div class="font-bold text-slate-900 text-sm" x-text="item.customer_name"></div>
+                            <div class="text-slate-500" x-text="item.customer_phone"></div>
+                            <div class="pt-1 flex items-center justify-between">
+                                <span class="font-semibold text-slate-700">Model: <strong x-text="item.machine_model"></strong></span>
+                                <span class="font-bold text-slate-900" x-text="window.formatCurrency(item.total_amount)"></span>
+                            </div>
+                            <div class="text-[11px] text-slate-500 bg-slate-50 p-1.5 rounded" x-text="item.symptom"></div>
+                            <div class="text-[11px] text-slate-400">KTV: <span class="text-slate-700 font-medium" x-text="item.technician_name || 'Chưa gán'"></span></div>
+                        </div>
+                        <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                            <button @click="openRepairUpdateModal(item)" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold text-xs rounded-lg flex items-center gap-1">
+                                <i class="fa-solid fa-list-check"></i> Cập nhật
+                            </button>
+                            <button @click="editRepair(item)" class="px-2.5 py-1 bg-amber-50 text-amber-700 font-bold text-xs rounded-lg flex items-center gap-1">
+                                <i class="fa-solid fa-pen-to-square"></i> Sửa
+                            </button>
+                            <button @click="deleteRepair(item.id)" class="px-2.5 py-1 bg-rose-50 text-rose-700 font-bold text-xs rounded-lg flex items-center gap-1">
+                                <i class="fa-solid fa-trash-can"></i> Xóa
+                            </button>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
 

@@ -126,9 +126,10 @@
         </div>
     </div>
 
-    <!-- Orders Table -->
+    <!-- Orders Table: Desktop Table & Mobile Cards -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div class="overflow-x-auto">
+        <!-- Desktop Table Layout -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-black uppercase text-[10px] tracking-wider">
@@ -243,6 +244,97 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Mobile Card Layout -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            <template x-if="loading">
+                <div class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-spinner fa-spin text-xl text-amber-500"></i>
+                    <div class="mt-2 font-medium text-xs">Đang tải danh sách đơn hàng ôm...</div>
+                </div>
+            </template>
+
+            <template x-if="!loading && orders.length === 0">
+                <div class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-boxes-stacked text-3xl text-slate-300 mb-2"></i>
+                    <div class="font-bold text-slate-600 text-xs">Chưa có đơn hàng ôm nào</div>
+                </div>
+            </template>
+
+            <template x-for="order in orders" :key="'mob-c-ord-' + order.id">
+                <div class="bg-white rounded-2xl border border-slate-200 p-3.5 space-y-2.5 shadow-2xs">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div class="cursor-pointer" @click="viewDetail(order)">
+                            <div class="font-mono font-bold text-amber-600 text-xs flex items-center gap-1">
+                                <i class="fa-solid fa-box text-slate-400 text-[10px]"></i>
+                                <span x-text="order.code"></span>
+                            </div>
+                            <div class="text-[10px] text-slate-400 font-sans mt-0.5" x-text="formatDate(order.created_at)"></div>
+                        </div>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
+                            :class="{
+                                'bg-amber-100 text-amber-800 border border-amber-200': order.status === 'pending',
+                                'bg-blue-100 text-blue-800 border border-blue-200': order.status === 'approved',
+                                'bg-sky-100 text-sky-800 border border-sky-200': order.status === 'in_progress',
+                                'bg-emerald-100 text-emerald-800 border border-emerald-200': order.status === 'completed' || order.status === 'settled',
+                                'bg-rose-100 text-rose-800 border border-rose-200': order.status === 'cancelled'
+                            }">
+                            <span x-text="getStatusLabel(order.status)"></span>
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <span class="text-slate-400 text-[10px] block">Nhân viên & Kho</span>
+                            <div class="font-bold text-slate-900" x-text="order.staff_name || (order.staff ? order.staff.name : '---')"></div>
+                            <div class="text-[10px] text-slate-500 mt-0.5" x-text="order.warehouse_name || 'Kho chính'"></div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-slate-400 text-[10px] block">Tổng tiền / Còn lại</span>
+                            <div class="font-black text-slate-900" x-text="formatMoney(order.total_amount)"></div>
+                            <div class="text-[11px] font-black text-amber-600 mt-0.5" x-text="'Còn: ' + formatMoney(order.remaining_amount)"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tiến độ bán -->
+                    <div class="space-y-1 pt-1 border-t border-slate-100">
+                        <div class="flex items-center justify-between text-[10.5px]">
+                            <span class="text-slate-500">Tiến độ bán:</span>
+                            <span class="font-bold text-slate-700" x-text="calcProgress(order) + '% đã bán'"></span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                            <div class="bg-emerald-500 h-1.5 rounded-full transition-all" :style="'width: ' + calcProgress(order) + '%'"></div>
+                        </div>
+                    </div>
+
+                    <!-- Thao tác Mobile -->
+                    <div class="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100">
+                        <button type="button" @click="viewDetail(order)" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs flex items-center gap-1 cursor-pointer">
+                            <i class="fa-regular fa-eye"></i>
+                            <span>Chi tiết</span>
+                        </button>
+                        <template x-if="order.status === 'in_progress'">
+                            <button type="button" @click="openRetailModal(order)" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shadow-xs">
+                                <i class="fa-solid fa-cart-plus text-[10px]"></i>
+                                <span>Bán lẻ</span>
+                            </button>
+                        </template>
+                        <template x-if="order.status === 'pending' && isAccountant">
+                            <button type="button" @click="approveOrder(order)" class="px-3 py-1.5 rounded-xl bg-sky-600 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shadow-xs">
+                                <i class="fa-solid fa-check text-[10px]"></i>
+                                <span>Duyệt</span>
+                            </button>
+                        </template>
+                        <template x-if="order.status === 'pending' && isAccountant">
+                            <button type="button" @click="rejectOrder(order)" class="px-2.5 py-1.5 rounded-xl bg-rose-50 text-rose-600 font-bold text-xs cursor-pointer border border-rose-200">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
     </div>
 
     <!-- MODAL 1: TẠO ĐƠN HÀNG ÔM MỚI -->
@@ -589,61 +681,108 @@
                 </div>
             </div>
 
-            <!-- Bảng sản phẩm trong lô ôm -->
+            <!-- Bảng sản phẩm trong lô ôm: Desktop Table & Mobile Cards -->
             <div>
                 <h4 class="font-bold text-slate-800 text-xs mb-2">Danh sách sản phẩm ôm</h4>
                 <div class="border border-slate-200 rounded-xl overflow-hidden">
-                    <table class="w-full text-xs text-left">
-                        <thead class="bg-slate-100 text-[10px] font-bold text-slate-600 uppercase">
-                            <tr>
-                                <th class="p-2.5">Sản phẩm</th>
-                                <th class="p-2.5 text-center">SL ôm</th>
-                                <th class="p-2.5 text-center">Đã bán lẻ</th>
-                                <th class="p-2.5 text-center">Còn lại</th>
-                                <th class="p-2.5 text-right">Giá bán</th>
-                                <th class="p-2.5 text-right">Thành tiền</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            <template x-for="item in (activeOrder?.items || [])" :key="item.id">
+                    <!-- Desktop Table -->
+                    <div class="hidden md:block">
+                        <table class="w-full text-xs text-left">
+                            <thead class="bg-slate-100 text-[10px] font-bold text-slate-600 uppercase">
                                 <tr>
-                                    <td class="p-2.5 font-bold text-slate-800" x-text="item.name"></td>
-                                    <td class="p-2.5 text-center font-bold" x-text="item.quantity + ' ' + (item.unit || '')"></td>
-                                    <td class="p-2.5 text-center font-bold text-emerald-600" x-text="item.sold_quantity || 0"></td>
-                                    <td class="p-2.5 text-center font-bold text-amber-600" x-text="item.remaining_quantity"></td>
-                                    <td class="p-2.5 text-right font-medium" x-text="formatMoney(item.unit_price)"></td>
-                                    <td class="p-2.5 text-right font-black text-slate-900" x-text="formatMoney(item.amount)"></td>
+                                    <th class="p-2.5">Sản phẩm</th>
+                                    <th class="p-2.5 text-center">SL ôm</th>
+                                    <th class="p-2.5 text-center">Đã bán lẻ</th>
+                                    <th class="p-2.5 text-center">Còn lại</th>
+                                    <th class="p-2.5 text-right">Giá bán</th>
+                                    <th class="p-2.5 text-right">Thành tiền</th>
                                 </tr>
-                            </template>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <template x-for="item in (activeOrder?.items || [])" :key="item.id">
+                                    <tr>
+                                        <td class="p-2.5 font-bold text-slate-800" x-text="item.name"></td>
+                                        <td class="p-2.5 text-center font-bold" x-text="item.quantity + ' ' + (item.unit || '')"></td>
+                                        <td class="p-2.5 text-center font-bold text-emerald-600" x-text="item.sold_quantity || 0"></td>
+                                        <td class="p-2.5 text-center font-bold text-amber-600" x-text="item.remaining_quantity"></td>
+                                        <td class="p-2.5 text-right font-medium" x-text="formatMoney(item.unit_price)"></td>
+                                        <td class="p-2.5 text-right font-black text-slate-900" x-text="formatMoney(item.amount)"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mobile Card List -->
+                    <div class="md:hidden divide-y divide-slate-100 p-2.5 space-y-2">
+                        <template x-for="item in (activeOrder?.items || [])" :key="'mob-c-it-' + item.id">
+                            <div class="p-2.5 rounded-xl bg-slate-50 space-y-1.5 text-xs">
+                                <div class="font-bold text-slate-900" x-text="item.name"></div>
+                                <div class="grid grid-cols-3 gap-1 text-[11px] text-center pt-1 border-t border-slate-200/60">
+                                    <div class="bg-white p-1 rounded-lg border border-slate-200">
+                                        <span class="text-slate-400 block text-[9.5px]">SL ôm</span>
+                                        <strong class="text-slate-800" x-text="item.quantity"></strong>
+                                    </div>
+                                    <div class="bg-white p-1 rounded-lg border border-slate-200">
+                                        <span class="text-slate-400 block text-[9.5px]">Đã bán</span>
+                                        <strong class="text-emerald-700" x-text="item.sold_quantity || 0"></strong>
+                                    </div>
+                                    <div class="bg-white p-1 rounded-lg border border-slate-200">
+                                        <span class="text-slate-400 block text-[9.5px]">Còn lại</span>
+                                        <strong class="text-amber-700" x-text="item.remaining_quantity"></strong>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between pt-1 border-t border-slate-200/60 text-xs">
+                                    <span class="text-slate-500 font-medium" x-text="'Giá: ' + formatMoney(item.unit_price)"></span>
+                                    <span class="font-black text-slate-900" x-text="formatMoney(item.amount)"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </div>
 
-            <!-- Lịch sử các đơn bán lẻ đã xuất từ lô này -->
+            <!-- Lịch sử các đơn bán lẻ đã xuất từ lô này: Desktop Table & Mobile Cards -->
             <div x-show="activeOrder?.retail_orders && activeOrder.retail_orders.length > 0">
                 <h4 class="font-bold text-slate-800 text-xs mb-2">Các đơn bán lẻ đã xuất từ đơn ôm này</h4>
                 <div class="border border-slate-200 rounded-xl overflow-hidden">
-                    <table class="w-full text-xs text-left">
-                        <thead class="bg-slate-100 text-[10px] font-bold text-slate-600 uppercase">
-                            <tr>
-                                <th class="p-2">Mã đơn lẻ</th>
-                                <th class="p-2">Khách hàng</th>
-                                <th class="p-2">Ngày xuất</th>
-                                <th class="p-2 text-right">Tổng tiền</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            <template x-for="ro in (activeOrder?.retail_orders || [])" :key="ro.id">
+                    <!-- Desktop Table -->
+                    <div class="hidden md:block">
+                        <table class="w-full text-xs text-left">
+                            <thead class="bg-slate-100 text-[10px] font-bold text-slate-600 uppercase">
                                 <tr>
-                                    <td class="p-2 font-mono font-bold text-emerald-600" x-text="ro.code"></td>
-                                    <td class="p-2 font-medium" x-text="ro.customer_name"></td>
-                                    <td class="p-2 text-slate-400" x-text="formatDate(ro.created_at)"></td>
-                                    <td class="p-2 text-right font-bold text-slate-900" x-text="formatMoney(ro.total_amount)"></td>
+                                    <th class="p-2">Mã đơn lẻ</th>
+                                    <th class="p-2">Khách hàng</th>
+                                    <th class="p-2">Ngày xuất</th>
+                                    <th class="p-2 text-right">Tổng tiền</th>
                                 </tr>
-                            </template>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <template x-for="ro in (activeOrder?.retail_orders || [])" :key="ro.id">
+                                    <tr>
+                                        <td class="p-2 font-mono font-bold text-emerald-600" x-text="ro.code"></td>
+                                        <td class="p-2 font-medium" x-text="ro.customer_name"></td>
+                                        <td class="p-2 text-slate-400" x-text="formatDate(ro.created_at)"></td>
+                                        <td class="p-2 text-right font-bold text-slate-900" x-text="formatMoney(ro.total_amount)"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mobile Card List -->
+                    <div class="md:hidden divide-y divide-slate-100 p-2.5 space-y-2">
+                        <template x-for="ro in (activeOrder?.retail_orders || [])" :key="'mob-ro-' + ro.id">
+                            <div class="p-2.5 rounded-xl bg-slate-50 flex items-center justify-between text-xs">
+                                <div>
+                                    <div class="font-mono font-bold text-emerald-700" x-text="ro.code"></div>
+                                    <div class="font-medium text-slate-800 mt-0.5" x-text="ro.customer_name"></div>
+                                    <div class="text-[10px] text-slate-400 mt-0.5" x-text="formatDate(ro.created_at)"></div>
+                                </div>
+                                <div class="font-black text-slate-900 text-right" x-text="formatMoney(ro.total_amount)"></div>
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </div>
 

@@ -1139,7 +1139,7 @@
                 </div>
             </div>
 
-            <div class="order-items-table-container rounded-xl border border-slate-200">
+            <div class="order-items-table-container hidden md:block rounded-xl border border-slate-200">
                 <table class="order-items-table w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="bg-slate-50 text-slate-600 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
@@ -1435,6 +1435,120 @@
                         </template>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card View (Order Items) -->
+            <div class="md:hidden space-y-3">
+                <template x-for="(item, index) in getSalesItems()" :key="'m-' + (item._rowKey || ('it-' + index))">
+                    <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-3 relative"
+                         :class="activeProdDropdownIndex === index ? 'z-40' : ''">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" x-model="item.checked" @change="evaluateOrderPolicies()" class="rounded text-sky-600 focus:ring-0 cursor-pointer">
+                                <span class="font-bold text-slate-500 text-xs" x-text="'#' + (index + 1)"></span>
+                                <span class="text-xs font-mono font-bold text-sky-700" x-text="item.sku ? '[' + item.sku + ']' : ''"></span>
+                            </div>
+                            <button type="button" @click="removeItem(item)" class="text-rose-500 hover:text-rose-700 p-1 rounded-md cursor-pointer" title="Xóa dòng">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+
+                        <!-- Product Search Input -->
+                        <div class="relative" @click.outside="if (activeProdDropdownIndex === index) activeProdDropdownIndex = null">
+                            <input type="text"
+                                   autocomplete="off"
+                                   x-model="item.searchQuery" 
+                                   @focus="activeProdDropdownIndex = index; prodHighlightIndex = 0; $event.target.select()"
+                                   @input="item._prodSearching = true; activeProdDropdownIndex = index; prodHighlightIndex = 0"
+                                   placeholder="Tìm mã hoặc tên sản phẩm..." 
+                                   class="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:border-sky-500 focus:outline-none">
+
+                            <!-- Dropdown for Mobile -->
+                            <div x-show="activeProdDropdownIndex === index" 
+                                 x-cloak 
+                                 class="absolute left-0 top-full mt-1 w-full z-[70] bg-white rounded-xl shadow-2xl border border-slate-200 max-h-56 overflow-y-auto py-1 text-xs">
+                                <template x-for="(p, pIdx) in getFilteredProducts(getRowProductSearchQuery(item), getItemIndex(item))" :key="p.id">
+                                    <div @click="selectProductForRow(getItemIndex(item), p); activeProdDropdownIndex = null"
+                                         class="px-3 py-2 cursor-pointer border-b border-slate-50 last:border-0 hover:bg-sky-50">
+                                        <div class="font-bold text-slate-900">
+                                            <span class="text-sky-600 font-mono" x-text="'[' + p.sku + '] '"></span>
+                                            <span x-text="p.name"></span>
+                                        </div>
+                                        <div class="flex items-center justify-between text-[11px] text-slate-500 mt-1">
+                                            <span x-text="'ĐVT: ' + (p.unit || '')"></span>
+                                            <span class="font-bold text-sky-700" x-text="formatNumber(getProductPrice(p)) + ' đ'"></span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Price & Unit -->
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">ĐVT</label>
+                                <select x-model="item.unit" 
+                                        @change="onItemUnitChange(getItemIndex(item))" 
+                                        class="w-full h-9 px-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800">
+                                    <template x-for="u in getItemUnits(item)" :key="u">
+                                        <option :value="u" x-text="u" :selected="item.unit === u"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Đơn giá (đ)</label>
+                                <input type="text" inputmode="numeric" 
+                                       x-money="item.unitPrice" 
+                                       @input="item.price_type = 'Tùy chỉnh'; updateLineTotal(getItemIndex(item))" 
+                                       class="w-full h-9 px-2 bg-white border border-slate-300 rounded-lg text-right font-bold text-xs text-slate-900">
+                            </div>
+                        </div>
+
+                        <!-- Quantity with quick + - and stock warning -->
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase block">Số lượng</label>
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" @click="decreaseQty(getItemIndex(item))" class="w-9 h-9 rounded-lg bg-slate-100 font-black text-slate-700 flex items-center justify-center">-</button>
+                                <input type="text" inputmode="decimal" 
+                                       x-number="item.quantity" 
+                                       @input="updateLineTotal(getItemIndex(item))" 
+                                       class="flex-1 h-9 text-center font-black text-sm rounded-lg border border-slate-300 bg-white">
+                                <button type="button" @click="increaseQty(getItemIndex(item))" class="w-9 h-9 rounded-lg bg-slate-100 font-black text-slate-700 flex items-center justify-center">+</button>
+                            </div>
+                            <div x-show="getItemStockStatus(item) !== 'ok'" class="text-[10px] font-bold"
+                                 :class="getItemStockStatus(item) === 'danger' ? 'text-rose-600' : 'text-amber-700'">
+                                <i class="fa-solid fa-triangle-exclamation text-[9px]"></i>
+                                <span x-text="getItemStockStatus(item) === 'danger' ? 'Thiếu kho: ' + formatNumber(getItemOverStockQty(item)) : 'Lẹm giữ: ' + formatNumber(getItemOverStockQty(item))"></span>
+                            </div>
+                        </div>
+
+                        <!-- Discount Row -->
+                        <div class="grid grid-cols-2 gap-2 text-xs bg-sky-50/50 p-2 rounded-lg border border-sky-100">
+                            <div>
+                                <label class="text-[10px] font-bold text-sky-800 uppercase block mb-1">Chiết khấu (%)</label>
+                                <input type="number" min="0" max="100" step="any" 
+                                       x-model.number="item.discount_percent" 
+                                       @input="onLineDiscountPercentChange(getItemIndex(item))" 
+                                       placeholder="%" 
+                                       class="w-full h-8 px-2 bg-white border border-sky-200 rounded text-center font-bold text-xs">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-sky-800 uppercase block mb-1">Tiền CK (đ)</label>
+                                <input type="text" inputmode="numeric" 
+                                       x-money="item.discount_amount" 
+                                       @input="onLineDiscountAmountChange(getItemIndex(item))" 
+                                       placeholder="0" 
+                                       class="w-full h-8 px-2 bg-white border border-sky-200 rounded text-right font-bold font-mono text-xs">
+                            </div>
+                        </div>
+
+                        <!-- Amount Row -->
+                        <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+                            <span class="text-xs text-slate-400 font-bold uppercase">Thành tiền:</span>
+                            <span class="font-black text-slate-900 text-base" x-text="formatNumber(item.amount) + ' đ'"></span>
+                        </div>
+                    </div>
+                </template>
             </div>
 
             <!-- Under Table: Thêm dòng button + Shortcut tip -->

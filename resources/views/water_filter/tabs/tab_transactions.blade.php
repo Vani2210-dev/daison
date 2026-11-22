@@ -20,7 +20,7 @@
             </div>
 
             <!-- Table of Transactions -->
-            <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-xs">
+            <div class="hidden md:block overflow-x-auto border border-slate-200 rounded-xl shadow-xs">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="bg-slate-100/80 text-slate-700 uppercase text-[10px] font-extrabold tracking-wider border-b border-slate-200">
@@ -64,5 +64,35 @@
                         </template>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card View: Transactions -->
+            <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+                <template x-if="transactions.length === 0">
+                    <div class="py-8 text-center text-slate-400 text-xs">
+                        <i class="fa-solid fa-clock-rotate-left text-2xl mb-1 text-slate-300 block"></i>
+                        Chưa có giao dịch kho nào
+                    </div>
+                </template>
+                <template x-for="item in transactions" :key="'m-tx-' + item.id">
+                    <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-slate-800 text-xs" x-text="item.reference_code || '-'"></span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold" :class="getTransBadge(item.type)" x-text="getTransText(item.type)"></span>
+                        </div>
+                        <div class="text-xs space-y-1">
+                            <div class="font-bold text-slate-900" x-text="item.part ? item.part.name : 'Phụ tùng #' + item.part_id"></div>
+                            <div class="flex items-center justify-between pt-1">
+                                <span class="text-slate-400">Số lượng:</span>
+                                <span class="font-black text-sm" :class="item.quantity > 0 ? 'text-emerald-600' : 'text-rose-600'" x-text="(item.quantity > 0 ? '+' : '') + item.quantity"></span>
+                            </div>
+                            <div class="flex items-center justify-between text-[11px] text-slate-500">
+                                <span>Tồn trước / sau: <strong x-text="item.balance_before"></strong> &rarr; <strong class="text-slate-900" x-text="item.balance_after"></strong></span>
+                                <span x-text="formatDateTime(item.created_at)"></span>
+                            </div>
+                            <div x-show="item.note" class="text-slate-500 text-[11px] bg-slate-50 p-1.5 rounded" x-text="item.note"></div>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>

@@ -313,7 +313,8 @@
 
     <!-- 5. VIEW MODE: TABLE (DẠNG BẢNG CHI TIẾT) -->
     <div x-show="viewMode === 'table'" class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-        <div class="overflow-x-auto">
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left text-xs border-collapse min-w-[950px]">
                 <thead>
                     <tr class="bg-slate-50/80 text-slate-700 font-bold text-[11px] uppercase tracking-wider border-b border-slate-200">
@@ -410,6 +411,50 @@
                     </template>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Cards List -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            <template x-for="(g, index) in filteredGroups" :key="'m_' + g.id">
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2 text-xs">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                        <div>
+                            <span class="font-black text-slate-900 text-sm" x-text="g.name"></span>
+                            <span class="text-[10px] font-mono text-slate-400 block" x-text="g.code || ('NNS-' + g.id)"></span>
+                        </div>
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold"
+                              :class="g.status === 'Hoạt động' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'"
+                              x-text="g.status"></span>
+                    </div>
+
+                    <div class="space-y-1">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase block">Trưởng nhóm</span>
+                        <template x-if="g.leader">
+                            <span class="font-bold text-slate-800" x-text="g.leader.name"></span>
+                        </template>
+                        <template x-if="!g.leader">
+                            <span class="text-slate-400 italic">Chưa phân công</span>
+                        </template>
+                    </div>
+
+                    <div class="flex items-center justify-between py-1 px-2.5 bg-slate-50 rounded-xl">
+                        <span class="text-slate-500 font-medium">Số thành viên:</span>
+                        <span class="font-black text-indigo-700" x-text="(g.user_ids ? g.user_ids.length : 0) + ' người'"></span>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-100 flex items-center justify-end gap-1.5">
+                        <button type="button" @click="openViewModal(g)" class="p-1.5 text-slate-500 hover:text-indigo-600 rounded-lg">
+                            <i class="fa-solid fa-eye text-xs"></i>
+                        </button>
+                        <button type="button" @click="openEditModal(g)" class="p-1.5 text-slate-500 hover:text-amber-600 rounded-lg">
+                            <i class="fa-solid fa-pen-to-square text-xs"></i>
+                        </button>
+                        <button type="button" @click="deleteGroup(g)" class="p-1.5 text-slate-500 hover:text-rose-600 rounded-lg">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            </template>
         </div>
     </div>
 

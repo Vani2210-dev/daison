@@ -2506,7 +2506,7 @@
                 </div>
 
                 <!-- Allocations Table -->
-                <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-2xs">
+                <div class="hidden md:block overflow-x-auto border border-slate-200 rounded-xl shadow-2xs">
                     <table class="w-full text-left text-xs border-collapse">
                         <thead>
                             <tr class="bg-slate-50 text-slate-700 font-black text-[11px] uppercase tracking-wider border-b border-slate-200">
@@ -2586,6 +2586,57 @@
                             </template>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Mobile Card View: Shortage Allocations -->
+                <div class="md:hidden divide-y divide-slate-100 p-2 space-y-3">
+                    <template x-for="(row, idx) in shortageModal.allocations" :key="'m-alloc-' + row.orderId">
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2.5">
+                            <div class="flex items-center justify-between">
+                                <span class="font-mono font-bold text-sky-700 text-xs" x-text="row.orderCode"></span>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold" x-text="row.deliveryRoute"></span>
+                            </div>
+                            <div class="text-xs">
+                                <div class="font-bold text-slate-900" x-text="row.customerName"></div>
+                                <div class="text-[10px] text-slate-500" x-text="row.customerAddress"></div>
+                            </div>
+                            <div class="flex items-center justify-between text-xs bg-slate-50 p-2 rounded-lg">
+                                <div><span class="text-slate-400">Cần bốc:</span> <strong class="font-mono text-slate-800 text-sm" x-text="row.totalReq"></strong></div>
+                                <div>
+                                    <span class="text-slate-400">Thiếu:</span> 
+                                    <strong class="font-mono text-sm" :class="row.totalReq - (Number(row.allocatedQty) || 0) > 0 ? 'text-rose-600' : 'text-slate-400'" x-text="Math.max(0, row.totalReq - (Number(row.allocatedQty) || 0))"></strong>
+                                </div>
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-[11px] font-bold text-slate-600 block">Phân bổ thực bốc:</label>
+                                <div class="flex items-center gap-1.5">
+                                    <button type="button" 
+                                            @click="row.allocatedQty = Math.max(0, (Number(row.allocatedQty) || 0) - 1)"
+                                            class="w-8 h-8 rounded-lg bg-slate-100 font-black text-slate-700 flex items-center justify-center">-</button>
+                                    <input type="number" step="any" min="0" :max="row.totalReq"
+                                           x-model.number="row.allocatedQty"
+                                           class="flex-1 px-2 py-1.5 text-center font-mono font-bold text-xs rounded-lg border border-slate-300 bg-white">
+                                    <button type="button" 
+                                            @click="row.allocatedQty = Math.min(row.totalReq, (Number(row.allocatedQty) || 0) + 1)"
+                                            class="w-8 h-8 rounded-lg bg-slate-100 font-black text-slate-700 flex items-center justify-center">+</button>
+                                    <button type="button" 
+                                            @click="row.allocatedQty = row.totalReq"
+                                            class="px-2 py-1.5 text-xs font-bold rounded bg-sky-50 text-sky-700 border border-sky-200">Đủ</button>
+                                </div>
+                            </div>
+                            <div class="pt-1">
+                                <template x-if="Number(row.allocatedQty) >= row.totalReq">
+                                    <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">✓ Giao đủ đợt 1</span>
+                                </template>
+                                <template x-if="Number(row.allocatedQty) > 0 && Number(row.allocatedQty) < row.totalReq">
+                                    <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300" x-text="'Giao ' + formatQtyInput(row.allocatedQty, row.totalReq) + ', thiếu ' + formatQtyInput(row.totalReq - row.allocatedQty, row.totalReq)"></span>
+                                </template>
+                                <template x-if="Number(row.allocatedQty) <= 0">
+                                    <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">Bốc 0 (Thiếu 100%)</span>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
                 </div>
 
                 <!-- Allocation Balance Status -->

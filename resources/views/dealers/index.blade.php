@@ -280,7 +280,8 @@
     <!-- VIEW 2: DẠNG BẢNG (TABLE LIST) -->
     <!-- ========================================== -->
     <div x-show="viewMode === 'table'" class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
-        <div class="overflow-x-auto">
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-slate-50/80 text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-100 font-bold">
@@ -395,6 +396,58 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Cards for Table Mode -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            @forelse($dealers as $d)
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2.5">
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <div>
+                            <a href="{{ url('/dealers/' . $d->id . '/edit') }}" class="font-extrabold text-slate-900 text-sm hover:text-purple-700">
+                                {{ $d->name }}
+                            </a>
+                            <div class="text-[10px] text-purple-700 font-mono font-bold">{{ $d->code ?: ('DL-' . str_pad($d->id, 4, '0', STR_PAD_LEFT)) }}</div>
+                        </div>
+                        <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold border {{ $tColorRow ?? 'bg-slate-50 text-slate-700 border-slate-200' }}">
+                            {{ $d->tier ?? 'Bán lẻ' }}
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <span class="text-[10px] text-slate-400 font-bold block">SĐT & Chủ</span>
+                            <span class="font-mono font-bold text-slate-800">{{ $d->phone ?: '—' }}</span>
+                            <div class="text-[11px] text-slate-500">{{ $d->owner_name ?? '—' }}</div>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 font-bold block">NV Phụ trách</span>
+                            <span class="font-bold text-slate-800">{{ $d->salesRep?->name ?: 'Chưa phân công' }}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between py-1.5 px-3 bg-slate-50 rounded-xl text-xs">
+                        <span class="text-slate-500 font-medium">Nợ hiện tại:</span>
+                        <span class="font-mono font-extrabold text-slate-900 text-sm">{{ number_format((float)($d->current_debt ?? 0), 0, ',', '.') }} đ</span>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100">
+                        <a href="{{ url('/dealers/' . $d->id . '/edit') }}" 
+                           class="w-8 h-8 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center">
+                            <i class="fa-regular fa-pen-to-square text-xs"></i>
+                        </a>
+                        <button type="button" 
+                                @click="confirmDelete('{{ $d->id }}', '{{ addslashes($d->name) }}', {{ $d->orders->count() }})" 
+                                class="w-8 h-8 rounded-lg bg-rose-50 text-rose-700 flex items-center justify-center">
+                            <i class="fa-regular fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            @empty
+                <div class="py-8 text-center text-slate-400 italic text-xs">
+                    Không tìm thấy đại lý nào phù hợp.
+                </div>
+            @endforelse
         </div>
     </div>
 

@@ -122,7 +122,8 @@ input[type=number] {
                 </div>
             </div>
 
-            <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+            <!-- Desktop Table Layout -->
+            <div class="hidden md:block border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
                 <table class="w-full text-left text-xs">
                     <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-black text-[10.5px] uppercase tracking-wider">
                         <tr>
@@ -187,6 +188,62 @@ input[type=number] {
                         </template>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card Layout -->
+            <div class="md:hidden space-y-3">
+                <template x-for="(item, idx) in receiptData.items" :key="'mob-rec-it-' + item.item_id">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-3.5 space-y-3 shadow-2xs">
+                        <div class="border-b border-slate-100 pb-2">
+                            <div class="font-black text-slate-900 text-xs" x-text="item.product_name"></div>
+                            <div class="text-[10px] text-slate-400 font-mono mt-0.5" x-show="item.sku" x-text="'SKU: ' + item.sku + ' • ĐVT: ' + item.unit"></div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-1.5 text-center text-xs">
+                            <div class="bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                                <span class="text-slate-400 block text-[10px]">SL Đặt</span>
+                                <strong class="text-slate-800" x-text="item.ordered_quantity"></strong>
+                            </div>
+                            <div class="bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                                <span class="text-slate-400 block text-[10px]">Đã nhận</span>
+                                <strong class="text-slate-600" x-text="item.received_before"></strong>
+                            </div>
+                            <div class="bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                                <span class="text-slate-400 block text-[10px]">Còn thiếu</span>
+                                <strong :class="(item.ordered_quantity - item.received_before - (parseFloat(item.quantity) || 0)) > 0 ? 'text-rose-600 font-black' : 'text-emerald-600'" x-text="Math.max(0, item.ordered_quantity - item.received_before - (parseFloat(item.quantity) || 0))"></strong>
+                            </div>
+                        </div>
+
+                        <div class="p-2.5 bg-sky-50/60 rounded-xl border border-sky-200 space-y-1">
+                            <label class="block text-[11px] font-black text-sky-950 uppercase">SL Nhận đợt này <span class="text-rose-500">*</span></label>
+                            <input type="number" 
+                                   autocomplete="off"
+                                   x-model="item.quantity" 
+                                   @input="recalcReceiptStatus()" 
+                                   min="0" 
+                                   :max="item.ordered_quantity - item.received_before" 
+                                   step="any" 
+                                   class="w-full px-3 py-1.5 rounded-xl border border-sky-300 text-sm font-black text-right text-sky-900 bg-white focus:ring-1 focus:ring-sky-500 outline-none">
+                        </div>
+
+                        <!-- Lô & HSD Mobile -->
+                        <div class="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-100">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Mã lô (tùy chọn)</label>
+                                <input type="text" 
+                                       x-model="item.batch_code" 
+                                       placeholder="Mã lô" 
+                                       class="w-full px-2 py-1 rounded-lg border border-slate-300 text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Hạn sử dụng</label>
+                                <input type="date" 
+                                       x-model="item.expiry_date" 
+                                       class="w-full px-2 py-1 rounded-lg border border-slate-300 text-xs">
+                            </div>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
 

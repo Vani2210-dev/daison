@@ -205,7 +205,8 @@ input[type=number] {
                 </button>
             </div>
 
-            <div class="border border-slate-200 rounded-2xl overflow-visible shadow-2xs">
+            <!-- Bảng SP trên Desktop -->
+            <div class="hidden md:block border border-slate-200 rounded-2xl overflow-visible shadow-2xs">
                 <table class="w-full text-left text-xs">
                     <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-black text-[10.5px] uppercase tracking-wider">
                         <tr>
@@ -392,6 +393,103 @@ input[type=number] {
                         </template>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Danh sách SP dạng Card trên Mobile -->
+            <div class="md:hidden space-y-3">
+                <template x-for="(it, idx) in formData.items" :key="'m-' + idx">
+                    <div class="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs space-y-3 relative">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                            <span class="text-xs font-black text-slate-700 uppercase" x-text="'#SP ' + (idx + 1)"></span>
+                            <button type="button" @click="removeItemRow(idx)" class="w-7 h-7 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 flex items-center justify-center cursor-pointer" title="Xóa dòng" x-show="formData.items.length > 1">
+                                <i class="fa-regular fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+
+                        <!-- Chọn SP -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 mb-1">Sản phẩm / Mặt hàng</label>
+                            <div class="relative" @click.outside="if (activeProdDropdownIndex === idx) activeProdDropdownIndex = null">
+                                <input type="text"
+                                       autocomplete="off"
+                                       autocorrect="off"
+                                       spellcheck="false"
+                                       :id="'row-product-input-m-' + idx"
+                                       x-model="it.searchQuery" 
+                                       @focus="activeProdDropdownIndex = idx; prodHighlightIndex = 0"
+                                       @input="activeProdDropdownIndex = idx; prodHighlightIndex = 0; onSearchInput(idx)"
+                                       @keydown.arrow-down.prevent="navigateDropdown(1)"
+                                       @keydown.arrow-up.prevent="navigateDropdown(-1)"
+                                       @keydown.enter.prevent="selectHighlightedProduct(idx)"
+                                       @keydown.escape="activeProdDropdownIndex = null"
+                                       placeholder="Gõ mã hoặc tên SP..." 
+                                       class="w-full h-9 px-3 rounded-xl border border-slate-300 text-xs font-medium outline-none focus:border-sky-500">
+                                
+                                <div x-show="activeProdDropdownIndex === idx" 
+                                     x-cloak
+                                     class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto">
+                                    <template x-if="getFilteredProducts(it.searchQuery).length === 0">
+                                        <div class="p-3 text-xs text-slate-400 text-center">Không tìm thấy sản phẩm phù hợp</div>
+                                    </template>
+                                    <template x-for="(p, pIdx) in getFilteredProducts(it.searchQuery)" :key="p.id">
+                                        <div @click="selectProduct(idx, p)"
+                                             :class="{'bg-sky-50 text-sky-800': prodHighlightIndex === pIdx, 'hover:bg-slate-50 text-slate-700': prodHighlightIndex !== pIdx}"
+                                             class="p-2.5 text-xs cursor-pointer border-b border-slate-100 last:border-0 flex items-center justify-between">
+                                            <div>
+                                                <div class="font-bold" x-text="p.name"></div>
+                                                <div class="text-[10px] text-slate-400" x-text="'Mã: ' + p.code + ' | ĐVT: ' + (p.unit || '---')"></div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="font-black text-sky-600" x-text="formatMoney(p.cost_price || p.purchase_price || p.price || 0)"></div>
+                                                <div class="text-[10px] text-slate-400" x-text="'Tồn: ' + (p.stock || 0)"></div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SL & ĐVT & Đơn giá -->
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 mb-1">ĐVT</label>
+                                <div class="h-8 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 text-center truncate" x-text="it.unit || '---'"></div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 mb-1">Số lượng</label>
+                                <input type="number" 
+                                       x-model="it.quantity" 
+                                       @input="recalcTotals()" 
+                                       min="1" 
+                                       class="w-full h-8 px-2 py-1 rounded-lg border border-slate-300 text-xs text-center font-bold outline-none focus:border-sky-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 mb-1">CK (%)</label>
+                                <input type="number" 
+                                       x-model="it.discount_percent" 
+                                       @input="recalcTotals()" 
+                                       min="0" max="100" 
+                                       class="w-full h-8 px-2 py-1 rounded-lg border border-slate-300 text-xs text-right font-bold outline-none focus:border-sky-500">
+                            </div>
+                        </div>
+
+                        <!-- Đơn giá & Thành tiền -->
+                        <div class="flex items-center justify-between pt-1">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Đơn giá</label>
+                                <input type="number" 
+                                       x-model="it.price" 
+                                       @input="recalcTotals()" 
+                                       min="0" 
+                                       class="w-32 h-8 px-2 py-1 rounded-lg border border-slate-300 text-xs text-right font-bold outline-none focus:border-sky-500">
+                            </div>
+                            <div class="text-right">
+                                <span class="block text-[10px] text-slate-400 uppercase font-bold">Thành tiền</span>
+                                <span class="text-sm font-black text-sky-700" x-text="formatMoney(calcItemAmount(it))"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
 

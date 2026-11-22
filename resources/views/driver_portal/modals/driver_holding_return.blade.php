@@ -71,7 +71,8 @@
                                 <span class="font-mono text-rose-700" x-text="formatNumber(r.totalReturnedAmount ?? r.total_returned_amount ?? 0) + ' đ'"></span>
                             </div>
 
-                            <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+                            <!-- Desktop Table -->
+                            <div class="hidden md:block overflow-hidden rounded-lg border border-slate-200 bg-white">
                                 <table class="w-full text-left text-[11px]">
                                     <thead class="bg-slate-100 text-slate-600 font-semibold">
                                         <tr>
@@ -92,6 +93,20 @@
                                         </template>
                                     </tbody>
                                 </table>
+                            </div>
+
+                            <!-- Mobile Cards -->
+                            <div class="md:hidden space-y-1.5">
+                                <template x-for="it in (r.items || [])" :key="'dm_' + it.id">
+                                    <div class="bg-white rounded-lg p-2 border border-slate-200 text-[11px] space-y-1">
+                                        <div class="font-medium text-slate-800" x-text="it.name"></div>
+                                        <div class="flex items-center justify-between text-slate-600">
+                                            <span>SL: <strong class="font-mono font-bold text-emerald-700" x-text="(it.returnedQty ?? it.returned_qty) + ' ' + (it.unit || '')"></strong></span>
+                                            <span>Giá: <strong class="font-mono" x-text="formatNumber(it.unitPrice ?? it.unit_price ?? 0) + ' đ'"></strong></span>
+                                            <span class="font-mono font-bold text-rose-700" x-text="formatNumber((Number(it.returnedQty ?? it.returned_qty) || 0) * (Number(it.unitPrice ?? it.unit_price) || 0)) + ' đ'"></span>
+                                        </div>
+                                    </div>
+                                </template>
                             </div>
                         </div>
                     </template>

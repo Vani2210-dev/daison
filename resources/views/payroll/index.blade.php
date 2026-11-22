@@ -23,7 +23,7 @@
 
     <!-- Table Card -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left text-xs border-collapse">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold border-b border-slate-300 uppercase text-[11px]">
@@ -58,6 +58,38 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Card View: Payroll -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            @forelse($payroll as $pr)
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-slate-900 text-sm">{{ $pr->employee_name ?? ($pr->user?->name ?? '---') }}</span>
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            {{ $pr->status ?? 'Chưa chốt' }}
+                        </span>
+                    </div>
+                    <div class="text-xs text-slate-600 space-y-1">
+                        <div><span class="text-slate-400">Mã NV:</span> <span class="font-mono text-slate-700">{{ $pr->employee_code ?? ($pr->user?->username ?? '---') }}</span></div>
+                        <div><span class="text-slate-400">Ngày công:</span> <span class="font-bold text-slate-700">{{ $pr->working_days ?? 0 }} ngày</span></div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Lương cơ bản:</span>
+                            <span class="font-semibold text-slate-800">{{ number_format($pr->base_salary ?? 0, 0, ',', '.') }} đ</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Hoa hồng / thưởng:</span>
+                            <span class="font-semibold text-emerald-600">+{{ number_format($pr->bonus_amount ?? 0, 0, ',', '.') }} đ</span>
+                        </div>
+                        <div class="flex justify-between pt-1 border-t border-slate-100 text-sm">
+                            <span class="font-bold text-slate-800">Thực lĩnh:</span>
+                            <span class="font-black text-emerald-700">{{ number_format($pr->net_salary ?? 0, 0, ',', '.') }} đ</span>
+                        </div>
+                    </div>
+                </div>
+            @empty
+                <div class="py-10 text-center text-slate-400 italic text-xs">Bảng lương tháng đang được tính toán.</div>
+            @endforelse
         </div>
 
         @if($payroll->hasPages())

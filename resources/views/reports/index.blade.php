@@ -96,35 +96,58 @@
                     <span>Doanh Thu & Tỷ Trọng Theo Thương Hiệu Phân Phối</span>
                 </h3>
             </div>
-            <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                    <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
-                        <th class="py-2.5 px-3">Thương Hiệu</th>
-                        <th class="py-2.5 px-3 text-center">Số Mặt Hàng Đã Bán</th>
-                        <th class="py-2.5 px-3 text-right">Doanh Số (VND)</th>
-                        <th class="py-2.5 px-3 text-right">Tỷ Trọng Doanh Thu</th>
-                        <th class="py-2.5 px-3 text-center">Xu Hướng</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
-                    @forelse($brands ?? [] as $b)
-                        <tr class="hover:bg-sky-50/50">
-                            <td class="py-2.5 px-3 font-bold text-slate-900 flex items-center gap-2">
+            <div class="hidden md:block overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
+                            <th class="py-2.5 px-3">Thương Hiệu</th>
+                            <th class="py-2.5 px-3 text-center">Số Mặt Hàng Đã Bán</th>
+                            <th class="py-2.5 px-3 text-right">Doanh Số (VND)</th>
+                            <th class="py-2.5 px-3 text-right">Tỷ Trọng Doanh Thu</th>
+                            <th class="py-2.5 px-3 text-center">Xu Hướng</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
+                        @forelse($brands ?? [] as $b)
+                            <tr class="hover:bg-sky-50/50">
+                                <td class="py-2.5 px-3 font-bold text-slate-900 flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                                    <span>{{ $b->name }}</span>
+                                </td>
+                                <td class="py-2.5 px-3 text-center font-mono">{{ number_format((int)($b->sku_count ?? 0)) }}</td>
+                                <td class="py-2.5 px-3 text-right font-bold text-slate-900">{{ number_format((float)($b->sales_amount ?? 0), 0, ',', '.') }} đ</td>
+                                <td class="py-2.5 px-3 text-right font-bold text-sky-700">{{ number_format((float)($b->revenue_share ?? 0), 1) }} %</td>
+                                <td class="py-2.5 px-3 text-center text-slate-500">Ổn định</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="py-6 text-center text-slate-400 italic">Chưa có dữ liệu thương hiệu phát sinh trong kỳ</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Card View: Sales by Brand -->
+            <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+                @forelse($brands ?? [] as $b)
+                    <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-slate-900 text-sm flex items-center gap-2">
                                 <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-                                <span>{{ $b->name }}</span>
-                            </td>
-                            <td class="py-2.5 px-3 text-center font-mono">{{ number_format((int)($b->sku_count ?? 0)) }}</td>
-                            <td class="py-2.5 px-3 text-right font-bold text-slate-900">{{ number_format((float)($b->sales_amount ?? 0), 0, ',', '.') }} đ</td>
-                            <td class="py-2.5 px-3 text-right font-bold text-sky-700">{{ number_format((float)($b->revenue_share ?? 0), 1) }} %</td>
-                            <td class="py-2.5 px-3 text-center text-slate-500">Ổn định</td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="py-6 text-center text-slate-400 italic">Chưa có dữ liệu thương hiệu phát sinh trong kỳ</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                                {{ $b->name }}
+                            </span>
+                            <span class="font-bold text-sky-700 text-xs">{{ number_format((float)($b->revenue_share ?? 0), 1) }} %</span>
+                        </div>
+                        <div class="flex items-center justify-between text-xs text-slate-600">
+                            <span>Mặt hàng đã bán: <strong class="font-mono text-slate-800">{{ number_format((int)($b->sku_count ?? 0)) }}</strong></span>
+                            <span class="font-black text-slate-900 text-sm">{{ number_format((float)($b->sales_amount ?? 0), 0, ',', '.') }} đ</span>
+                        </div>
+                    </div>
+                @empty
+                    <div class="py-6 text-center text-slate-400 italic text-xs">Chưa có dữ liệu thương hiệu phát sinh trong kỳ</div>
+                @endforelse
+            </div>
         </div>
     </div>
 

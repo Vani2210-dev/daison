@@ -108,12 +108,8 @@
                 </button>
             </div>
         </div>
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                    <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
-                        <th class="py-2.5 px-3 w-12 text-center">STT</th>
-                        <th class="py-2.5 px-3">Mã Kho</th>
                         <th class="py-2.5 px-3">Tên Kho Bãi</th>
                         <th class="py-2.5 px-3">Chi Nhánh Quản Lý</th>
                         <th class="py-2.5 px-3">Địa Chỉ / Vị Trí</th>
@@ -157,6 +153,37 @@
                 </tbody>
             </table>
         </div>
+        <!-- Mobile Card View: Warehouses -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            <template x-for="(w, index) in filteredWarehouses" :key="'m-w-' + w.id">
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-sky-700 text-xs" x-text="w.code || ('KHO-0' + (index+1))"></span>
+                        <span :class="w.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'" class="px-2 py-0.5 rounded-full text-[10px] font-bold" x-text="w.is_active ? 'Hoạt động' : 'Tạm dừng'"></span>
+                    </div>
+                    <div class="font-semibold text-slate-900 text-sm" x-text="w.name"></div>
+                    <div class="text-xs text-slate-600 space-y-1">
+                        <div><span class="text-slate-400">Chi nhánh:</span> <span class="font-medium" x-text="w.branch ? w.branch.name : (getBranchName(w.branch_id) || '---')"></span></div>
+                        <div><span class="text-slate-400">Địa chỉ:</span> <span x-text="w.address || 'Nghệ An / Hà Tĩnh'"></span></div>
+                        <div><span class="text-slate-400">Quản lý:</span> <span class="font-medium text-slate-800" x-text="w.manager_name || 'Thủ kho phụ trách'"></span></div>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button type="button" @click="openEdit('warehouses', w)" class="px-2.5 py-1 rounded bg-sky-50 text-sky-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-pen-to-square"></i> Sửa
+                        </button>
+                        <button type="button" @click="deleteItem('warehouses', w)" class="px-2.5 py-1 rounded bg-rose-50 text-rose-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i> Xóa
+                        </button>
+                    </div>
+                </div>
+            </template>
+            <template x-if="filteredWarehouses.length === 0">
+                <div class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-box-open text-2xl mb-1 text-slate-300 block"></i>
+                    Không tìm thấy kho bãi nào phù hợp
+                </div>
+            </template>
+        </div>
     </div>
 
     <!-- TAB 2: CHI NHÁNH -->
@@ -182,7 +209,7 @@
                 </button>
             </div>
         </div>
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
@@ -233,6 +260,38 @@
                 </tbody>
             </table>
         </div>
+        <!-- Mobile Card View: Branches -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            <template x-for="(b, index) in filteredBranches" :key="'m-b-' + b.id">
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-purple-700 text-xs" x-text="b.code || ('CN-0' + (index+1))"></span>
+                        <span :class="b.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'" class="px-2 py-0.5 rounded-full text-[10px] font-bold" x-text="b.is_active ? 'Hoạt động' : 'Tạm dừng'"></span>
+                    </div>
+                    <div class="font-semibold text-slate-900 text-sm" x-text="b.name"></div>
+                    <div class="text-xs text-slate-600 space-y-1">
+                        <div><span class="text-slate-400">Loại hình:</span> <span x-text="b.type || 'Chi nhánh chính'"></span></div>
+                        <div><span class="text-slate-400">Địa chỉ:</span> <span x-text="b.address || 'Khu vực Bắc Miền Trung'"></span></div>
+                        <div><span class="text-slate-400">Phụ trách:</span> <span class="font-medium text-slate-800" x-text="b.manager || 'Trưởng chi nhánh'"></span></div>
+                        <div><span class="text-slate-400">Hotline:</span> <span class="font-mono" x-text="b.phone || '---'"></span></div>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button type="button" @click="openEdit('branches', b)" class="px-2.5 py-1 rounded bg-sky-50 text-sky-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-pen-to-square"></i> Sửa
+                        </button>
+                        <button type="button" @click="deleteItem('branches', b)" class="px-2.5 py-1 rounded bg-rose-50 text-rose-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i> Xóa
+                        </button>
+                    </div>
+                </div>
+            </template>
+            <template x-if="filteredBranches.length === 0">
+                <div class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-building text-2xl mb-1 text-slate-300 block"></i>
+                    Không tìm thấy chi nhánh nào phù hợp
+                </div>
+            </template>
+        </div>
     </div>
 
     <!-- TAB 3: LOẠI QUỸ -->
@@ -258,7 +317,7 @@
                 </button>
             </div>
         </div>
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
@@ -307,6 +366,40 @@
                 </tbody>
             </table>
         </div>
+        <!-- Mobile Card View: Fund Types -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            <template x-for="(f, index) in filteredFunds" :key="'m-f-' + f.id">
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-emerald-700 text-xs" x-text="f.code || ('Q-0' + (index+1))"></span>
+                        <span :class="f.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'" class="px-2 py-0.5 rounded-full text-[10px] font-bold" x-text="f.is_active ? 'Sẵn sàng' : 'Khóa'"></span>
+                    </div>
+                    <div class="font-semibold text-slate-900 text-sm" x-text="f.name"></div>
+                    <div class="text-xs text-slate-600 space-y-1">
+                        <div><span class="text-slate-400">Ngân hàng:</span> <span x-text="f.bank_name || 'Tiền mặt nội bộ'"></span></div>
+                        <div><span class="text-slate-400">Số TK:</span> <span class="font-mono font-bold text-slate-700" x-text="f.account_number || '---'"></span></div>
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-slate-400">Số dư hiện tại:</span>
+                            <span class="font-bold text-emerald-600 text-sm" x-text="formatCurrency(f.current_balance || 0)"></span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button type="button" @click="openEdit('fund_types', f)" class="px-2.5 py-1 rounded bg-sky-50 text-sky-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-pen-to-square"></i> Sửa
+                        </button>
+                        <button type="button" @click="deleteItem('fund_types', f)" class="px-2.5 py-1 rounded bg-rose-50 text-rose-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i> Xóa
+                        </button>
+                    </div>
+                </div>
+            </template>
+            <template x-if="filteredFunds.length === 0">
+                <div class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-wallet text-2xl mb-1 text-slate-300 block"></i>
+                    Không tìm thấy loại quỹ nào phù hợp
+                </div>
+            </template>
+        </div>
     </div>
 
     <!-- TAB 4: PHÂN LOẠI -->
@@ -336,7 +429,7 @@
                 </button>
             </div>
         </div>
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
@@ -390,6 +483,40 @@
                 </tbody>
             </table>
         </div>
+        <!-- Mobile Card View: Categories -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            <template x-for="(c, index) in filteredCategories" :key="'m-c-' + c.id">
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-blue-700 text-xs" x-text="c.code || ('PL-0' + (index+1))"></span>
+                        <span :class="c.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'" class="px-2 py-0.5 rounded-full text-[10px] font-bold" x-text="c.is_active ? 'Hiển thị' : 'Ẩn'"></span>
+                    </div>
+                    <div class="font-semibold text-slate-900 text-sm" x-text="c.name"></div>
+                    <div class="text-xs text-slate-600 space-y-1">
+                        <div><span class="text-slate-400">Phụ trách:</span> <span class="font-medium text-slate-800" x-text="c.manager_name || 'Chưa phân công'"></span></div>
+                        <div><span class="text-slate-400">Mô tả:</span> <span x-text="c.description || 'Vật tư phân phối chính hãng'"></span></div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">Số mặt hàng:</span>
+                            <span class="font-bold text-slate-800" x-text="c.products_count || 0"></span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button type="button" @click="openEdit('categories', c)" class="px-2.5 py-1 rounded bg-sky-50 text-sky-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-pen-to-square"></i> Sửa
+                        </button>
+                        <button type="button" @click="deleteItem('categories', c)" class="px-2.5 py-1 rounded bg-rose-50 text-rose-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i> Xóa
+                        </button>
+                    </div>
+                </div>
+            </template>
+            <template x-if="filteredCategories.length === 0">
+                <div class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-layer-group text-2xl mb-1 text-slate-300 block"></i>
+                    Không tìm thấy phân loại nào phù hợp
+                </div>
+            </template>
+        </div>
     </div>
 
     <!-- TAB 5: NHÃN HIỆU -->
@@ -419,7 +546,7 @@
                 </button>
             </div>
         </div>
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
@@ -471,6 +598,43 @@
                 </tbody>
             </table>
         </div>
+        <!-- Mobile Card View: Brands -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            <template x-for="(br, index) in filteredBrands" :key="'m-br-' + br.id">
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-slate-600 text-xs" x-text="br.code || ('TH-0' + (index+1))"></span>
+                        <span :class="br.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'" class="px-2 py-0.5 rounded-full text-[10px] font-bold" x-text="br.is_active ? 'Chính hãng' : 'Ẩn'"></span>
+                    </div>
+                    <div class="font-bold text-slate-900 text-sm flex items-center gap-2">
+                        <span class="w-6 h-6 rounded bg-amber-50 text-amber-700 flex items-center justify-center font-black text-xs border border-amber-200" x-text="br.name ? br.name.charAt(0) : 'B'"></span>
+                        <span x-text="br.name"></span>
+                    </div>
+                    <div class="text-xs text-slate-600 space-y-1">
+                        <div><span class="text-slate-400">Xuất xứ:</span> <span x-text="br.country || 'Việt Nam'"></span></div>
+                        <div><span class="text-slate-400">Mô tả:</span> <span x-text="br.description || 'Chính sách đại lý chính thức'"></span></div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">Số mặt hàng:</span>
+                            <span class="font-bold text-slate-800" x-text="br.products_count || 0"></span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button type="button" @click="openEdit('brands', br)" class="px-2.5 py-1 rounded bg-sky-50 text-sky-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-pen-to-square"></i> Sửa
+                        </button>
+                        <button type="button" @click="deleteItem('brands', br)" class="px-2.5 py-1 rounded bg-rose-50 text-rose-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i> Xóa
+                        </button>
+                    </div>
+                </div>
+            </template>
+            <template x-if="filteredBrands.length === 0">
+                <div class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-award text-2xl mb-1 text-slate-300 block"></i>
+                    Không tìm thấy thương hiệu nào phù hợp
+                </div>
+            </template>
+        </div>
     </div>
 
     <!-- TAB: NHÀ CUNG CẤP -->
@@ -496,7 +660,7 @@
                 </button>
             </div>
         </div>
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
@@ -554,6 +718,41 @@
                 </tbody>
             </table>
         </div>
+        <!-- Mobile Card View: Suppliers -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            <template x-for="(sup, index) in filteredSuppliers" :key="'m-sup-' + sup.id">
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-slate-600 text-xs font-mono" x-text="sup.code || ('NCC-' + sup.id)"></span>
+                        <span :class="sup.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'" class="px-2 py-0.5 rounded-full text-[10px] font-bold" x-text="sup.is_active ? 'Hợp tác' : 'Tạm dừng'"></span>
+                    </div>
+                    <div class="font-bold text-slate-900 text-sm flex items-center gap-2">
+                        <span class="w-6 h-6 rounded bg-slate-100 text-slate-700 flex items-center justify-center font-black text-xs border border-slate-200" x-text="sup.name ? sup.name.charAt(0) : 'N'"></span>
+                        <span x-text="sup.name"></span>
+                    </div>
+                    <div class="text-xs text-slate-600 space-y-1">
+                        <div><span class="text-slate-400">Liên hệ:</span> <span class="font-bold text-slate-800" x-text="sup.contact_name || '—'"></span> <span class="font-mono text-slate-500" x-text="sup.phone ? '(' + sup.phone + ')' : ''"></span></div>
+                        <div x-show="sup.email"><span class="text-slate-400">Email:</span> <span x-text="sup.email"></span></div>
+                        <div x-show="sup.tax_code"><span class="text-slate-400">MST:</span> <span class="font-mono" x-text="sup.tax_code"></span></div>
+                        <div><span class="text-slate-400">Địa chỉ:</span> <span x-text="sup.address || '—'"></span></div>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button type="button" @click="openEdit('suppliers', sup)" class="px-2.5 py-1 rounded bg-sky-50 text-sky-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-pen-to-square"></i> Sửa
+                        </button>
+                        <button type="button" @click="deleteItem('suppliers', sup)" class="px-2.5 py-1 rounded bg-rose-50 text-rose-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i> Xóa
+                        </button>
+                    </div>
+                </div>
+            </template>
+            <template x-if="filteredSuppliers.length === 0">
+                <div class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-industry text-2xl mb-1 text-slate-300 block"></i>
+                    Không tìm thấy nhà cung cấp nào phù hợp
+                </div>
+            </template>
+        </div>
     </div>
 
     <!-- TAB 6: NHÓM NHỎ (SUBCATEGORIES) -->
@@ -583,7 +782,7 @@
                 </button>
             </div>
         </div>
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
@@ -638,6 +837,43 @@
                 </tbody>
             </table>
         </div>
+        <!-- Mobile Card View: Subcategories -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            <template x-for="(sub, index) in filteredSubcategories" :key="'m-sub-' + sub.id">
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-teal-700 text-xs" x-text="sub.code || ('NN-' + (index+1))"></span>
+                        <span :class="sub.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'" class="px-2 py-0.5 rounded-full text-[10px] font-bold" x-text="sub.is_active ? 'Hoạt động' : 'Tạm dừng'"></span>
+                    </div>
+                    <div class="font-bold text-slate-900 text-sm" x-text="sub.name"></div>
+                    <div class="flex flex-wrap gap-1.5 text-xs">
+                        <span class="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-200 text-[11px]" x-text="sub.category ? sub.category.name : getCategoryName(sub.category_id)"></span>
+                        <span class="px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-semibold border border-amber-200 text-[11px]" x-text="sub.brand ? sub.brand.name : (getBrandName(sub.brand_id) || 'Chung')"></span>
+                    </div>
+                    <div class="text-xs text-slate-600 space-y-1">
+                        <div><span class="text-slate-400">Mô tả:</span> <span x-text="sub.description || '---'"></span></div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">Số mặt hàng:</span>
+                            <span class="font-bold text-slate-800" x-text="sub.products_count || 0"></span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button type="button" @click="openEdit('subcategories', sub)" class="px-2.5 py-1 rounded bg-sky-50 text-sky-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-pen-to-square"></i> Sửa
+                        </button>
+                        <button type="button" @click="deleteItem('subcategories', sub)" class="px-2.5 py-1 rounded bg-rose-50 text-rose-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i> Xóa
+                        </button>
+                    </div>
+                </div>
+            </template>
+            <template x-if="filteredSubcategories.length === 0">
+                <div class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-sitemap text-2xl mb-1 text-slate-300 block"></i>
+                    Không tìm thấy nhóm nhỏ nào phù hợp
+                </div>
+            </template>
+        </div>
     </div>
 
     <!-- TAB 6: TUYẾN GIAO HÀNG -->
@@ -663,7 +899,7 @@
                 </button>
             </div>
         </div>
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
@@ -714,6 +950,41 @@
                 </tbody>
             </table>
         </div>
+        <!-- Mobile Card View: Routes -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            <template x-for="(r, index) in filteredRoutes" :key="'m-r-' + r.id">
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-sky-700 text-xs" x-text="r.code || ('TGH-0' + (index+1))"></span>
+                        <span :class="r.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'" class="px-2 py-0.5 rounded-full text-[10px] font-bold" x-text="r.is_active ? 'Lưu thông' : 'Tạm dừng'"></span>
+                    </div>
+                    <div class="font-semibold text-slate-900 text-sm" x-text="r.name"></div>
+                    <div class="text-xs text-slate-600 space-y-1">
+                        <div><span class="text-slate-400">Kho xuất phát:</span> <span x-text="r.departure_warehouse || 'Kho Tổng Vinh'"></span></div>
+                        <div><span class="text-slate-400">Điểm dừng:</span> <span class="text-slate-700" x-text="formatStops(r.stops)"></span></div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">Khoảng cách:</span>
+                            <span class="font-semibold text-slate-800" x-text="r.distance_km ? (r.distance_km + ' km') : 'Tùy đơn'"></span>
+                        </div>
+                        <div><span class="text-slate-400">Xe phụ trách:</span> <span class="font-medium text-slate-800" x-text="r.assigned_vehicle_plate || 'Chưa gán'"></span></div>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button type="button" @click="openEdit('routes', r)" class="px-2.5 py-1 rounded bg-sky-50 text-sky-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-pen-to-square"></i> Sửa
+                        </button>
+                        <button type="button" @click="deleteItem('routes', r)" class="px-2.5 py-1 rounded bg-rose-50 text-rose-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i> Xóa
+                        </button>
+                    </div>
+                </div>
+            </template>
+            <template x-if="filteredRoutes.length === 0">
+                <div class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-route text-2xl mb-1 text-slate-300 block"></i>
+                    Không tìm thấy tuyến giao hàng nào phù hợp
+                </div>
+            </template>
+        </div>
     </div>
 
     <!-- TAB 7: XE GIAO HÀNG & PHÂN CÔNG ĐỘI XE -->
@@ -741,7 +1012,7 @@
                     </button>
                 </div>
             </div>
-            <div class="overflow-x-auto">
+            <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
@@ -802,6 +1073,46 @@
                         </template>
                     </tbody>
                 </table>
+            </div>
+            <!-- Mobile Card View: Vehicles -->
+            <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+                <template x-for="(v, index) in filteredVehicles" :key="'m-v-' + v.id">
+                    <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono text-[11px] font-black border border-slate-700 tracking-wider" x-text="v.plate_number"></span>
+                            <span :class="{
+                                'bg-emerald-100 text-emerald-800': v.status === 'Sẵn sàng' || !v.status,
+                                'bg-amber-100 text-amber-800': v.status === 'Đang giao hàng',
+                                'bg-rose-100 text-rose-800': v.status === 'Bảo dưỡng'
+                            }" class="px-2 py-0.5 rounded-full text-[10px] font-bold" x-text="v.status || 'Sẵn sàng'"></span>
+                        </div>
+                        <div class="text-xs text-slate-700 font-medium">
+                            <span x-text="v.vehicle_type || 'Xe tải vận chuyển'"></span>
+                            <span class="text-slate-400 font-normal" x-show="v.capacity_kg"> (<span x-text="v.capacity_kg"></span> kg)</span>
+                        </div>
+                        <div class="text-xs text-slate-600 space-y-1">
+                            <div><span class="text-slate-400">Tài xế:</span> <span class="font-semibold text-slate-800" x-text="v.driver ? v.driver.name : (getDriverName(v.driver_id) || 'Chưa phân công')"></span> <span class="font-mono text-slate-500" x-text="v.driver ? '(' + v.driver.phone + ')' : (getDriverPhone(v.driver_id) ? '(' + getDriverPhone(v.driver_id) + ')' : '')"></span></div>
+                            <div><span class="text-slate-400">Tuyến:</span> <span x-text="v.delivery_route ? v.delivery_route.name : (getRouteName(v.delivery_route_id) || '---')"></span></div>
+                        </div>
+                        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                            <button type="button" @click="openAssignment(v)" class="px-2 py-1 rounded-md bg-indigo-50 text-indigo-700 font-bold text-[11px] flex items-center gap-1 border border-indigo-200/70">
+                                <i class="fa-solid fa-user-check text-[11px]"></i> Phân công
+                            </button>
+                            <button type="button" @click="openEdit('vehicles', v)" class="w-7 h-7 rounded-md bg-sky-50 text-sky-700 flex items-center justify-center">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button type="button" @click="deleteItem('vehicles', v)" class="w-7 h-7 rounded-md bg-rose-50 text-rose-700 flex items-center justify-center">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="filteredVehicles.length === 0">
+                    <div class="py-8 text-center text-slate-400">
+                        <i class="fa-solid fa-truck text-2xl mb-1 text-slate-300 block"></i>
+                        Không tìm thấy xe giao hàng nào phù hợp
+                    </div>
+                </template>
             </div>
         </div>
 
@@ -1215,7 +1526,7 @@
                         </div>
 
                         <!-- History Table -->
-                        <div class="overflow-x-auto flex-1">
+                        <div class="hidden md:block overflow-x-auto flex-1">
                             <table class="w-full text-left border-collapse text-xs">
                                 <thead>
                                     <tr class="bg-slate-100/90 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
@@ -1331,6 +1642,72 @@
                             </table>
                         </div>
 
+                        <!-- Mobile Card View: Assignment History -->
+                        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3 flex-1 overflow-y-auto">
+                            <template x-for="(rec, idx) in filteredAssignments" :key="'m-asg-' + rec.id">
+                                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-mono font-extrabold text-indigo-950 text-xs" x-text="rec.vehiclePlate"></span>
+                                            <span class="font-mono text-[10px] text-slate-400" x-text="rec.id"></span>
+                                        </div>
+                                        <div>
+                                            <template x-if="rec.status === 'Đang áp dụng'">
+                                                <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-bold text-[10px]">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                    <span>Đang áp dụng</span>
+                                                </span>
+                                            </template>
+                                            <template x-if="rec.status === 'Hoàn thành'">
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full font-bold text-[10px]">
+                                                    <span>Hoàn thành</span>
+                                                </span>
+                                            </template>
+                                            <template x-if="rec.status !== 'Đang áp dụng' && rec.status !== 'Hoàn thành'">
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-600 border border-slate-300 rounded-full font-bold text-[10px]" x-text="rec.status"></span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                    <div class="text-xs text-slate-600 space-y-1">
+                                        <div>
+                                            <span class="text-slate-400">Lái xe:</span>
+                                            <span class="font-bold text-slate-900" x-text="rec.driverName"></span>
+                                            <span class="font-mono text-slate-500 text-[11px]" x-show="rec.driverPhone" x-text="' (' + rec.driverPhone + ')'"></span>
+                                        </div>
+                                        <div x-show="rec.copilotName">
+                                            <span class="text-slate-400">Phụ xe:</span>
+                                            <span class="font-bold text-slate-800" x-text="rec.copilotName"></span>
+                                            <span class="font-mono text-slate-500 text-[11px]" x-show="rec.copilotPhone" x-text="' (' + rec.copilotPhone + ')'"></span>
+                                        </div>
+                                        <div>
+                                            <span class="text-slate-400">Thời gian:</span>
+                                            <span class="text-slate-800 font-semibold" x-text="rec.effectiveFrom"></span>
+                                            <span class="text-slate-400 text-[11px]" x-text="' - ' + (rec.effectiveTo || 'Không thời hạn')"></span>
+                                        </div>
+                                        <div>
+                                            <span class="text-slate-400">Tuyến / Ca:</span>
+                                            <span class="font-medium text-slate-900" x-text="rec.routeZone || 'Chưa gán tuyến'"></span>
+                                            <span class="text-slate-500 text-[10px]" x-text="' (' + (rec.shift || 'Toàn thời gian') + ')'"></span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                                        <button type="button" x-show="rec.status === 'Đang áp dụng'" @click="terminateAssignment(rec.id)" class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-xs font-medium flex items-center gap-1">
+                                            <i class="fa-solid fa-rotate-left"></i> Kết thúc
+                                        </button>
+                                        <button type="button" @click="deleteAssignment(rec.id)" class="px-2.5 py-1 bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-700 rounded-lg text-xs font-medium flex items-center gap-1">
+                                            <i class="fa-solid fa-trash-can"></i> Xóa
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+                            <template x-if="filteredAssignments.length === 0">
+                                <div class="py-12 text-center text-slate-400">
+                                    <i class="fa-solid fa-clipboard-list text-3xl text-slate-300 mb-2"></i>
+                                    <p class="text-xs font-semibold">Chưa có bản ghi lịch sử phân công nào phù hợp</p>
+                                </div>
+                            </template>
+                        </div>
+
                         <!-- Footer Summary -->
                         <div class="p-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
                             <span>* Tất cả các lần phân công được lưu vết phục vụ kiểm tra và tính định mức công nợ giao hàng.</span>
@@ -1368,12 +1745,8 @@
                 </a>
             </div>
         </div>
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                    <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
-                        <th class="py-2.5 px-3 w-12 text-center">STT</th>
-                        <th class="py-2.5 px-3">Mã CS</th>
                         <th class="py-2.5 px-3">Tên Chính Sách Bán Hàng</th>
                         <th class="py-2.5 px-3">Đối Tượng Áp Dụng</th>
                         <th class="py-2.5 px-3 text-right">Mức Ưu Đãi / Chiết Khấu</th>
@@ -1443,6 +1816,68 @@
                     </template>
                 </tbody>
             </table>
+        </div>
+        <!-- Mobile Card View: Policies -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            <template x-for="(p, index) in filteredPolicies" :key="'m-pol-' + p.id">
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-slate-700 text-xs font-mono" x-text="p.code || ('CS-0' + (index+1))"></span>
+                        <span :class="(p.status === 'active' || p.status === 'Hoạt động' || p.status === 'Kích hoạt') ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'" class="px-2 py-0.5 rounded-full text-[10px] font-bold" x-text="(p.status === 'active' || p.status === 'Hoạt động' || p.status === 'Kích hoạt') ? 'Hoạt động' : 'Tạm ngưng'"></span>
+                    </div>
+                    <div class="font-semibold text-slate-900 text-sm">
+                        <a :href="'{{ url('/cat_sales_policies') }}/' + p.id + '/edit'" class="hover:text-sky-600 hover:underline" x-text="p.name"></a>
+                    </div>
+                    <div class="text-xs text-slate-600 space-y-1">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold"
+                                  :class="p.apply_scope === 'order' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'"
+                                  x-text="p.apply_scope === 'order' ? 'Giảm trên đơn' : (p.apply_scope === 'product' ? 'Giảm từng SP' : (p.apply_scope || 'Toàn hệ thống'))">
+                            </span>
+                            <span class="text-[11px] text-slate-500"
+                                  x-text="(p.target_customer_tiers && p.target_customer_tiers.length > 0) ? p.target_customer_tiers.join(', ') : ((p.target_customer_ids && p.target_customer_ids.length > 0) ? (p.target_customer_ids.length + ' đại lý') : 'Toàn bộ khách')"></span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">Ưu đãi / CK:</span>
+                            <span class="font-bold text-emerald-600">
+                                <span x-show="p.policy_type === 'quantity'" class="text-sky-700 font-bold">
+                                    <template x-if="p.gift_tiers && p.gift_tiers.length > 0">
+                                        <span x-text="p.gift_tiers.map(t => 'Mua ' + t.buy_qty + ' tặng ' + t.free_qty).join(' • ')"></span>
+                                    </template>
+                                    <template x-if="!p.gift_tiers || p.gift_tiers.length === 0">
+                                        <span x-text="'Mua ' + (p.buy_qty || 0) + ' tặng ' + (p.free_qty || 0)"></span>
+                                    </template>
+                                </span>
+                                <span x-show="p.policy_type === 'amount'" class="text-amber-700 font-bold" x-text="formatCurrency(p.discount_amount || 0)"></span>
+                                <span x-show="!p.policy_type || p.policy_type === 'percentage'" x-text="(p.discount_percent || 0) + '%'"></span>
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">Đơn tối thiểu:</span>
+                            <span class="font-medium text-slate-700" x-text="p.min_order_value ? formatCurrency(p.min_order_value) : 'Không giới hạn'"></span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400">Hiệu lực:</span>
+                            <span x-text="p.start_date ? p.start_date.substring(0, 10) : 'Năm 2026'"></span>
+                            <span x-show="p.end_date"> - <span x-text="p.end_date.substring(0, 10)"></span></span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <a :href="'{{ url('/cat_sales_policies') }}/' + p.id + '/edit'" class="px-2.5 py-1 rounded bg-sky-50 text-sky-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-pen-to-square"></i> Sửa
+                        </a>
+                        <button type="button" @click="deleteItem('policies', p)" class="px-2.5 py-1 rounded bg-rose-50 text-rose-700 font-medium text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i> Xóa
+                        </button>
+                    </div>
+                </div>
+            </template>
+            <template x-if="filteredPolicies.length === 0">
+                <div class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-percent text-2xl mb-1 text-slate-300 block"></i>
+                    Không tìm thấy chính sách bán hàng nào phù hợp
+                </div>
+            </template>
         </div>
     </div>
 

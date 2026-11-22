@@ -38,7 +38,7 @@
             </div>
 
             <!-- Table of Parts -->
-            <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-xs">
+            <div class="hidden md:block overflow-x-auto border border-slate-200 rounded-xl shadow-xs">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="bg-slate-100/80 text-slate-700 uppercase text-[10px] font-extrabold tracking-wider border-b border-slate-200">
@@ -95,6 +95,53 @@
                         </template>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card View: Parts -->
+            <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+                <template x-if="parts.length === 0">
+                    <div class="py-8 text-center text-slate-400 text-xs">
+                        <i class="fa-solid fa-box-open text-2xl mb-1 text-slate-300 block"></i>
+                        Chưa có phụ tùng linh kiện nào
+                    </div>
+                </template>
+                <template x-for="item in parts" :key="'m-part-' + item.id">
+                    <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2"
+                         :class="item.stock_qty <= item.min_stock_alert ? 'border-rose-300 bg-rose-50/20' : ''">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-teal-800 text-xs" x-text="item.code"></span>
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600" x-text="item.category"></span>
+                        </div>
+                        <div class="font-bold text-slate-800 text-sm" x-text="item.name"></div>
+                        <div class="text-xs text-slate-600 space-y-1">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">ĐVT / Vị trí:</span>
+                                <span class="font-medium text-slate-700" x-text="(item.unit || '') + (item.location ? ' • Kho: ' + item.location : '')"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Giá nhập / xuất:</span>
+                                <span><span class="text-slate-500" x-text="window.formatCurrency(item.in_price)"></span> / <strong class="text-teal-700" x-text="window.formatCurrency(item.out_price)"></strong></span>
+                            </div>
+                            <div class="flex justify-between items-center pt-1">
+                                <span class="text-slate-400">Tồn kho:</span>
+                                <span class="px-2.5 py-0.5 rounded-full font-black text-xs" 
+                                      :class="item.stock_qty <= item.min_stock_alert ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-800'" 
+                                      x-text="item.stock_qty + ' (Cảnh báo: ' + item.min_stock_alert + ')'"></span>
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                            <button @click="quickImport(item)" title="Nhập thêm hàng" class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-xs flex items-center gap-1">
+                                <i class="fa-solid fa-cart-plus"></i> Nhập kho
+                            </button>
+                            <button @click="editPart(item)" class="px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 font-bold text-xs flex items-center gap-1">
+                                <i class="fa-solid fa-pen-to-square"></i> Sửa
+                            </button>
+                            <button @click="deletePart(item.id)" class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 font-bold text-xs flex items-center gap-1">
+                                <i class="fa-solid fa-trash-can"></i> Xóa
+                            </button>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
 

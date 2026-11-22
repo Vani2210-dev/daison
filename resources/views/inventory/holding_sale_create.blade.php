@@ -355,7 +355,8 @@
                 </div>
 
                 <!-- Bảng danh sách sản phẩm -->
-                <div class="holding-sale-table-container border border-slate-200 rounded-xl overflow-visible">
+                <!-- Desktop Table -->
+                <div class="hidden md:block holding-sale-table-container border border-slate-200 rounded-xl overflow-visible">
                     <table class="holding-sale-table w-full text-left text-xs divide-y divide-slate-200">
                         <thead class="bg-slate-50 text-slate-600 font-bold text-[11px] uppercase">
                             <tr>
@@ -423,6 +424,50 @@
                             </template>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Mobile Cards: Danh sách sản phẩm bán -->
+                <div class="md:hidden space-y-3">
+                    <template x-for="(it, idx) in saleForm.items" :key="'hm-' + it.id">
+                        <div class="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-2.5 shadow-2xs">
+                            <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                                <div>
+                                    <span class="font-bold text-slate-900 text-xs" x-text="it.name"></span>
+                                    <span class="text-[10px] text-slate-400 font-mono block" x-text="(it.sku || '---') + ' • ' + (it.unit || 'cái')"></span>
+                                </div>
+                                <button type="button" @click="removeItem(idx)" class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center cursor-pointer">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-2 text-xs">
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block font-bold">Tồn ôm</span>
+                                    <span class="font-mono font-bold text-emerald-700 text-xs" x-text="(it.available_stock || 0) + ' ' + (it.unit || '')"></span>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block font-bold">SL Bán</span>
+                                    <input type="number" min="0.1" :max="it.available_stock || 9999" step="any" x-model.number="it.quantity" 
+                                           class="w-full px-2 py-1 text-center font-bold font-mono border border-slate-300 rounded-lg"
+                                           :class="it.quantity > (it.available_stock || 0) ? 'border-rose-500 bg-rose-50 text-rose-700' : ''">
+                                </div>
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block font-bold">Đơn giá</span>
+                                    <input type="number" min="0" x-model.number="it.unit_price" class="w-full px-2 py-1 text-right font-bold font-mono border border-slate-300 rounded-lg">
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-1.5 border-t border-slate-100">
+                                <span class="text-[10px] text-slate-400 uppercase font-bold">Thành tiền:</span>
+                                <span class="font-mono font-black text-blue-700 text-xs" x-text="formatMoney((it.quantity || 0) * (it.unit_price || 0)) + ' đ'"></span>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div x-show="saleForm.items.length === 0" class="py-8 text-center text-slate-400 bg-white border border-slate-200 rounded-2xl p-4">
+                        <i class="fa-solid fa-cart-arrow-down text-2xl mb-1 text-slate-300"></i>
+                        <p class="font-semibold text-slate-700 text-xs">Chưa có sản phẩm nào trong đơn.</p>
+                    </div>
                 </div>
 
 

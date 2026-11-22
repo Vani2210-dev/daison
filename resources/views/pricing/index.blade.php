@@ -74,7 +74,8 @@
 
     <!-- Table Card -->
     <div class="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
-        <div class="overflow-x-auto">
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-white text-slate-800 font-bold uppercase text-[11px] border-b border-slate-200">
@@ -153,6 +154,33 @@
                     </template>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Cards List -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            <template x-for="(item, index) in filteredItems" :key="'m_' + item.id">
+                <div class="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs space-y-2 text-xs">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 bg-sky-50 text-sky-800 border border-sky-200 rounded-lg font-mono font-bold text-xs uppercase" x-text="item.code || '---'"></span>
+                            <span class="font-extrabold text-slate-900 text-sm" x-text="item.name"></span>
+                        </div>
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[10px]"
+                              :class="item.status === 'Hoạt động' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'">
+                            <span x-text="item.status"></span>
+                        </span>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-1.5 pt-1.5 border-t border-slate-100">
+                        <button type="button" @click="openEditModal(item)" class="p-1.5 bg-slate-100 text-slate-600 rounded-lg">
+                            <i class="fa-solid fa-pen-to-square text-xs"></i> Sửa
+                        </button>
+                        <button type="button" @click="deleteItem(item)" class="p-1.5 bg-rose-50 text-rose-600 rounded-lg">
+                            <i class="fa-solid fa-trash-can text-xs"></i> Xóa
+                        </button>
+                    </div>
+                </div>
+            </template>
         </div>
     </div>
 

@@ -99,7 +99,7 @@
                         </p>
 
                         <!-- Bảng danh sách phụ tùng cấu hình -->
-                        <div class="border border-slate-200 rounded-xl overflow-visible shadow-2xs bg-white min-h-[300px]">
+                        <div class="hidden md:block border border-slate-200 rounded-xl overflow-visible shadow-2xs bg-white min-h-[300px]">
                             <table class="w-full text-left border-collapse text-xs">
                                 <thead>
                                     <tr class="bg-slate-50 text-slate-600 uppercase text-[10px] font-extrabold tracking-wider border-b border-slate-200">
@@ -200,6 +200,44 @@
                                     </template>
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- Mobile Card View: Default Parts Configuration -->
+                        <div class="md:hidden space-y-3">
+                            <template x-if="!modelForm.default_parts || modelForm.default_parts.length === 0">
+                                <div class="py-6 text-center text-slate-400 bg-slate-50/40 rounded-xl border border-slate-200 p-4">
+                                    <i class="fa-solid fa-boxes-packing text-2xl mb-1 text-slate-300 block"></i>
+                                    Chưa có phụ tùng mặc định nào cho model này.
+                                </div>
+                            </template>
+                            <template x-for="(p, pIdx) in (modelForm.default_parts || [])" :key="'m-mdl-part-' + pIdx">
+                                <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2.5">
+                                    <div class="flex items-center justify-between">
+                                        <span class="font-bold text-slate-500 text-xs" x-text="'#' + (pIdx + 1)"></span>
+                                        <button type="button" @click="removeModelPart(pIdx)" class="text-rose-500 hover:text-rose-700 p-1">
+                                            <i class="fa-solid fa-trash-can text-xs"></i>
+                                        </button>
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Phụ tùng / Linh kiện</label>
+                                        <input type="text" x-model="p.part_name" placeholder="Gõ tên hoặc mã..." class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2 text-xs">
+                                        <div>
+                                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Số lượng</label>
+                                            <input type="number" x-model.number="p.quantity" min="1" max="99" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-center font-bold">
+                                        </div>
+                                        <div>
+                                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Hạn thay (tháng)</label>
+                                            <input type="number" x-model.number="p.lifespan_months" min="1" max="120" placeholder="6" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-center font-bold text-teal-700">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Ghi chú</label>
+                                        <input type="text" x-model="p.note" placeholder="Lưu ý khi thay..." class="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600">
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </div>
                 </div>

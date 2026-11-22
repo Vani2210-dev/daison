@@ -92,7 +92,8 @@
 
     <!-- Main Products Table -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div class="overflow-x-auto table-scroll-container">
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto table-scroll-container">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-slate-100/90 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
@@ -331,6 +332,54 @@
                     </tr>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Cards List -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            <template x-for="(item, idx) in filteredProducts" :key="'m_' + item.id">
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2 text-xs">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                        <div>
+                            <span class="font-bold text-slate-900 text-sm" x-text="item.name"></span>
+                            <span class="font-mono text-xs font-bold text-sky-800 block" x-text="item.sku"></span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                              :class="item.is_active !== false ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'"
+                              x-text="item.is_active !== false ? 'Hoạt động' : 'Tạm ngưng'"></span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <span class="text-[10px] text-slate-400 font-bold block">ĐVT & Phân loại</span>
+                            <span class="font-bold text-slate-700" x-text="(item.unit || 'cái') + (item.category ? ' • ' + item.category.name : '')"></span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400 font-bold block">Tồn kho</span>
+                            <span class="font-mono font-bold text-slate-900" x-text="formatNumber(item.stock_quantity || 0)"></span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 py-1 px-2.5 bg-slate-50 rounded-xl text-xs">
+                        <div>
+                            <span class="text-[10px] text-slate-400 block font-bold">Giá vốn:</span>
+                            <span class="font-mono font-bold text-amber-900" x-text="formatNumber(item.cost_price || 0) + ' đ'"></span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400 block font-bold">Giá bán:</span>
+                            <span class="font-mono font-black text-sky-700" x-text="formatNumber(getSellingPrice(item)) + ' đ'"></span>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+                        <a :href="'{{ url('/cat_products') }}/' + item.id + '/edit'" class="px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 font-bold text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-pen-to-square text-xs"></i> Sửa
+                        </a>
+                        <button type="button" @click="deleteProduct(item)" class="p-1 rounded-lg bg-rose-50 text-rose-600">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            </template>
         </div>
 
         <!-- Pagination Footer (20 items per page) -->

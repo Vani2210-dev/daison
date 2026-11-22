@@ -167,7 +167,8 @@
                 <span class="font-bold text-slate-700" x-text="staffSummary.length + ' nhân viên'"></span>
             </div>
 
-            <div class="overflow-x-auto border border-slate-200 rounded-2xl shadow-2xs">
+            <!-- Desktop Table Layout -->
+            <div class="hidden md:block overflow-x-auto border border-slate-200 rounded-2xl shadow-2xs">
                 <table class="w-full text-left text-xs">
                     <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-black text-[10.5px] uppercase tracking-wider">
                         <tr>
@@ -218,6 +219,49 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Mobile Card Layout Tab 1 -->
+            <div class="md:hidden space-y-2.5">
+                <template x-for="(st, index) in staffSummary" :key="'mob-st-' + index">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-3.5 space-y-2.5 shadow-2xs">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-black flex items-center justify-center text-xs" x-text="st.staff_name ? st.staff_name.charAt(0) : 'N'"></div>
+                                <div>
+                                    <div class="font-black text-slate-900 text-xs" x-text="st.staff_name || 'NVKD Chưa gán'"></div>
+                                    <span class="text-[10.5px] text-slate-400" x-text="st.total_advances_count + ' phiếu ứng'"></span>
+                                </div>
+                            </div>
+                            <button type="button" @click="filterByStaff(st.staff_id, st.staff_name)" class="px-2.5 py-1 rounded-xl bg-sky-50 text-sky-700 border border-sky-200 text-xs font-bold cursor-pointer">
+                                Chi tiết
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5 text-center text-xs">
+                            <div class="bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                                <span class="text-slate-400 block text-[10px]">Đã ứng</span>
+                                <strong class="text-slate-800" x-text="formatNumber(st.total_advance_qty)"></strong>
+                            </div>
+                            <div class="bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                                <span class="text-slate-400 block text-[10px]">Đã hoàn</span>
+                                <strong class="text-emerald-700" x-text="formatNumber(st.total_returned_qty)"></strong>
+                            </div>
+                            <div class="bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                                <span class="text-slate-400 block text-[10px]">Còn nợ</span>
+                                <strong :class="Number(st.total_remaining_qty) > 0 ? 'text-rose-700 font-black' : 'text-emerald-700'" x-text="formatNumber(st.total_remaining_qty)"></strong>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                            <span class="text-slate-500 font-medium">Giá trị nợ ước tính:</span>
+                            <span class="font-black text-slate-900" x-text="formatMoney(st.total_remaining_value)"></span>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="staffSummary.length === 0">
+                    <div class="py-8 text-center text-slate-400 text-xs">
+                        Chưa có dữ liệu ứng khuyến mại nào theo nhân viên.
+                    </div>
+                </template>
+            </div>
         </div>
 
         <!-- ========================================== -->
@@ -229,7 +273,8 @@
                 <span class="font-bold text-slate-700" x-text="brandSummary.length + ' dòng sản phẩm Hãng'"></span>
             </div>
 
-            <div class="overflow-x-auto border border-slate-200 rounded-2xl shadow-2xs">
+            <!-- Desktop Table Layout -->
+            <div class="hidden md:block overflow-x-auto border border-slate-200 rounded-2xl shadow-2xs">
                 <table class="w-full text-left text-xs">
                     <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-black text-[10.5px] uppercase tracking-wider">
                         <tr>
@@ -274,6 +319,47 @@
                         </template>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card Layout Tab 2 -->
+            <div class="md:hidden space-y-2.5">
+                <template x-for="(br, index) in brandSummary" :key="'mob-br-' + index">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-3.5 space-y-2.5 shadow-2xs">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <span class="px-2 py-0.5 rounded-lg bg-purple-50 text-purple-900 border border-purple-200 text-xs font-black" x-text="br.brand_name || 'Hãng Khác'"></span>
+                            <button type="button" @click="quickSettleForBrand(br)" class="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold cursor-pointer">
+                                <i class="fa-solid fa-arrow-down-long mr-1"></i>Hoàn ứng
+                            </button>
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-900 text-xs" x-text="br.product_name"></div>
+                            <div class="text-[10px] font-mono text-slate-400 mt-0.5" x-text="'Mã SP: ' + (br.product_sku || '---') + ' • ĐVT: ' + (br.unit || 'cái')"></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5 text-center text-xs">
+                            <div class="bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                                <span class="text-slate-400 block text-[10px]">Cty đã ứng</span>
+                                <strong class="text-slate-800" x-text="formatNumber(br.total_advance_qty)"></strong>
+                            </div>
+                            <div class="bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                                <span class="text-slate-400 block text-[10px]">Hãng đã bù</span>
+                                <strong class="text-emerald-700" x-text="formatNumber(br.total_returned_qty)"></strong>
+                            </div>
+                            <div class="bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                                <span class="text-slate-400 block text-[10px]">Hãng còn nợ</span>
+                                <strong :class="Number(br.total_remaining_qty) > 0 ? 'text-rose-700 font-black' : 'text-emerald-700'" x-text="formatNumber(br.total_remaining_qty)"></strong>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                            <span class="text-slate-500 font-medium">Giá trị nợ:</span>
+                            <span class="font-black text-slate-900" x-text="formatMoney(br.total_remaining_value)"></span>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="brandSummary.length === 0">
+                    <div class="py-8 text-center text-slate-400 text-xs">
+                        Chưa có dữ liệu nợ khuyến mại nào theo Hãng.
+                    </div>
+                </template>
             </div>
         </div>
 
@@ -320,8 +406,8 @@
                 </div>
             </div>
 
-            <!-- Bảng danh sách phiếu ứng chi tiết -->
-            <div class="overflow-x-auto border border-slate-200 rounded-2xl shadow-2xs">
+            <!-- Bảng danh sách phiếu ứng chi tiết: Desktop Table & Mobile Cards -->
+            <div class="hidden md:block overflow-x-auto border border-slate-200 rounded-2xl shadow-2xs">
                 <table class="w-full text-left text-xs">
                     <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-black text-[10.5px] uppercase tracking-wider">
                         <tr>
@@ -381,6 +467,69 @@
                         </template>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card Layout Tab 3 -->
+            <div class="md:hidden space-y-2.5">
+                <template x-for="(it, index) in advancesList" :key="'mob-adv-' + it.id">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-3.5 space-y-2.5 shadow-2xs">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <div>
+                                <div class="font-mono font-bold text-amber-700 text-xs" x-text="it.code"></div>
+                                <div class="text-[10px] text-slate-400" x-show="it.order_code" x-text="'Đơn: ' + it.order_code"></div>
+                            </div>
+                            <span x-show="it.status === 'pending'" class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10.5px] font-black border border-amber-300">⏳ Đang nợ</span>
+                            <span x-show="it.status === 'partially_settled'" class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-900 text-[10.5px] font-black border border-sky-300">🔄 Hoàn 1 phần</span>
+                            <span x-show="it.status === 'settled'" class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[10.5px] font-black border border-emerald-300">✅ Đã hoàn đủ</span>
+                        </div>
+
+                        <div>
+                            <div class="font-bold text-slate-900 text-xs" x-text="it.product_name"></div>
+                            <div class="text-[10px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                <span class="font-mono text-slate-400" x-text="it.product_sku"></span>
+                                <span>&bull;</span>
+                                <span class="font-black text-purple-900" x-text="it.brand_name || 'Hãng Khác'"></span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <span class="text-slate-400 text-[10px] block">Nhân viên & Khách</span>
+                                <div class="font-bold text-slate-800" x-text="it.staff_name || '---'"></div>
+                                <div class="text-[10.5px] text-slate-500" x-text="it.customer_name || 'Khách vãng lai'"></div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-1 text-center">
+                                <div class="bg-slate-50 p-1 rounded-lg border border-slate-100">
+                                    <span class="text-slate-400 block text-[9.5px]">Ứng</span>
+                                    <strong class="text-slate-800 text-[11px]" x-text="formatNumber(it.advance_quantity)"></strong>
+                                </div>
+                                <div class="bg-slate-50 p-1 rounded-lg border border-slate-100">
+                                    <span class="text-slate-400 block text-[9.5px]">Hoàn</span>
+                                    <strong class="text-emerald-700 text-[11px]" x-text="formatNumber(it.returned_quantity)"></strong>
+                                </div>
+                                <div class="bg-slate-50 p-1 rounded-lg border border-slate-100">
+                                    <span class="text-slate-400 block text-[9.5px]">Nợ</span>
+                                    <strong :class="Number(it.remaining_quantity) > 0 ? 'text-rose-700 font-black' : 'text-emerald-700'" class="text-[11px]" x-text="formatNumber(it.remaining_quantity)"></strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-100">
+                            <button type="button" x-show="Number(it.remaining_quantity) > 0" @click="openSingleSettleModal(it)" class="w-full py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1 cursor-pointer shadow-xs">
+                                <i class="fa-solid fa-arrow-down-long"></i>
+                                <span>Hoàn ứng</span>
+                            </button>
+                            <div x-show="Number(it.remaining_quantity) <= 0" class="text-center text-slate-400 text-xs font-semibold py-1">
+                                ✓ Đã hoàn tất đủ số lượng
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="advancesList.length === 0">
+                    <div class="py-8 text-center text-slate-400 text-xs">
+                        Không tìm thấy phiếu ứng khuyến mại nào phù hợp.
+                    </div>
+                </template>
             </div>
         </div>
 

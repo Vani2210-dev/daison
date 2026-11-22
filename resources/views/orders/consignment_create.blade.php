@@ -303,7 +303,8 @@
                 </div>
             </div>
 
-            <div class="rounded-xl border border-slate-200 overflow-x-auto">
+            <!-- Desktop Table Layout -->
+            <div class="hidden md:block rounded-xl border border-slate-200 overflow-x-auto">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="bg-slate-50 text-slate-600 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
@@ -480,6 +481,111 @@
                         </template>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card Layout -->
+            <div class="md:hidden space-y-3">
+                <template x-for="(item, index) in items" :key="'mob-item-' + index">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-3.5 space-y-3 shadow-2xs">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" x-model="item.checked" @change="calculateTotals()" class="rounded text-sky-600 focus:ring-0 cursor-pointer">
+                                <span class="font-extrabold text-slate-800 text-xs" x-text="'Mặt hàng #' + (index + 1)"></span>
+                            </div>
+                            <button type="button" @click="removeItem(index)" class="text-rose-500 hover:text-rose-700 text-xs font-bold p-1 cursor-pointer flex items-center gap-1">
+                                <i class="fa-solid fa-trash-can text-[11px]"></i>
+                                <span>Xóa</span>
+                            </button>
+                        </div>
+
+                        <!-- Product Search Input Mobile -->
+                        <div class="relative" @click.outside="if (activeProdDropdownIndex === index) activeProdDropdownIndex = null">
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Sản phẩm</label>
+                            <div class="relative flex items-center">
+                                <input type="text"
+                                       autocomplete="off"
+                                       autocorrect="off"
+                                       spellcheck="false"
+                                       :id="'mob-row-product-input-' + index"
+                                       x-model="item.searchQuery" 
+                                       @focus="activeProdDropdownIndex = index; prodHighlightIndex = 0; $event.target.select()"
+                                       @input="activeProdDropdownIndex = index; prodHighlightIndex = 0"
+                                       placeholder="Tìm mã hoặc tên sản phẩm..." 
+                                       class="w-full pl-3 pr-8 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none shadow-2xs">
+
+                                <button type="button" 
+                                        x-show="item.searchQuery || item.product_id" 
+                                        @click.stop="clearProductRow(index)" 
+                                        class="absolute right-2.5 text-slate-400 hover:text-rose-500 p-1 rounded cursor-pointer">
+                                    <i class="fa-solid fa-xmark text-xs"></i>
+                                </button>
+                            </div>
+
+                            <!-- Autocomplete Dropdown Mobile -->
+                            <div x-show="activeProdDropdownIndex === index" 
+                                 x-cloak 
+                                 class="absolute left-0 top-full mt-1 w-full z-50 bg-white rounded-xl shadow-2xl border border-slate-200 max-h-56 overflow-y-auto py-1 text-xs divide-y divide-slate-100">
+                                <template x-for="(p, pIdx) in getFilteredProducts(item.searchQuery)" :key="'mob-p-' + p.id">
+                                    <div @mousedown.prevent="selectProductForRow(index, p)"
+                                         @click="selectProductForRow(index, p)"
+                                         class="px-3 py-2 cursor-pointer flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                        <div class="min-w-0 pr-2">
+                                            <div class="font-bold text-slate-900 truncate">
+                                                <span class="text-sky-600 font-mono mr-1" x-text="'[' + p.sku + ']'"></span>
+                                                <span x-text="p.name"></span>
+                                            </div>
+                                            <div class="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                                                <span x-text="'ĐVT: ' + (p.unit || 'cái')"></span>
+                                                <span>&bull;</span>
+                                                <span :class="p.stock_quantity > 0 ? 'text-emerald-600 font-semibold' : 'text-rose-500'" 
+                                                      x-text="'Tồn: ' + formatNumber(p.stock_quantity)"></span>
+                                            </div>
+                                        </div>
+                                        <div class="shrink-0 font-bold text-sky-600 text-xs" x-text="formatMoney(p.price || p.sell_price || 0)"></div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Details Row Mobile -->
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <span class="text-slate-400 text-[10px] block">ĐVT & Tồn kho</span>
+                                <div class="flex items-center gap-1.5 mt-0.5">
+                                    <span class="font-bold text-slate-700" x-text="item.unit || '---'"></span>
+                                    <span class="px-1.5 py-0.2 rounded text-[10px] font-bold"
+                                          :class="item.stock_quantity > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-600 border border-rose-200'"
+                                          x-text="'Tồn: ' + formatNumber(item.stock_quantity || 0)"></span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase">Giá nhận ôm</label>
+                                <input type="number" 
+                                       x-model.number="item.unit_price" 
+                                       @input="calculateTotals()" 
+                                       step="any"
+                                       class="w-full px-2 py-1 rounded-lg border border-slate-300 text-right font-bold text-xs outline-none focus:border-sky-500">
+                            </div>
+                        </div>
+
+                        <!-- Quantity & Total Amount Row Mobile -->
+                        <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-slate-700">SL ôm:</span>
+                                <input type="number" 
+                                       x-model.number="item.quantity" 
+                                       @input="calculateTotals()" 
+                                       min="0.1" 
+                                       step="any" 
+                                       class="w-20 px-2 py-1 rounded-lg border border-slate-300 text-center font-black text-xs outline-none focus:border-sky-500 bg-sky-50/50">
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] text-slate-400 block font-medium">Thành tiền</span>
+                                <span class="font-black text-amber-700 text-sm" x-text="formatMoney((Number(item.quantity) || 0) * (Number(item.unit_price) || 0))"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
             </div>
 
             <!-- Under Table: Thêm dòng button + Shortcut tip -->

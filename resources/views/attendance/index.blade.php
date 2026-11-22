@@ -23,7 +23,7 @@
 
     <!-- Table Card -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left text-xs border-collapse">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold border-b border-slate-300 uppercase text-[11px]">
@@ -62,6 +62,26 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Card View: Attendance -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            @forelse($attendance as $a)
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-slate-900 text-sm">{{ $a->user?->name ?? 'Nhân viên' }}</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Hợp lệ GPS</span>
+                    </div>
+                    <div class="text-xs text-slate-600 space-y-1">
+                        <div><span class="text-slate-400">Thời gian:</span> <span class="font-mono font-bold text-slate-700">{{ $a->check_in_time ?? $a->created_at?->format('H:i d/m/Y') }}</span></div>
+                        <div><span class="text-slate-400">Loại:</span> <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700">{{ $a->type ?? 'Check-in' }}</span></div>
+                        <div><span class="text-slate-400">Điểm đến:</span> <span class="font-medium text-slate-700">{{ $a->location_name ?? $a->branch ?? '---' }}</span></div>
+                        <div class="text-[11px] font-mono text-slate-400">Tọa độ: {{ $a->latitude && $a->longitude ? ($a->latitude . ', ' . $a->longitude) : '---' }}</div>
+                    </div>
+                </div>
+            @empty
+                <div class="py-10 text-center text-slate-400 italic text-xs">Chưa có lượt chấm công nào hôm nay.</div>
+            @endforelse
         </div>
 
         @if($attendance->hasPages())

@@ -1448,7 +1448,8 @@
             </div>
 
             <!-- TABLE CONTENT -->
-            <div class="overflow-x-auto">
+            <!-- Desktop Table -->
+            <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-left text-xs divide-y divide-slate-200 mobile-product-table">
                     <thead class="bg-slate-100/80 text-slate-600 font-extrabold text-[11px] uppercase tracking-wider">
                         <tr>
@@ -1526,6 +1527,48 @@
                         </template>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Cards Content -->
+            <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+                <template x-for="(st, sIdx) in getFilteredHoldingStocks()" :key="'m_' + String(selectedHoldingWhId) + '_' + (st.id || sIdx)">
+                    <div class="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-2 shadow-2xs">
+                        <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                            <div>
+                                <span class="font-bold text-xs text-slate-900" x-text="st.name || st.product?.name || '---'"></span>
+                                <span class="font-mono text-[10px] text-blue-700 font-bold block mt-0.5" x-text="'SKU: ' + (st.sku || st.product?.sku || '---')"></span>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 font-mono font-black text-xs" x-text="formatNumber(st.stock_quantity) + ' ' + (st.unit || st.product?.unit || 'cái')"></span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <span class="text-[10px] text-slate-400 font-bold block">Đơn giá bán</span>
+                                <span class="font-mono text-slate-700" x-text="formatNumber(st.price || st.product?.price || 0) + ' đ'"></span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] text-slate-400 font-bold block">Thành tiền</span>
+                                <span class="font-mono font-bold text-emerald-700" x-text="formatNumber((st.stock_quantity || 0) * (st.price || st.product?.price || 0)) + ' đ'"></span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+                            <span class="text-[11px] text-slate-400 italic" x-text="st.location || 'Hàng ôm NV'"></span>
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" @click="openQuickSaleModal(st)"
+                                        class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold shadow-2xs">
+                                    <i class="fa-solid fa-bolt text-[10px]"></i> Bán nhanh
+                                </button>
+                                <a :href="'/inventory/holding-sale/create?warehouse_id=' + (selectedHoldingWhId || '') + '&dealer_id={{ $order->dealer_id ?? '' }}&product_id=' + (st.product_id || '') + '&return_url=' + encodeURIComponent(window.location.href)"
+                                   class="px-2 py-1 bg-blue-50 text-[#1b4a8c] rounded-lg text-xs font-bold border border-blue-200">
+                                    <i class="fa-solid fa-cart-plus text-[10px]"></i> Trang bán
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="getFilteredHoldingStocks().length === 0" class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-boxes-packing text-2xl mb-1 text-slate-300"></i>
+                    <p class="text-xs font-semibold" x-text="holdingSearch ? 'Không tìm thấy sản phẩm nào.' : 'Chưa có sản phẩm ôm nào sẵn sàng để bán.'"></p>
+                </div>
             </div>
         </div>
 

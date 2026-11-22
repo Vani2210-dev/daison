@@ -212,7 +212,8 @@
 
     <!-- 4. VIEW MODE: BẢNG CHI TIẾT (TABLE VIEW) -->
     <div x-show="viewMode === 'table'" class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div class="overflow-x-auto">
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left text-xs border-collapse">
                 <thead>
                     <tr class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase text-[11px]">
@@ -303,6 +304,60 @@
                     </template>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Cards List -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            <template x-for="user in filteredUsers" :key="'m_' + user.id">
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2.5">
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center font-black text-xs text-white shrink-0"
+                                 :class="getAvatarBgClass(user)">
+                                <span x-text="getInitials(user.name)"></span>
+                            </div>
+                            <div>
+                                <div class="font-black text-slate-900 text-xs" x-text="user.name"></div>
+                                <div class="text-[10px] text-slate-400 font-mono" x-text="user.code || ('NV-' + user.id)"></div>
+                            </div>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                              :class="user.status === 'Đang làm việc' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'"
+                              x-text="user.status || 'Đang làm việc'"></span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <span class="text-[10px] text-slate-400 font-bold block">Phòng ban</span>
+                            <span class="font-bold text-slate-800" x-text="getDepartmentLabel(user.department)"></span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 font-bold block">Vai trò</span>
+                            <span class="font-bold text-xs" :class="getRoleTextClass(user)" x-text="getRoleLabel(user)"></span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between py-1.5 px-3 bg-slate-50 rounded-xl text-xs">
+                        <span class="text-slate-500 font-medium">Lương cơ bản:</span>
+                        <span class="font-mono font-black text-emerald-600 text-xs" x-text="formatSalary(user.base_salary)"></span>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button type="button" @click="openProfileModal(user)"
+                                class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100 flex items-center justify-center">
+                            <i class="fa-regular fa-eye text-xs"></i>
+                        </button>
+                        <a :href="'{{ url('/staff') }}/' + user.id + '/edit'" x-show="canEdit"
+                           class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center">
+                            <i class="fa-solid fa-pencil text-xs"></i>
+                        </a>
+                        <a :href="'{{ url('/staff') }}/' + user.id + '/edit'" x-show="canManagePerm"
+                           class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 flex items-center justify-center">
+                            <i class="fa-solid fa-shield-halved text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+            </template>
         </div>
     </div>
 

@@ -170,7 +170,7 @@
             </div>
 
             <!-- Table of Installed Machines & QR Stickers -->
-            <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-xs bg-white">
+            <div class="hidden md:block overflow-x-auto border border-slate-200 rounded-xl shadow-xs bg-white">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="bg-slate-100/90 text-slate-700 uppercase text-[10px] font-extrabold tracking-wider border-b border-slate-200">
@@ -409,6 +409,63 @@
                         </template>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card View: Installed Machines -->
+            <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+                <template x-if="installedMachines.length === 0">
+                    <div class="py-12 text-center text-slate-400 text-xs">
+                        <i class="fa-solid fa-qrcode text-3xl mb-2 text-slate-300 block"></i>
+                        <span>Chưa có máy lọc hoặc tem QR nào phù hợp điều kiện lọc.</span>
+                    </div>
+                </template>
+                <template x-for="item in installedMachines" :key="'m-mach-' + item.id">
+                    <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-1.5">
+                                <input type="checkbox" :value="item.id" x-model="selectedMachineIds" class="rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer">
+                                <span class="font-mono font-bold text-slate-900 text-xs" x-text="item.machine_code"></span>
+                            </div>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold border border-blue-200" x-text="item.qr_code"></span>
+                        </div>
+                        <div class="text-xs space-y-1">
+                            <div class="font-bold text-slate-900" x-text="item.model_name"></div>
+                            <template x-if="item.customer_name">
+                                <div>
+                                    <span class="text-slate-400">KH:</span> <strong class="text-slate-800" x-text="item.customer_name"></strong> <span class="text-slate-500" x-text="'(' + item.customer_phone + ')'"></span>
+                                    <div class="text-[11px] text-slate-500" x-text="item.customer_address"></div>
+                                </div>
+                            </template>
+                            <div class="flex justify-between pt-1">
+                                <span class="text-slate-400">Hạn BH:</span>
+                                <span class="font-semibold text-slate-800" x-text="item.warranty_until || '-'"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Thay lõi tới:</span>
+                                <span class="font-semibold text-teal-700" x-text="item.next_maintenance_date || '-'"></span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100">
+                            <a :href="'/m/' + item.qr_token" target="_blank" class="p-1.5 rounded-lg bg-blue-50 text-blue-700">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                            </a>
+                            <template x-if="item.status === 'pending_activation' || item.status === 'unactivated'">
+                                <button @click="openActivateModal(item)" class="p-1.5 rounded-lg bg-orange-100 text-orange-800 font-bold">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                </button>
+                            </template>
+                            <button @click="openMachineEditModal(item)" class="p-1.5 rounded-lg bg-emerald-50 text-emerald-700">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button @click="quickCreateRepairFromInstalled(item)" class="p-1.5 rounded-lg bg-amber-50 text-amber-700">
+                                <i class="fa-solid fa-wrench"></i>
+                            </button>
+                            <button @click="deleteInstalledMachine(item.id)" class="p-1.5 rounded-lg bg-rose-50 text-rose-700">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
 

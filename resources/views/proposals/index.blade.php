@@ -23,7 +23,7 @@
 
     <!-- Table Card -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left text-xs border-collapse">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold border-b border-slate-300 uppercase text-[11px]">
@@ -68,6 +68,45 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Card View: Proposals -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            @forelse($proposals as $p)
+                @php
+                    $pBadge = match($p->status) {
+                        'Đã duyệt' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                        'Từ chối' => 'bg-rose-50 text-rose-700 border-rose-200',
+                        default => 'bg-amber-50 text-amber-700 border-amber-200'
+                    };
+                @endphp
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold font-mono text-sky-700 text-xs">{{ $p->code ?? ('DX-' . $p->id) }}</span>
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border {{ $pBadge }}">
+                            {{ $p->status ?? 'Chờ duyệt' }}
+                        </span>
+                    </div>
+                    <div class="text-xs space-y-1">
+                        <div class="font-bold text-slate-900 text-sm">{{ $p->title ?? 'Đề xuất duyệt chi' }}</div>
+                        @if($p->content || $p->description)
+                            <div class="text-slate-500 text-[11px]">{{ $p->content ?? $p->description }}</div>
+                        @endif
+                        <div class="flex items-center justify-between text-slate-600 pt-1">
+                            <span>Người gửi: <strong class="text-slate-800">{{ $p->creator?->name ?? 'Nhân viên' }}</strong></span>
+                            <span class="text-slate-400 font-mono">{{ $p->created_at?->format('d/m/Y') ?? '' }}</span>
+                        </div>
+                    </div>
+                    @if($p->amount)
+                        <div class="flex justify-between items-center pt-1 border-t border-slate-100 text-xs">
+                            <span class="text-slate-400">Số tiền:</span>
+                            <span class="font-black text-slate-900 text-sm">{{ number_format($p->amount, 0, ',', '.') }} đ</span>
+                        </div>
+                    @endif
+                </div>
+            @empty
+                <div class="py-10 text-center text-slate-400 italic text-xs">Chưa có đề xuất nào cần xử lý.</div>
+            @endforelse
         </div>
 
         @if($proposals->hasPages())

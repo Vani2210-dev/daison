@@ -266,7 +266,7 @@
 
     <!-- Table of Maintenance Schedules -->
     <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
@@ -584,6 +584,51 @@
                     </template>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Card View: Maintenance Schedules -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            <template x-if="maintenanceList.length === 0">
+                <div class="py-12 text-center text-slate-400 text-xs">
+                    <i class="fa-solid fa-calendar-xmark text-3xl mb-2 text-slate-300 block"></i>
+                    <p class="font-bold text-slate-600">Không tìm thấy lịch bảo dưỡng nào phù hợp</p>
+                </div>
+            </template>
+            <template x-for="(item, index) in maintenanceList" :key="'m-maint-' + item.id">
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2.5"
+                     :class="item.maintenance_status === 'overdue' ? 'border-rose-300 bg-rose-50/20' : (item.maintenance_status === 'due_7_days' ? 'border-amber-300 bg-amber-50/20' : '')">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-slate-900 text-sm" x-text="item.customer_name"></span>
+                        <span class="font-mono text-purple-700 font-bold text-xs" x-text="item.next_maintenance_date"></span>
+                    </div>
+                    <div class="text-xs space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">SĐT:</span>
+                            <a :href="'tel:' + item.customer_phone" class="font-mono text-emerald-700 font-bold" x-text="item.customer_phone"></a>
+                        </div>
+                        <div class="text-slate-500 text-[11px]" x-text="item.customer_address"></div>
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-slate-400">Thiết bị:</span>
+                            <span class="font-bold text-slate-800" x-text="item.model_name"></span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">KTV phụ trách:</span>
+                            <span class="font-semibold text-slate-700" x-text="item.technician_name || 'Chưa gán KTV'"></span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100">
+                        <button type="button" @click="quickCreateRepairFromInstalled(item)" class="px-2 py-1 bg-amber-50 text-amber-700 font-bold text-xs rounded-lg flex items-center gap-1">
+                            <i class="fa-solid fa-wrench"></i> Lập phiếu
+                        </button>
+                        <button type="button" @click="confirmCompleteMaintenance(item)" class="p-1.5 bg-emerald-50 text-emerald-700 rounded-lg" title="Đã bảo dưỡng xong">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </button>
+                        <button type="button" @click="openReminderModal(item)" class="p-1.5 bg-blue-50 text-blue-700 rounded-lg" title="Nhắc khách">
+                            <i class="fa-regular fa-comment-dots"></i>
+                        </button>
+                    </div>
+                </div>
+            </template>
         </div>
 
         <!-- Footer / Pagination summary -->

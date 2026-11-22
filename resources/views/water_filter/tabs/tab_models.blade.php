@@ -25,7 +25,7 @@
             </div>
 
             <!-- Table of Machine Models -->
-            <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-xs">
+            <div class="hidden md:block overflow-x-auto border border-slate-200 rounded-xl shadow-xs">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="bg-slate-100/80 text-slate-700 uppercase text-[10px] font-extrabold tracking-wider border-b border-slate-200">
@@ -90,6 +90,48 @@
                         </template>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card View: Models -->
+            <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+                <template x-if="machineModels.length === 0">
+                    <div class="py-8 text-center text-slate-400 text-xs">
+                        <i class="fa-solid fa-faucet-drip text-2xl mb-1 text-slate-300 block"></i>
+                        Chưa có model máy lọc nước nào
+                    </div>
+                </template>
+                <template x-for="item in machineModels" :key="'m-model-' + item.id">
+                    <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-cyan-800 text-xs" x-text="item.code"></span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-100 text-cyan-800" x-text="item.brand || 'Khác'"></span>
+                        </div>
+                        <div class="font-bold text-slate-800 text-sm" x-text="item.name"></div>
+                        <div class="text-xs text-slate-600 space-y-1">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Số cấp lọc:</span>
+                                <span class="font-semibold text-slate-700" x-text="(item.filter_stages || 10) + ' cấp lọc'"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Kiểu dáng:</span>
+                                <span class="font-semibold text-slate-600" x-text="item.type || 'Tủ đứng'"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Giá niêm yết:</span>
+                                <span class="font-bold text-cyan-800" x-text="item.standard_price ? window.formatCurrency(item.standard_price) : '-'"></span>
+                            </div>
+                            <div x-show="item.description" class="text-slate-500 text-[11px]" x-text="item.description"></div>
+                        </div>
+                        <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                            <a :href="'{{ url('/water-filter/models') }}/' + item.id + '/edit'" class="px-2.5 py-1 bg-cyan-50 text-cyan-700 font-bold text-xs rounded-lg flex items-center gap-1">
+                                <i class="fa-solid fa-pen-to-square"></i> Sửa
+                            </a>
+                            <button @click="deleteMachineModel(item.id)" class="px-2.5 py-1 bg-rose-50 text-rose-700 font-bold text-xs rounded-lg flex items-center gap-1">
+                                <i class="fa-solid fa-trash-can"></i> Xóa
+                            </button>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
 

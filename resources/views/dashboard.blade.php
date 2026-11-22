@@ -100,7 +100,7 @@
                 </a>
             </div>
 
-            <div class="overflow-x-auto">
+            <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-100">
@@ -156,6 +156,48 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card View (Dashboard Recent Orders) -->
+            <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+                @forelse($recentOrders as $o)
+                    @php
+                        $badgeColor = match($o->status) {
+                            'Báo giá' => 'bg-amber-50 text-amber-700 border-amber-200',
+                            'Chốt đơn', 'Đã duyệt' => 'bg-sky-50 text-sky-700 border-sky-200',
+                            'Đã bốc xong', 'Đã kiểm hàng' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                            'Đang vận chuyển' => 'bg-purple-50 text-purple-700 border-purple-200',
+                            'Đã giao' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                            'Hủy', 'Đã hủy' => 'bg-rose-50 text-rose-700 border-rose-200',
+                            default => 'bg-slate-50 text-slate-700 border-slate-200'
+                        };
+                    @endphp
+                    <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2">
+                        <div class="flex items-center justify-between">
+                            <a href="{{ url('/orders/' . $o->id . '/edit') }}" class="font-bold font-mono text-sky-600 hover:underline text-xs">
+                                {{ $o->order_code }}
+                            </a>
+                            <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border {{ $badgeColor }}">
+                                {{ $o->status }}
+                            </span>
+                        </div>
+                        <div class="text-xs">
+                            <div class="font-semibold text-slate-800">{{ $o->dealer?->name ?? $o->customer_name }}</div>
+                            <div class="text-[11px] text-slate-400">{{ $o->customer_phone }}</div>
+                        </div>
+                        <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                            <span class="text-[11px] text-slate-400">{{ $o->created_at ? $o->created_at->format('H:i d/m') : '' }}</span>
+                            <span class="font-black text-slate-900 text-sm">{{ number_format($o->total_amount, 0, ',', '.') }} đ</span>
+                        </div>
+                        <div class="flex justify-end pt-1">
+                            <a href="{{ url('/orders/' . $o->id . '/edit') }}" class="px-2.5 py-1 text-slate-600 hover:text-sky-600 bg-slate-100 hover:bg-sky-50 rounded-lg font-semibold text-xs transition-colors">
+                                Sửa
+                            </a>
+                        </div>
+                    </div>
+                @empty
+                    <div class="py-8 text-center text-slate-400 italic text-xs">Chưa có đơn hàng nào trong hệ thống.</div>
+                @endforelse
             </div>
         </div>
 

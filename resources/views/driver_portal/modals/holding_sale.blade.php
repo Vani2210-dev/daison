@@ -179,7 +179,8 @@
                     </div>
 
                     <!-- Bảng các sản phẩm đã thêm vào đơn -->
-                    <div class="rounded-xl border border-slate-200 overflow-hidden bg-white">
+                    <!-- Desktop Table -->
+                    <div class="hidden md:block rounded-xl border border-slate-200 overflow-hidden bg-white">
                         <table class="w-full text-left text-xs divide-y divide-slate-200">
                             <thead class="bg-slate-100 text-slate-600 text-[10.5px] font-bold uppercase">
                                 <tr>
@@ -232,6 +233,44 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Mobile Cards List -->
+                    <div class="md:hidden space-y-2.5">
+                        <template x-for="(it, iIdx) in saleForm.items" :key="'m_' + it.product_id">
+                            <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs space-y-2 text-xs">
+                                <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                                    <div>
+                                        <span class="font-bold text-slate-900" x-text="it.name"></span>
+                                        <span class="text-[10px] text-slate-400 font-mono block" x-text="'SKU: ' + it.sku + ' | ĐVT: ' + it.unit"></span>
+                                    </div>
+                                    <button type="button" @click="removeSaleItem(iIdx)" class="text-rose-500 hover:text-rose-700 p-1">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <span class="text-[10px] text-slate-400 block font-bold">SL Bán (Tồn: <span x-text="it.available_stock"></span>)</span>
+                                        <div class="flex items-center gap-1 mt-0.5">
+                                            <button type="button" @click="if (it.quantity > 1) it.quantity--" class="w-6 h-6 rounded bg-slate-200 font-bold">-</button>
+                                            <input type="number" min="1" :max="it.available_stock" x-model.number="it.quantity" class="w-12 h-6 text-center font-mono font-bold border border-slate-300 rounded">
+                                            <button type="button" @click="if (it.quantity < it.available_stock) it.quantity++" class="w-6 h-6 rounded bg-slate-200 font-bold">+</button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] text-slate-400 block font-bold">Đơn giá</span>
+                                        <input type="number" step="1000" min="0" x-model.number="it.unit_price" class="w-full h-6 px-1.5 text-right font-mono font-bold border border-slate-300 rounded mt-0.5">
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between pt-1 border-t border-slate-100 font-black">
+                                    <span class="text-[10px] text-slate-400 uppercase">Thành tiền:</span>
+                                    <span class="font-mono text-emerald-700" x-text="formatNumber(it.quantity * it.unit_price) + ' đ'"></span>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="saleForm.items.length === 0" class="p-6 text-center text-slate-400 italic bg-white border border-slate-200 rounded-xl">
+                            Chưa có sản phẩm nào được chọn.
+                        </div>
                     </div>
                 </div>
 

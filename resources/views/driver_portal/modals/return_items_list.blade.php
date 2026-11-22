@@ -44,7 +44,8 @@
                             </div>
                         </div>
 
-                        <div class="overflow-x-auto rounded-xl border border-rose-200/80 bg-white">
+                        <!-- Desktop Table -->
+                        <div class="hidden md:block overflow-x-auto rounded-xl border border-rose-200/80 bg-white">
                             <table class="w-full text-left text-[11px]">
                                 <thead class="bg-rose-100/60 text-rose-900 font-bold">
                                     <tr>
@@ -65,6 +66,20 @@
                                     </template>
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- Mobile Cards -->
+                        <div class="md:hidden space-y-1.5">
+                            <template x-for="it in (r.items || [])" :key="'rm_' + it.id">
+                                <div class="bg-white rounded-lg p-2 border border-rose-200 text-[11px] space-y-1">
+                                    <div class="font-medium text-slate-800" x-text="it.name"></div>
+                                    <div class="flex items-center justify-between text-slate-600">
+                                        <span>SL: <strong class="font-mono font-bold text-rose-700" x-text="(it.returnedQty ?? it.returned_qty) + ' ' + (it.unit || '')"></strong></span>
+                                        <span>Giá: <strong class="font-mono" x-text="formatNumber(it.unitPrice ?? it.unit_price ?? 0) + ' đ'"></strong></span>
+                                        <span class="text-slate-400 italic" x-text="it.reason || 'Khách trả hàng'"></span>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </div>
                 </template>

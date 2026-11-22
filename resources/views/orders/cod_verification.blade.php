@@ -180,7 +180,8 @@
 
     <!-- 5. Main Table of Cash Handovers -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div class="overflow-x-auto">
+        <!-- Desktop Table Layout -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left text-xs">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold text-[11px] uppercase tracking-wider">
@@ -355,6 +356,132 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Card Layout -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            @forelse($handovers as $h)
+            @php
+                $codes = is_array($h->order_codes) ? $h->order_codes : (json_decode($h->order_codes, true) ?: []);
+                $isPending = ($h->status === 'Chờ kế toán duyệt');
+                $isApproved = ($h->status === 'Đã hoàn thành');
+                $isRejected = ($h->status === 'Đã từ chối');
+                $hDocs = is_array($h->documents) ? $h->documents : (json_decode($h->documents, true) ?: []);
+            @endphp
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-2xs {{ $isPending ? 'ring-1 ring-amber-300 bg-amber-50/10' : '' }}">
+                <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                    <div>
+                        <div class="text-sm font-black text-indigo-700 font-mono">{{ $h->code }}</div>
+                        <div class="text-[10px] text-slate-400 font-sans mt-0.5">
+                            {{ $h->created_at ? $h->created_at->format('H:i d/m/Y') : '' }}
+                        </div>
+                    </div>
+                    <div>
+                        @if($isPending)
+                            <span class="px-2.5 py-1 bg-amber-100 text-amber-900 rounded-full font-extrabold text-[10px] border border-amber-300 inline-flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse"></span>
+                                Chờ duyệt
+                            </span>
+                        @elseif($isApproved)
+                            <span class="px-2.5 py-1 bg-emerald-100 text-emerald-900 rounded-full font-extrabold text-[10px] border border-emerald-300 inline-flex items-center gap-1">
+                                <i class="fa-solid fa-check text-emerald-600 text-[10px]"></i>
+                                Hoàn thành
+                            </span>
+                        @elseif($isRejected)
+                            <span class="px-2.5 py-1 bg-rose-100 text-rose-800 rounded-full font-extrabold text-[10px] border border-rose-300 inline-flex items-center gap-1">
+                                <i class="fa-solid fa-xmark text-rose-600 text-[10px]"></i>
+                                Từ chối
+                            </span>
+                        @else
+                            <span class="px-2.5 py-1 bg-slate-100 text-slate-800 rounded-full font-bold text-[10px]">
+                                {{ $h->status }}
+                            </span>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <span class="text-slate-400 text-[11px] block">Xe & Lái xe</span>
+                        <div class="font-mono font-bold text-slate-900 text-xs">{{ $h->vehicle_plate ?: 'Chưa gán xe' }}</div>
+                        <div class="text-slate-700 text-xs mt-0.5 font-medium">{{ $h->driver_name ?: 'Lái xe' }}</div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-slate-400 text-[11px] block">Số tiền nộp COD</span>
+                        <div class="text-base font-black font-mono {{ $isPending ? 'text-amber-900' : ($isApproved ? 'text-emerald-700' : 'text-slate-600') }}">
+                            {{ number_format((float) $h->handover_amount, 0, ',', '.') }} đ
+                        </div>
+                        <span class="text-[10px] text-slate-400 font-medium">{{ $h->payment_method ?: 'Tiền mặt' }}</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+                    <div class="flex items-center gap-1.5">
+                        <button type="button" @click="openOrderDetailsModal({{ json_encode($h) }})"
+                                class="px-2.5 py-1 bg-sky-50 text-sky-800 border border-sky-200 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-2xs">
+                            <i class="fa-solid fa-boxes-packing text-sky-600"></i>
+                            <span>{{ count($codes) }} đơn hàng</span>
+                        </button>
+                        @if(!empty($hDocs))
+                            <button type="button" @click="openDocsModal({{ json_encode($h) }})"
+                                    class="px-2 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg font-bold text-xs inline-flex items-center gap-1">
+                                <i class="fa-solid fa-paperclip text-indigo-500"></i>
+                                <span>{{ count($hDocs) }} tệp</span>
+                            </button>
+                        @endif
+                    </div>
+                    <div class="text-right text-[11px] text-slate-500">
+                        KT: <strong class="text-slate-800">{{ $h->accountant_name ?: 'Chưa chỉ định' }}</strong>
+                    </div>
+                </div>
+
+                @if($h->notes)
+                    <div class="text-xs text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                        <span class="text-slate-400 font-semibold">Ghi chú:</span> {{ $h->notes }}
+                    </div>
+                @endif
+
+                @if($isApproved && $h->receipt_code)
+                    <div class="text-[11px] text-emerald-800 font-mono font-bold bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200">
+                        Phiếu thu: {{ $h->receipt_code }}
+                    </div>
+                @endif
+
+                @if($isRejected && $h->rejected_reason)
+                    <div class="text-[11px] text-rose-800 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200">
+                        Lý do từ chối: {{ $h->rejected_reason }}
+                    </div>
+                @endif
+
+                <!-- Thao tác Mobile -->
+                <div class="pt-2 border-t border-slate-100">
+                    @if($isPending)
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" @click="openApproveModal({{ json_encode($h) }})"
+                                    class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs shadow-xs flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-check-double text-emerald-200"></i>
+                                <span>Duyệt & Nhận</span>
+                            </button>
+                            <button type="button" @click="openRejectModal({{ json_encode($h) }})"
+                                    class="w-full py-2 bg-white text-rose-600 border border-rose-300 rounded-xl font-bold text-xs flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-xmark"></i>
+                                <span>Từ chối</span>
+                            </button>
+                        </div>
+                    @else
+                        <button type="button" @click="openOrderDetailsModal({{ json_encode($h) }})"
+                                class="w-full py-2 bg-slate-100 text-slate-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1">
+                            <i class="fa-regular fa-eye"></i>
+                            <span>Xem chi tiết đơn hàng</span>
+                        </button>
+                    @endif
+                </div>
+            </div>
+            @empty
+            <div class="py-8 text-center text-slate-400 text-xs">
+                Không có yêu cầu kiểm COD nào.
+            </div>
+            @endforelse
         </div>
 
         @if($handovers->hasPages())
@@ -536,37 +663,69 @@
                 <button type="button" @click="showOrderDetailsModal = false" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
             </div>
 
-            <!-- Orders Table List -->
+            <!-- Orders Table List: Desktop Table & Mobile Cards -->
             <div class="overflow-y-auto flex-1 text-xs">
-                <table class="w-full text-left">
-                    <thead>
-                        <tr class="bg-slate-50 text-slate-600 font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-200">
-                            <th class="py-2.5 px-3">Mã Đơn</th>
-                            <th class="py-2.5 px-3">Khách Hàng / Đại Lý</th>
-                            <th class="py-2.5 px-3">Địa Chỉ & SĐT</th>
-                            <th class="py-2.5 px-3 text-right">Tổng Tiền Đơn</th>
-                            <th class="py-2.5 px-3 text-right">Tiền Thu COD</th>
-                            <th class="py-2.5 px-3 text-center">Trạng Thái</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <template x-for="code in (activeHandover?.order_codes || [])" :key="code">
-                            <tr class="hover:bg-slate-50/80">
-                                <td class="py-2.5 px-3 font-mono font-bold text-indigo-700" x-text="code"></td>
-                                <td class="py-2.5 px-3 font-bold text-slate-800" x-text="getOrderInfo(code)?.customer_name || getOrderInfo(code)?.dealer_name || 'Khách hàng'"></td>
-                                <td class="py-2.5 px-3 text-slate-500 text-[11px]" x-text="getOrderInfo(code)?.customer_address || getOrderInfo(code)?.shipping_address || '—'"></td>
-                                <td class="py-2.5 px-3 text-right font-mono font-bold text-slate-700" x-text="formatNumber(getOrderInfo(code)?.total_amount) + ' đ'"></td>
-                                <td class="py-2.5 px-3 text-right font-mono font-black text-emerald-700" x-text="formatNumber(getOrderInfo(code)?.driver_debt_amount || getOrderInfo(code)?.total_amount) + ' đ'"></td>
-                                <td class="py-2.5 px-3 text-center">
-                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                                          :class="getOrderInfo(code)?.status === 'Đã quyết toán' ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'"
-                                          x-text="getOrderInfo(code)?.status || 'Đã giao'">
-                                    </span>
-                                </td>
+                <!-- Desktop Table -->
+                <div class="hidden md:block">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-600 font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-200">
+                                <th class="py-2.5 px-3">Mã Đơn</th>
+                                <th class="py-2.5 px-3">Khách Hàng / Đại Lý</th>
+                                <th class="py-2.5 px-3">Địa Chỉ & SĐT</th>
+                                <th class="py-2.5 px-3 text-right">Tổng Tiền Đơn</th>
+                                <th class="py-2.5 px-3 text-right">Tiền Thu COD</th>
+                                <th class="py-2.5 px-3 text-center">Trạng Thái</th>
                             </tr>
-                        </template>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <template x-for="code in (activeHandover?.order_codes || [])" :key="code">
+                                <tr class="hover:bg-slate-50/80">
+                                    <td class="py-2.5 px-3 font-mono font-bold text-indigo-700" x-text="code"></td>
+                                    <td class="py-2.5 px-3 font-bold text-slate-800" x-text="getOrderInfo(code)?.customer_name || getOrderInfo(code)?.dealer_name || 'Khách hàng'"></td>
+                                    <td class="py-2.5 px-3 text-slate-500 text-[11px]" x-text="getOrderInfo(code)?.customer_address || getOrderInfo(code)?.shipping_address || '—'"></td>
+                                    <td class="py-2.5 px-3 text-right font-mono font-bold text-slate-700" x-text="formatNumber(getOrderInfo(code)?.total_amount) + ' đ'"></td>
+                                    <td class="py-2.5 px-3 text-right font-mono font-black text-emerald-700" x-text="formatNumber(getOrderInfo(code)?.driver_debt_amount || getOrderInfo(code)?.total_amount) + ' đ'"></td>
+                                    <td class="py-2.5 px-3 text-center">
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                              :class="getOrderInfo(code)?.status === 'Đã quyết toán' ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'"
+                                              x-text="getOrderInfo(code)?.status || 'Đã giao'">
+                                        </span>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Mobile Card List -->
+                <div class="md:hidden space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+                    <template x-for="code in (activeHandover?.order_codes || [])" :key="code">
+                        <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 shadow-2xs">
+                            <div class="flex items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
+                                <span class="font-mono font-bold text-indigo-700 text-xs" x-text="code"></span>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                      :class="getOrderInfo(code)?.status === 'Đã quyết toán' ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'"
+                                      x-text="getOrderInfo(code)?.status || 'Đã giao'">
+                                </span>
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-900 text-xs" x-text="getOrderInfo(code)?.customer_name || getOrderInfo(code)?.dealer_name || 'Khách hàng'"></div>
+                                <div class="text-[11px] text-slate-500 mt-0.5" x-text="getOrderInfo(code)?.customer_address || getOrderInfo(code)?.shipping_address || '—'"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-200/60">
+                                <div>
+                                    <span class="text-slate-400 text-[10px] block">Tổng tiền đơn</span>
+                                    <span class="font-mono font-bold text-slate-700" x-text="formatNumber(getOrderInfo(code)?.total_amount) + ' đ'"></span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-slate-400 text-[10px] block">Tiền thu COD</span>
+                                    <span class="font-mono font-black text-emerald-700" x-text="formatNumber(getOrderInfo(code)?.driver_debt_amount || getOrderInfo(code)?.total_amount) + ' đ'"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
             </div>
 
             <!-- Hình ảnh & File chứng từ Lái xe đính kèm trong chi tiết -->

@@ -159,7 +159,8 @@
             </div>
         </form>
 
-        <div class="overflow-x-auto">
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
@@ -230,6 +231,56 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Cards List -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            @forelse($dealers as $idx => $d)
+                @php
+                    $debt = (float)($d->current_debt ?? 0);
+                    $limit = (float)($d->credit_limit ?? 0);
+                    $remaining = max(0, $limit - $debt);
+                    $isOverLimit = $debt > $limit && $limit > 0;
+                @endphp
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                        <div>
+                            <span class="font-bold text-slate-900 text-sm">{{ $d->name }}</span>
+                            <span class="font-mono text-xs font-bold text-sky-800 block">{{ $d->code }}</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold 
+                            {{ (str_contains($d->tier, 'Sỉ') || $d->tier === 'Cấp 1') ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700' }}">
+                            {{ $d->tier ?: 'Mặc định' }}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs py-1">
+                        <div>
+                            <span class="text-[10px] text-slate-400 font-bold block">Hạn mức</span>
+                            <span class="font-mono text-slate-700">{{ number_format($limit, 0, ',', '.') }} đ</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400 font-bold block">Dư nợ hiện tại</span>
+                            <span class="font-mono font-bold {{ $debt > 0 ? 'text-rose-700' : 'text-slate-900' }}">{{ number_format($debt, 0, ',', '.') }} đ</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+                        @if($isOverLimit)
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">Vượt hạn mức</span>
+                        @elseif($debt > 0)
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">Trong hạn mức</span>
+                        @else
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Không nợ</span>
+                        @endif
+                        <button type="button" @click="openDebtDetail({{ $d->id }})" class="px-3 py-1 bg-sky-50 text-sky-800 rounded-lg text-xs font-bold border border-sky-200">
+                            <i class="fa-solid fa-file-invoice-dollar text-sky-600"></i> Xem sổ nợ
+                        </button>
+                    </div>
+                </div>
+            @empty
+                <div class="py-8 text-center text-slate-400 text-xs">
+                    Không tìm thấy dữ liệu công nợ khách hàng
+                </div>
+            @endforelse
         </div>
         @if($dealers->hasPages())
             <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50">
@@ -304,7 +355,8 @@
 
                 <!-- Tab Đơn Hàng -->
                 <div x-show="activeTab === 'orders'">
-                    <div class="border border-slate-200 rounded-xl overflow-hidden">
+                    <!-- Desktop Table -->
+                    <div class="hidden md:block border border-slate-200 rounded-xl overflow-hidden">
                         <table class="w-full text-left border-collapse text-xs">
                             <thead class="bg-slate-100 text-slate-700 font-bold uppercase text-[10.5px]">
                                 <tr>
@@ -341,11 +393,37 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Mobile Cards Orders -->
+                    <div class="md:hidden space-y-2">
+                        <template x-for="ord in orders" :key="'mo_' + ord.id">
+                            <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs space-y-1.5 text-xs">
+                                <div class="flex items-center justify-between">
+                                    <a :href="'/orders/' + ord.id + '/edit'" target="_blank" class="font-mono font-bold text-sky-700 hover:underline" x-text="ord.order_code"></a>
+                                    <span class="text-[10px] text-slate-400" x-text="formatDate(ord.created_at)"></span>
+                                </div>
+                                <div class="flex items-center justify-between text-slate-600">
+                                    <span>Tổng: <strong class="font-mono text-slate-900" x-text="formatNumber(ord.total_amount) + ' đ'"></strong></span>
+                                    <span>Nợ TX: <strong class="font-mono text-rose-600" x-text="formatNumber(ord.driver_debt_amount) + ' đ'"></strong></span>
+                                </div>
+                                <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700" x-text="ord.status"></span>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                          :class="ord.payment_status === 'Đã thanh toán' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
+                                          x-text="ord.payment_status || 'Chưa thanh toán'"></span>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="orders.length === 0" class="py-6 text-center text-slate-400 text-xs">
+                            Không có đơn hàng nào cho đại lý này
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Tab Thanh Toán -->
                 <div x-show="activeTab === 'transactions'" style="display: none;">
-                    <div class="border border-slate-200 rounded-xl overflow-hidden">
+                    <!-- Desktop Table -->
+                    <div class="hidden md:block border border-slate-200 rounded-xl overflow-hidden">
                         <table class="w-full text-left border-collapse text-xs">
                             <thead class="bg-slate-100 text-slate-700 font-bold uppercase text-[10.5px]">
                                 <tr>
@@ -377,6 +455,26 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Mobile Cards Transactions -->
+                    <div class="md:hidden space-y-2">
+                        <template x-for="t in transactions" :key="'mt_' + t.id">
+                            <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs space-y-1.5 text-xs">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-mono font-bold text-emerald-700" x-text="t.code || ('PT-' + t.id)"></span>
+                                    <span class="text-[10px] text-slate-400" x-text="formatDate(t.created_at)"></span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-slate-500">Số tiền: <strong class="font-mono text-emerald-800 text-sm" x-text="formatNumber(t.amount) + ' đ'"></strong></span>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Đã hạch toán</span>
+                                </div>
+                                <div class="text-[11px] text-slate-400 italic" x-text="t.notes || 'Thu công nợ'"></div>
+                            </div>
+                        </template>
+                        <div x-show="transactions.length === 0" class="py-6 text-center text-slate-400 text-xs">
+                            Chưa có phiếu thu tiền nào cho đại lý này
+                        </div>
                     </div>
                 </div>
             </div>

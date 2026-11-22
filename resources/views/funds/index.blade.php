@@ -62,7 +62,7 @@
             </form>
         </div>
 
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left text-xs border-collapse">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold border-b border-slate-300 uppercase text-[11px]">
@@ -99,6 +99,35 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Card View (Funds) -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            @forelse($transactions as $t)
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold font-mono text-sky-700 text-xs">{{ $t->code }}</span>
+                        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold {{ $t->type === 'Thu' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200' }}">
+                            {{ $t->category ?? $t->type }}
+                        </span>
+                    </div>
+                    <div class="text-xs">
+                        <div class="font-bold text-slate-900">{{ $t->customer_partner_name }}</div>
+                        <div class="text-[11px] text-slate-500">{{ $t->fund?->name ?? 'Quỹ chính' }} • {{ $t->date ? $t->date->format('d/m/Y') : '' }}</div>
+                    </div>
+                    @if($t->notes)
+                        <div class="text-xs text-slate-600 bg-slate-50 p-2 rounded">{{ $t->notes }}</div>
+                    @endif
+                    <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                        <span class="text-slate-400">Số tiền:</span>
+                        <span class="font-black text-sm {{ $t->type === 'Thu' ? 'text-emerald-600' : 'text-rose-600' }}">
+                            {{ $t->type === 'Thu' ? '+' : '-' }}{{ number_format($t->amount, 0, ',', '.') }} đ
+                        </span>
+                    </div>
+                </div>
+            @empty
+                <div class="py-10 text-center text-slate-400 italic text-xs">Chưa có giao dịch thu chi nào.</div>
+            @endforelse
         </div>
 
         @if($transactions->hasPages())

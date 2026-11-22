@@ -13,7 +13,7 @@
             </div>
         </div>
 
-        <div class="tasks-table-wrapper overflow-x-auto">
+        <div class="tasks-table-wrapper hidden md:block overflow-x-auto">
             <table class="w-full text-left text-xs border-collapse">
                 <thead>
                     <tr class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 uppercase text-[11px]">
@@ -65,6 +65,46 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Card View: Tasks -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            @forelse($tasks as $tk)
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                            @if(str_contains($tk->category ?? '', 'water'))
+                                <i class="fa-solid fa-faucet-drip text-blue-500 text-xs"></i>
+                            @else
+                                <i class="fa-solid fa-clipboard-check text-slate-400 text-xs"></i>
+                            @endif
+                            <span>{{ $tk->title ?? 'Nhiệm vụ công việc' }}</span>
+                        </span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold {{ in_array($tk->status, ['Hoàn thành', 'completed']) ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200' }}">
+                            {{ $tk->status ?? 'Đang thực hiện' }}
+                        </span>
+                    </div>
+                    @if($tk->description)
+                        <div class="text-[11px] text-slate-500">{{ $tk->description }}</div>
+                    @endif
+                    <div class="text-xs text-slate-600 space-y-1">
+                        <div><span class="text-slate-400">Giao việc:</span> <span class="font-medium text-slate-700">{{ $tk->creator?->name ?? 'Ban Giám Đốc' }}</span></div>
+                        <div><span class="text-slate-400">Thực hiện:</span> <span class="font-semibold text-sky-700">{{ $tk->assignedTo?->name ?? ($tk->assigned_to_name ?? 'Phòng Kỹ Thuật') }}</span></div>
+                        <div><span class="text-slate-400">Hạn chót:</span> <span class="font-mono text-slate-700">{{ $tk->deadline ? date('d/m/Y', strtotime($tk->deadline)) : '---' }}</span></div>
+                    </div>
+                    <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                        <span class="text-slate-400">Tiến độ:</span>
+                        <div class="flex items-center gap-2">
+                            <div class="w-20 bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div class="bg-blue-600 h-full rounded-full" style="width: {{ $tk->progress_percent ?? ($tk->progress ?? 100) }}%"></div>
+                            </div>
+                            <span class="font-bold text-slate-700 text-[11px]">{{ $tk->progress_percent ?? ($tk->progress ?? 100) }}%</span>
+                        </div>
+                    </div>
+                </div>
+            @empty
+                <div class="py-8 text-center text-slate-400 italic text-xs">Chưa có nhiệm vụ nào được tạo.</div>
+            @endforelse
         </div>
 
         @if($tasks->hasPages())

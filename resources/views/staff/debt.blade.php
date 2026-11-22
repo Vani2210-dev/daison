@@ -139,7 +139,8 @@
             </div>
         </div>
 
-        <div class="overflow-x-auto">
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
@@ -225,6 +226,54 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Mobile Cards Staff Debt -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            @forelse($staffList ?? [] as $sIdx => $st)
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2 text-xs"
+                     x-show="(deptFilter === 'all' || '{{ $st->department }}'.includes(deptFilter)) &&
+                             (staffTypeFilter === 'all' || '{{ $st->staff_type }}' === staffTypeFilter) &&
+                             (search === '' || '{{ strtolower($st->name . ' ' . $st->phone . ' ' . $st->code) }}'.includes(search.toLowerCase()))">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                        <div>
+                            <a href="{{ url('/staff-debt/' . $st->id) }}" class="font-bold text-slate-900 text-sm hover:text-sky-700">
+                                {{ $st->name }}
+                            </a>
+                            <span class="font-mono text-[10px] text-sky-800 font-bold block">{{ $st->code ?: ('NV-' . str_pad($st->id, 3, '0', STR_PAD_LEFT)) }}</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 font-normal">{{ $st->department ?: 'Chưa phân ban' }}</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 py-1">
+                        <div>
+                            <span class="text-[10px] text-slate-400 font-bold block">SĐT</span>
+                            <span class="font-mono text-slate-700">{{ $st->phone ?: '---' }}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400 font-bold block">Dư Nợ Hiện Tại</span>
+                            <span class="font-mono font-bold {{ (float)($st->current_debt ?? 0) > 0 ? 'text-rose-700' : 'text-slate-900' }}">
+                                {{ number_format((float)($st->current_debt ?? 0), 0, ',', '.') }} đ
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+                        <div>
+                            @if($st->staff_type === 'driver')
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">🚚 Lái xe</span>
+                            @else
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">💼 Kinh doanh / Sale</span>
+                            @endif
+                        </div>
+                        <a href="{{ url('/staff-debt/' . $st->id) }}" class="px-2.5 py-1 rounded-lg bg-sky-50 text-sky-800 font-bold text-xs border border-sky-200">
+                            Xem sổ nợ
+                        </a>
+                    </div>
+                </div>
+            @empty
+                <div class="py-6 text-center text-slate-400 text-xs">Không có dữ liệu nhân sự công nợ</div>
+            @endforelse
+        </div>
     </div>
 
     <!-- ==================== TAB 2: BIÊN BẢN BÀN GIAO CÔNG NỢ ==================== -->
@@ -246,7 +295,8 @@
             </button>
         </div>
 
-        <div class="overflow-x-auto">
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
@@ -428,6 +478,81 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Cards Handovers -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            @forelse($handovers ?? [] as $hIdx => $h)
+                @php
+                    $isPendingAccountant = in_array($h->status, ['pending_accountant', 'pending']) && empty($h->accountant_verified_at);
+                    $isPendingSale = $h->status === 'pending_sale' || ($h->status === 'pending' && !empty($h->accountant_verified_at));
+                    $docs = is_array($h->documents) ? $h->documents : (is_string($h->documents) ? json_decode($h->documents, true) : []);
+                    if (!is_array($docs)) $docs = [];
+                @endphp
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2 text-xs"
+                     x-show="handoverStatusFilter === 'all' || 
+                            (handoverStatusFilter === 'pending_accountant' && {{ $isPendingAccountant ? 'true' : 'false' }}) ||
+                            (handoverStatusFilter === 'pending_sale' && {{ $isPendingSale ? 'true' : 'false' }}) ||
+                            (handoverStatusFilter === '{{ $h->status }}')">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                        <span class="font-mono font-bold text-sky-800">{{ $h->code }}</span>
+                        <span class="text-[10px] text-slate-400">{{ $h->created_at ? $h->created_at->format('H:i d/m/Y') : '' }}</span>
+                    </div>
+
+                    <div class="text-xs space-y-1">
+                        <div>
+                            <span class="text-slate-400">Từ (TX): </span>
+                            <span class="font-bold text-slate-800">{{ $h->from_user_name ?: '---' }}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400">Sang (Sale): </span>
+                            <span class="font-bold text-slate-800">{{ $h->to_user_name ?: 'Chờ phân công' }}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between py-1 px-2.5 bg-slate-50 rounded-xl">
+                        <span class="text-slate-500 font-medium">Số tiền nợ:</span>
+                        <span class="font-mono font-bold text-rose-700 text-sm">{{ number_format((float)$h->amount, 0, ',', '.') }} đ</span>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+                        <div>
+                            @if($isPendingAccountant)
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">Chờ kế toán</span>
+                            @elseif($isPendingSale)
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800">Chờ sale nhận</span>
+                            @elseif($h->status === 'confirmed')
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Đã hoàn tất</span>
+                            @else
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">Từ chối</span>
+                            @endif
+                        </div>
+                        <div>
+                            @if($isPendingAccountant)
+                                <button type="button" 
+                                        @click="openAccountantForwardModal({
+                                            id: {{ $h->id }},
+                                            code: '{{ $h->code }}',
+                                            amount: {{ (float)$h->amount }},
+                                            from_name: '{{ addslashes($h->from_user_name ?: '') }}',
+                                            to_user_id: '{{ $h->to_user_id ?: '' }}',
+                                            to_user_name: '{{ addslashes($h->to_user_name ?: '') }}',
+                                            documents: {{ json_encode($docs) }}
+                                        })"
+                                        class="px-2 py-1 rounded-lg bg-amber-600 text-white font-bold text-[10.5px]">
+                                    Duyệt
+                                </button>
+                            @elseif($isPendingSale)
+                                <button type="button" @click="confirmHandover({{ $h->id }})" class="px-2 py-1 rounded-lg bg-emerald-600 text-white font-bold text-[10.5px]">
+                                    Nhận nợ
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @empty
+                <div class="py-6 text-center text-slate-400 text-xs">Chưa có biên bản bàn giao công nợ nào</div>
+            @endforelse
         </div>
     </div>
     <!-- ==================== MODAL: LẬP BIÊN BẢN BÀN GIAO CÔNG NỢ ==================== -->

@@ -55,7 +55,7 @@
                 </div>
 
                 <!-- Bảng danh sách hàng tồn -->
-                <div class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
+                <div class="hidden md:block overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
                     <table class="w-full text-left text-xs">
                         <thead class="bg-slate-900/90 text-slate-400 text-[11px] font-bold uppercase border-b border-slate-800">
                             <tr>
@@ -94,6 +94,35 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Mobile Cards List -->
+                <div class="md:hidden space-y-2">
+                    <template x-for="(it, idx) in filteredHoldingStocks" :key="'dm_' + (it.id || idx)">
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2 text-xs">
+                            <div class="flex items-center justify-between pb-1 border-b border-slate-800">
+                                <div>
+                                    <div class="font-bold text-white" x-text="it.product_name"></div>
+                                    <div class="font-mono text-[10px] text-slate-400" x-text="'Mã: ' + (it.sku || '--')"></div>
+                                </div>
+                                <span class="font-mono font-black text-emerald-400 text-sm" x-text="it.quantity + ' ' + (it.unit || 'cái')"></span>
+                            </div>
+                            <div class="flex items-center justify-between text-slate-300">
+                                <span>Giá bán: <strong class="font-mono" x-text="formatNumber(it.price) + ' đ'"></strong></span>
+                                <span>Thành tiền: <strong class="font-mono text-emerald-300" x-text="formatNumber(it.amount) + ' đ'"></strong></span>
+                            </div>
+                            <div class="pt-1 border-t border-slate-800 flex justify-end">
+                                <a :href="'/inventory/holding-sale/create?warehouse_id=' + (holdingWarehouse ? holdingWarehouse.id : '') + '&product_id=' + it.product_id + '&return_url=' + encodeURIComponent(window.location.href)"
+                                   class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs inline-flex items-center gap-1 no-underline">
+                                    <i class="fa-solid fa-cart-plus text-[10px]"></i>
+                                    <span>Bán ngay</span>
+                                </a>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="filteredHoldingStocks.length === 0" class="p-6 text-center text-slate-400 italic bg-slate-950 border border-slate-800 rounded-xl">
+                        Không tìm thấy mặt hàng nào trong kho nhân sự phù hợp.
+                    </div>
                 </div>
 
                 <div class="p-3 bg-slate-800/60 rounded-2xl border border-slate-700/60 text-slate-300 text-[11px] leading-relaxed flex flex-col sm:flex-row sm:items-center justify-between gap-2">

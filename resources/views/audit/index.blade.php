@@ -23,7 +23,7 @@
 
     <!-- Table Card -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left text-xs border-collapse">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold border-b border-slate-300 uppercase text-[11px]">
@@ -62,6 +62,34 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Card View: Audit Logs -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            @forelse($auditLogs as $log)
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-sky-700 text-xs">{{ $log->action }}</span>
+                        <span class="text-[10px] font-mono text-slate-400">{{ $log->timestamp ?? $log->created_at?->format('H:i:s d/m/Y') }}</span>
+                    </div>
+                    <div class="text-xs text-slate-600 space-y-1">
+                        <div><span class="text-slate-400">Thực hiện:</span> <span class="font-bold text-slate-900">{{ $log->performer_name ?? 'Hệ thống' }}</span></div>
+                        <div><span class="text-slate-400">Phân hệ:</span> <span class="font-medium text-slate-700">{{ $log->module ?? 'Đơn Hàng' }}</span> <span class="font-mono text-slate-800" x-show="{{ $log->target_document_code ? 'true' : 'false' }}">({{ $log->target_document_code }})</span></div>
+                        @if($log->old_value || $log->new_value)
+                            <div class="text-[11px] p-1.5 bg-slate-50 rounded">
+                                <span class="text-rose-600 line-through">{{ $log->old_value }}</span>
+                                <i class="fa-solid fa-arrow-right text-[9px] text-slate-400 mx-1"></i>
+                                <span class="text-emerald-700 font-bold">{{ $log->new_value }}</span>
+                            </div>
+                        @endif
+                        @if($log->notes)
+                            <div class="text-slate-500 text-[11px]">{{ $log->notes }}</div>
+                        @endif
+                    </div>
+                </div>
+            @empty
+                <div class="py-10 text-center text-slate-400 italic text-xs">Chưa có nhật ký kiểm toán nào được lưu.</div>
+            @endforelse
         </div>
 
         @if($auditLogs->hasPages())

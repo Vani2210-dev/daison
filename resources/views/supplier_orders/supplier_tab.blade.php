@@ -147,7 +147,8 @@
 
     <!-- 5. Data Table: Danh sách đơn đặt hàng NCC -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div class="overflow-x-auto">
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-black uppercase text-[10.5px] tracking-wider">
@@ -372,6 +373,67 @@
                     </template>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Card List -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            <template x-if="loading">
+                <div class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-spinner fa-spin text-xl text-sky-500 mb-2"></i>
+                    <div class="text-xs">Đang tải danh sách đơn đặt hàng NCC...</div>
+                </div>
+            </template>
+            <template x-if="!loading && ordersList.length === 0">
+                <div class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-inbox text-3xl mb-2 text-slate-300"></i>
+                    <div class="text-xs">Không tìm thấy đơn đặt hàng nào phù hợp</div>
+                </div>
+            </template>
+            <template x-for="order in ordersList" :key="'m-' + order.id">
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2.5">
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <span class="font-black text-sky-600 text-xs" x-text="order.code || order.order_code || ('PO-' + order.id)"></span>
+                        <span class="text-[10px] text-slate-400" x-text="formatDateTime(order.order_date || order.created_at)"></span>
+                    </div>
+
+                    <div class="text-xs">
+                        <span class="text-slate-400 text-[10px] block uppercase font-bold">Nhà Cung Cấp</span>
+                        <div class="font-black text-slate-800" x-text="order.supplier ? order.supplier.name : '---'"></div>
+                    </div>
+
+                    <div class="flex items-center justify-between py-1 bg-slate-50 px-2.5 rounded-xl">
+                        <span class="text-[11px] text-slate-500 font-bold">Tổng tiền:</span>
+                        <span class="font-black text-slate-900 text-xs" x-text="formatMoney(order.final_amount || order.total_amount || 0)"></span>
+                    </div>
+
+                    <div class="flex flex-wrap gap-1.5 pt-1">
+                        <span x-html="getPaymentStatusBadge(order)"></span>
+                        <span x-html="getOrderStatusBadge(order)"></span>
+                        <span x-html="getReceiptStatusBadge(order)"></span>
+                        <span x-html="getDiscrepancyBadge(order)"></span>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button type="button" @click="openDetailModal(order)"
+                                class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 cursor-pointer">
+                            <i class="fa-regular fa-eye"></i> Chi tiết
+                        </button>
+                        <template x-if="canReceive(order)">
+                            <button type="button" @click="redirectToReceipt(order.id)"
+                                    class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer shadow-2xs">
+                                <i class="fa-solid fa-boxes-packing"></i> Nhập kho
+                            </button>
+                        </template>
+                        <template x-if="['Chờ duyệt', 'Đã duyệt'].includes(order.status)">
+                            <button type="button" @click="cancelOrder(order)"
+                                    class="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 flex items-center justify-center cursor-pointer"
+                                    title="Hủy đơn">
+                                <i class="fa-regular fa-trash-can text-xs"></i>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+            </template>
         </div>
     </div>
 

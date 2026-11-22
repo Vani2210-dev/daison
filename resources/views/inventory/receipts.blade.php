@@ -151,7 +151,8 @@
 
     <!-- 5. Bảng Danh Sách Phiếu Nhập Kho -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div class="overflow-x-auto">
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-xs text-left">
                 <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                     <tr>
@@ -258,6 +259,68 @@
             </table>
         </div>
 
+        <!-- Mobile Cards List -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            @forelse($receipts as $idx => $r)
+            <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2.5 {{ $r->status === 'Đã hủy' ? 'opacity-60 bg-slate-50' : '' }}">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <span class="font-mono font-black text-emerald-700 text-xs" @click="viewDetail({{ $r->id }})">
+                        {{ $r->code }}
+                    </span>
+                    <span class="text-[10px] text-slate-400">{{ $r->created_at->format('d/m/Y H:i') }}</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <span class="text-[10px] text-slate-400 font-bold block uppercase">Kho Nhập</span>
+                        <span class="font-bold text-slate-800">{{ $r->warehouse->name ?? '---' }}</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 font-bold block uppercase">Đối tác / NCC</span>
+                        <span class="font-medium text-slate-700">{{ $r->partner_name ?? ($r->supplier->name ?? 'Nhập nội bộ/Khác') }}</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between py-1.5 px-3 bg-slate-50 rounded-xl text-xs">
+                    <span class="text-slate-500 font-medium">{{ $r->items->count() }} mặt hàng</span>
+                    <span class="font-mono font-black text-emerald-700 text-sm">{{ number_format($r->total_amount, 0, ',', '.') }} đ</span>
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                    <div>
+                        @if($r->status === 'Đã hoàn thành')
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                <i class="fa-solid fa-check text-[9px]"></i> Đã hoàn thành
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
+                                <i class="fa-solid fa-ban text-[9px]"></i> Đã hủy
+                            </span>
+                        @endif
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <button type="button" @click="viewDetail({{ $r->id }})" class="w-8 h-8 rounded-lg bg-sky-50 text-[#1b4a8c] flex items-center justify-center cursor-pointer">
+                            <i class="fa-solid fa-eye text-xs"></i>
+                        </button>
+                        <a href="{{ route('inventory.transactions.print', $r->id) }}" target="_blank" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center cursor-pointer">
+                            <i class="fa-solid fa-print text-xs"></i>
+                        </a>
+                        @if($r->status !== 'Đã hủy')
+                        <button type="button" @click="cancelReceipt({{ $r->id }}, '{{ $r->code }}')" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center cursor-pointer">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            @empty
+            <div class="text-center py-8 text-slate-400">
+                <i class="fa-solid fa-box-open text-3xl mb-2 text-slate-300"></i>
+                <div class="text-xs font-bold text-slate-600">Chưa có phiếu nhập kho nào</div>
+            </div>
+            @endforelse
+        </div>
+
         @if($receipts->hasPages())
         <div class="p-4 border-t border-slate-200">
             {{ $receipts->links() }}
@@ -355,7 +418,7 @@
                     </div>
 
                     <!-- Hàng 3: Bảng danh sách hàng hóa trong phiếu -->
-                    <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                    <div class="hidden md:block border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
                         <table class="w-full text-left">
                             <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px]">
                                 <tr>
@@ -397,7 +460,7 @@
                                                     </div>
                                                     <div>
                                                         <span class="block text-[9px] font-bold text-amber-700 flex items-center justify-between">
-                                                            <span>HSD (Date):</span>
+                                                             <span>HSD (Date):</span>
                                                             <template x-if="item.expiry_date">
                                                                 <span class="text-emerald-700 font-black">✓</span>
                                                             </template>
@@ -447,6 +510,60 @@
                                 </tr>
                             </tfoot>
                         </table>
+                    </div>
+
+                    <!-- Mobile Cards: Danh sách hàng hóa trong phiếu -->
+                    <div class="md:hidden space-y-3">
+                        <template x-for="(item, idx) in form.items" :key="'m-' + idx">
+                            <div class="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-2.5 shadow-2xs">
+                                <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                                    <div>
+                                        <span class="font-bold text-slate-800 text-xs" x-text="item.name"></span>
+                                        <span class="text-[10px] text-slate-400 font-mono block" x-text="item.sku"></span>
+                                    </div>
+                                    <button type="button" @click="removeItem(idx)" class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center cursor-pointer">
+                                        <i class="fa-solid fa-trash-can text-xs"></i>
+                                    </button>
+                                </div>
+                                <div class="p-2 bg-amber-50/50 rounded-xl space-y-1.5 border border-amber-200/50">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-[10px] font-bold text-amber-900 w-12 shrink-0">Số Lô:</span>
+                                        <input type="text" x-model="item.batch_code" placeholder="Mã lô NSX" class="flex-1 px-2 py-1 rounded-lg border border-amber-300 text-xs font-mono font-semibold bg-white">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-1.5">
+                                        <div>
+                                            <span class="block text-[9px] font-bold text-slate-500">NSX:</span>
+                                            <input type="date" x-model="item.manufacturing_date" class="w-full px-1.5 py-1 rounded-lg border border-slate-300 text-[11px] font-mono bg-white">
+                                        </div>
+                                        <div>
+                                            <span class="block text-[9px] font-bold text-amber-800">HSD:</span>
+                                            <input type="date" x-model="item.expiry_date" class="w-full px-1.5 py-1 rounded-lg border border-amber-300 text-[11px] font-mono font-bold bg-amber-50/40">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 text-xs">
+                                    <div>
+                                        <span class="text-[10px] text-slate-400 block font-bold">ĐVT</span>
+                                        <span class="font-bold text-slate-700" x-text="item.unit"></span>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] text-slate-400 block font-bold">SL</span>
+                                        <input type="number" min="0.01" step="any" x-model.number="item.quantity" class="w-full px-2 py-1 rounded-lg border border-slate-300 text-center font-mono font-bold">
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] text-slate-400 block font-bold">Giá nhập</span>
+                                        <input type="number" min="0" step="1000" x-model.number="item.import_price" class="w-full px-2 py-1 rounded-lg border border-slate-300 text-right font-mono font-bold">
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase">Thành tiền:</span>
+                                    <span class="font-mono font-black text-emerald-800 text-xs" x-text="formatNumber(item.quantity * item.import_price) + ' đ'"></span>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="form.items.length === 0" class="text-center py-6 text-slate-400 italic text-xs">
+                            Chưa có sản phẩm nào trong phiếu.
+                        </div>
                     </div>
 
                     <!-- Ghi chú -->
@@ -516,7 +633,8 @@
                         </div>
                     </div>
 
-                    <div class="border border-slate-200 rounded-2xl overflow-hidden">
+                    <!-- Desktop Table Detail -->
+                    <div class="hidden md:block border border-slate-200 rounded-2xl overflow-hidden">
                         <table class="w-full text-left">
                             <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px]">
                                 <tr>
@@ -556,6 +674,34 @@
                                 </tr>
                             </tfoot>
                         </table>
+                    </div>
+
+                    <!-- Mobile Cards Detail -->
+                    <div class="md:hidden space-y-2.5">
+                        <template x-for="(it, idx) in (detailTx?.items || [])" :key="'dm-' + it.id">
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5 text-xs">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-slate-900" x-text="it.product?.name || 'Sản phẩm'"></span>
+                                    <span class="font-mono font-bold text-emerald-700 text-[11px]" x-text="it.product?.sku || '-'"></span>
+                                </div>
+                                <div class="flex items-center gap-2 text-[11px]" x-show="it.batch_code || it.expiry_date">
+                                    <span class="font-mono text-slate-600" x-text="'Lô: ' + (it.batch_code || '-')"></span>
+                                    <span class="text-amber-800 font-bold" x-show="it.expiry_date" x-text="'HSD: ' + it.expiry_date"></span>
+                                </div>
+                                <div class="flex items-center justify-between text-slate-600 pt-1 border-t border-slate-200/60">
+                                    <span>SL: <strong class="text-slate-900" x-text="formatNumber(it.quantity) + ' ' + (it.product?.unit || 'cái')"></strong></span>
+                                    <span>Đơn giá: <strong class="text-slate-900" x-text="formatNumber(it.import_price) + ' đ'"></strong></span>
+                                </div>
+                                <div class="flex items-center justify-between pt-1 border-t border-slate-200/60 font-black">
+                                    <span class="text-slate-600 text-[10px] uppercase">Thành tiền:</span>
+                                    <span class="text-emerald-800" x-text="formatNumber(it.quantity * it.import_price) + ' đ'"></span>
+                                </div>
+                            </div>
+                        </template>
+                        <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 font-black text-xs">
+                            <span class="uppercase text-slate-600">Tổng Tiền:</span>
+                            <span class="text-emerald-800 text-sm" x-text="formatNumber(detailTx?.total_amount || 0) + ' đ'"></span>
+                        </div>
                     </div>
                 </div>
 

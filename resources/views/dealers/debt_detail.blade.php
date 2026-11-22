@@ -91,7 +91,8 @@
             </span>
         </div>
 
-        <div class="overflow-x-auto">
+        <!-- Desktop Table Orders -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
@@ -211,6 +212,37 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Mobile Cards Orders -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            @forelse($orders ?? [] as $idx => $o)
+                @php
+                    $st = $o->status ?? 'Báo giá';
+                    $pStatus = $o->payment_status ?? 'Chưa thanh toán';
+                @endphp
+                <div class="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs space-y-2 text-xs">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                        <span class="font-mono font-bold text-sky-800">{{ $o->order_code }}</span>
+                        <span class="text-[10px] text-slate-400">{{ $o->created_at ? $o->created_at->format('d/m/Y') : '---' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-500">Giá trị đơn:</span>
+                        <span class="font-mono font-black text-slate-900 text-sm">{{ number_format((float)($o->total_amount ?? 0), 0, ',', '.') }} đ</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 pt-1">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">{{ $st }}</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold {{ $pStatus === 'Đã thanh toán' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">{{ $pStatus }}</span>
+                    </div>
+                    <div class="pt-2 border-t border-slate-100 flex justify-end">
+                        <a href="{{ url('/orders/' . $o->id . '/edit') }}" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs inline-flex items-center gap-1">
+                            <i class="fa-solid fa-eye text-sky-600"></i> Chi tiết
+                        </a>
+                    </div>
+                </div>
+            @empty
+                <div class="py-6 text-center text-slate-400 text-xs">Khách hàng chưa phát sinh đơn hàng nào</div>
+            @endforelse
+        </div>
     </div>
 
     <!-- Khối 2: Lịch sử Phiếu thu tiền & Đối trừ công nợ -->
@@ -229,7 +261,8 @@
             </a>
         </div>
 
-        <div class="overflow-x-auto">
+        <!-- Desktop Table Orders -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-[#dce6f2] text-slate-700 font-bold uppercase text-[11px] border-b border-slate-300">
@@ -272,6 +305,29 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Cards Transactions -->
+        <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            @forelse($transactions ?? [] as $tIdx => $t)
+                <div class="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs space-y-1.5 text-xs">
+                    <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+                        <span class="font-mono font-bold text-emerald-700">{{ $t->code ?? ('PT-' . $t->id) }}</span>
+                        <span class="text-[10px] text-slate-400">{{ $t->date ? \Carbon\Carbon::parse($t->date)->format('d/m/Y') : ($t->created_at ? $t->created_at->format('d/m/Y') : '---') }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-500">Số tiền thu:</span>
+                        <span class="font-mono font-black text-emerald-700 text-sm">+{{ number_format($t->amount ?? 0, 0, ',', '.') }} đ</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 italic">{{ $t->notes ?? 'Thu công nợ khách hàng' }}</div>
+                    <div class="pt-1 border-t border-slate-100 flex justify-between items-center">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">{{ $t->category ?? 'Thu tiền hàng' }}</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Đã hạch toán</span>
+                    </div>
+                </div>
+            @empty
+                <div class="py-6 text-center text-slate-400 text-xs">Chưa có giao dịch phiếu thu nào được ghi nhận cho đại lý này</div>
+            @endforelse
         </div>
     </div>
 </div>

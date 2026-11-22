@@ -184,7 +184,8 @@
                 </div>
             </div>
 
-            <div class="overflow-x-auto">
+            <!-- Desktop Table Tab 1 -->
+            <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-left text-xs divide-y divide-slate-200">
                     <thead class="bg-slate-50 text-slate-600 font-extrabold text-[11px] uppercase tracking-wider">
                         <tr>
@@ -235,6 +236,45 @@
                         </template>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Cards Tab 1: Mặt hàng đang ôm -->
+            <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+                <template x-for="(st, sIdx) in (getSelectedVehicleWh()?.stocks || [])" :key="'mst-' + (st.id || sIdx)">
+                    <div class="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs space-y-2">
+                        <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+                            <div>
+                                <span class="font-bold text-slate-800 text-xs" x-text="st.name || st.product?.name || '---'"></span>
+                                <span class="text-[10px] text-slate-400 font-mono block" x-text="st.sku || st.product?.sku || '---'"></span>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 font-mono font-bold text-xs" x-text="(st.stock_quantity || 0) + ' ' + (st.unit || st.product?.unit || 'cái')"></span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <span class="text-[10px] text-slate-400 block font-bold">Đơn Giá Bán</span>
+                                <span class="font-mono text-slate-700" x-text="formatMoney(st.product?.price || st.cost_price || st.product?.cost_price || 0) + ' đ'"></span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] text-slate-400 block font-bold">Thành Tiền</span>
+                                <span class="font-mono font-bold text-emerald-700" x-text="formatMoney((st.stock_quantity || 0) * (st.product?.price || st.cost_price || st.product?.cost_price || 0)) + ' đ'"></span>
+                            </div>
+                        </div>
+                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+                            <span class="text-[11px] text-slate-400 italic" x-text="st.location || 'Hàng ôm NV'"></span>
+                            <a :href="'/inventory/holding-sale/create?warehouse_id=' + (getSelectedVehicleWh()?.id || '') + '&product_id=' + (st.product_id || st.product?.id || '')"
+                               class="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-[#1b4a8c] rounded-lg text-xs font-bold border border-blue-200 inline-flex items-center gap-1 no-underline">
+                                <i class="fa-solid fa-cart-shopping text-[10px]"></i>
+                                <span>Bán SP này</span>
+                            </a>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="!getSelectedVehicleWh() || (getSelectedVehicleWh()?.stocks || []).length === 0">
+                    <div class="py-8 text-center text-slate-400">
+                        <i class="fa-solid fa-boxes-packing text-2xl mb-1 text-slate-300"></i>
+                        <p class="text-xs font-semibold">Nhân viên này hiện chưa ôm mặt hàng nào trong kho.</p>
+                    </div>
+                </template>
             </div>
         </div>
         @endif
@@ -327,7 +367,8 @@
                 </div>
             </div>
 
-            <div class="overflow-x-auto">
+            <!-- Desktop Table Tab 1 -->
+            <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-left text-xs divide-y divide-slate-200">
                     <thead class="bg-slate-50 text-slate-600 font-extrabold text-[11px] uppercase tracking-wider">
                         <tr>
@@ -439,6 +480,37 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Mobile Cards: Đơn hàng ôm & Ký gửi -->
+            <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+                @forelse($consignmentOrders ?? [] as $cOrd)
+                <div class="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+                        <span class="font-mono font-black text-[#1b4a8c] text-xs">{{ $cOrd->code }}</span>
+                        <span class="text-[10px] text-slate-400">{{ $cOrd->created_at ? $cOrd->created_at->format('d/m/Y H:i') : '---' }}</span>
+                    </div>
+                    <div class="text-xs">
+                        <div class="font-bold text-slate-900">{{ $cOrd->staff_name }}</div>
+                        <div class="text-[11px] text-slate-500">Từ: {{ $cOrd->warehouse_name ?: 'Kho Tổng' }}</div>
+                    </div>
+                    <div class="flex items-center justify-between py-1 px-2.5 bg-slate-50 rounded-xl text-xs">
+                        <span class="text-slate-500 font-medium">Còn nợ / Ôm:</span>
+                        <span class="font-mono font-bold text-amber-700">{{ number_format($cOrd->remaining_amount ?? 0) }} đ</span>
+                    </div>
+                    <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+                        <span class="text-[11px] font-bold text-slate-600">{{ $cOrd->status_label ?? $cOrd->status }}</span>
+                        <a href="{{ url('/orders?tab=consignment') }}" class="px-2.5 py-1 bg-blue-50 text-[#1b4a8c] rounded-lg text-xs font-bold border border-blue-200">
+                            <i class="fa-solid fa-eye text-xs"></i> Xem đơn
+                        </a>
+                    </div>
+                </div>
+                @empty
+                <div class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-file-invoice-dollar text-2xl mb-1 text-slate-300"></i>
+                    <p class="text-xs font-semibold">Chưa có đơn hàng ôm & ký gửi nào.</p>
+                </div>
+                @endforelse
+            </div>
         </div>
 
         <!-- Bảng 2: Phiếu Bàn Giao Trực Tiếp (PXK-OM) -->
@@ -455,7 +527,8 @@
                 </button>
             </div>
 
-            <div class="overflow-x-auto">
+            <!-- Desktop Table Tab 1 -->
+            <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-left text-xs divide-y divide-slate-200">
                     <thead class="bg-slate-50 text-slate-600 font-extrabold text-[11px] uppercase tracking-wider">
                         <tr>
@@ -539,6 +612,42 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Mobile Cards: Phiếu Bàn Giao Hàng Ôm -->
+            <div class="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+                @forelse($vanDispatches as $disp)
+                <div class="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs space-y-2">
+                    <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+                        <span class="font-mono font-black text-emerald-700 text-xs">{{ $disp->code }}</span>
+                        <span class="text-[10px] text-slate-400">{{ $disp->dispatch_date ? $disp->dispatch_date->format('d/m/Y') : $disp->created_at->format('d/m/Y') }}</span>
+                    </div>
+                    <div class="text-xs">
+                        <div class="font-bold text-slate-900">{{ $disp->driver_name }}</div>
+                        <div class="text-[11px] text-slate-500">Từ: {{ $disp->warehouse_name ?: 'Kho Tổng' }}</div>
+                    </div>
+                    <div class="flex items-center justify-between py-1 px-2.5 bg-slate-50 rounded-xl text-xs">
+                        <span class="text-slate-500 font-medium">{{ count($disp->items ?? []) }} mặt hàng</span>
+                        <span class="font-mono font-bold text-emerald-700">{{ number_format($disp->total_amount ?? 0) }} đ</span>
+                    </div>
+                    <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+                        <span class="text-[11px] font-bold text-emerald-800">Đã giao hàng ôm</span>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" @click="openDispatchDetailModal(@js($disp))" class="p-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold">
+                                <i class="fa-solid fa-eye text-xs"></i> Chi tiết
+                            </button>
+                            <button type="button" @click="printDispatchSlip(@js($disp))" class="p-1.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-bold border border-purple-200">
+                                <i class="fa-solid fa-print text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                @empty
+                <div class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-boxes-packing text-2xl mb-1 text-slate-300"></i>
+                    <p class="text-xs font-semibold">Chưa có phiếu xuất hàng ôm nào cho nhân viên.</p>
+                </div>
+                @endforelse
+            </div>
         </div>
     </div>
 
@@ -604,7 +713,8 @@
                         </button>
                     </div>
 
-                    <div class="border border-slate-200 rounded-xl overflow-visible">
+                    <!-- Desktop Table Form Items -->
+                    <div class="hidden md:block border border-slate-200 rounded-xl overflow-visible">
                         <table class="w-full text-left text-xs divide-y divide-slate-200">
                             <thead class="bg-slate-50 text-slate-600 font-bold text-[11px] uppercase">
                                 <tr>
@@ -707,6 +817,43 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Mobile Cards Form Items -->
+                    <div class="md:hidden space-y-3">
+                        <template x-for="(it, idx) in vanSaleForm.items" :key="'vm-' + (it.id || idx)">
+                            <div class="bg-white border border-slate-200 rounded-xl p-3 space-y-2 text-xs shadow-2xs">
+                                <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+                                    <span class="font-bold text-slate-700" x-text="'# Mặt hàng ' + (idx + 1)"></span>
+                                    <button type="button" @click="removeVanItem(idx)" class="text-rose-500 hover:text-rose-700 p-1">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-400 font-bold mb-1">Tìm & Chọn Sản Phẩm</label>
+                                    <input type="text"
+                                           x-model="it.searchQuery"
+                                           @focus="activeProdDropdownIndex = idx; prodHighlightIndex = 0"
+                                           @input="activeProdDropdownIndex = idx; prodHighlightIndex = 0; if(!it.searchQuery) { it.product_id = ''; it.unit_price = 0; }"
+                                           placeholder="Gõ mã SKU hoặc tên SP..."
+                                           class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold focus:outline-none focus:border-emerald-600">
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-[10px] text-slate-400 font-bold mb-0.5">Số Lượng</label>
+                                        <input type="number" min="0.1" step="any" x-model.number="it.quantity" class="w-full px-2 py-1 text-center font-bold font-mono border border-slate-300 rounded-lg">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] text-slate-400 font-bold mb-0.5">Đơn Giá</label>
+                                        <input type="number" min="0" x-model.number="it.unit_price" class="w-full px-2 py-1 text-right font-bold font-mono border border-slate-300 rounded-lg">
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+                                    <span class="text-[10px] text-slate-400 uppercase font-bold">Thành tiền:</span>
+                                    <span class="font-mono font-bold text-emerald-700 text-xs" x-text="formatMoney((it.quantity || 0) * (it.unit_price || 0)) + ' đ'"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
                 </div>
 
                 <!-- Tổng tiền & Ghi chú -->
@@ -776,7 +923,8 @@
                     </div>
                 </div>
 
-                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                <!-- Desktop Table Detail -->
+                <div class="hidden md:block border border-slate-200 rounded-xl overflow-hidden">
                     <table class="w-full text-left text-xs divide-y divide-slate-200">
                         <thead class="bg-slate-50 text-slate-600 font-bold text-[11px] uppercase">
                             <tr>
@@ -804,6 +952,26 @@
                             </template>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Mobile Cards Detail -->
+                <div class="md:hidden space-y-2">
+                    <template x-for="(it, iIdx) in (activeDispatch?.items || [])" :key="'vdm-' + (it.id || iIdx)">
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5 text-xs">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-slate-800" x-text="it.name"></span>
+                                <span class="font-mono text-[10px] text-slate-400" x-text="it.sku"></span>
+                            </div>
+                            <div class="flex items-center justify-between text-slate-600">
+                                <span>SL: <strong class="text-slate-900" x-text="(it.quantity || 0) + ' ' + (it.unit || 'cái')"></strong></span>
+                                <span>Đơn giá: <strong class="text-slate-900" x-text="formatMoney(it.unit_price) + ' đ'"></strong></span>
+                            </div>
+                            <div class="flex items-center justify-between pt-1 border-t border-slate-200/60 font-bold">
+                                <span class="text-slate-500 uppercase text-[10px]">Thành tiền:</span>
+                                <span class="font-mono text-emerald-700" x-text="formatMoney(it.amount || ((it.quantity || 0) * (it.unit_price || 0))) + ' đ'"></span>
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </div>
 

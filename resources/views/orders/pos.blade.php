@@ -245,7 +245,8 @@
                 <!-- 4. DANH SÁCH SẢN PHẨM DẠNG LIST (BẢNG) - Dùng x-if để chỉ dựng bảng khi chuyển sang List view -->
                 <template x-if="viewMode === 'list'">
                     <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
-                        <div class="overflow-x-auto">
+                        <!-- Desktop Table Layout -->
+                        <div class="hidden md:block overflow-x-auto">
                             <table class="w-full text-left border-collapse text-xs sm:text-sm">
                                 <thead>
                                     <tr class="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200 uppercase tracking-wider text-xs">
@@ -309,6 +310,34 @@
                                     </template>
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- Mobile Card List View -->
+                        <div class="md:hidden divide-y divide-slate-100 p-2.5 space-y-2">
+                            <template x-for="(p, idx) in filteredProducts" :key="'mob-pos-list-' + p.id">
+                                <div @click="openQuantityModal(p)" class="p-3 rounded-xl border border-slate-100 hover:border-purple-200 bg-white transition shadow-2xs flex flex-col gap-2 cursor-pointer" :class="p._inCart > 0 ? 'border-purple-400 bg-purple-50/20' : ''">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <div class="flex items-center gap-1.5 min-w-0">
+                                            <span class="font-mono text-xs font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 truncate" x-text="p.sku"></span>
+                                            <span class="text-xs text-slate-400 truncate" x-text="p.category_name"></span>
+                                        </div>
+                                        <span class="px-2 py-0.5 rounded-full text-[11px] font-extrabold whitespace-nowrap" :class="p._avail > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'" x-text="p._avail > 0 ? ('Tồn: ' + formatNumber(p._avail) + ' ' + (p.unit || '')) : 'Hết hàng'"></span>
+                                    </div>
+                                    <div class="font-bold text-sm text-slate-900" x-text="p.name"></div>
+                                    <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+                                        <div class="font-black text-purple-700 text-sm" x-text="formatCurrency(p.price)"></div>
+                                        <div class="flex items-center gap-1.5" @click.stop>
+                                            <template x-if="p._inCart > 0">
+                                                <span class="px-2 py-0.5 rounded-full bg-purple-600 text-white font-black text-xs" x-text="'Đã chọn: ' + p._inCart"></span>
+                                            </template>
+                                            <button type="button" @click="openQuantityModal(p)" :disabled="p._avail <= 0" class="px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1" :class="p._avail <= 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-purple-600 text-white shadow-xs active:scale-95'">
+                                                <i class="fa-solid fa-plus text-[10px]"></i>
+                                                <span>Chọn</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </div>
                 </template>
