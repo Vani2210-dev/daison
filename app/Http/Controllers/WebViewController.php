@@ -1848,14 +1848,7 @@ class WebViewController extends Controller
             }
         }
 
-        $allowedGroupModes = ['basket_mix', 'per_sku', 'per_variant_group', 'per_brand'];
-        $defaultGroupMode = $applyScope === 'order' ? 'basket_mix' : 'per_sku';
-        $qtyGroupMode = in_array($request->input('qty_group_mode'), $allowedGroupModes, true)
-            ? $request->input('qty_group_mode')
-            : $defaultGroupMode;
-        if ($applyScope !== 'order' && empty($productIds) && $qtyGroupMode === 'basket_mix') {
-            $qtyGroupMode = 'per_sku';
-        }
+        $qtyGroupMode = $applyScope === 'order' ? 'basket_mix' : 'per_sku';
         $stackingMode = in_array($request->input('stacking_mode'), ['exclusive_line', 'stackable_order'], true)
             ? $request->input('stacking_mode')
             : 'exclusive_line';

@@ -108,11 +108,7 @@ class SalesPolicyController extends Controller
             $discountTiers = json_decode($discountTiers, true);
         }
 
-        $defaultGroupMode = $applyScope === 'order' ? 'basket_mix' : 'per_sku';
-        $qtyGroupMode = $request->input('qty_group_mode') ?: ($request->input('qtyGroupMode') ?: $defaultGroupMode);
-        if ($applyScope !== 'order' && empty($productIds) && $qtyGroupMode === 'basket_mix') {
-            $qtyGroupMode = 'per_sku';
-        }
+        $qtyGroupMode = $applyScope === 'order' ? 'basket_mix' : 'per_sku';
         $conflictGroup = $request->input('conflict_group') ?? $request->input('conflictGroup');
         $stackingMode = $request->input('stacking_mode') ?: ($request->input('stackingMode') ?: 'exclusive_line');
         $requireOrigPrice = $request->has('require_original_price')
@@ -211,11 +207,7 @@ class SalesPolicyController extends Controller
             $discountTiers = json_decode($discountTiers, true);
         }
 
-        $defaultGroupMode = $applyScope === 'order' ? 'basket_mix' : 'per_sku';
-        $qtyGroupMode = $request->input('qty_group_mode') ?: ($request->input('qtyGroupMode') ?: ($policy->qty_group_mode ?: $defaultGroupMode));
-        if ($applyScope !== 'order' && empty($productIds) && $qtyGroupMode === 'basket_mix') {
-            $qtyGroupMode = 'per_sku';
-        }
+        $qtyGroupMode = $applyScope === 'order' ? 'basket_mix' : 'per_sku';
         $conflictGroup = $request->has('conflict_group') ? $request->input('conflict_group') : ($request->has('conflictGroup') ? $request->input('conflictGroup') : $policy->conflict_group);
         $stackingMode = $request->input('stacking_mode') ?: ($request->input('stackingMode') ?: ($policy->stacking_mode ?: 'exclusive_line'));
         $requireOrigPrice = $request->has('require_original_price')

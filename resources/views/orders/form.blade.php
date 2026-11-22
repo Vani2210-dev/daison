@@ -3558,16 +3558,11 @@ function orderFormApp() {
 
                 getEffectivePolicyGroupMode(policy) {
                     if (!policy) return 'per_sku';
-                    const targets = this.getNormalizedPolicyProductIds(policy);
-                    // Chính sách áp dụng theo dòng / toàn bộ SP (không giới hạn danh sách SP cụ thể)
-                    // luôn tính riêng từng mã SKU, không cộng dồn sản phẩm khác nhau kiểu basket_mix
-                    if (policy.apply_scope !== 'order' && targets.length === 0) {
-                        if (!policy.qty_group_mode || policy.qty_group_mode === 'basket_mix') {
-                            return 'per_sku';
-                        }
-                    }
-                    if (policy.qty_group_mode) return policy.qty_group_mode;
-                    return (policy.apply_scope === 'order' || targets.length > 1) ? 'basket_mix' : 'per_sku';
+                    // Chỉ chính sách toàn đơn (apply_scope === 'order') mới được cộng dồn theo đơn
+                    if (policy.apply_scope === 'order') return 'basket_mix';
+                    // Tất cả chính sách theo sản phẩm / nhóm sản phẩm:
+                    // Luôn tính riêng theo từng mã SKU (per_sku), TUYỆT ĐỐI KHÔNG cộng dồn số lượng các sản phẩm khác nhau
+                    return 'per_sku';
                 },
 
                 bucketItemsByPolicyGroupMode(policy, candidateItems) {
