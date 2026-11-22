@@ -948,29 +948,64 @@ class OrderController extends Controller
         $items = $data['items'] ?? null;
         if (is_array($items) && count($items) > 0) {
             $order->items()->delete();
+
+            // Tối ưu Batch: Thu thập trước ID, SKU, Name để tra cứu trong 1 truy vấn duy nhất thay vì query lặp
+            $candidateProdIds = [];
+            $candidateSkus = [];
+            $candidateNames = [];
+            foreach ($items as $it) {
+                $pId = $it['itemId'] ?? ($it['item_id'] ?? ($it['product_id'] ?? null));
+                if (!empty($pId) && is_numeric($pId)) {
+                    $candidateProdIds[] = (int)$pId;
+                }
+                $sku = trim((string)($it['sku'] ?? ($it['product_sku'] ?? '')));
+                if ($sku !== '') $candidateSkus[] = $sku;
+                $name = trim((string)($it['name'] ?? ($it['product_name'] ?? '')));
+                if ($name !== '') $candidateNames[] = $name;
+            }
+
+            $validProdIds = !empty($candidateProdIds)
+                ? \App\Models\Product::whereIn('id', array_unique($candidateProdIds))->pluck('id', 'id')->all()
+                : [];
+
+            $fallbackProducts = (!empty($candidateSkus) || !empty($candidateNames))
+                ? \App\Models\Product::where(function($q) use ($candidateSkus, $candidateNames) {
+                    if (!empty($candidateSkus)) $q->whereIn('sku', array_unique($candidateSkus));
+                    if (!empty($candidateNames)) $q->orWhereIn('name', array_unique($candidateNames));
+                })->get(['id', 'sku', 'name'])
+                : collect();
+
+            $fallbackBySku = $fallbackProducts->whereNotNull('sku')->keyBy('sku');
+            $fallbackByName = $fallbackProducts->whereNotNull('name')->keyBy('name');
+            $defaultFirstProdId = null;
+
             foreach ($items as $it) {
                 $itName = $it['name'] ?? ($it['product_name'] ?? '');
                 $itSku = $it['sku'] ?? ($it['product_sku'] ?? '');
-                $prodId = null;
+                $candidateId = null;
                 if (!empty($it['itemId']) && is_numeric($it['itemId'])) {
-                    $prodId = (int)$it['itemId'];
+                    $candidateId = (int)$it['itemId'];
                 } elseif (!empty($it['item_id']) && is_numeric($it['item_id'])) {
-                    $prodId = (int)$it['item_id'];
+                    $candidateId = (int)$it['item_id'];
                 } elseif (!empty($it['product_id']) && is_numeric($it['product_id'])) {
-                    $prodId = (int)$it['product_id'];
+                    $candidateId = (int)$it['product_id'];
                 }
 
-                if ($prodId && !\App\Models\Product::where('id', $prodId)->exists()) {
-                    $prodId = null;
-                }
+                $prodId = ($candidateId && isset($validProdIds[$candidateId])) ? $candidateId : null;
 
                 if (!$prodId && ($itSku || $itName)) {
-                    $prod = \App\Models\Product::where('sku', $itSku)->orWhere('name', $itName)->first();
-                    if ($prod) $prodId = $prod->id;
+                    if ($itSku && isset($fallbackBySku[$itSku])) {
+                        $prodId = $fallbackBySku[$itSku]->id;
+                    } elseif ($itName && isset($fallbackByName[$itName])) {
+                        $prodId = $fallbackByName[$itName]->id;
+                    }
                 }
 
                 if (!$prodId) {
-                    $prodId = \App\Models\Product::first()?->id ?? 1;
+                    if ($defaultFirstProdId === null) {
+                        $defaultFirstProdId = \App\Models\Product::first()?->id ?? 1;
+                    }
+                    $prodId = $defaultFirstProdId;
                 }
 
                 $qty = (float) ($it['quantity'] ?? ($it['qty'] ?? 1));
@@ -1408,7 +1443,10 @@ class OrderController extends Controller
         if ($isNewOrder && $isDebtOrder && $order->dealer_id) {
             $dealer = Dealer::find($order->dealer_id);
             if ($dealer && (float)($dealer->credit_limit ?? 0) > 0) {
-                $prevDebt = $dealer->getDebtExcludingOrder($order->id);
+                // Tận dụng công nợ đã tính ở dòng 1293 thay vì chạy lại getDebtExcludingOrder
+                $prevDebt = $updatedDealerDebt !== null
+                    ? max(0, $updatedDealerDebt - (float)$order->total_amount)
+                    : $dealer->getDebtExcludingOrder($order->id);
                 $creditLimit = (float)$dealer->credit_limit;
                 $newTotal    = (float)$order->total_amount;
                 $projectedDebt = $prevDebt + $newTotal;
@@ -1457,6 +1495,9 @@ class OrderController extends Controller
 
         // Chỉ trừ tồn kho thực tế khi đơn chuyển sang trạng thái xuất kho/giao vận; trước đó chỉ tạm giữ tồn khả dụng
         $this->syncStockForStatus($order, $oldStatus);
+
+        // Xóa cache danh mục tồn kho POS để trang POS luôn nhận dữ liệu cập nhật tức thì
+        \App\Services\InventoryAvailabilityService::clearCache();
 
         return response()->json([
             'success'        => true,

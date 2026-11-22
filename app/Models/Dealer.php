@@ -147,6 +147,34 @@ class Dealer extends Model
         })
         ->get();
 
+        if ($orders->isEmpty()) {
+            $generalTxPaid = (float) Transaction::where('type', 'Thu')
+                ->whereNull('order_id')
+                ->where('customer_partner_name', $this->name)
+                ->sum('amount');
+            return max(0, $initial - $generalTxPaid);
+        }
+
+        $orderIds = $orders->pluck('id')->filter()->all();
+        $orderCodes = $orders->pluck('order_code')->filter()->all();
+
+        // 1. Tối ưu: Batch load toàn bộ phiếu thu theo order_id trong 1 truy vấn duy nhất
+        $txByOrderId = Transaction::where('type', 'Thu')
+            ->whereIn('order_id', $orderIds)
+            ->groupBy('order_id')
+            ->selectRaw('order_id, SUM(amount) as total_paid')
+            ->pluck('total_paid', 'order_id')
+            ->all();
+
+        // 2. Batch load phiếu thu theo mã PT- trong 1 truy vấn duy nhất
+        $ptCodes = array_map(fn($c) => 'PT-' . $c, $orderCodes);
+        $txByCode = !empty($ptCodes) ? Transaction::where('type', 'Thu')
+            ->whereIn('code', $ptCodes)
+            ->groupBy('code')
+            ->selectRaw('code, SUM(amount) as total_paid')
+            ->pluck('total_paid', 'code')
+            ->all() : [];
+
         $unpaidFromOrders = 0;
         foreach ($orders as $order) {
             $status = mb_strtolower(trim($order->status ?? ''));
@@ -180,26 +208,25 @@ class Dealer extends Model
                 $paid = round($total * 0.3);
             }
 
-            // Phiếu thu gán trực tiếp theo đơn hàng
-            $txPaid = (float) Transaction::where(function($q) use ($order) {
-                $q->where('order_id', $order->id);
-                if ($order->order_code) {
-                    $q->orWhere('code', 'PT-' . $order->order_code)
-                      ->orWhere('code', 'like', 'PT-' . $order->order_code . '%');
-                }
-            })->where('type', 'Thu')->sum('amount');
+            // Phiếu thu gán trực tiếp theo đơn hàng (tra cứu O(1) từ batch map đã tải trước)
+            $txPaid1 = (float) ($txByOrderId[$order->id] ?? 0);
+            $txPaid2 = $order->order_code ? (float) ($txByCode['PT-' . $order->order_code] ?? 0) : 0;
+            $txPaid = max($txPaid1, $txPaid2);
+
             $paid = min($total, max($paid, $txPaid));
 
             $remaining = max(0, $total - $paid);
             $unpaidFromOrders += $remaining;
         }
 
-        // Các phiếu thu nợ đại lý không gắn riêng theo từng đơn
+        // Các phiếu thu nợ đại lý không gắn riêng theo từng đơn (dùng so khớp chính xác thay cho LIKE full table scan)
         $generalTxPaid = (float) Transaction::where('type', 'Thu')
             ->whereNull('order_id')
             ->where(function($q) {
-                $q->where('customer_partner_name', $this->name)
-                  ->orWhere('customer_partner_name', 'like', '%' . $this->name . '%');
+                $q->where('customer_partner_name', $this->name);
+                if (!empty($this->phone)) {
+                    $q->orWhere('customer_partner_name', $this->phone);
+                }
             })
             ->sum('amount');
 

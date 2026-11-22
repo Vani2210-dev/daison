@@ -234,7 +234,7 @@ class InventoryAvailabilityService
 
         // Tải bảng products 1 lần duy nhất (bỏ cột price_tiers không dùng) và tái sử dụng cho cả reserved map & output
         $allProducts = Product::select(
-                'id', 'sku', 'name', 'brand_id', 'supplier_id',
+                'id', 'sku', 'name', 'category_id', 'brand_id', 'supplier_id',
                 'unit', 'conversion_unit', 'conversion_rate', 'conversion_price',
                 'cost_price', 'price', 'vat_rate', 'stock_quantity', 'reserved_quantity', 'is_active'
             )
@@ -371,6 +371,7 @@ class InventoryAvailabilityService
                     'id'               => $p->id,
                     'sku'              => $p->sku,
                     'name'             => $p->name,
+                    'category_id'      => $p->category_id,
                     'brand_id'         => $p->brand_id,
                     'supplier_id'      => $p->supplier_id,
                     'unit'             => $p->unit,

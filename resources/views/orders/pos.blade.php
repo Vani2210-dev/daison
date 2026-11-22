@@ -661,16 +661,17 @@
     </div>
 </div>
 
+<script id="pos-products-json" type="application/json">{!! json_encode($products, JSON_UNESCAPED_UNICODE) !!}</script>
 <script>
 function posApp() {
+    const _rawPosProducts = JSON.parse(document.getElementById('pos-products-json')?.textContent || '[]');
     return {
-        // Dữ liệu từ Controller
-        products: @json($products ?? []),
-        categories: @json($categories ?? []),
-        brands: @json($brands ?? []),
-        dealers: @json($dealers ?? []),
-        warehouses: @json($warehouses ?? []),
-        priceTiers: @json($priceTiers ?? []),
+        // Dữ liệu từ Controller (Object.freeze ngăn Alpine.js tạo deep proxy reactivity cho hàng nghìn thuộc tính tĩnh)
+        products: Object.freeze(_rawPosProducts),
+        categories: Object.freeze(@json($categories ?? [])),
+        brands: Object.freeze(@json($brands ?? [])),
+        warehouses: Object.freeze(@json($warehouses ?? [])),
+        priceTiers: Object.freeze(@json($priceTiers ?? [])),
         userRestrictedBrandId: @json($userRestrictedBrandId ?? null),
         userRestrictedBrandName: @json($userRestrictedBrandName ?? null),
 
@@ -710,6 +711,13 @@ function posApp() {
             }
 
             this.loadCartFromStorage();
+
+            // Hiển thị thông báo toast tức thì nếu vừa lưu đơn hàng thành công từ POS
+            const flashToast = sessionStorage.getItem('pos_flash_toast');
+            if (flashToast) {
+                sessionStorage.removeItem('pos_flash_toast');
+                this.showPosToast(flashToast);
+            }
         },
 
         loadCartFromStorage() {

@@ -5196,9 +5196,14 @@ function orderFormApp() {
                         sessionStorage.removeItem('pos_warehouse');
                     }
 
+                    const isComingFromPos = (savedTicket?._fromPos || this.isFromPos());
+
                     if (andPrint) {
                         alert('Lưu đơn thành công! Đang chuyển sang chế độ in chứng từ...');
                         this.printCurrentOrder();
+                    } else if (isComingFromPos) {
+                        // Tối ưu UX: Không chặn bằng popup alert(), chuyển ngay lập tức và hiển thị toast đẹp mắt ở POS
+                        sessionStorage.setItem('pos_flash_toast', 'Lưu đơn hàng ' + finalOrdCode + ' thành công!');
                     } else {
                         alert('Lưu đơn hàng thành công!');
                     }

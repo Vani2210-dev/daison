@@ -581,10 +581,9 @@ class WebViewController extends Controller
         }
         $brands = $brandsQuery->get(['id', 'name']);
 
-        $dealers = Dealer::accessibleBy()
-            ->select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit')
-            ->orderBy('name')
-            ->get();
+        // pos.blade.php không sử dụng danh sách dealers (chỉ lưu selectedDealerId theo session nếu có).
+        // Thay thế query 867 đại lý bằng collect() để loại bỏ query thừa và giảm 250KB payload JSON vô ích
+        $dealers = collect();
         [$warehouses, $isDriverUser, $driverVehicle, $mainCompanyWarehouse, $employeeWarehouse] = $this->getAvailableWarehousesForUser();
         $priceTiers = PriceTier::where('status', 'Hoạt động')
             ->orderByRaw("CASE WHEN name LIKE '%Nguyên Giá%' THEN 0 ELSE 1 END")
