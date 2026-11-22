@@ -547,6 +547,146 @@ class WebViewController extends Controller
     }
 
     /**
+     * Xác định giới hạn Hãng / Nhà cung cấp áp dụng cho nhân viên khi bán hàng & tặng quà
+     */
+    private function resolveProductScopeForUser($user): array
+    {
+        $canViewAllProducts = $user && ($user->hasRole('Manager') || $user->hasRole('Admin') || $user->hasPermission('products.view_all'));
+        $restrictedBrandId = (!$canViewAllProducts && $user && $user->brand_id) ? (int) $user->brand_id : null;
+        $restrictedSupplierId = (!$canViewAllProducts && $user && $user->supplier_id) ? (int) $user->supplier_id : null;
+
+        return [$restrictedBrandId, $restrictedSupplierId];
+    }
+
+    /**
+     * Kiểm tra một sản phẩm (mảng catalog hoặc Eloquent Model) có thuộc phạm vi Hãng/NCC của nhân viên không
+     */
+    private function isProductInUserScope($product, ?int $restrictedBrandId, ?int $restrictedSupplierId): bool
+    {
+        if (!$restrictedBrandId && !$restrictedSupplierId) {
+            return true;
+        }
+        if (!$product) {
+            return false;
+        }
+
+        $brandId = is_array($product) ? ($product['brand_id'] ?? null) : ($product->brand_id ?? null);
+        $supplierId = is_array($product) ? ($product['supplier_id'] ?? null) : ($product->supplier_id ?? null);
+
+        if ($restrictedBrandId && (int) $brandId === $restrictedBrandId) {
+            return true;
+        }
+        if ($restrictedSupplierId && (int) $supplierId === $restrictedSupplierId) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Lọc danh mục sản phẩm (dùng chung cho cả sản phẩm bán và sản phẩm tặng) theo phạm vi Hãng/NCC của nhân viên
+     */
+    private function filterCatalogProductsForUser(array $allProducts, ?int $restrictedBrandId, ?int $restrictedSupplierId): array
+    {
+        if (!$restrictedBrandId && !$restrictedSupplierId) {
+            return $allProducts;
+        }
+
+        return array_values(array_filter($allProducts, function ($p) use ($restrictedBrandId, $restrictedSupplierId) {
+            return $this->isProductInUserScope($p, $restrictedBrandId, $restrictedSupplierId);
+        }));
+    }
+
+    /**
+     * Tải và lọc danh sách chính sách bán hàng (gồm chính sách quà tặng & sản phẩm tặng kèm) theo phạm vi Hãng/NCC
+     */
+    private function getScopedSalesPoliciesForUser(?int $restrictedBrandId, ?int $restrictedSupplierId, array $allowedProducts)
+    {
+        $today = date('Y-m-d');
+        $salesPolicies = SalesPolicy::with('freeProduct:id,name,sku,unit,cost_price,price,brand_id,supplier_id')
+            ->select([
+                'id', 'code', 'name', 'policy_type', 'apply_scope',
+                'buy_qty', 'free_qty', 'free_product_id', 'gift_tiers',
+                'discount_percent', 'discount_amount', 'min_order_value',
+                'target_customer_ids', 'target_product_ids',
+                'start_date', 'end_date', 'status',
+            ])
+            ->where('status', 'Hoạt động')
+            ->where(function ($q) use ($today) {
+                $q->whereNull('start_date')->orWhere('start_date', '<=', $today);
+            })
+            ->where(function ($q) use ($today) {
+                $q->whereNull('end_date')->orWhere('end_date', '>=', $today);
+            })
+            ->orderBy('id')
+            ->get();
+
+        if (!$restrictedBrandId && !$restrictedSupplierId) {
+            return $salesPolicies;
+        }
+
+        $allowedProductIds = [];
+        foreach ($allowedProducts as $prod) {
+            if (isset($prod['id'])) {
+                $allowedProductIds[(string) $prod['id']] = true;
+            }
+        }
+
+        return $salesPolicies->filter(function ($policy) use ($allowedProductIds, $restrictedBrandId, $restrictedSupplierId) {
+            // Lọc sản phẩm áp dụng của chính sách
+            $rawTargets = $policy->target_product_ids;
+            if (is_string($rawTargets)) {
+                $rawTargets = json_decode($rawTargets, true) ?: [];
+            }
+            if (is_array($rawTargets) && count($rawTargets) > 0) {
+                $filteredTargets = array_values(array_filter(array_map('strval', $rawTargets), function ($pid) use ($allowedProductIds) {
+                    return isset($allowedProductIds[$pid]);
+                }));
+                if (count($filteredTargets) === 0) {
+                    return false;
+                }
+                $policy->target_product_ids = $filteredTargets;
+            }
+
+            // Lọc sản phẩm tặng của chính sách quà tặng (cả quà chung lẫn từng bậc gift_tiers)
+            if ($policy->policy_type === 'quantity') {
+                $topFreeId = $policy->free_product_id ? (string) $policy->free_product_id : null;
+                $topGiftAllowed = !$topFreeId
+                    || isset($allowedProductIds[$topFreeId])
+                    || ($policy->freeProduct && $this->isProductInUserScope($policy->freeProduct, $restrictedBrandId, $restrictedSupplierId));
+
+                $rawTiers = $policy->gift_tiers;
+                if (is_string($rawTiers)) {
+                    $rawTiers = json_decode($rawTiers, true) ?: [];
+                }
+
+                if (is_array($rawTiers) && count($rawTiers) > 0) {
+                    $filteredTiers = array_values(array_filter($rawTiers, function ($tier) use ($allowedProductIds, $topGiftAllowed) {
+                        $tierFreeId = !empty($tier['free_product_id']) ? (string) $tier['free_product_id'] : null;
+                        if ($tierFreeId !== null) {
+                            return isset($allowedProductIds[$tierFreeId]);
+                        }
+                        return $topGiftAllowed;
+                    }));
+
+                    if (count($filteredTiers) === 0) {
+                        return false;
+                    }
+                    $policy->gift_tiers = $filteredTiers;
+                    if (!$topGiftAllowed) {
+                        $policy->free_product_id = null;
+                        $policy->setRelation('freeProduct', null);
+                    }
+                } elseif (!$topGiftAllowed) {
+                    return false;
+                }
+            }
+
+            return true;
+        })->values();
+    }
+
+    /**
      * Giao diện bán hàng / POS / Chọn nhanh sản phẩm & giỏ hàng tạm
      */
     public function orderPos()
@@ -554,24 +694,8 @@ class WebViewController extends Controller
         $user = auth()->user();
         $allProducts = self::getPosProductsCatalog();
 
-        // Kiểm tra phạm vi xem sản phẩm của nhân viên (hãng / nhà cung cấp)
-        $canViewAllProducts = $user && ($user->hasRole('Manager') || $user->hasRole('Admin') || $user->hasPermission('products.view_all'));
-        $restrictedBrandId = (!$canViewAllProducts && $user) ? $user->brand_id : null;
-        $restrictedSupplierId = (!$canViewAllProducts && $user) ? $user->supplier_id : null;
-
-        if ($restrictedBrandId || $restrictedSupplierId) {
-            $products = array_values(array_filter($allProducts, function ($p) use ($restrictedBrandId, $restrictedSupplierId) {
-                if ($restrictedBrandId && isset($p['brand_id']) && (int) $p['brand_id'] === (int) $restrictedBrandId) {
-                    return true;
-                }
-                if ($restrictedSupplierId && isset($p['supplier_id']) && (int) $p['supplier_id'] === (int) $restrictedSupplierId) {
-                    return true;
-                }
-                return false;
-            }));
-        } else {
-            $products = $allProducts;
-        }
+        [$restrictedBrandId, $restrictedSupplierId] = $this->resolveProductScopeForUser($user);
+        $products = $this->filterCatalogProductsForUser($allProducts, $restrictedBrandId, $restrictedSupplierId);
 
         $userRestrictedBrandId = $restrictedBrandId;
         $userRestrictedBrandName = null;
@@ -639,49 +763,15 @@ class WebViewController extends Controller
         [$warehouses, $isDriverUser, $driverVehicle, $mainCompanyWarehouse, $employeeWarehouse] = $this->getAvailableWarehousesForUser();
 
         $allProducts = self::getPosProductsCatalog();
-        $canViewAllProducts = $user && ($user->hasRole('Manager') || $user->hasRole('Admin') || $user->hasPermission('products.view_all'));
-        $restrictedBrandId = (!$canViewAllProducts && $user) ? $user->brand_id : null;
-        $restrictedSupplierId = (!$canViewAllProducts && $user) ? $user->supplier_id : null;
-
-        if ($restrictedBrandId || $restrictedSupplierId) {
-            $products = array_values(array_filter($allProducts, function ($p) use ($restrictedBrandId, $restrictedSupplierId) {
-                if ($restrictedBrandId && isset($p['brand_id']) && (int) $p['brand_id'] === (int) $restrictedBrandId) {
-                    return true;
-                }
-                if ($restrictedSupplierId && isset($p['supplier_id']) && (int) $p['supplier_id'] === (int) $restrictedSupplierId) {
-                    return true;
-                }
-                return false;
-            }));
-        } else {
-            $products = $allProducts;
-        }
+        [$restrictedBrandId, $restrictedSupplierId] = $this->resolveProductScopeForUser($user);
+        $products = $this->filterCatalogProductsForUser($allProducts, $restrictedBrandId, $restrictedSupplierId);
 
         $priceTiers = PriceTier::where('status', 'Hoạt động')
             ->orderByRaw("CASE WHEN name LIKE '%Nguyên Giá%' THEN 0 ELSE 1 END")
             ->orderBy('order_num')
             ->orderBy('id')
             ->get();
-        $today = date('Y-m-d');
-        $salesPolicies = SalesPolicy::with('freeProduct:id,name,sku,unit,cost_price,price')
-            ->select([
-                'id', 'code', 'name', 'policy_type', 'apply_scope',
-                'buy_qty', 'free_qty', 'free_product_id', 'gift_tiers',
-                'discount_percent', 'discount_amount', 'min_order_value',
-                'target_customer_ids', 'target_product_ids',
-                'start_date', 'end_date', 'status',
-            ])
-            ->where('status', 'Hoạt động')
-            ->where(function($q) use ($today) {
-                $q->whereNull('start_date')->orWhere('start_date', '<=', $today);
-            })
-            ->where(function($q) use ($today) {
-                $q->whereNull('end_date')->orWhere('end_date', '>=', $today);
-            })
-            ->orderBy('id')
-            ->get();
-
-        $userRestrictedBrandId = $restrictedBrandId;
+        $salesPolicies = $this->getScopedSalesPoliciesForUser($restrictedBrandId, $restrictedSupplierId, $products);
 
         return view('orders.form', [
             'order' => null,
@@ -694,6 +784,8 @@ class WebViewController extends Controller
             'products' => $products,
             'priceTiers' => $priceTiers,
             'salesPolicies' => $salesPolicies,
+            'userRestrictedBrandId' => $restrictedBrandId,
+            'userRestrictedSupplierId' => $restrictedSupplierId,
         ]);
     }
 
@@ -702,6 +794,7 @@ class WebViewController extends Controller
      */
     public function orderEdit($id)
     {
+        $user = auth()->user();
         $order = Order::with(['items.product', 'dealer.salesRep', 'salesRep', 'creator'])->findOrFail($id);
         $dealers = Dealer::select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit', 'tax_code')
             ->orderBy('name')
@@ -709,30 +802,17 @@ class WebViewController extends Controller
         $this->attachDealerActiveOrderCounts($dealers);
 
         [$warehouses, $isDriverUser, $driverVehicle, $mainCompanyWarehouse, $employeeWarehouse] = $this->getAvailableWarehousesForUser();
-        $products = self::getPosProductsCatalog($order->id);
+
+        $allProducts = self::getPosProductsCatalog($order->id);
+        [$restrictedBrandId, $restrictedSupplierId] = $this->resolveProductScopeForUser($user);
+        $products = $this->filterCatalogProductsForUser($allProducts, $restrictedBrandId, $restrictedSupplierId);
+
         $priceTiers = PriceTier::where('status', 'Hoạt động')
             ->orderByRaw("CASE WHEN name LIKE '%Nguyên Giá%' THEN 0 ELSE 1 END")
             ->orderBy('order_num')
             ->orderBy('id')
             ->get();
-        $today = date('Y-m-d');
-        $salesPolicies = SalesPolicy::with('freeProduct:id,name,sku,unit,cost_price,price')
-            ->select([
-                'id', 'code', 'name', 'policy_type', 'apply_scope',
-                'buy_qty', 'free_qty', 'free_product_id', 'gift_tiers',
-                'discount_percent', 'discount_amount', 'min_order_value',
-                'target_customer_ids', 'target_product_ids',
-                'start_date', 'end_date', 'status',
-            ])
-            ->where('status', 'Hoạt động')
-            ->where(function($q) use ($today) {
-                $q->whereNull('start_date')->orWhere('start_date', '<=', $today);
-            })
-            ->where(function($q) use ($today) {
-                $q->whereNull('end_date')->orWhere('end_date', '>=', $today);
-            })
-            ->orderBy('id')
-            ->get();
+        $salesPolicies = $this->getScopedSalesPoliciesForUser($restrictedBrandId, $restrictedSupplierId, $products);
 
         return view('orders.form', [
             'order' => $order,
@@ -745,6 +825,8 @@ class WebViewController extends Controller
             'products' => $products,
             'priceTiers' => $priceTiers,
             'salesPolicies' => $salesPolicies,
+            'userRestrictedBrandId' => $restrictedBrandId,
+            'userRestrictedSupplierId' => $restrictedSupplierId,
         ]);
     }
 

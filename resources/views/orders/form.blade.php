@@ -2062,8 +2062,19 @@ const _normalizeSearchText = (str) => {
         .trim();
 };
 
+// Phạm vi Hãng / Nhà cung cấp được phép xem & tặng của nhân viên (rỗng = toàn bộ)
+const _restrictedBrandId = {{ !empty($userRestrictedBrandId) ? (int) $userRestrictedBrandId : 'null' }};
+const _restrictedSupplierId = {{ !empty($userRestrictedSupplierId) ? (int) $userRestrictedSupplierId : 'null' }};
+const _isProductInUserScope = (p) => {
+    if (!_restrictedBrandId && !_restrictedSupplierId) return true;
+    if (!p) return false;
+    if (_restrictedBrandId && Number(p.brand_id) === Number(_restrictedBrandId)) return true;
+    if (_restrictedSupplierId && Number(p.supplier_id) === Number(_restrictedSupplierId)) return true;
+    return false;
+};
+
 // Parse catalog data once and index by ID + normalized search fields for fast lookup
-const _rawProductsCatalog = JSON.parse(document.getElementById('orders-products-json')?.textContent || '[]');
+const _rawProductsCatalog = (JSON.parse(document.getElementById('orders-products-json')?.textContent || '[]')).filter(_isProductInUserScope);
 const _rawDealersData = JSON.parse(document.getElementById('orders-dealers-json')?.textContent || '[]');
 const _rawSalesPolicies = JSON.parse(document.getElementById('orders-policies-json')?.textContent || '[]');
 const _productsMap = new Map();
@@ -2811,7 +2822,7 @@ function orderFormApp() {
         },
 
         filterProductListByQuery(list, query) {
-            const source = Array.isArray(list) ? list : [];
+            const source = (Array.isArray(list) ? list : []).filter(_isProductInUserScope);
             if (!query || !String(query).trim()) {
                 return source.slice(0, 30);
             }
@@ -3336,6 +3347,25 @@ function orderFormApp() {
             });
         },
 
+        resolveScopedGiftProduct(explicitFreeProductId, policy, fallbackProductId = null) {
+            if (explicitFreeProductId) {
+                const mapProd = this.getProduct(explicitFreeProductId);
+                const relProd = (!mapProd && policy?.free_product && String(policy.free_product.id) === String(explicitFreeProductId))
+                    ? policy.free_product
+                    : null;
+                const prod = mapProd || relProd;
+                if (!prod || !_isProductInUserScope(prod)) {
+                    return { allowed: false, prod: null };
+                }
+                return { allowed: true, prod };
+            }
+            const fallbackProd = fallbackProductId ? this.getProduct(fallbackProductId) : null;
+            if (!fallbackProd || !_isProductInUserScope(fallbackProd)) {
+                return { allowed: false, prod: null };
+            }
+            return { allowed: true, prod: fallbackProd };
+        },
+
         getItemPolicyEvaluation(item, policy) {
             if (!item || !policy) {
                 return { eligible: false, reason: 'Chưa xác định', benefitText: '', statusText: '', totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
@@ -3413,10 +3443,21 @@ function orderFormApp() {
                     };
                 }
 
-                let freeProd = null;
-                if (freeProductId) freeProd = this.getProduct(freeProductId);
-                if (!freeProd && policy.free_product) freeProd = policy.free_product;
-                if (!freeProd) freeProd = this.getProduct(item.product_id);
+                const giftRes = this.resolveScopedGiftProduct(freeProductId, policy, item.product_id);
+                if (!giftRes.allowed) {
+                    return {
+                        eligible: false,
+                        reason: 'Ngoài phạm vi NCC',
+                        benefitText: '',
+                        statusText: 'Sản phẩm tặng nằm ngoài Hãng / NCC của nhân viên',
+                        totalFree: 0,
+                        freeProd: null,
+                        giftLabel: '',
+                        discountAmt: 0,
+                        discountPct: 0
+                    };
+                }
+                const freeProd = giftRes.prod;
 
                 const freeName = freeProd?.name || item.name || 'quà tặng';
                 return {
@@ -3727,7 +3768,7 @@ function orderFormApp() {
                             productQtyMap.forEach((qty, pid) => {
                                 if (qty > maxSingleQty) maxSingleQty = qty;
                                 let itemFree = 0;
-                                let itemFreeProdId = freeProductId || pid;
+                                let explicitGiftProdId = freeProductId || null;
                                 let itemGiftLabel = `[TẶNG KÈM] ${policy.name}`;
         
                                 if (sortedTiers.length > 0) {
@@ -3736,7 +3777,7 @@ function orderFormApp() {
                                         const mult = Math.floor(qty / matchedTier.buy_qty);
                                         itemFree = mult * matchedTier.free_qty;
                                         if (matchedTier.free_product_id) {
-                                            itemFreeProdId = matchedTier.free_product_id;
+                                            explicitGiftProdId = matchedTier.free_product_id;
                                         }
                                         itemGiftLabel = `[TẶNG KÈM MUA ${matchedTier.buy_qty} TẶNG ${matchedTier.free_qty}] ${policy.name}`;
                                     }
@@ -3746,15 +3787,17 @@ function orderFormApp() {
                                 }
         
                                 if (itemFree > 0) {
-                                    const pObj = this.getProduct(itemFreeProdId);
-                                    qualifyingGifts.push({
-                                        product_id: itemFreeProdId,
-                                        qty: itemFree,
-                                        prod: pObj,
-                                        giftLabel: itemGiftLabel
-                                    });
-                                    const pItems = productItemsMap.get(pid) || [];
-                                    pItems.forEach(it => claimedItems.push(it));
+                                    const giftRes = this.resolveScopedGiftProduct(explicitGiftProdId, policy, pid);
+                                    if (giftRes.allowed && giftRes.prod) {
+                                        qualifyingGifts.push({
+                                            product_id: giftRes.prod.id || explicitGiftProdId || pid,
+                                            qty: itemFree,
+                                            prod: giftRes.prod,
+                                            giftLabel: itemGiftLabel
+                                        });
+                                        const pItems = productItemsMap.get(pid) || [];
+                                        pItems.forEach(it => claimedItems.push(it));
+                                    }
                                 }
                             });
         
@@ -3835,13 +3878,24 @@ function orderFormApp() {
                             };
                         }
         
-                        let freeProd = null;
-                        if (freeProductId) freeProd = this.getProduct(freeProductId);
-                        if (!freeProd && policy.free_product) freeProd = policy.free_product;
-                        if (!freeProd) {
-                            const bestItem = [...matchingItems].sort((a, b) => (Number(b.quantity) || 0) - (Number(a.quantity) || 0))[0];
-                            if (bestItem) freeProd = this.getProduct(bestItem.product_id);
+                        const bestItem = [...matchingItems].sort((a, b) => (Number(b.quantity) || 0) - (Number(a.quantity) || 0))[0];
+                        const giftRes = this.resolveScopedGiftProduct(freeProductId, policy, bestItem ? bestItem.product_id : null);
+                        if (!giftRes.allowed || !giftRes.prod) {
+                            return {
+                                eligible: false,
+                                reason: 'Ngoài phạm vi NCC',
+                                benefitText: '',
+                                statusText: 'Sản phẩm tặng nằm ngoài Hãng / NCC của nhân viên',
+                                claimedItems: [],
+                                qualifyingGifts: [],
+                                totalFree: 0,
+                                freeProd: null,
+                                giftLabel: '',
+                                discountPct: 0,
+                                discountAmt: 0
+                            };
                         }
+                        const freeProd = giftRes.prod;
         
                         const freeName = freeProd?.name || 'quà tặng';
                         return {
@@ -4979,14 +5033,10 @@ function orderFormApp() {
                             const freeMultiplier = Math.floor(itemQty / buyQty);
                             const totalFreeQty = freeMultiplier * freeQty;
 
-                            // Xác định sản phẩm quà tặng
-                            let freeProd = policy.free_product || null;
-                            if (!freeProd && policy.free_product_id) {
-                                freeProd = this.getProduct(policy.free_product_id);
-                            }
-                            if (!freeProd) {
-                                freeProd = this.getProduct(item.product_id);
-                            }
+                            // Xác định sản phẩm quà tặng trong phạm vi Hãng / NCC của nhân viên
+                            const giftRes = this.resolveScopedGiftProduct(policy.free_product_id || null, policy, item.product_id);
+                            if (!giftRes.allowed || !giftRes.prod) continue;
+                            const freeProd = giftRes.prod;
 
                             const isSameProduct = !policy.free_product_id || String(policy.free_product_id) === String(item.product_id);
 
