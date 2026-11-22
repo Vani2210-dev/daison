@@ -1135,19 +1135,7 @@
                     <span class="font-bold">Theo dõi đơn hàng</span>
                 </a>
 
-                <!-- 5. Xuất Excel -->
-                <button type="button" @click="exportOrderExcel(activeActionOrder, 'standard')" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-3 text-slate-700 transition-colors cursor-pointer">
-                    <i class="fa-regular fa-file-lines text-slate-500 w-5 text-center text-sm"></i>
-                    <span class="font-medium">Xuất Excel</span>
-                </button>
-
-                <!-- 6. Xuất Excel (tên hoá đơn) -->
-                <button type="button" @click="exportOrderExcel(activeActionOrder, 'invoice')" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-3 text-slate-700 transition-colors cursor-pointer">
-                    <i class="fa-regular fa-file-lines text-slate-500 w-5 text-center text-sm"></i>
-                    <span class="font-medium">Xuất Excel (tên hoá đơn)</span>
-                </button>
-
-                <!-- 7. Xuất PDF (tên hoá đơn) -->
+                <!-- 5. Xuất PDF (tên hoá đơn) -->
                 <button type="button" @click="exportOrderPdf(activeActionOrder)" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-3 text-slate-700 transition-colors cursor-pointer">
                     <i class="fa-solid fa-file-arrow-down text-slate-500 w-5 text-center text-sm"></i>
                     <span class="font-medium">Xuất PDF (tên hoá đơn)</span>
