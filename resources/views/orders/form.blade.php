@@ -1784,7 +1784,7 @@
             <div class="lg:col-span-7 space-y-3">
                 <div>
                     <label class="block text-xs font-bold text-slate-600 tracking-wide uppercase mb-1.5">Ghi chú đơn hàng</label>
-                    <textarea x-model="formData.notes" rows="3" placeholder="Nhập ghi chú đơn hàng, địa điểm giao hoặc điều khoản chiết khấu..." class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-medium focus:border-sky-500 focus:outline-none shadow-xs"></textarea>
+                    <textarea x-model="formData.notes" rows="3" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-medium focus:border-sky-500 focus:outline-none shadow-xs"></textarea>
                 </div>
             </div>
 
