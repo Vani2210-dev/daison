@@ -2388,6 +2388,21 @@ function ordersIndexApp() {
             }
         },
 
+        buildMsoXmlHeader(sheetName) {
+            return '<' + '!--[if gte mso 9]><xml>' +
+                '<' + 'x:ExcelWorkbook>' +
+                '<' + 'x:ExcelWorksheets>' +
+                '<' + 'x:ExcelWorksheet>' +
+                '<' + 'x:Name>' + (sheetName || 'Sheet1') + '<' + '/x:Name>' +
+                '<' + 'x:WorksheetOptions>' +
+                '<' + 'x:DisplayGridlines/>' +
+                '<' + '/x:WorksheetOptions>' +
+                '<' + '/x:ExcelWorksheet>' +
+                '<' + '/x:ExcelWorksheets>' +
+                '<' + '/x:ExcelWorkbook>' +
+                '</xml><![endif]--' + '>';
+        },
+
         exportSelectedManifest() {
             const list = this.selectedIds.length > 0
                 ? this.tableOrders.filter(o => this.selectedIds.includes(String(o.id)))
@@ -2406,26 +2421,7 @@ function ordersIndexApp() {
       xmlns="http://www.w3.org/TR/REC-html40">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<!--[if gte mso 9]>
-<xml>
-  <x:ExcelWorkbook>
-    <x:ExcelWorksheets>
-      <x:ExcelWorksheet>
-        <x:Name>Bang_ke_don_hang</x:Name>
-        <x:WorksheetOptions>
-          <x:DisplayGridlines/>
-          <x:Print>
-            <x:ValidPrinterInfo/>
-            <x:PaperSizeIndex>9</x:PaperSizeIndex>
-            <x:HorizontalResolution>600</x:HorizontalResolution>
-            <x:VerticalResolution>600</x:VerticalResolution>
-          </x:Print>
-        </x:WorksheetOptions>
-      </x:ExcelWorksheet>
-    </x:ExcelWorksheets>
-  </x:ExcelWorkbook>
-</xml>
-<![endif]-->
+${this.buildMsoXmlHeader('Bang_ke_don_hang')}
 <style>
   body { font-family: 'Times New Roman', Arial, sans-serif; font-size: 11pt; color: #000000; }
   table { border-collapse: collapse; }
@@ -3822,26 +3818,7 @@ function ordersIndexApp() {
       xmlns="http://www.w3.org/TR/REC-html40">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<!--[if gte mso 9]>
-<xml>
-  <x:ExcelWorkbook>
-    <x:ExcelWorksheets>
-      <x:ExcelWorksheet>
-        <x:Name>Phieu_gop_tong_hop</x:Name>
-        <x:WorksheetOptions>
-          <x:DisplayGridlines/>
-          <x:Print>
-            <x:ValidPrinterInfo/>
-            <x:PaperSizeIndex>9</x:PaperSizeIndex>
-            <x:HorizontalResolution>600</x:HorizontalResolution>
-            <x:VerticalResolution>600</x:VerticalResolution>
-          </x:Print>
-        </x:WorksheetOptions>
-      </x:ExcelWorksheet>
-    </x:ExcelWorksheets>
-  </x:ExcelWorkbook>
-</xml>
-<![endif]-->
+${this.buildMsoXmlHeader('Phieu_gop_tong_hop')}
 <style>
   body { font-family: 'Times New Roman', Arial, sans-serif; font-size: 11pt; color: #000000; }
   table { border-collapse: collapse; }
@@ -4087,26 +4064,7 @@ function ordersIndexApp() {
       xmlns="http://www.w3.org/TR/REC-html40">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<!--[if gte mso 9]>
-<xml>
-  <x:ExcelWorkbook>
-    <x:ExcelWorksheets>
-      <x:ExcelWorksheet>
-        <x:Name>${sheetName}</x:Name>
-        <x:WorksheetOptions>
-          <x:DisplayGridlines/>
-          <x:Print>
-            <x:ValidPrinterInfo/>
-            <x:PaperSizeIndex>9</x:PaperSizeIndex>
-            <x:HorizontalResolution>600</x:HorizontalResolution>
-            <x:VerticalResolution>600</x:VerticalResolution>
-          </x:Print>
-        </x:WorksheetOptions>
-      </x:ExcelWorksheet>
-    </x:ExcelWorksheets>
-  </x:ExcelWorkbook>
-</xml>
-<![endif]-->
+${this.buildMsoXmlHeader(sheetName)}
 <style>
   body { font-family: 'Times New Roman', Arial, sans-serif; font-size: 11pt; color: #000000; }
   table { border-collapse: collapse; }
