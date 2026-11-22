@@ -1216,7 +1216,7 @@ function salesPolicyForm() {
 
                 const result = await response.json();
 
-                if (result.success) {
+                if (response.ok && result.success) {
                     if (window.Swal) {
                         await Swal.fire({
                             icon: 'success',

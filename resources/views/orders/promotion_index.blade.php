@@ -874,7 +874,7 @@ function promotionApp() {
                     body: JSON.stringify(this.createForm)
                 });
                 const data = await res.json();
-                if (data.success) {
+                if (res.ok && data.success) {
                     alert(data.message || 'Lập phiếu ứng KM thành công!');
                     window.location.reload();
                 } else {
@@ -908,7 +908,7 @@ function promotionApp() {
                     body: JSON.stringify(this.singleSettleForm)
                 });
                 const data = await res.json();
-                if (data.success) {
+                if (res.ok && data.success) {
                     alert(data.message || 'Hoàn ứng thành công!');
                     window.location.reload();
                 } else {
@@ -969,7 +969,7 @@ function promotionApp() {
                     body: JSON.stringify(this.settleBrandForm)
                 });
                 const data = await res.json();
-                if (data.success) {
+                if (res.ok && data.success) {
                     alert(data.message || 'Hãng trả bù thành công!');
                     window.location.reload();
                 } else {
@@ -1000,7 +1000,7 @@ function promotionApp() {
                     headers: { 'Accept': 'application/json' }
                 });
                 const json = await res.json();
-                if (json.success) {
+                if (res.ok && json.success) {
                     this.advancesList = json.advances?.data || json.advances || [];
                 }
             } catch (e) {

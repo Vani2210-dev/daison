@@ -81,24 +81,37 @@ class SupplierOrderController extends Controller
 
         $orders = $query->paginate(20)->withQueryString();
 
-        // Counts for Status Tabs
+        // Counts & Statistics in 2 aggregate queries instead of 12 separate queries
+        $soAgg = SupplierOrder::selectRaw("
+            COUNT(*) as total_all,
+            SUM(CASE WHEN status IN ('Chờ duyệt', 'draft', 'pending_approval') THEN 1 ELSE 0 END) as c_pending,
+            SUM(CASE WHEN status IN ('Đã duyệt', 'approved') THEN 1 ELSE 0 END) as c_approved,
+            SUM(CASE WHEN status IN ('Đang giao hàng', 'in_transit', 'shipping') THEN 1 ELSE 0 END) as c_shipping,
+            SUM(CASE WHEN status IN ('Nhập một phần', 'partially_received') THEN 1 ELSE 0 END) as c_partial,
+            SUM(CASE WHEN status IN ('Hoàn thành', 'received', 'completed') THEN 1 ELSE 0 END) as c_completed,
+            SUM(CASE WHEN status IN ('Đã hủy', 'cancelled') THEN 1 ELSE 0 END) as c_cancelled,
+            SUM(CASE WHEN status NOT IN ('Đã hủy', 'cancelled') THEN total_amount ELSE 0 END) as total_value,
+            SUM(CASE WHEN status NOT IN ('Đã hủy', 'cancelled') THEN paid_amount ELSE 0 END) as total_paid,
+            SUM(CASE WHEN status NOT IN ('Đã hủy', 'cancelled') THEN debt_deducted_amount ELSE 0 END) as total_debt_deducted,
+            SUM(CASE WHEN status IN ('Đã duyệt', 'Đang giao hàng', 'Nhập một phần') THEN 1 ELSE 0 END) as pending_receive_count
+        ")->first();
+
         $counts = [
-            'Tất cả'          => SupplierOrder::count(),
-            'Chờ duyệt'       => SupplierOrder::whereIn('status', ['Chờ duyệt', 'draft', 'pending_approval'])->count(),
-            'Đã duyệt'        => SupplierOrder::whereIn('status', ['Đã duyệt', 'approved'])->count(),
-            'Đang giao hàng'  => SupplierOrder::whereIn('status', ['Đang giao hàng', 'in_transit', 'shipping'])->count(),
-            'Nhập một phần'   => SupplierOrder::whereIn('status', ['Nhập một phần', 'partially_received'])->count(),
-            'Hoàn thành'      => SupplierOrder::whereIn('status', ['Hoàn thành', 'received', 'completed'])->count(),
-            'Đã hủy'          => SupplierOrder::whereIn('status', ['Đã hủy', 'cancelled'])->count(),
+            'Tất cả'          => (int)($soAgg->total_all ?? 0),
+            'Chờ duyệt'       => (int)($soAgg->c_pending ?? 0),
+            'Đã duyệt'        => (int)($soAgg->c_approved ?? 0),
+            'Đang giao hàng'  => (int)($soAgg->c_shipping ?? 0),
+            'Nhập một phần'   => (int)($soAgg->c_partial ?? 0),
+            'Hoàn thành'      => (int)($soAgg->c_completed ?? 0),
+            'Đã hủy'          => (int)($soAgg->c_cancelled ?? 0),
         ];
 
-        // Overall statistics
         $stats = [
-            'total_value'          => (float) SupplierOrder::where('status', '!=', 'Đã hủy')->sum('total_amount'),
-            'total_paid'           => (float) SupplierOrder::where('status', '!=', 'Đã hủy')->sum('paid_amount'),
-            'total_debt_deducted'  => (float) SupplierOrder::where('status', '!=', 'Đã hủy')->sum('debt_deducted_amount'),
-            'total_supplier_debt'  => (float) Supplier::sum('supplier_debt_to_company'),
-            'pending_receive_count'=> SupplierOrder::whereIn('status', ['Đã duyệt', 'Đang giao hàng', 'Nhập một phần'])->count(),
+            'total_value'           => (float)($soAgg->total_value ?? 0),
+            'total_paid'            => (float)($soAgg->total_paid ?? 0),
+            'total_debt_deducted'   => (float)($soAgg->total_debt_deducted ?? 0),
+            'total_supplier_debt'   => (float) Supplier::sum('supplier_debt_to_company'),
+            'pending_receive_count' => (int)($soAgg->pending_receive_count ?? 0),
         ];
 
         // Master Data

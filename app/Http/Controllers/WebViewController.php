@@ -459,11 +459,45 @@ class WebViewController extends Controller
             });
         }
 
+        if ($request->boolean('shortage_only')) {
+            $query->where(function ($q) {
+                $q->where('has_shortage_warning', true)
+                  ->orWhere('shortage_reported', true);
+            });
+        }
+
         $orders = $query->latest('id')->paginate(20)->withQueryString();
         $dealers = Dealer::select('id', 'name', 'phone', 'tier', 'address')->get();
         [$warehouses] = $this->getAvailableWarehousesForUser();
 
-        return view('orders.index', compact('orders', 'dealers', 'warehouses'));
+        // Single grouped aggregate query cho thanh trạng thái (tôn trọng accessibleBy())
+        $agg = Order::companyOrders()->accessibleBy()
+            ->selectRaw("
+                COUNT(*) as total_all,
+                SUM(CASE WHEN status = 'Báo giá' THEN 1 ELSE 0 END) as c_bao_gia,
+                SUM(CASE WHEN status IN ('Chốt đơn', 'Đã duyệt', 'Chờ duyệt', 'Chờ kế toán duyệt') THEN 1 ELSE 0 END) as c_chot_don,
+                SUM(CASE WHEN has_shortage_warning = 1 OR status IN ('Chờ hàng', 'Chờ hàng về') THEN 1 ELSE 0 END) as c_cho_hang,
+                SUM(CASE WHEN status IN ('Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong', 'Đang kiểm hàng') THEN 1 ELSE 0 END) as c_soan_hang,
+                SUM(CASE WHEN status IN ('Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng', 'Sẵn sàng xuất xe') THEN 1 ELSE 0 END) as c_kiem_hang,
+                SUM(CASE WHEN status IN ('Đang vận chuyển', 'Đang giao hàng') THEN 1 ELSE 0 END) as c_dang_vc,
+                SUM(CASE WHEN status IN ('Đã giao', 'Giao thành công') THEN 1 ELSE 0 END) as c_da_giao,
+                SUM(CASE WHEN status IN ('Hủy', 'Đã hủy', 'Đã huỷ') THEN 1 ELSE 0 END) as c_huy
+            ")->first();
+
+        $counts = [
+            'Tất cả'          => (int)($agg->total_all ?? 0),
+            'Báo giá'         => (int)($agg->c_bao_gia ?? 0),
+            'Chốt đơn'        => (int)($agg->c_chot_don ?? 0),
+            'Chờ hàng'        => (int)($agg->c_cho_hang ?? 0),
+            'Soạn hàng'       => (int)($agg->c_soan_hang ?? 0),
+            'Soạn bốc'        => (int)($agg->c_soan_hang ?? 0),
+            'Kiểm hàng'       => (int)($agg->c_kiem_hang ?? 0),
+            'Đang vận chuyển' => (int)($agg->c_dang_vc ?? 0),
+            'Đã giao'         => (int)($agg->c_da_giao ?? 0),
+            'Hủy'             => (int)($agg->c_huy ?? 0),
+        ];
+
+        return view('orders.index', compact('orders', 'dealers', 'warehouses', 'counts'));
     }
 
     /**
@@ -1090,7 +1124,7 @@ class WebViewController extends Controller
             'Chốt đơn', 'Đã duyệt', 'Soạn hàng', 'Đang bốc hàng', 'Đã bốc xong',
             'Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng', 'Sẵn sàng xuất xe', 'Đang vận chuyển', 'Giao thành công', 'Không thành công', 'Đã hoàn kho', 'Chờ bốc'
         ])
-            ->with(['dealer', 'items'])
+            ->with(['dealer', 'items.product.category'])
             ->latest('id')
             ->get();
 
@@ -1131,12 +1165,13 @@ class WebViewController extends Controller
     {
         $roles = \App\Models\Role::with('permissions')->get();
         $branches = \App\Models\Branch::all();
-        $users = User::with(['roles.permissions', 'branch', 'brand', 'supplier'])->get()->map(function ($u) {
-            $hasCustom = \App\Models\UserRolePermission::where('user_id', $u->id)->exists();
-            if ($hasCustom) {
-                $u->custom_permissions = \App\Models\UserRolePermission::where('user_id', $u->id)
-                    ->with('permission')
-                    ->get()
+        $userPermsGrouped = \App\Models\UserRolePermission::with('permission:id,slug')
+            ->get()
+            ->groupBy('user_id');
+
+        $users = User::with(['roles.permissions', 'branch', 'brand', 'supplier'])->get()->map(function ($u) use ($userPermsGrouped) {
+            if ($userPermsGrouped->has($u->id)) {
+                $u->custom_permissions = $userPermsGrouped->get($u->id)
                     ->pluck('permission.slug')
                     ->filter()
                     ->values()

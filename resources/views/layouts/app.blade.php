@@ -539,7 +539,7 @@
                     <i class="fa-solid fa-faucet-drip text-cyan-400 w-4 text-center"></i>
                     <span>Máy lọc nước</span>
                 </a>
-                <a href="{{ url('/inventory/stock') }}" class="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center gap-2 border border-slate-700 {{ request()->is('inventory*') ? 'text-amber-300 border-amber-400/50' : 'text-slate-200' }}">
+                <a href="{{ url('/cat_products') }}" class="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center gap-2 border border-slate-700 {{ request()->is('cat_products*') || request()->is('inventory*') ? 'text-amber-300 border-amber-400/50' : 'text-slate-200' }}">
                     <i class="fa-solid fa-boxes-stacked text-teal-400 w-4 text-center"></i>
                     <span>Tồn kho vật tư</span>
                 </a>
@@ -1268,7 +1268,7 @@
 
                     <!-- 4. Hàng hoàn -->
                     @if(!$authUser || $authUser->hasPermission('returns.view'))
-                    <a href="{{ url('/returns') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('returns*') ? 'border-[#1b4a8c] bg-rose-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-rose-200 bg-slate-50/70 hover:bg-rose-50/40' }}">
+                    <a href="{{ url('/inventory/returns') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/returns*') ? 'border-[#1b4a8c] bg-rose-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-rose-200 bg-slate-50/70 hover:bg-rose-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform relative">
                             <i class="fa-solid fa-rotate-left"></i>
                             @if(($pendingReturnBadge ?? 0) > 0)
@@ -1335,7 +1335,7 @@
                 <div class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
                     <!-- 1. Tồn kho vật tư -->
                     @if(!$authUser || $authUser->hasPermission('inventory.view'))
-                    <a href="{{ url('/inventory/stock') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/stock*') ? 'border-[#1b4a8c] bg-teal-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-teal-200 bg-slate-50/70 hover:bg-teal-50/40' }}">
+                    <a href="{{ url('/cat_products') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('cat_products*') || request()->is('inventory*') ? 'border-[#1b4a8c] bg-teal-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-teal-200 bg-slate-50/70 hover:bg-teal-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-boxes-stacked"></i>
                         </div>
@@ -1368,7 +1368,7 @@
 
                     <!-- 4. Xuất kho -->
                     @if(!$authUser || $authUser->hasPermission('inv_export.view'))
-                    <a href="{{ url('/inventory/export') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/export*') ? 'border-[#1b4a8c] bg-rose-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-rose-200 bg-slate-50/70 hover:bg-rose-50/40' }}">
+                    <a href="{{ route('inventory.issues') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/issues*') ? 'border-[#1b4a8c] bg-rose-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-rose-200 bg-slate-50/70 hover:bg-rose-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-arrow-up-from-bracket"></i>
                         </div>
@@ -1377,24 +1377,24 @@
                     </a>
                     @endif
 
-                    <!-- 5. Chuyển kho -->
-                    @if(!$authUser || $authUser->hasPermission('inv_transfer.view'))
-                    <a href="{{ url('/inventory/transfer') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/transfer*') ? 'border-[#1b4a8c] bg-indigo-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-indigo-200 bg-slate-50/70 hover:bg-indigo-50/40' }}">
+                    <!-- 5. Hàng ôm nhân viên / lưu động -->
+                    @if(!$authUser || $authUser->hasAnyPermission('inv_transfer.view', 'inventory.view'))
+                    <a href="{{ route('inventory.holding') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/holding*') ? 'border-[#1b4a8c] bg-indigo-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-indigo-200 bg-slate-50/70 hover:bg-indigo-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-right-left"></i>
                         </div>
-                        <span class="text-xs font-bold text-slate-800 leading-tight">Chuyển kho</span>
-                        <span class="text-[10px] text-slate-500 mt-0.5">Điều chuyển nội bộ</span>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Kho hàng ôm</span>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Xuất ôm & lưu động</span>
                     </a>
                     @endif
 
-                    <!-- 6. Lắp ráp / Đóng gói -->
-                    @if(!$authUser || $authUser->hasAnyPermission('inventory.view', 'cat_products.manage'))
-                    <a href="{{ url('/inventory/assembly') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('inventory/assembly*') ? 'border-[#1b4a8c] bg-purple-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-purple-200 bg-slate-50/70 hover:bg-purple-50/40' }}">
+                    <!-- 6. Combo & Model Máy Lọc -->
+                    @if(!$authUser || $authUser->hasAnyPermission('inventory.view', 'water_filter.view'))
+                    <a href="{{ url('/model-may-loc') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('model-may-loc*') ? 'border-[#1b4a8c] bg-purple-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-purple-200 bg-slate-50/70 hover:bg-purple-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-screwdriver-wrench"></i>
                         </div>
-                        <span class="text-xs font-bold text-slate-800 leading-tight">Lắp ráp</span>
+                        <span class="text-xs font-bold text-slate-800 leading-tight">Model máy</span>
                         <span class="text-[10px] text-slate-500 mt-0.5">Gói combo máy</span>
                     </a>
                     @endif
@@ -1603,8 +1603,8 @@
                     @endif
 
                     <!-- Công trình / DA -->
-                    @if(!$authUser || $authUser->hasPermission('projects.view'))
-                    <a href="{{ url('/projects') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request()->is('projects*') ? 'border-[#1b4a8c] bg-indigo-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-indigo-200 bg-slate-50/70 hover:bg-indigo-50/40' }}">
+                    @if(!$authUser || $authUser->hasAnyPermission('projects.view', 'orders.view'))
+                    <a href="{{ url('/orders?order_type=project') }}" class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center select-none active:scale-95 {{ request('order_type') === 'project' ? 'border-[#1b4a8c] bg-indigo-50/70 ring-2 ring-[#1b4a8c]/20 shadow-xs' : 'border-slate-100 hover:border-indigo-200 bg-slate-50/70 hover:bg-indigo-50/40' }}">
                         <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg mb-1.5 shadow-xs group-hover:scale-105 transition-transform">
                             <i class="fa-solid fa-helmet-safety"></i>
                         </div>

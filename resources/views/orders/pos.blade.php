@@ -94,6 +94,20 @@
                             </button>
                         </div>
 
+                        <!-- Chọn kho xuất -->
+                        <template x-if="warehouses && warehouses.length > 0">
+                            <select
+                                x-model="selectedWarehouse"
+                                @change="onWarehouseChange()"
+                                class="h-10 max-w-[145px] sm:max-w-[180px] px-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shrink-0"
+                                title="Chọn kho kiểm tra tồn & xuất hàng"
+                            >
+                                <template x-for="wh in warehouses" :key="wh.id || wh.name">
+                                    <option :value="wh.name" x-text="wh.name"></option>
+                                </template>
+                            </select>
+                        </template>
+
                         <!-- Chuyển đổi hiển thị Grid / List -->
                         <div class="hidden sm:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
                             <button 
@@ -1028,7 +1042,8 @@ function posApp() {
             const item = this.cart[index];
             const p = this.getProductById(item.product_id);
             const avail = p ? this.getProductAvailableStock(p) : 999999;
-            let qty = Number(newQty) || 1;
+            let qty = (newQty === '' || newQty === null || newQty === undefined) ? 1 : Number(newQty);
+            if (Number.isNaN(qty)) qty = 1;
             if (qty > avail) {
                 alert('Số lượng sản phẩm "' + item.name + '" vượt quá tồn kho khả dụng (' + avail + ')!');
                 qty = Math.max(1, avail);

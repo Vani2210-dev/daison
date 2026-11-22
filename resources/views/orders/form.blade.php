@@ -536,7 +536,7 @@
         bottom: 0 !important;
         left: 0 !important;
         right: 0 !important;
-        z-index: 99999 !important;
+        z-index: 40 !important;
         padding: 0.375rem 0.75rem calc(0.375rem + env(safe-area-inset-bottom, 0px)) 0.75rem !important;
         flex-direction: column !important;
         gap: 0.25rem !important;
@@ -1926,7 +1926,7 @@
     </fieldset>
 
     <!-- 6. Floating / Sticky Action Bar (Bottom Bar: 0 MẶT HÀNG | Đóng Esc | Lưu & In Ctrl+F9 | Lưu F9) -->
-    <div class="order-form-bottom-bar fixed bottom-0 left-0 right-0 z-[9999] bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 sm:px-8 py-3.5 shadow-lg flex items-center justify-between gap-3">
+    <div class="order-form-bottom-bar fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 sm:px-8 py-3.5 shadow-lg flex items-center justify-between gap-3">
         <!-- Left: Items count & Total -->
         <div class="flex items-center gap-3 text-sm sm:text-xs font-bold text-slate-600">
             <span class="uppercase tracking-wider font-black text-sm sm:text-base text-slate-800" x-text="items.length + ' mặt hàng'"></span>
@@ -2686,8 +2686,8 @@ function orderFormApp() {
                         address: data.dealer.address,
                         tier: data.dealer.tier,
                         current_debt: 0,
-                        credit_limit: Number(data.dealer.creditLimit || 100000000),
-                        tax_code: data.dealer.taxCode || '',
+                        credit_limit: Number(data.dealer.creditLimit ?? data.dealer.credit_limit ?? 100000000),
+                        tax_code: data.dealer.taxCode || data.dealer.tax_code || '',
                         orders_count: 0
                     });
                     this.dealersData = [d, ...(this.dealersData || [])];
@@ -4688,17 +4688,22 @@ function orderFormApp() {
         onOrderDiscountPercentChange() {
             this._manualOrderDiscount = true;
             this._autoOrderDiscount = false;
-            const pct = Number(this.orderDiscountPercent) || 0;
-            this.formData.discount_amount = Math.round((this.totalWithVat * pct) / 100);
+            const pct = Math.max(0, Math.min(100, Number(this.orderDiscountPercent) || 0));
+            this.orderDiscountPercent = pct;
+            this.formData.discount_amount = Math.round((Math.max(0, Number(this.totalWithVat) || 0) * pct) / 100);
             this.calculateTotals();
         },
 
         onOrderDiscountAmountChange() {
             this._manualOrderDiscount = true;
             this._autoOrderDiscount = false;
-            const amt = Number(this.formData.discount_amount) || 0;
-            if (this.totalWithVat > 0) {
-                this.orderDiscountPercent = Math.round((amt / this.totalWithVat) * 100 * 10) / 10;
+            const maxAmt = Math.max(0, Number(this.totalWithVat) || 0);
+            const amt = Math.max(0, Math.min(maxAmt, Number(this.formData.discount_amount) || 0));
+            this.formData.discount_amount = amt;
+            if (maxAmt > 0) {
+                this.orderDiscountPercent = Math.round((amt / maxAmt) * 100 * 10) / 10;
+            } else {
+                this.orderDiscountPercent = 0;
             }
             this.calculateTotals();
         },
@@ -5268,7 +5273,7 @@ function orderFormApp() {
                 return;
             }
 
-            const validItems = this.items.filter(it => it.name || it.sku || it.product_id);
+            const validItems = this.items.filter(it => it.checked !== false && (it.name || it.sku || it.product_id));
             if (validItems.length === 0) {
                 this.errorMessage = 'Vui lòng chọn ít nhất một sản phẩm vào đơn hàng.';
                 return;
@@ -5449,11 +5454,18 @@ function orderFormApp() {
                         sessionStorage.removeItem('pos_warehouse');
                     }
 
+                    this.orderId = finalOrdId;
+                    this.formData.order_code = finalOrdCode;
+
                     const isComingFromPos = (savedTicket?._fromPos || this.isFromPos());
 
                     if (andPrint) {
                         alert('Lưu đơn thành công! Đang chuyển sang chế độ in chứng từ...');
-                        this.printCurrentOrder();
+                        await this.printCurrentOrder();
+                        if (finalOrdId && window.location.pathname.includes('/create')) {
+                            window.history.replaceState({}, '', '/orders/' + finalOrdId + '/edit');
+                        }
+                        return;
                     } else if (isComingFromPos) {
                         // Tối ưu UX: Không chặn bằng popup alert(), chuyển ngay lập tức và hiển thị toast đẹp mắt ở POS
                         sessionStorage.setItem('pos_flash_toast', 'Lưu đơn hàng ' + finalOrdCode + ' thành công!');
@@ -5607,7 +5619,7 @@ function orderFormApp() {
             const o = {
                 order_code: this.formData.order_code || serverData?.order_code || (this.orderId ? ('DH-' + this.orderId) : 'CHƯA_LƯU'),
                 created_date: serverData?.created_date || new Date().toLocaleDateString('vi-VN'),
-                customer_code: serverData?.customer_code || this.formData.customer_code || (this.selectedDealer?.code) || '',
+                customer_code: serverData?.customer_code || this.formData.customer_code || (this.getSelectedDealer()?.code) || '',
                 customer_display: this.formData.customer_name || serverData?.customer_display || 'Khách lẻ',
                 customer_name: this.formData.customer_name || serverData?.customer_name || 'Khách lẻ',
                 customer_address: this.formData.customer_address || serverData?.customer_address || '',

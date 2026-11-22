@@ -43,7 +43,7 @@
         <!-- Top Right Actions & Nav -->
         <div class="flex items-center gap-2 sm:gap-2.5">
             <!-- Link: Danh sách xe -->
-            <a href="/vehicles"
+            <a href="{{ url('/cat_vehicles') }}"
                class="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 transition-all flex items-center gap-1.5 shadow-2xs">
                 <i class="fa-solid fa-truck text-slate-400"></i>
                 <span>Danh sách xe</span>
@@ -51,7 +51,7 @@
             </a>
 
             <!-- Link: Lộ tuyến -->
-            <a href="/delivery-routes"
+            <a href="{{ url('/cat_delivery_routes') }}"
                class="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 transition-all flex items-center gap-1.5 shadow-2xs">
                 <i class="fa-solid fa-route text-slate-400"></i>
                 <span>Lộ tuyến</span>
@@ -96,14 +96,14 @@
         <div class="flex items-center gap-2 pt-1 border-t border-slate-100 text-[11px]">
             <span class="text-slate-400 font-semibold shrink-0 text-[10px] uppercase">Lối tắt:</span>
             <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-                <a href="/vehicles"
+                <a href="{{ url('/cat_vehicles') }}"
                    class="px-2.5 py-1 rounded-lg font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all flex items-center gap-1 shrink-0">
                     <i class="fa-solid fa-truck text-slate-400 text-[10px]"></i>
                     <span>Xe</span>
                     <span class="font-mono text-[10px] text-slate-500 font-bold" x-text="'(' + vehicles.length + ')'"></span>
                 </a>
 
-                <a href="/delivery-routes"
+                <a href="{{ url('/cat_delivery_routes') }}"
                    class="px-2.5 py-1 rounded-lg font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all flex items-center gap-1 shrink-0">
                     <i class="fa-solid fa-route text-slate-400 text-[10px]"></i>
                     <span>Lộ tuyến</span>

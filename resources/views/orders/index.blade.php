@@ -379,21 +379,34 @@
 @section('content')
 @php
     $allOrders = $orders;
-    $counts = [
-        'Tất cả' => \App\Models\Order::companyOrders()->count(),
-        'Báo giá' => \App\Models\Order::companyOrders()->where('status', 'Báo giá')->count(),
-        'Chốt đơn' => \App\Models\Order::companyOrders()->whereIn('status', ['Chốt đơn', 'Đã duyệt', 'Chờ duyệt', 'Chờ kế toán duyệt'])->count(),
-        'Chờ hàng' => \App\Models\Order::companyOrders()->where(function ($q) {
-            $q->where('has_shortage_warning', true)
-              ->orWhereIn('status', ['Chờ hàng', 'Chờ hàng về']);
-        })->count(),
-        'Soạn hàng' => \App\Models\Order::companyOrders()->whereIn('status', ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong', 'Đang kiểm hàng'])->count(),
-        'Soạn bốc' => \App\Models\Order::companyOrders()->whereIn('status', ['Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong', 'Đang kiểm hàng'])->count(),
-        'Kiểm hàng' => \App\Models\Order::companyOrders()->whereIn('status', ['Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng', 'Sẵn sàng xuất xe'])->count(),
-        'Đang vận chuyển' => \App\Models\Order::companyOrders()->whereIn('status', ['Đang vận chuyển', 'Đang giao hàng'])->count(),
-        'Đã giao' => \App\Models\Order::companyOrders()->whereIn('status', ['Đã giao', 'Giao thành công'])->count(),
-        'Hủy' => \App\Models\Order::companyOrders()->whereIn('status', ['Hủy', 'Đã hủy'])->count(),
-    ];
+    if (!isset($counts) || !array_key_exists('Chờ hàng', $counts) || !array_key_exists('Soạn bốc', $counts)) {
+        $rawAgg = \App\Models\Order::companyOrders()
+            ->accessibleBy(auth()->user())
+            ->selectRaw("
+                COUNT(*) as total_cnt,
+                SUM(CASE WHEN status = 'Báo giá' THEN 1 ELSE 0 END) as bao_gia,
+                SUM(CASE WHEN status IN ('Chốt đơn', 'Đã duyệt', 'Chờ duyệt', 'Chờ kế toán duyệt') THEN 1 ELSE 0 END) as chot_don,
+                SUM(CASE WHEN has_shortage_warning = 1 OR status IN ('Chờ hàng', 'Chờ hàng về') THEN 1 ELSE 0 END) as cho_hang,
+                SUM(CASE WHEN status IN ('Soạn hàng', 'Soạn bốc', 'Kho đang soạn', 'Đang bốc hàng', 'Đã bốc xong', 'Đang kiểm hàng') THEN 1 ELSE 0 END) as soan_hang,
+                SUM(CASE WHEN status IN ('Kiểm hàng', 'Đang kiểm hàng', 'Đã kiểm hàng', 'Sẵn sàng xuất xe') THEN 1 ELSE 0 END) as kiem_hang,
+                SUM(CASE WHEN status IN ('Đang vận chuyển', 'Đang giao hàng') THEN 1 ELSE 0 END) as dang_van_chuyen,
+                SUM(CASE WHEN status IN ('Đã giao', 'Giao thành công') THEN 1 ELSE 0 END) as da_giao,
+                SUM(CASE WHEN status IN ('Hủy', 'Đã hủy', 'Đã huỷ') THEN 1 ELSE 0 END) as huy_cnt
+            ")
+            ->first();
+        $counts = [
+            'Tất cả' => (int) ($rawAgg->total_cnt ?? 0),
+            'Báo giá' => (int) ($rawAgg->bao_gia ?? 0),
+            'Chốt đơn' => (int) ($rawAgg->chot_don ?? 0),
+            'Chờ hàng' => (int) ($rawAgg->cho_hang ?? 0),
+            'Soạn hàng' => (int) ($rawAgg->soan_hang ?? 0),
+            'Soạn bốc' => (int) ($rawAgg->soan_hang ?? 0),
+            'Kiểm hàng' => (int) ($rawAgg->kiem_hang ?? 0),
+            'Đang vận chuyển' => (int) ($rawAgg->dang_van_chuyen ?? 0),
+            'Đã giao' => (int) ($rawAgg->da_giao ?? 0),
+            'Hủy' => (int) ($rawAgg->huy_cnt ?? 0),
+        ];
+    }
 
     $allOrderIds = $orders->pluck('id')->map(fn($id) => (string)$id);
     $tableOrdersData = $orders->map(function($o) {
@@ -429,6 +442,7 @@
         if (request('customer')) $activeFilterCount++;
         if (request('order_type')) $activeFilterCount++;
         if (request('payment_status')) $activeFilterCount++;
+        if (request()->boolean('shortage_only')) $activeFilterCount++;
     @endphp
     <div class="space-y-4" x-data="ordersIndexApp()" @keydown.window="handleGlobalKeydown($event)" @scroll.window="closeActionMenu()" @resize.window="closeActionMenu()">
     <!-- 2. Header Banner (Matching exact React UI on Desktop, Ergonomic 2-row on Mobile) -->
@@ -613,7 +627,7 @@
         <!-- Filter Body: Mặc định ẩn trên Mobile, khi ấn nút lọc mới hiện; Trên Desktop luôn hiện -->
         <div class="orders-filter-body space-y-3" :class="{ 'is-open': showMobileFilter }">
         <!-- Filter Form Row 1 -->
-        <form action="{{ url('/orders') }}" method="GET" class="orders-filter-form grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 text-xs pt-1 items-end">
+        <form id="ordersFilterForm" action="{{ url('/orders') }}" method="GET" class="orders-filter-form grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 text-xs pt-1 items-end">
             @if(request('status'))
                 <input type="hidden" name="status" value="{{ request('status') }}">
             @endif
@@ -698,7 +712,7 @@
             </button>
 
             <label class="flex items-center gap-2 font-bold text-slate-700 select-none cursor-pointer">
-                <input type="checkbox" class="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300">
+                <input type="checkbox" name="shortage_only" value="1" form="ordersFilterForm" {{ request()->boolean('shortage_only') ? 'checked' : '' }} @change="document.getElementById('ordersFilterForm')?.submit()" class="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300">
                 <span class="flex items-center gap-1 text-amber-800">
                     <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
                     Chỉ phiếu cần kiểm tra
@@ -863,7 +877,7 @@
                         <tr class="order-table-row {{ $rowClass }} transition-colors">
                             <!-- Checkbox -->
                             <td class="col-checkbox py-3 px-3 text-center">
-                                <input type="checkbox" :value="'{{ $order->id }}'" x-model="selectedIds" class="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300 cursor-pointer">
+                                <input type="checkbox" name="selectedOrders[]" :value="'{{ $order->id }}'" x-model="selectedIds" class="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300 cursor-pointer">
                             </td>
 
                             <!-- STT -->
@@ -1044,7 +1058,7 @@
                                                     has_shortage_warning: {{ $order->has_shortage_warning ? 'true' : 'false' }},
                                                     picking_date: '{{ $order->picking_date ? \Carbon\Carbon::parse($order->picking_date)->format('Y-m-d') : date('Y-m-d') }}',
                                                     warehouse: '{{ addslashes($whName) }}',
-                                                    driver: '{{ addslashes($order->driver?->name ?? 'Chưa phân công') }}',
+                                                    driver: '{{ addslashes($order->assignedDriver?->name ?? 'Chưa phân công') }}',
                                                     vehicle: '{{ $order->assigned_vehicle_plate ?? 'Chưa có xe' }}',
                                                     date: '{{ $createdDate }}'
                                                 }, $event)" 
@@ -2090,7 +2104,7 @@ function ordersIndexApp() {
     return {
         companySetting: @json(\App\Models\CompanySetting::getSettings()),
         showMobileFilter: false,
-        isAdvancedOpen: false,
+        isAdvancedOpen: {{ ($activeFilterCount > 0) ? 'true' : 'false' }},
         selectedIds: [],
         allOrderIds: @json($allOrderIds),
         tableOrders: @json($tableOrdersData),
@@ -2777,18 +2791,24 @@ ${this.buildMsoXmlHeader('Bang_ke_don_hang')}
             this.paymentSubmitting = true;
             try {
                 const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const orderTotal = Number(this.activePaymentOrder.total) || 0;
+                const payAmt = Number(this.paymentForm.amount) || 0;
+                const newPaymentStatus = (orderTotal > 0 && payAmt < orderTotal) ? 'Thanh toán 1 phần' : 'Đã thanh toán';
+                const payload = {
+                    id: this.activePaymentOrder.id,
+                    paymentStatus: newPaymentStatus,
+                    paymentMethod: this.paymentForm.method,
+                };
+                if (this.paymentForm.notes && this.paymentForm.notes.trim()) {
+                    payload.notes = '[THANH TOÁN ' + this.paymentForm.method + ': ' + this.formatMoney(payAmt) + '] ' + this.paymentForm.notes.trim();
+                }
                 const res = await fetch('/api/orders/save', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token || '' },
-                    body: JSON.stringify({
-                        id: this.activePaymentOrder.id,
-                        paymentStatus: 'Đã thanh toán',
-                        paymentMethod: this.paymentForm.method,
-                        notes: (this.paymentForm.notes ? '[THANH TOÁN ' + this.paymentForm.method + ': ' + this.formatMoney(this.paymentForm.amount) + '] ' + this.paymentForm.notes : '')
-                    })
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token || '' },
+                    body: JSON.stringify(payload)
                 });
                 const data = await res.json();
-                if (data.success || res.ok) {
+                if (res.ok && data.success) {
                     alert('Nhập thanh toán thành công!');
                     this.showPaymentModal = false;
                     window.location.reload();

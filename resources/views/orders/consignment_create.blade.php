@@ -729,11 +729,6 @@ function consignmentFormApp() {
             });
         },
 
-        onStaffSelected() {
-            const found = (this.staffList || []).find(s => s.id == this.formData.staff_id);
-            this.selectedStaff = found || this.currentUser;
-        },
-
         handleGlobalKeydown(e) {
             // F8 or Ctrl+Enter: Thêm dòng
             if (e.key === 'F8' || (e.ctrlKey && e.key === 'Enter')) {
@@ -875,9 +870,10 @@ function consignmentFormApp() {
             item.searchQuery = (prod.sku ? `[${prod.sku}] ` : '') + prod.name;
             item.unit = prod.unit || 'cái';
             item.stock_quantity = prod.stock_quantity || 0;
-            const price = Number(prod.price || prod.sell_price || prod.cost_price || 0);
-            item.unit_price = price;
-            item.sell_price = price;
+            const holdingPrice = Number(prod.cost_price || prod.price || prod.sell_price || 0);
+            const retailPrice = Number(prod.sell_price || prod.price || prod.cost_price || 0);
+            item.unit_price = holdingPrice;
+            item.sell_price = retailPrice;
             if (!item.quantity || Number(item.quantity) <= 0) {
                 item.quantity = 1;
             }
@@ -913,7 +909,6 @@ function consignmentFormApp() {
                     const uPrice = Number(it.unit_price) || 0;
 
                     it.amount = q * uPrice;
-                    it.sell_price = uPrice;
                     totalQty += q;
                     totalConsignment += it.amount;
                 } else {
@@ -965,6 +960,8 @@ function consignmentFormApp() {
                     body: JSON.stringify({
                         staff_id: this.formData.staff_id,
                         warehouse_id: this.formData.warehouse_id,
+                        picking_date: this.formData.picking_date,
+                        delivery_date: this.formData.delivery_date || this.formData.picking_date,
                         notes: this.formData.notes,
                         items: validItems.map(it => ({
                             product_id: it.product_id,
@@ -978,7 +975,7 @@ function consignmentFormApp() {
 
                 const data = await res.json().catch(() => ({ success: false, message: 'Phản hồi không hợp lệ từ máy chủ' }));
 
-                if (data.success) {
+                if (res.ok && data.success) {
                     alert(data.message || 'Tạo đơn hàng ôm thành công!');
                     window.location.href = data.redirect || '{{ route("orders.index", ["tab" => "consignments"]) }}';
                 } else {
