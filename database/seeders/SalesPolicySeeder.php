@@ -484,7 +484,7 @@ class SalesPolicySeeder extends Seeder
                 'name' => $p['name'],
                 'policy_type' => $p['policy_type'],
                 'apply_scope' => $p['apply_scope'],
-                'qty_group_mode' => $p['qty_group_mode'] ?? 'basket_mix',
+                'qty_group_mode' => $p['qty_group_mode'] ?? (($p['apply_scope'] ?? 'product') === 'order' ? 'basket_mix' : 'per_sku'),
                 'conflict_group' => $p['conflict_group'] ?? null,
                 'stacking_mode' => $p['stacking_mode'] ?? 'exclusive_line',
                 'require_original_price' => $p['require_original_price'] ?? true,

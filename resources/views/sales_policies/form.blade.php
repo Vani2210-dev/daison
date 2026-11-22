@@ -571,10 +571,10 @@
                     <div>
                         <label class="block font-bold text-slate-700 mb-1">Cách gom SL đạt ngưỡng</label>
                         <select x-model="formData.qty_group_mode" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-semibold focus:border-indigo-500 focus:outline-none">
-                            <option value="basket_mix">Cộng dồn nhóm SP áp dụng</option>
-                            <option value="per_sku">Cùng 1 mã SKU riêng lẻ</option>
+                            <option value="per_sku">Cùng 1 mã SKU riêng lẻ (Không cộng dồn SP khác)</option>
                             <option value="per_variant_group">Cùng quy cách / size (VD 100g, 170g)</option>
                             <option value="per_brand">Cùng nhãn hàng (Brand)</option>
+                            <option value="basket_mix">Cộng dồn nhóm SP đã chọn (Mix cùng nhóm)</option>
                         </select>
                     </div>
 
@@ -955,7 +955,7 @@ function salesPolicyForm() {
             name: '{{ $policy ? addslashes($policy->name) : "" }}',
             policy_type: '{{ $policy ? ($policy->policy_type ?: "percentage") : "percentage" }}',
             apply_scope: '{{ $policy ? ($policy->apply_scope === "product" ? "product" : "order") : "order" }}',
-            qty_group_mode: '{{ $policy ? ($policy->qty_group_mode ?: "basket_mix") : "basket_mix" }}',
+            qty_group_mode: '{{ $policy ? ($policy->qty_group_mode ?: ($policy->apply_scope === "order" ? "basket_mix" : "per_sku")) : "per_sku" }}',
             conflict_group: '{{ $policy ? addslashes($policy->conflict_group ?? "") : "" }}',
             stacking_mode: '{{ $policy ? ($policy->stacking_mode ?: "exclusive_line") : "exclusive_line" }}',
             require_original_price: {{ (!$policy || ($policy->require_original_price ?? true)) ? 'true' : 'false' }},
@@ -1051,6 +1051,9 @@ function salesPolicyForm() {
             this.formData.policy_type = type;
             if (type === 'quantity') {
                 this.formData.apply_scope = 'product';
+                if (!this.formData.id && this.formData.qty_group_mode === 'basket_mix' && this.productScope === 'all') {
+                    this.formData.qty_group_mode = 'per_sku';
+                }
             } else if (!['order', 'product'].includes(this.formData.apply_scope)) {
                 this.formData.apply_scope = 'order';
             }

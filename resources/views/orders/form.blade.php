@@ -3460,10 +3460,17 @@ function orderFormApp() {
                 },
 
                 getEffectivePolicyGroupMode(policy) {
-                    if (!policy) return 'basket_mix';
-                    if (policy.qty_group_mode) return policy.qty_group_mode;
+                    if (!policy) return 'per_sku';
                     const targets = this.getNormalizedPolicyProductIds(policy);
-                    return targets.length === 0 ? 'per_sku' : 'basket_mix';
+                    // Chính sách áp dụng theo dòng / toàn bộ SP (không giới hạn danh sách SP cụ thể)
+                    // luôn tính riêng từng mã SKU, không cộng dồn sản phẩm khác nhau kiểu basket_mix
+                    if (policy.apply_scope !== 'order' && targets.length === 0) {
+                        if (!policy.qty_group_mode || policy.qty_group_mode === 'basket_mix') {
+                            return 'per_sku';
+                        }
+                    }
+                    if (policy.qty_group_mode) return policy.qty_group_mode;
+                    return (policy.apply_scope === 'order' || targets.length > 1) ? 'basket_mix' : 'per_sku';
                 },
 
                 bucketItemsByPolicyGroupMode(policy, candidateItems) {
