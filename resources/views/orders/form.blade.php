@@ -1577,19 +1577,14 @@
             <div class="order-policy-section mt-4 rounded-2xl border-2 border-sky-200 bg-sky-50/50 p-3.5 sm:p-4 space-y-3 shadow-xs">
                 <!-- Tiêu đề & Nút Bỏ chọn: Font to, rõ, 1 hàng duy nhất -->
                 <div class="flex items-center justify-between gap-3 border-b border-sky-200 pb-3">
-                    <div class="flex items-center gap-2.5 min-w-0">
-                        <span class="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center text-sm shadow-xs shrink-0">
-                            <i class="fa-solid fa-tags"></i>
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="text-sm sm:text-base font-black text-slate-800 uppercase tracking-wide truncate">
+                            Chính sách
                         </span>
-                        <div class="flex items-center gap-2 min-w-0">
-                            <span class="text-sm sm:text-base font-black text-slate-800 uppercase tracking-wide truncate">
-                                Chính sách bán hàng
-                            </span>
-                            <template x-if="getSelectedPolicies().length > 0">
-                                <span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-sky-600 text-white shadow-xs shrink-0"
-                                      x-text="getSelectedPolicies().length"></span>
-                            </template>
-                        </div>
+                        <template x-if="getSelectedPolicies().length > 0">
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-sky-600 text-white shadow-xs shrink-0"
+                                  x-text="getSelectedPolicies().length"></span>
+                        </template>
                     </div>
 
                     <!-- Nút Bỏ chọn -->
