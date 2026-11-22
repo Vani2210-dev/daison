@@ -163,9 +163,6 @@ class AuthController extends Controller
             ]
         );
 
-        // Ghi log để theo dõi kiểm thử
-        Log::info("ERP Password Reset OTP for [{$email}]: {$otp}");
-
         // Gửi email chứa mã xác thực OTP thực tế
         $mailSent = false;
         try {
@@ -181,7 +178,6 @@ class AuthController extends Controller
             'message' => 'Mã xác thực OTP (6 chữ số) đã được gửi đến email: ' . $email . '. Vui lòng kiểm tra hộp thư đến (hoặc hòm thư rác/Spam). Mã có hiệu lực trong 15 phút.',
             'email' => $email,
             'mail_sent' => $mailSent,
-            'dev_otp' => $otp, // Trợ giúp kiểm thử nhanh khi chưa cấu hình máy chủ SMTP ngoài
         ]);
     }
 

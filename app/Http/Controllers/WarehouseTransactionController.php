@@ -79,10 +79,7 @@ class WarehouseTransactionController extends Controller
      */
     public function createReceipt(Request $request)
     {
-        $warehouses = Warehouse::companyWarehouses()->orderBy('name')->get();
-        $code = $this->generateTransactionCode('import');
-
-        return view('inventory.receipt_form', compact('warehouses', 'code'));
+        return redirect()->route('inventory.receipts', ['action' => 'create']);
     }
 
     /**
@@ -289,10 +286,7 @@ class WarehouseTransactionController extends Controller
      */
     public function createIssue(Request $request)
     {
-        $warehouses = Warehouse::companyWarehouses()->orderBy('name')->get();
-        $code = $this->generateTransactionCode('export');
-
-        return view('inventory.issue_form', compact('warehouses', 'code'));
+        return redirect()->route('inventory.issues', ['action' => 'create']);
     }
 
     /**

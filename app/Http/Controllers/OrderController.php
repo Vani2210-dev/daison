@@ -270,7 +270,7 @@ class OrderController extends Controller
             // Chặn người không có quyền hủy đơn hàng
             if (in_array($status, ['Hủy', 'Đã hủy', 'Đã huỷ'])) {
                 $authUser = auth()->user();
-                if ($authUser && !$authUser->hasAnyPermission('orders.cancel', 'all')) {
+                if ($authUser && !$authUser->hasAnyPermission('orders.cancel')) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Bạn không có quyền hủy đơn hàng!'
@@ -2447,7 +2447,7 @@ class OrderController extends Controller
         }
 
         $user = auth()->user();
-        if ($user && !$user->hasAnyPermission('orders.cancel', 'all')) {
+        if ($user && !$user->hasAnyPermission('orders.cancel')) {
             return response()->json(['success' => false, 'message' => 'Bạn không có quyền hủy đơn hàng!'], 403);
         }
 
@@ -2550,7 +2550,7 @@ class OrderController extends Controller
         }
 
         $user = auth()->user();
-        if ($user && !$user->hasAnyPermission('orders.delete', 'all')) {
+        if ($user && !$user->hasAnyPermission('orders.delete')) {
             return response()->json(['success' => false, 'message' => 'Bạn không có quyền xóa đơn hàng!'], 403);
         }
 
@@ -2631,7 +2631,7 @@ class OrderController extends Controller
         }
 
         $user = auth()->user();
-        if ($user && !$user->hasAnyPermission('orders.delete', 'all')) {
+        if ($user && !$user->hasAnyPermission('orders.delete')) {
             return response()->json(['success' => false, 'message' => 'Bạn không có quyền xóa đơn hàng!'], 403);
         }
 

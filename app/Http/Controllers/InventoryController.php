@@ -391,59 +391,151 @@ class InventoryController extends Controller
      */
     public function saveInventoryTransaction(Request $request)
     {
-        $type = $request->input('type'); // Nhập kho, Xuất kho, Chuyển kho, Kiểm kê
-        $warehouseId = $request->input('warehouseId') ?: 1;
+        $rawType = (string) ($request->input('type') ?: 'import');
+        $typeMap = [
+            'Nhập kho' => 'import',
+            'Xuất kho' => 'export',
+            'Chuyển kho' => 'transfer',
+            'Kiểm kê' => 'audit',
+            'import' => 'import',
+            'export' => 'export',
+            'transfer' => 'transfer',
+            'audit' => 'audit',
+        ];
+        $type = $typeMap[$rawType] ?? 'import';
+        $warehouseId = (int) ($request->input('warehouseId') ?: ($request->input('warehouse_id') ?: 1));
         $items = $request->input('items', []);
 
-        if (empty($items)) {
+        if (empty($items) || !is_array($items)) {
             return response()->json(['success' => false, 'message' => 'Danh sách sản phẩm không được để trống'], 422);
+        }
+
+        if (\App\Models\PeriodLock::isLockedDate(now(), 'inventory')) {
+            return response()->json(['success' => false, 'message' => 'Kỳ kho hiện tại đã bị khóa, không thể tạo phiếu giao dịch mới!'], 422);
         }
 
         DB::beginTransaction();
         try {
+            $prefix = match($type) {
+                'import' => 'PNK',
+                'export' => 'PXK',
+                'transfer' => 'PCK',
+                default => 'PKK',
+            };
+            $code = trim((string) $request->input('code'));
+            if ($code === '') {
+                $code = $prefix . '-' . date('ymd') . '-' . str_pad((string) (\App\Models\InventoryTransaction::whereDate('created_at', today())->count() + 1), 4, '0', STR_PAD_LEFT);
+            }
+            $baseCode = $code;
+            $suffix = 1;
+            while (InventoryTransaction::where('code', $code)->exists()) {
+                $code = $baseCode . '-' . $suffix++;
+            }
+
+            $totalAmount = 0;
+            $prepared = [];
+            foreach ($items as $it) {
+                $productId = $it['productId'] ?? $it['product_id'] ?? $it['id'] ?? null;
+                $quantity = (float) ($it['quantity'] ?? 0);
+                if (!$productId || $quantity <= 0) {
+                    continue;
+                }
+                $prod = Product::lockForUpdate()->find($productId);
+                if (!$prod) {
+                    continue;
+                }
+                $unitPrice = (float) ($it['unitPrice'] ?? $it['unit_price'] ?? $it['import_price'] ?? $prod->cost_price ?? 0);
+                $totalAmount += ($quantity * $unitPrice);
+                $prepared[] = [$prod, $quantity, $unitPrice, $it];
+            }
+
+            if (empty($prepared)) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Không có sản phẩm hợp lệ hoặc số lượng <= 0'], 422);
+            }
+
             $tx = InventoryTransaction::create([
-                'transaction_code' => $request->input('code') ?: ('PN-' . date('Ymd-His')),
-                'type'             => $type ?: 'Nhập kho',
-                'warehouse_id'     => $warehouseId,
-                'note'             => $request->input('note') ?: 'Giao dịch kho',
-                'status'           => 'Đã hoàn thành',
-                'created_by_id'    => auth()->id() ?: 1,
+                'code'          => $code,
+                'type'          => $type,
+                'warehouse_id'  => $warehouseId,
+                'notes'         => $request->input('notes') ?: ($request->input('note') ?: 'Giao dịch kho'),
+                'status'        => 'Hoàn thành',
+                'total_amount'  => $totalAmount,
+                'created_by_id' => auth()->id() ?: 1,
             ]);
 
-            foreach ($items as $it) {
-                $productId = $it['productId'] ?? $it['id'] ?? null;
-                $quantity = (float) ($it['quantity'] ?? 0);
-                $unitPrice = (float) ($it['unitPrice'] ?? $it['price'] ?? 0);
+            foreach ($prepared as [$prod, $quantity, $unitPrice, $it]) {
+                $txItem = InventoryTransactionItem::create([
+                    'inventory_transaction_id'  => $tx->id,
+                    'product_id'                => $prod->id,
+                    'batch_code'                => $it['batch_code'] ?? null,
+                    'quantity'                  => $quantity,
+                    'import_price'              => $unitPrice,
+                    'cost_price_at_transaction' => (float) ($prod->latest_cost_price ?: $prod->cost_price ?: 0),
+                    'notes'                     => $it['notes'] ?? null,
+                ]);
 
-                if ($productId) {
-                    InventoryTransactionItem::create([
-                        'inventory_transaction_id' => $tx->id,
-                        'product_id'               => $productId,
-                        'quantity'                 => $quantity,
-                        'unit_price'               => $unitPrice,
-                        'total_amount'             => $quantity * $unitPrice,
+                $whStock = \App\Models\WarehouseStock::where('product_id', $prod->id)
+                    ->where('warehouse_id', $warehouseId)
+                    ->lockForUpdate()
+                    ->first();
+                if (!$whStock) {
+                    $whStock = \App\Models\WarehouseStock::create([
+                        'product_id' => $prod->id,
+                        'warehouse_id' => $warehouseId,
+                        'stock_quantity' => 0,
+                        'reserved_quantity' => 0,
                     ]);
+                }
 
-                    // Update stock
-                    $prod = Product::find($productId);
-                    if ($prod) {
-                        if ($type === 'Xuất kho') {
-                            $prod->decrement('stock_quantity', $quantity);
-                        } else {
-                            $prod->increment('stock_quantity', $quantity);
-                        }
+                if ($type === 'export') {
+                    if ((float) $whStock->stock_quantity < $quantity && !$request->boolean('allow_negative_stock')) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Kho không đủ tồn cho [{$prod->sku}] {$prod->name} (tồn kho hiện tại: {$whStock->stock_quantity}, yêu cầu xuất: {$quantity}).",
+                        ], 422);
                     }
+                    $prod->decrement('stock_quantity', $quantity);
+                    $whStock->decrement('stock_quantity', $quantity);
+                    $rem = $quantity;
+                    $batches = \App\Models\ProductBatch::where('product_id', $prod->id)
+                        ->where('warehouse_id', $warehouseId)
+                        ->where('remaining_quantity', '>', 0)
+                        ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC, id ASC')
+                        ->lockForUpdate()
+                        ->get();
+                    foreach ($batches as $batch) {
+                        if ($rem <= 0) break;
+                        $take = min($rem, (float) $batch->remaining_quantity);
+                        $batch->decrement('remaining_quantity', $take);
+                        $rem -= $take;
+                    }
+                } else {
+                    $prod->increment('stock_quantity', $quantity);
+                    $whStock->increment('stock_quantity', $quantity);
+                    \App\Models\ProductBatch::create([
+                        'product_id'                    => $prod->id,
+                        'warehouse_id'                  => $warehouseId,
+                        'inventory_transaction_item_id' => $txItem->id,
+                        'batch_code'                    => $it['batch_code'] ?? ('LÔ-' . date('ymd') . '-' . $prod->sku),
+                        'import_quantity'               => $quantity,
+                        'remaining_quantity'            => $quantity,
+                        'cost_price'                    => $unitPrice,
+                        'status'                        => 'active',
+                    ]);
                 }
             }
 
             DB::commit();
+            \App\Services\InventoryAvailabilityService::clearCache();
 
             return response()->json([
-                'success' => true,
-                'message' => 'Lưu phiếu kho thành công',
+                'success'     => true,
+                'message'     => 'Lưu phiếu kho thành công',
                 'transaction' => $tx
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Lỗi lưu phiếu kho: ' . $e->getMessage()], 500);
         }

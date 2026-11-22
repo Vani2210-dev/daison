@@ -556,6 +556,12 @@ function warehouseIssueApp() {
             items: []
         },
 
+        init() {
+            if (new URLSearchParams(window.location.search).get('action') === 'create') {
+                this.openCreateModal();
+            }
+        },
+
         openCreateModal() {
             this.form = {
                 warehouse_id: '{{ $warehouses->first()?->id ?? 1 }}',

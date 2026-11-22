@@ -36,11 +36,6 @@ class CheckPermission
             return $next($request);
         }
 
-        // Cho phép cập nhật đơn hàng, giao hàng, bốc hàng, hoàn trả hàng không bị chặn 403
-        if ($request->is('api/orders/update-status') || $request->is('orders/update-status') || $request->is('api/orders/save') || $request->is('orders/save') || $request->is('api/delivery-returns*')) {
-            return $next($request);
-        }
-
         // Cho phép người dùng tự cập nhật thông tin cá nhân và mật khẩu của chính mình
         if ($request->is('api/users/save')) {
             $reqId = $request->input('id');

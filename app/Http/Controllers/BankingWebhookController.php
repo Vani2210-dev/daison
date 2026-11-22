@@ -15,8 +15,39 @@ class BankingWebhookController extends Controller
      * Webhook nhận biến động số dư ngân hàng và tự động trừ công nợ khách hàng
      * Hỗ trợ các cổng: SePay, Casso, MBBank, Techcombank, VietQR IPN hoặc API nội bộ
      */
+    /**
+     * Xác thực request tới webhook ngân hàng (token webhook hoặc người dùng nội bộ có quyền tài chính).
+     */
+    private function isAuthorizedWebhookRequest(Request $request): bool
+    {
+        $expectedSecret = trim((string) env('BANKING_WEBHOOK_SECRET', ''));
+        $providedSecret = trim((string) (
+            $request->header('X-Webhook-Token')
+            ?: ($request->bearerToken()
+            ?: ($request->input('webhook_secret') ?: $request->input('secret')))
+        ));
+
+        if ($expectedSecret !== '' && $providedSecret !== '' && hash_equals($expectedSecret, $providedSecret)) {
+            return true;
+        }
+
+        $user = auth()->user();
+        if ($user && ($user->hasRole('Admin') || $user->hasRole('Manager') || $user->hasAnyPermission('funds.view', 'orders.edit', 'debt.approve'))) {
+            return true;
+        }
+
+        return false;
+    }
+
     public function handleIncomingPayment(Request $request)
     {
+        if (!$this->isAuthorizedWebhookRequest($request)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized banking webhook request.',
+            ], 401);
+        }
+
         // 1. Đọc payload từ ngân hàng / webhook
         $raw = $request->all();
         if (empty($raw) && $request->getContent()) {
@@ -131,6 +162,26 @@ class BankingWebhookController extends Controller
             $amount = (float) ($order->total_amount ?? 0);
         }
 
+        if ($amount <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Số tiền chuyển khoản phải lớn hơn 0.',
+            ], 422);
+        }
+
+        // Chống xử lý trùng giao dịch theo referenceNumber
+        $alreadyProcessed = Transaction::where('type', 'Thu')
+            ->where('notes', 'like', "%Mã GD: [{$refNo}]%")
+            ->first();
+        if ($alreadyProcessed) {
+            return response()->json([
+                'success' => true,
+                'duplicate' => true,
+                'message' => "Giao dịch [{$refNo}] đã được ghi nhận trước đó ({$alreadyProcessed->code}).",
+                'transactionCode' => $alreadyProcessed->code,
+            ]);
+        }
+
         // 4. Thực hiện cấn trừ công nợ và ghi nhận giao dịch
         DB::beginTransaction();
         try {
@@ -138,13 +189,12 @@ class BankingWebhookController extends Controller
             $newDebt = 0;
 
             if ($dealer) {
+                $dealer = Dealer::lockForUpdate()->find($dealer->id);
                 $oldDebt = (float) $dealer->current_debt;
-                $newDebt = max(0, $oldDebt - $amount);
-                $dealer->current_debt = $newDebt;
-                $dealer->save();
             }
 
             if ($order) {
+                $order = Order::lockForUpdate()->find($order->id);
                 $order->payment_status = 'Đã thanh toán QR';
                 $order->payment_method = 'VietQR';
                 $order->save();
@@ -164,6 +214,10 @@ class BankingWebhookController extends Controller
                 'date'                  => now()->format('Y-m-d'),
                 'notes'                 => "Ngân hàng tự động nhận tiền qua VietQR (+".number_format($amount, 0, ',', '.')." đ). Mã GD: [{$refNo}]. Nội dung: [{$content}]. Đã cấn trừ công nợ khách hàng [{$dealer?->code} - {$dealer?->name}].",
             ]);
+
+            if ($dealer) {
+                $newDebt = $dealer->recalculateCurrentDebt();
+            }
 
             // Ghi nhật ký kiểm toán AuditLog
             AuditLog::create([
@@ -213,6 +267,13 @@ class BankingWebhookController extends Controller
      */
     public function checkOrConfirmOrderPayment(Request $request)
     {
+        if (!$this->isAuthorizedWebhookRequest($request)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized payment confirmation request.',
+            ], 401);
+        }
+
         $orderCode = $request->input('orderCode');
         $orderId = $request->input('orderId');
         $customerCode = $request->input('customerCode');

@@ -813,7 +813,7 @@
                         <span class="w-2 h-2 rounded-full bg-rose-500"></span>
                         <span>Hủy các đơn đã chọn</span>
                     </button>
-                    @if(auth()->user()->hasAnyPermission('orders.delete', 'all'))
+                    @if(auth()->user()->hasAnyPermission('orders.delete'))
                     <button type="button" @click="bulkDeleteOrders(); openBulkStatus = false" class="w-full text-left px-3.5 py-2 hover:bg-rose-100 flex items-center gap-2 font-bold text-rose-700 cursor-pointer">
                         <i class="fa-solid fa-trash-can text-rose-600 text-xs"></i>
                         <span>Xóa các đơn đã chọn</span>
@@ -1159,7 +1159,7 @@
                 <div class="border-t border-slate-100 my-1"></div>
 
                 <!-- 10. Hủy đơn hàng -->
-                @if(auth()->user()->hasAnyPermission('orders.cancel', 'all'))
+                @if(auth()->user()->hasAnyPermission('orders.cancel'))
                 <template x-if="!['Hủy', 'Đã hủy', 'Đã huỷ', 'Đã giao', 'Giao thành công'].includes(activeActionOrder?.status)">
                     <button type="button" @click="cancelOrder(activeActionOrder)" class="w-full text-left px-3.5 py-2 hover:bg-amber-50 flex items-center gap-3 text-amber-700 transition-colors font-semibold cursor-pointer">
                         <i class="fa-solid fa-ban text-amber-600 w-5 text-center text-sm"></i>
@@ -1169,7 +1169,7 @@
                 @endif
 
                 <!-- 11. Xóa đơn hàng -->
-                @if(auth()->user()->hasAnyPermission('orders.delete', 'all'))
+                @if(auth()->user()->hasAnyPermission('orders.delete'))
                 <button type="button" @click="deleteOrder(activeActionOrder)" class="w-full text-left px-3.5 py-2 hover:bg-rose-50 flex items-center gap-3 text-rose-600 transition-colors font-bold cursor-pointer">
                     <i class="fa-solid fa-trash-can text-rose-500 w-5 text-center text-sm"></i>
                     <span>Xóa đơn hàng</span>

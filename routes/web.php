@@ -47,63 +47,62 @@ Route::prefix('api')->group(function () {
     Route::post('/auth/forgot-password/verify-otp', [AuthController::class, 'verifyResetOtp']);
     Route::post('/auth/forgot-password/reset-password', [AuthController::class, 'resetPassword']);
 
+    // 5.1 Banking & VietQR Webhooks (Verified inside controller via BANKING_WEBHOOK_SECRET or Finance/Admin auth)
+    Route::post('/banking/webhook', [BankingWebhookController::class, 'handleIncomingPayment']);
+    Route::post('/banking/receive-payment', [BankingWebhookController::class, 'handleIncomingPayment']);
+});
+
+Route::prefix('api')->middleware('auth')->group(function () {
+    Route::post('/banking/confirm-order-payment', [BankingWebhookController::class, 'checkOrConfirmOrderPayment'])->middleware('permission:funds.view,orders.edit,debt.approve');
+
     // 2. Orders & Sales
     Route::get('/orders', [OrderController::class, 'getOrders'])->middleware('permission:orders.view');
-    Route::post('/orders/save', [OrderController::class, 'saveOrder'])->middleware('permission:orders.create,orders.edit,delivery_dispatch.view,fleet.view');
-    Route::post('/api/orders/save', [OrderController::class, 'saveOrder'])->middleware('permission:orders.create,orders.edit,delivery_dispatch.view,fleet.view');
-    Route::post('/inventory/check-availability', [OrderController::class, 'checkStockAvailability']);
-    Route::post('/orders/update-status', [OrderController::class, 'updateOrderStatus'])->middleware('permission:orders.status,orders.approve,orders.edit,inv_picking.pick,inv_picking.qc,delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
-    Route::post('/api/orders/update-status', [OrderController::class, 'updateOrderStatus'])->middleware('permission:orders.status,orders.approve,orders.edit,inv_picking.pick,inv_picking.qc,delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
+    Route::post('/orders/save', [OrderController::class, 'saveOrder'])->middleware('permission:orders.create,orders.edit,delivery_dispatch.view,fleet.view,inv_picking.pick,inv_picking.qc,inv_qc.qc');
+    Route::post('/inventory/check-availability', [OrderController::class, 'checkStockAvailability'])->middleware('permission:orders.view,orders.create,orders.edit,inventory.view');
+    Route::post('/orders/update-status', [OrderController::class, 'updateOrderStatus'])->middleware('permission:orders.status,orders.approve,orders.edit,inv_picking.pick,inv_picking.qc,inv_qc.qc,delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
     Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelOrder'])->middleware('permission:orders.cancel');
-    Route::post('/api/orders/{id}/cancel', [OrderController::class, 'cancelOrder'])->middleware('permission:orders.cancel');
     Route::delete('/orders/{id}', [OrderController::class, 'deleteOrder'])->middleware('permission:orders.delete');
     Route::post('/orders/{id}/delete', [OrderController::class, 'deleteOrder'])->middleware('permission:orders.delete');
-    Route::delete('/api/orders/{id}', [OrderController::class, 'deleteOrder'])->middleware('permission:orders.delete');
-    Route::post('/api/orders/{id}/delete', [OrderController::class, 'deleteOrder'])->middleware('permission:orders.delete');
     Route::post('/orders/bulk-delete', [OrderController::class, 'bulkDeleteOrders'])->middleware('permission:orders.delete');
-    Route::post('/api/orders/bulk-delete', [OrderController::class, 'bulkDeleteOrders'])->middleware('permission:orders.delete');
     Route::get('/orders/pending-debts-and-borrows', [OrderController::class, 'getPendingDebtsAndBorrows'])->middleware('permission:orders.view,orders.create,orders.edit');
     Route::post('/orders/mark-merged', [OrderController::class, 'markOrdersMerged'])->middleware('permission:orders.edit,orders.create');
     Route::get('/orders/{id}/print-data', [OrderController::class, 'getOrderPrintData'])->middleware('permission:orders.view');
-    Route::get('/api/orders/{id}/print-data', [OrderController::class, 'getOrderPrintData'])->middleware('permission:orders.view');
     Route::get('/orders/{id}/logs', [OrderController::class, 'getOrderLogs'])->middleware('permission:orders.view');
-    Route::get('/api/orders/{id}/logs', [OrderController::class, 'getOrderLogs'])->middleware('permission:orders.view');
     Route::match(['get', 'post'], '/orders/bulk-print-data', [OrderController::class, 'getBulkOrderPrintData'])->middleware('permission:orders.view');
-    Route::match(['get', 'post'], '/api/orders/bulk-print-data', [OrderController::class, 'getBulkOrderPrintData'])->middleware('permission:orders.view');
     // Credit overrun approval workflow (láº­p Ä‘Æ¡n vÆ°á»£t háº¡n má»©c)
     Route::get('/dealers/{id}/credit-info', [OrderController::class, 'getDealerCreditInfo'])->middleware('permission:orders.view,dealers.view');
     Route::post('/orders/{id}/approve-credit-overrun', [OrderController::class, 'approveCreditOverrunAtCreation'])->middleware('permission:orders.approve,orders.edit,debt.approve');
 
     // 2.1 ÄÆ¡n HĂ ng Ă”m (Consignment Orders APIs)
-    Route::get('/consignment-orders/master-data', [ConsignmentOrderController::class, 'masterData']);
-    Route::get('/consignment-orders', [ConsignmentOrderController::class, 'index']);
-    Route::post('/consignment-orders', [ConsignmentOrderController::class, 'store']);
-    Route::get('/consignment-orders/{id}', [ConsignmentOrderController::class, 'show']);
-    Route::post('/consignment-orders/{id}/approve', [ConsignmentOrderController::class, 'approve']);
-    Route::post('/consignment-orders/{id}/reject', [ConsignmentOrderController::class, 'reject']);
-    Route::post('/consignment-orders/{id}/dispatch', [ConsignmentOrderController::class, 'dispatchStock']);
-    Route::post('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'createRetailOrder']);
-    Route::get('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'retailOrders']);
-    Route::post('/consignment-orders/{id}/return', [ConsignmentOrderController::class, 'returnItems']);
-    Route::post('/consignment-orders/{id}/settle', [ConsignmentOrderController::class, 'settle']);
+    Route::get('/consignment-orders/master-data', [ConsignmentOrderController::class, 'masterData'])->middleware('permission:consignments.view,orders.view,orders.create');
+    Route::get('/consignment-orders', [ConsignmentOrderController::class, 'index'])->middleware('permission:consignments.view,orders.view');
+    Route::post('/consignment-orders', [ConsignmentOrderController::class, 'store'])->middleware('permission:consignments.create,orders.create');
+    Route::get('/consignment-orders/{id}', [ConsignmentOrderController::class, 'show'])->middleware('permission:consignments.view,orders.view');
+    Route::post('/consignment-orders/{id}/approve', [ConsignmentOrderController::class, 'approve'])->middleware('permission:consignments.approve,orders.approve');
+    Route::post('/consignment-orders/{id}/reject', [ConsignmentOrderController::class, 'reject'])->middleware('permission:consignments.approve,orders.approve');
+    Route::post('/consignment-orders/{id}/dispatch', [ConsignmentOrderController::class, 'dispatchStock'])->middleware('permission:consignments.approve,inv_export.create,inventory.view');
+    Route::post('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'createRetailOrder'])->middleware('permission:consignments.view,consignments.create,orders.create');
+    Route::get('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'retailOrders'])->middleware('permission:consignments.view,orders.view');
+    Route::post('/consignment-orders/{id}/return', [ConsignmentOrderController::class, 'returnItems'])->middleware('permission:consignments.view,inv_import.view,returns.view');
+    Route::post('/consignment-orders/{id}/settle', [ConsignmentOrderController::class, 'settle'])->middleware('permission:consignments.approve,funds.view,debt.approve');
 
     // 2.2 Äáº·t HĂ ng NhĂ  Cung Cáº¥p (Supplier Orders APIs)
-    Route::get('/supplier-orders', [SupplierOrderController::class, 'index']);
-    Route::post('/supplier-orders', [SupplierOrderController::class, 'store']);
-    Route::get('/supplier-orders/{id}', [SupplierOrderController::class, 'show']);
-    Route::post('/supplier-orders/{id}/approve', [SupplierOrderController::class, 'approve']);
-    Route::post('/supplier-orders/{id}/update-payment', [SupplierOrderController::class, 'updatePayment']);
-    Route::post('/supplier-orders/{id}/cancel', [SupplierOrderController::class, 'cancel']);
-    Route::post('/supplier-orders/{id}/receipt', [SupplierOrderController::class, 'createReceipt']);
-    Route::get('/suppliers/{id}/info', [SupplierOrderController::class, 'getSupplierInfo']);
-    Route::get('/suppliers/{id}/debt-history', [SupplierOrderController::class, 'supplierDebtHistory']);
-    Route::post('/suppliers/save', [SupplierOrderController::class, 'saveSupplier']);
+    Route::get('/supplier-orders', [SupplierOrderController::class, 'index'])->middleware('permission:supplier_orders.view,orders.view');
+    Route::post('/supplier-orders', [SupplierOrderController::class, 'store'])->middleware('permission:supplier_orders.create,orders.create');
+    Route::get('/supplier-orders/{id}', [SupplierOrderController::class, 'show'])->middleware('permission:supplier_orders.view,orders.view');
+    Route::post('/supplier-orders/{id}/approve', [SupplierOrderController::class, 'approve'])->middleware('permission:supplier_orders.approve');
+    Route::post('/supplier-orders/{id}/update-payment', [SupplierOrderController::class, 'updatePayment'])->middleware('permission:supplier_orders.approve,supplier_orders.create,funds.view');
+    Route::post('/supplier-orders/{id}/cancel', [SupplierOrderController::class, 'cancel'])->middleware('permission:supplier_orders.approve,supplier_orders.create');
+    Route::post('/supplier-orders/{id}/receipt', [SupplierOrderController::class, 'createReceipt'])->middleware('permission:supplier_orders.view,inv_import.view,inv_import.create');
+    Route::get('/suppliers/{id}/info', [SupplierOrderController::class, 'getSupplierInfo'])->middleware('permission:supplier_orders.view,suppliers.view');
+    Route::get('/suppliers/{id}/debt-history', [SupplierOrderController::class, 'supplierDebtHistory'])->middleware('permission:supplier_orders.view,suppliers.view,debt.view');
+    Route::post('/suppliers/save', [SupplierOrderController::class, 'saveSupplier'])->middleware('permission:danhmuc.edit,danhmuc.manage,supplier_orders.create');
  
     // 2.3 á»¨ng Khuyáº¿n Máº¡i (Promotion Advances APIs)
-    Route::get('/promotion-advances', [PromotionAdvanceController::class, 'index']);
-    Route::post('/promotion-advances', [PromotionAdvanceController::class, 'store']);
-    Route::post('/promotion-advances/{id}/settle', [PromotionAdvanceController::class, 'settle']);
-    Route::post('/promotion-advances/settle-by-brand', [PromotionAdvanceController::class, 'settleByBrand']);
+    Route::get('/promotion-advances', [PromotionAdvanceController::class, 'index'])->middleware('permission:inventory.view,orders.view,sales_policy.view');
+    Route::post('/promotion-advances', [PromotionAdvanceController::class, 'store'])->middleware('permission:inventory.view,inv_export.create,orders.create');
+    Route::post('/promotion-advances/{id}/settle', [PromotionAdvanceController::class, 'settle'])->middleware('permission:inventory.view,inv_import.create,funds.view');
+    Route::post('/promotion-advances/settle-by-brand', [PromotionAdvanceController::class, 'settleByBrand'])->middleware('permission:inventory.view,inv_import.create,funds.view');
 
     // 3. Inventory, Products, Categories & Brands
     Route::post('/products', [InventoryController::class, 'saveProduct'])->middleware('permission:inventory.update_price,danhmuc.manage');
@@ -112,37 +111,29 @@ Route::prefix('api')->group(function () {
     Route::delete('/categories/{id}', [InventoryController::class, 'deleteCategory'])->middleware('permission:danhmuc.manage');
     Route::post('/brands', [InventoryController::class, 'saveBrand'])->middleware('permission:danhmuc.manage');
     Route::delete('/brands/{id}', [InventoryController::class, 'deleteBrand'])->middleware('permission:danhmuc.manage');
-    Route::get('/branches', [InventoryController::class, 'getBranches']);
+    Route::get('/branches', [InventoryController::class, 'getBranches'])->middleware('permission:danhmuc.view,inventory.view,orders.view');
     Route::post('/branches', [InventoryController::class, 'saveBranch'])->middleware('permission:danhmuc.manage');
     Route::delete('/branches/{id}', [InventoryController::class, 'deleteBranch'])->middleware('permission:danhmuc.manage');
-    Route::get('/warehouses', [InventoryController::class, 'getWarehouses']);
+    Route::get('/warehouses', [InventoryController::class, 'getWarehouses'])->middleware('permission:danhmuc.view,inventory.view,orders.view');
     Route::post('/warehouses', [InventoryController::class, 'saveWarehouse'])->middleware('permission:danhmuc.manage');
     Route::delete('/warehouses/{id}', [InventoryController::class, 'deleteWarehouse'])->middleware('permission:danhmuc.manage');
     Route::post('/inventory/transactions', [InventoryController::class, 'saveInventoryTransaction'])->middleware('permission:inv_import.create,inv_export.create,inv_transfer.create');
-    Route::get('/inventory/picking/stream', [PickingSyncController::class, 'stream']);
-    Route::get('/inventory/picking/events', [PickingSyncController::class, 'getEvents']);
-    Route::get('/api/inventory/picking/events', [PickingSyncController::class, 'getEvents']);
-    Route::get('/inventory/picking/latest-state', [PickingSyncController::class, 'getLatestState']);
-    Route::get('/api/inventory/picking/latest-state', [PickingSyncController::class, 'getLatestState']);
-    Route::post('/inventory/picking/update-item', [PickingSyncController::class, 'updateItem']);
-    Route::post('/api/inventory/picking/update-item', [PickingSyncController::class, 'updateItem']);
-    Route::post('/inventory/picking/save-batch', [PickingSyncController::class, 'savePickingOrQc']);
-    Route::post('/api/inventory/picking/save-batch', [PickingSyncController::class, 'savePickingOrQc']);
-    Route::post('/inventory/picking/report-shortage', [PickingSyncController::class, 'reportShortage']);
-    Route::post('/api/inventory/picking/report-shortage', [PickingSyncController::class, 'reportShortage']);
-    Route::post('/inventory/picking/split-backorder', [PickingSyncController::class, 'splitBackorder']);
-    Route::post('/api/inventory/picking/split-backorder', [PickingSyncController::class, 'splitBackorder']);
-    Route::post('/inventory/picking/allocate-vehicle-shortage', [PickingSyncController::class, 'allocateVehicleShortage']);
-    Route::post('/api/inventory/picking/allocate-vehicle-shortage', [PickingSyncController::class, 'allocateVehicleShortage']);
+    Route::get('/inventory/picking/stream', [PickingSyncController::class, 'stream'])->middleware('permission:inv_picking.view,inv_qc.view');
+    Route::get('/inventory/picking/events', [PickingSyncController::class, 'getEvents'])->middleware('permission:inv_picking.view,inv_qc.view');
+    Route::get('/inventory/picking/latest-state', [PickingSyncController::class, 'getLatestState'])->middleware('permission:inv_picking.view,inv_qc.view');
+    Route::post('/inventory/picking/update-item', [PickingSyncController::class, 'updateItem'])->middleware('permission:inv_picking.pick,inv_picking.qc,inv_picking.view,inv_qc.qc,inv_qc.view');
+    Route::post('/inventory/picking/save-batch', [PickingSyncController::class, 'savePickingOrQc'])->middleware('permission:inv_picking.pick,inv_picking.qc,inv_picking.view,inv_qc.qc,inv_qc.view');
+    Route::post('/inventory/picking/report-shortage', [PickingSyncController::class, 'reportShortage'])->middleware('permission:inv_picking.pick,inv_picking.qc,inv_qc.qc,delivery_dispatch.view');
+    Route::post('/inventory/picking/split-backorder', [PickingSyncController::class, 'splitBackorder'])->middleware('permission:inv_picking.pick,inv_picking.qc,inv_qc.qc,orders.edit');
+    Route::post('/inventory/picking/allocate-vehicle-shortage', [PickingSyncController::class, 'allocateVehicleShortage'])->middleware('permission:inv_picking.pick,inv_picking.qc,delivery_dispatch.assign,delivery_dispatch.view');
 
     // 4. Delivery & Logistics Dispatch
     Route::get('/delivery-dispatches', [DeliveryController::class, 'getDeliveryDispatches'])->middleware('permission:delivery_dispatch.view');
     Route::post('/delivery-dispatches', [DeliveryController::class, 'saveDeliveryDispatch'])->middleware('permission:delivery_dispatch.assign');
     Route::post('/delivery-dispatches/update-stop', [DeliveryController::class, 'updateDeliveryStop'])->middleware('permission:delivery_dispatch.dispatch');
-    Route::post('/delivery-dispatches/settle-cash', [DeliveryController::class, 'settleDriverCash']);
-    Route::get('/delivery-dispatches/driver-cash-handovers', [DeliveryController::class, 'getDriverCashHandovers']);
+    Route::post('/delivery-dispatches/settle-cash', [DeliveryController::class, 'settleDriverCash'])->middleware('permission:funds.view,delivery_dispatch.view,fleet.view,driver_debt.view');
+    Route::get('/delivery-dispatches/driver-cash-handovers', [DeliveryController::class, 'getDriverCashHandovers'])->middleware('permission:funds.view,delivery_dispatch.view,fleet.view,driver_debt.view');
     Route::post('/vehicles/update-status', [DeliveryController::class, 'updateVehicleStatus'])->middleware('permission:delivery_dispatch.dispatch,fleet.manage,delivery_dispatch.view,fleet.view');
-    Route::post('/api/vehicles/update-status', [DeliveryController::class, 'updateVehicleStatus'])->middleware('permission:delivery_dispatch.dispatch,fleet.manage,delivery_dispatch.view,fleet.view');
     Route::post('/vehicles/save', [DeliveryController::class, 'saveVehicle'])->middleware('permission:fleet.manage,danhmuc.manage');
     Route::get('/delivery-routes', [DeliveryController::class, 'getDeliveryRoutes'])->middleware('permission:delivery_dispatch.view,danhmuc.view');
     Route::post('/delivery-routes', [DeliveryController::class, 'saveDeliveryRoute'])->middleware('permission:danhmuc.manage');
@@ -152,41 +143,34 @@ Route::prefix('api')->group(function () {
     Route::post('/vehicle-assignments/save', [DeliveryController::class, 'saveVehicleAssignment'])->middleware('permission:delivery_dispatch.assign,fleet.manage,danhmuc.manage');
     Route::post('/vehicle-assignments/terminate', [DeliveryController::class, 'terminateVehicleAssignment'])->middleware('permission:delivery_dispatch.assign,fleet.manage,danhmuc.manage');
     Route::delete('/vehicle-assignments/{id}', [DeliveryController::class, 'deleteVehicleAssignment'])->middleware('permission:delivery_dispatch.assign,fleet.manage,danhmuc.manage');
-    Route::get('/delivery-returns', [DeliveryController::class, 'getDeliveryReturns']);
-    Route::post('/delivery-returns/save', [DeliveryController::class, 'saveDeliveryReturn']);
-    Route::post('/delivery-returns/intake-warehouse', [DeliveryController::class, 'intakeReturnWarehouse']);
-Route::post('/delivery-returns/accept-holding', [DeliveryController::class, 'acceptHoldingReturn']);
-Route::post('/api/delivery-returns/accept-holding', [DeliveryController::class, 'acceptHoldingReturn']);
-    Route::post('/delivery/return-order-to-warehouse', [DeliveryController::class, 'returnOrderToWarehouse']);
-    Route::post('/delivery/transfer-order-vehicle', [DeliveryController::class, 'transferOrderVehicle']);
-    Route::post('/delivery/release-completed-orders', [DeliveryController::class, 'releaseCompletedOrders']);
+    Route::get('/delivery-returns', [DeliveryController::class, 'getDeliveryReturns'])->middleware('permission:returns.view,delivery_dispatch.view,inv_import.view');
+    Route::post('/delivery-returns/save', [DeliveryController::class, 'saveDeliveryReturn'])->middleware('permission:returns.view,delivery_dispatch.dispatch,delivery_dispatch.view');
+    Route::post('/delivery-returns/intake-warehouse', [DeliveryController::class, 'intakeReturnWarehouse'])->middleware('permission:returns.view,inv_import.create,inv_import.view');
+    Route::post('/delivery-returns/accept-holding', [DeliveryController::class, 'acceptHoldingReturn'])->middleware('permission:returns.view,delivery_dispatch.view,inv_import.view');
+    Route::post('/delivery/return-order-to-warehouse', [DeliveryController::class, 'returnOrderToWarehouse'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view,returns.view');
+    Route::post('/delivery/transfer-order-vehicle', [DeliveryController::class, 'transferOrderVehicle'])->middleware('permission:delivery_dispatch.assign,delivery_dispatch.dispatch,delivery_dispatch.view');
+    Route::post('/delivery/release-completed-orders', [DeliveryController::class, 'releaseCompletedOrders'])->middleware('permission:delivery_dispatch.assign,delivery_dispatch.dispatch,delivery_dispatch.view');
     Route::post('/delivery/depart', [DeliveryController::class, 'departTrip'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.assign,delivery_dispatch.view,fleet.view');
-    Route::post('/api/delivery/depart', [DeliveryController::class, 'departTrip'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.assign,delivery_dispatch.view,fleet.view');
     Route::post('/delivery/complete-order', [DeliveryController::class, 'completeDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
-    Route::post('/api/delivery/complete-order', [DeliveryController::class, 'completeDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
     Route::post('/delivery/fail-order', [DeliveryController::class, 'failDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
-    Route::post('/api/delivery/fail-order', [DeliveryController::class, 'failDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
-    Route::post('/delivery/return-order-to-warehouse', [DeliveryController::class, 'returnOrderToWarehouse']);
-    Route::post('/delivery/warehouse-approve-order-return', [DeliveryController::class, 'approveOrderReturnByWarehouse']);
-    Route::post('/api/delivery/warehouse-approve-order-return', [DeliveryController::class, 'approveOrderReturnByWarehouse']);
+    Route::post('/delivery/warehouse-approve-order-return', [DeliveryController::class, 'approveOrderReturnByWarehouse'])->middleware('permission:inv_import.view,inv_import.create,returns.view,delivery_dispatch.view');
     Route::post('/delivery/redeliver-order', [DeliveryController::class, 'redeliverOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,orders.edit');
 
     // 5. Customers & Dealers
     Route::get('/dealers', [DealerController::class, 'getDealers'])->middleware('permission:dealers.view');
     Route::post('/dealers/save', [DealerController::class, 'saveDealer'])->middleware('permission:dealers.create,dealers.edit');
-    Route::post('/dealers/update-debt', [DealerController::class, 'updateDebt']);
-    Route::delete('/dealers/{id}', [DealerController::class, 'deleteDealer'])->middleware('permission:dealers.edit');
+    Route::post('/dealers/update-debt', [DealerController::class, 'updateDebt'])->middleware('permission:dealers.edit,debt.approve,funds.view');
+    Route::delete('/dealers/{id}', [DealerController::class, 'deleteDealer'])->middleware('permission:dealers.delete,dealers.edit');
 
     // 5.0 BĂ n Giao CĂ´ng Ná»£ & HĂ ng Láº» LÆ°u Äá»™ng
-    Route::get('/debt-handovers', [DebtHandoverController::class, 'getDebtHandovers']);
-    Route::post('/debt-handovers', [DebtHandoverController::class, 'createDebtHandover']);
-    Route::post('/debt-handovers/{id}/forward', [DebtHandoverController::class, 'accountantForward']);
-    Route::post('/debt-handovers/{id}/forward', [DebtHandoverController::class, 'accountantForward']);
-Route::post('/debt-handovers/{id}/confirm', [DebtHandoverController::class, 'confirmDebtHandover']);
-    Route::post('/debt-handovers/{id}/reject', [DebtHandoverController::class, 'rejectDebtHandover']);
-    Route::get('/staff-debts', [DebtHandoverController::class, 'getStaffDebtList']);
-    Route::get('/van-sale-dispatches', [DebtHandoverController::class, 'getVanSaleDispatches']);
-    Route::post('/van-sale-dispatches', [DebtHandoverController::class, 'createVanSaleDispatch']);
+    Route::get('/debt-handovers', [DebtHandoverController::class, 'getDebtHandovers'])->middleware('permission:debt.view,driver_debt.view,staff_debt.view_all,funds.view,delivery_dispatch.view,fleet.view');
+    Route::post('/debt-handovers', [DebtHandoverController::class, 'createDebtHandover'])->middleware('permission:debt.view,driver_debt.view,staff_debt.view_all,funds.view,delivery_dispatch.view,fleet.view');
+    Route::post('/debt-handovers/{id}/forward', [DebtHandoverController::class, 'accountantForward'])->middleware('permission:funds.view,debt.approve,debt.view');
+    Route::post('/debt-handovers/{id}/confirm', [DebtHandoverController::class, 'confirmDebtHandover'])->middleware('permission:debt.approve,funds.view');
+    Route::post('/debt-handovers/{id}/reject', [DebtHandoverController::class, 'rejectDebtHandover'])->middleware('permission:debt.approve,funds.view,debt.view');
+    Route::get('/staff-debts', [DebtHandoverController::class, 'getStaffDebtList'])->middleware('permission:staff_debt.view_all,driver_debt.view,debt.view,funds.view');
+    Route::get('/van-sale-dispatches', [DebtHandoverController::class, 'getVanSaleDispatches'])->middleware('permission:delivery_dispatch.view,inv_export.view,orders.view,driver_debt.view,debt.view');
+    Route::post('/van-sale-dispatches', [DebtHandoverController::class, 'createVanSaleDispatch'])->middleware('permission:delivery_dispatch.assign,inv_export.create,orders.create,debt.view');
 
     // 5.1 Banking & VietQR Webhooks (Tá»± Ä‘á»™ng trá»« cĂ´ng ná»£ khĂ¡ch hĂ ng khi nháº­n tiá»n)
     Route::post('/banking/webhook', [BankingWebhookController::class, 'handleIncomingPayment']);
@@ -217,7 +201,7 @@ Route::post('/debt-handovers/{id}/confirm', [DebtHandoverController::class, 'con
 
     // 10. Finance & Transactions
     Route::get('/transactions', [FinanceController::class, 'getTransactions'])->middleware('permission:funds.view');
-    Route::post('/transactions/save', [FinanceController::class, 'saveTransaction']);
+    Route::post('/transactions/save', [FinanceController::class, 'saveTransaction'])->middleware('permission:funds.view,debt.approve');
 
     // 11. Tasks & Work Management
     Route::get('/tasks', [TaskController::class, 'getTasks'])->middleware('permission:task_assignment.view');
@@ -251,26 +235,27 @@ Route::post('/debt-handovers/{id}/confirm', [DebtHandoverController::class, 'con
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
 });
 
-// Non-prefixed aliases
-Route::get('/notifications/poll', [NotificationController::class, 'poll']);
-Route::get('/notifications', [NotificationController::class, 'index']);
-Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
-Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
-Route::post('/delivery-dispatches/settle-cash', [DeliveryController::class, 'settleDriverCash']);
-Route::get('/delivery-dispatches/driver-cash-handovers', [DeliveryController::class, 'getDriverCashHandovers']);
-Route::get('/delivery-returns', [DeliveryController::class, 'getDeliveryReturns']);
-Route::post('/delivery-returns/intake-warehouse', [DeliveryController::class, 'intakeReturnWarehouse']);
-Route::post('/delivery-returns/accept-holding', [DeliveryController::class, 'acceptHoldingReturn']);
-Route::post('/api/delivery-returns/accept-holding', [DeliveryController::class, 'acceptHoldingReturn']);
-Route::post('/roles/save-permissions', [RoleController::class, 'saveRolePermissions']);
-Route::post('/debt-handovers/{id}/forward', [DebtHandoverController::class, 'accountantForward']);
-Route::post('/debt-handovers/{id}/confirm', [DebtHandoverController::class, 'confirmDebtHandover']);
-Route::post('/debt-handovers/{id}/reject', [DebtHandoverController::class, 'rejectDebtHandover']);
-Route::post('/debt-handovers', [DebtHandoverController::class, 'createDebtHandover']);
-Route::get('/debt-handovers', [DebtHandoverController::class, 'getDebtHandovers']);
-Route::get('/staff-debts', [DebtHandoverController::class, 'getStaffDebtList']);
-Route::post('/van-sale-dispatches', [DebtHandoverController::class, 'createVanSaleDispatch']);
-Route::get('/van-sale-dispatches', [DebtHandoverController::class, 'getVanSaleDispatches']);
+// Non-prefixed aliases (All require authentication & RBAC)
+Route::middleware('auth')->group(function () {
+    Route::get('/notifications/poll', [NotificationController::class, 'poll']);
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/delivery-dispatches/settle-cash', [DeliveryController::class, 'settleDriverCash'])->middleware('permission:funds.view,delivery_dispatch.view,fleet.view,driver_debt.view');
+    Route::get('/delivery-dispatches/driver-cash-handovers', [DeliveryController::class, 'getDriverCashHandovers'])->middleware('permission:funds.view,delivery_dispatch.view,fleet.view,driver_debt.view');
+    Route::get('/delivery-returns', [DeliveryController::class, 'getDeliveryReturns'])->middleware('permission:returns.view,delivery_dispatch.view,inv_import.view');
+    Route::post('/delivery-returns/intake-warehouse', [DeliveryController::class, 'intakeReturnWarehouse'])->middleware('permission:returns.view,inv_import.create,inv_import.view');
+    Route::post('/delivery-returns/accept-holding', [DeliveryController::class, 'acceptHoldingReturn'])->middleware('permission:returns.view,delivery_dispatch.view,inv_import.view');
+    Route::post('/roles/save-permissions', [RoleController::class, 'saveRolePermissions'])->middleware('permission:permissions.manage_role');
+    Route::post('/debt-handovers/{id}/forward', [DebtHandoverController::class, 'accountantForward'])->middleware('permission:funds.view,debt.approve,debt.view');
+    Route::post('/debt-handovers/{id}/confirm', [DebtHandoverController::class, 'confirmDebtHandover'])->middleware('permission:debt.approve,funds.view');
+    Route::post('/debt-handovers/{id}/reject', [DebtHandoverController::class, 'rejectDebtHandover'])->middleware('permission:debt.approve,funds.view,debt.view');
+    Route::post('/debt-handovers', [DebtHandoverController::class, 'createDebtHandover'])->middleware('permission:debt.view,driver_debt.view,staff_debt.view_all,funds.view,delivery_dispatch.view,fleet.view');
+    Route::get('/debt-handovers', [DebtHandoverController::class, 'getDebtHandovers'])->middleware('permission:debt.view,driver_debt.view,staff_debt.view_all,funds.view,delivery_dispatch.view,fleet.view');
+    Route::get('/staff-debts', [DebtHandoverController::class, 'getStaffDebtList'])->middleware('permission:staff_debt.view_all,driver_debt.view,debt.view,funds.view');
+    Route::post('/van-sale-dispatches', [DebtHandoverController::class, 'createVanSaleDispatch'])->middleware('permission:delivery_dispatch.assign,inv_export.create,orders.create,debt.view');
+    Route::get('/van-sale-dispatches', [DebtHandoverController::class, 'getVanSaleDispatches'])->middleware('permission:delivery_dispatch.view,inv_export.view,orders.view,driver_debt.view,debt.view');
+});
 
 use App\Http\Controllers\WebViewController;
 
@@ -310,55 +295,54 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders/pos', [WebViewController::class, 'orderPos'])->name('orders.pos')->middleware('permission:orders.create,orders.view,quotation.create');
     Route::get('/ban-hang', [WebViewController::class, 'orderPos'])->middleware('permission:orders.create,orders.view,quotation.create');
     Route::get('/orders/create', [WebViewController::class, 'orderCreate'])->name('orders.create')->middleware('permission:orders.create,quotation.create');
-    Route::get('/orders/cod-verification', [DeliveryController::class, 'codVerificationPage'])->name('orders.cod_verification')->middleware('permission:orders.view,delivery_dispatch.view,financial.view');
-    Route::get('/sales/cod-verification', [DeliveryController::class, 'codVerificationPage']);
-    Route::get('/cod-verification', [DeliveryController::class, 'codVerificationPage']);
+    Route::get('/orders/cod-verification', [DeliveryController::class, 'codVerificationPage'])->name('orders.cod_verification')->middleware('permission:orders.view,delivery_dispatch.view,funds.view');
+    Route::get('/sales/cod-verification', [DeliveryController::class, 'codVerificationPage'])->middleware('permission:orders.view,delivery_dispatch.view,funds.view');
+    Route::get('/cod-verification', [DeliveryController::class, 'codVerificationPage'])->middleware('permission:orders.view,delivery_dispatch.view,funds.view');
     Route::get('/orders/{id}/edit', [WebViewController::class, 'orderEdit'])->name('orders.edit')->middleware('permission:orders.edit');
     Route::get('/orders/{id}/tracking', [WebViewController::class, 'orderTracking'])->name('orders.tracking')->middleware('permission:orders.view');
-    Route::post('/orders/save', [OrderController::class, 'saveOrder']);
-    Route::post('/inventory/check-availability', [OrderController::class, 'checkStockAvailability']);
-    Route::post('/orders/update-status', [OrderController::class, 'updateOrderStatus']);
+    Route::post('/orders/save', [OrderController::class, 'saveOrder'])->middleware('permission:orders.create,orders.edit,quotation.create');
+    Route::post('/inventory/check-availability', [OrderController::class, 'checkStockAvailability'])->middleware('permission:orders.create,orders.edit,orders.view,inventory.view,inv_picking.view');
     Route::get('/orders/{id}/logs', [OrderController::class, 'getOrderLogs'])->middleware('permission:orders.view');
 
     // Consignment Orders (Trang táº¡o Ä‘Æ¡n riĂªng & Direct endpoints)
     Route::get('/orders/consignments/create', [ConsignmentOrderController::class, 'create'])->name('orders.consignments.create')->middleware('permission:orders.create,orders.view,consignments.create,consignments.view');
     Route::get('/consignment-orders/create', [ConsignmentOrderController::class, 'create']);
-    Route::get('/consignment-orders/master-data', [ConsignmentOrderController::class, 'masterData']);
-    Route::get('/consignment-orders', [ConsignmentOrderController::class, 'index']);
-    Route::post('/consignment-orders', [ConsignmentOrderController::class, 'store']);
-    Route::get('/consignment-orders/{id}', [ConsignmentOrderController::class, 'show']);
-    Route::post('/consignment-orders/{id}/approve', [ConsignmentOrderController::class, 'approve']);
-    Route::post('/consignment-orders/{id}/reject', [ConsignmentOrderController::class, 'reject']);
-    Route::post('/consignment-orders/{id}/dispatch', [ConsignmentOrderController::class, 'dispatchStock']);
-    Route::post('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'createRetailOrder']);
-    Route::get('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'retailOrders']);
-    Route::post('/consignment-orders/{id}/return', [ConsignmentOrderController::class, 'returnItems']);
-    Route::post('/consignment-orders/{id}/settle', [ConsignmentOrderController::class, 'settle']);
+    Route::get('/consignment-orders/master-data', [ConsignmentOrderController::class, 'masterData'])->middleware('permission:consignments.view,orders.view,orders.create');
+    Route::get('/consignment-orders', [ConsignmentOrderController::class, 'index'])->middleware('permission:consignments.view,orders.view');
+    Route::post('/consignment-orders', [ConsignmentOrderController::class, 'store'])->middleware('permission:consignments.create,orders.create');
+    Route::get('/consignment-orders/{id}', [ConsignmentOrderController::class, 'show'])->middleware('permission:consignments.view,orders.view');
+    Route::post('/consignment-orders/{id}/approve', [ConsignmentOrderController::class, 'approve'])->middleware('permission:consignments.approve,orders.approve');
+    Route::post('/consignment-orders/{id}/reject', [ConsignmentOrderController::class, 'reject'])->middleware('permission:consignments.approve,orders.approve');
+    Route::post('/consignment-orders/{id}/dispatch', [ConsignmentOrderController::class, 'dispatchStock'])->middleware('permission:consignments.approve,inv_export.create,inventory.view');
+    Route::post('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'createRetailOrder'])->middleware('permission:consignments.view,consignments.create,orders.create');
+    Route::get('/consignment-orders/{id}/retail-orders', [ConsignmentOrderController::class, 'retailOrders'])->middleware('permission:consignments.view,orders.view');
+    Route::post('/consignment-orders/{id}/return', [ConsignmentOrderController::class, 'returnItems'])->middleware('permission:consignments.view,inv_import.view,returns.view');
+    Route::post('/consignment-orders/{id}/settle', [ConsignmentOrderController::class, 'settle'])->middleware('permission:consignments.approve,funds.view,debt.approve');
 
     // Supplier Orders (Äáº·t HĂ ng NhĂ  Cung Cáº¥p)
-    Route::get('/supplier-orders', [SupplierOrderController::class, 'index'])->name('supplier_orders.index');
-    Route::get('/orders/suppliers', [SupplierOrderController::class, 'index']);
-    Route::get('/supplier-orders/create', [SupplierOrderController::class, 'create'])->name('supplier_orders.create');
-    Route::get('/orders/suppliers/create', [SupplierOrderController::class, 'create']);
-    Route::get('/supplier-orders/{id}/receipt', [SupplierOrderController::class, 'receiptPage'])->name('supplier_orders.receipt_page');
-    Route::post('/api/supplier-orders', [SupplierOrderController::class, 'store']);
-    Route::get('/api/supplier-orders/{id}', [SupplierOrderController::class, 'show']);
+    Route::get('/supplier-orders', [SupplierOrderController::class, 'index'])->name('supplier_orders.index')->middleware('permission:supplier_orders.view,suppliers.view,danhmuc.view,orders.view');
+    Route::get('/orders/suppliers', [SupplierOrderController::class, 'index'])->middleware('permission:supplier_orders.view,suppliers.view,danhmuc.view,orders.view');
+    Route::get('/supplier-orders/create', [SupplierOrderController::class, 'create'])->name('supplier_orders.create')->middleware('permission:supplier_orders.create,orders.create');
+    Route::get('/orders/suppliers/create', [SupplierOrderController::class, 'create'])->middleware('permission:supplier_orders.create,orders.create');
+    Route::get('/supplier-orders/{id}/receipt', [SupplierOrderController::class, 'receiptPage'])->name('supplier_orders.receipt_page')->middleware('permission:supplier_orders.create,supplier_orders.approve,inv_import.view,inv_import.create');
+    Route::post('/api/supplier-orders', [SupplierOrderController::class, 'store'])->middleware('permission:supplier_orders.create');
+    Route::get('/api/supplier-orders/{id}', [SupplierOrderController::class, 'show'])->middleware('permission:supplier_orders.view,suppliers.view');
     Route::post('/api/supplier-orders/{id}/approve', [SupplierOrderController::class, 'approve'])->middleware('permission:supplier_orders.approve');
-    Route::post('/api/supplier-orders/{id}/update-payment', [SupplierOrderController::class, 'updatePayment']);
-    Route::post('/api/supplier-orders/{id}/cancel', [SupplierOrderController::class, 'cancel']);
-    Route::post('/api/supplier-orders/{id}/receipt', [SupplierOrderController::class, 'createReceipt']);
-    Route::get('/api/suppliers/{id}/info', [SupplierOrderController::class, 'getSupplierInfo']);
-    Route::get('/api/suppliers/{id}/debt-history', [SupplierOrderController::class, 'supplierDebtHistory']);
-    Route::post('/api/suppliers/save', [SupplierOrderController::class, 'saveSupplier']);
+    Route::post('/api/supplier-orders/{id}/update-payment', [SupplierOrderController::class, 'updatePayment'])->middleware('permission:supplier_orders.approve,funds.view,debt.approve');
+    Route::post('/api/supplier-orders/{id}/cancel', [SupplierOrderController::class, 'cancel'])->middleware('permission:supplier_orders.create,supplier_orders.approve');
+    Route::post('/api/supplier-orders/{id}/receipt', [SupplierOrderController::class, 'createReceipt'])->middleware('permission:supplier_orders.create,supplier_orders.approve,inv_import.create,inv_import.view');
+    Route::get('/api/suppliers/{id}/info', [SupplierOrderController::class, 'getSupplierInfo'])->middleware('permission:supplier_orders.view,suppliers.view,danhmuc.view');
+    Route::get('/api/suppliers/{id}/debt-history', [SupplierOrderController::class, 'supplierDebtHistory'])->middleware('permission:supplier_orders.view,suppliers.view,danhmuc.view');
+    Route::post('/api/suppliers/save', [SupplierOrderController::class, 'saveSupplier'])->middleware('permission:supplier_orders.create,danhmuc.edit,danhmuc.manage');
 
     // Promotion Advances (á»¨ng Khuyáº¿n Máº¡i Cá»§a Kho)
-    Route::get('/promotion-advances', [PromotionAdvanceController::class, 'index'])->name('promotion_advances.index');
-    Route::post('/promotion-advances', [PromotionAdvanceController::class, 'store']);
-    Route::post('/promotion-advances/{id}/settle', [PromotionAdvanceController::class, 'settle']);
-    Route::post('/promotion-advances/settle-by-brand', [PromotionAdvanceController::class, 'settleByBrand']);
-    Route::post('/api/promotion-advances', [PromotionAdvanceController::class, 'store']);
-    Route::post('/api/promotion-advances/{id}/settle', [PromotionAdvanceController::class, 'settle']);
-    Route::post('/api/promotion-advances/settle-by-brand', [PromotionAdvanceController::class, 'settleByBrand']);
+    Route::get('/promotion-advances', [PromotionAdvanceController::class, 'index'])->name('promotion_advances.index')->middleware('permission:sales_policy.view,orders.view,inventory.view,inv_export.view');
+    Route::post('/promotion-advances', [PromotionAdvanceController::class, 'store'])->middleware('permission:sales_policy.create,sales_policy.edit,orders.create,inv_export.create,funds.view');
+    Route::post('/promotion-advances/{id}/settle', [PromotionAdvanceController::class, 'settle'])->middleware('permission:sales_policy.create,sales_policy.edit,inv_export.create,funds.view,debt.approve');
+    Route::post('/promotion-advances/settle-by-brand', [PromotionAdvanceController::class, 'settleByBrand'])->middleware('permission:sales_policy.create,sales_policy.edit,inv_export.create,funds.view,debt.approve');
+    Route::post('/api/promotion-advances', [PromotionAdvanceController::class, 'store'])->middleware('permission:sales_policy.create,sales_policy.edit,orders.create,inv_export.create,funds.view');
+    Route::post('/api/promotion-advances/{id}/settle', [PromotionAdvanceController::class, 'settle'])->middleware('permission:sales_policy.create,sales_policy.edit,inv_export.create,funds.view,debt.approve');
+    Route::post('/api/promotion-advances/settle-by-brand', [PromotionAdvanceController::class, 'settleByBrand'])->middleware('permission:sales_policy.create,sales_policy.edit,inv_export.create,funds.view,debt.approve');
 
     // Dealers & Customers Management
     Route::get('/dealers', [WebViewController::class, 'dealers'])->name('dealers.index')->middleware('permission:dealers.view');
@@ -386,34 +370,34 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/delivery/complete-order', [DeliveryController::class, 'completeDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
     Route::post('/delivery/fail-order', [DeliveryController::class, 'failDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
     Route::post('/api/delivery/fail-order', [DeliveryController::class, 'failDeliveryOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
-    Route::post('/delivery/return-order-to-warehouse', [DeliveryController::class, 'returnOrderToWarehouse']);
-    Route::post('/delivery/warehouse-approve-order-return', [DeliveryController::class, 'approveOrderReturnByWarehouse']);
-    Route::post('/api/delivery/warehouse-approve-order-return', [DeliveryController::class, 'approveOrderReturnByWarehouse']);
+    Route::post('/delivery/return-order-to-warehouse', [DeliveryController::class, 'returnOrderToWarehouse'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view,returns.view');
+    Route::post('/delivery/warehouse-approve-order-return', [DeliveryController::class, 'approveOrderReturnByWarehouse'])->middleware('permission:inv_import.view,inv_import.create,returns.view,delivery_dispatch.view');
+    Route::post('/api/delivery/warehouse-approve-order-return', [DeliveryController::class, 'approveOrderReturnByWarehouse'])->middleware('permission:inv_import.view,inv_import.create,returns.view,delivery_dispatch.view');
     Route::post('/delivery/redeliver-order', [DeliveryController::class, 'redeliverOrder'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,orders.edit');
 
     // Delivery Discrepancies (Phản ánh thừa/thiếu hàng sau khi xuất bến giữa người giao hàng và người kiểm hàng)
-    Route::post('/delivery/discrepancies/report', [DeliveryController::class, 'reportDiscrepancy']);
-    Route::post('/api/delivery/discrepancies/report', [DeliveryController::class, 'reportDiscrepancy']);
-    Route::get('/delivery/discrepancies', [DeliveryController::class, 'getDiscrepancies']);
-    Route::get('/api/delivery/discrepancies', [DeliveryController::class, 'getDiscrepancies']);
-    Route::post('/delivery/discrepancies/{id}/respond', [DeliveryController::class, 'respondDiscrepancy']);
-    Route::post('/api/delivery/discrepancies/{id}/respond', [DeliveryController::class, 'respondDiscrepancy']);
+    Route::post('/delivery/discrepancies/report', [DeliveryController::class, 'reportDiscrepancy'])->middleware('permission:delivery_dispatch.view,delivery_dispatch.dispatch,fleet.view,inv_picking.view,inv_qc.view');
+    Route::post('/api/delivery/discrepancies/report', [DeliveryController::class, 'reportDiscrepancy'])->middleware('permission:delivery_dispatch.view,delivery_dispatch.dispatch,fleet.view,inv_picking.view,inv_qc.view');
+    Route::get('/delivery/discrepancies', [DeliveryController::class, 'getDiscrepancies'])->middleware('permission:delivery_dispatch.view,delivery_dispatch.dispatch,fleet.view,inv_picking.view,inv_qc.view');
+    Route::get('/api/delivery/discrepancies', [DeliveryController::class, 'getDiscrepancies'])->middleware('permission:delivery_dispatch.view,delivery_dispatch.dispatch,fleet.view,inv_picking.view,inv_qc.view');
+    Route::post('/delivery/discrepancies/{id}/respond', [DeliveryController::class, 'respondDiscrepancy'])->middleware('permission:delivery_dispatch.view,delivery_dispatch.dispatch,fleet.view,inv_picking.view,inv_qc.view');
+    Route::post('/api/delivery/discrepancies/{id}/respond', [DeliveryController::class, 'respondDiscrepancy'])->middleware('permission:delivery_dispatch.view,delivery_dispatch.dispatch,fleet.view,inv_picking.view,inv_qc.view');
 
     // Vehicle Order Transfers (Điều chuyển đơn hàng giữa các xe)
-    Route::post('/delivery/transfers/create', [DeliveryController::class, 'createVehicleOrderTransfer']);
-    Route::post('/api/delivery/transfers/create', [DeliveryController::class, 'createVehicleOrderTransfer']);
-    Route::get('/delivery/transfers', [DeliveryController::class, 'getVehicleOrderTransfers']);
-    Route::get('/api/delivery/transfers', [DeliveryController::class, 'getVehicleOrderTransfers']);
-    Route::post('/delivery/transfers/{id}/respond', [DeliveryController::class, 'respondVehicleOrderTransfer']);
-    Route::post('/api/delivery/transfers/{id}/respond', [DeliveryController::class, 'respondVehicleOrderTransfer']);
-    Route::post('/delivery/transfers/{id}/cancel', [DeliveryController::class, 'cancelVehicleOrderTransfer']);
-    Route::post('/api/delivery/transfers/{id}/cancel', [DeliveryController::class, 'cancelVehicleOrderTransfer']);
+    Route::post('/delivery/transfers/create', [DeliveryController::class, 'createVehicleOrderTransfer'])->middleware('permission:delivery_dispatch.view,delivery_dispatch.dispatch,delivery_dispatch.assign,fleet.view');
+    Route::post('/api/delivery/transfers/create', [DeliveryController::class, 'createVehicleOrderTransfer'])->middleware('permission:delivery_dispatch.view,delivery_dispatch.dispatch,delivery_dispatch.assign,fleet.view');
+    Route::get('/delivery/transfers', [DeliveryController::class, 'getVehicleOrderTransfers'])->middleware('permission:delivery_dispatch.view,delivery_dispatch.dispatch,delivery_dispatch.assign,fleet.view');
+    Route::get('/api/delivery/transfers', [DeliveryController::class, 'getVehicleOrderTransfers'])->middleware('permission:delivery_dispatch.view,delivery_dispatch.dispatch,delivery_dispatch.assign,fleet.view');
+    Route::post('/delivery/transfers/{id}/respond', [DeliveryController::class, 'respondVehicleOrderTransfer'])->middleware('permission:delivery_dispatch.view,delivery_dispatch.dispatch,delivery_dispatch.assign,fleet.view');
+    Route::post('/api/delivery/transfers/{id}/respond', [DeliveryController::class, 'respondVehicleOrderTransfer'])->middleware('permission:delivery_dispatch.view,delivery_dispatch.dispatch,delivery_dispatch.assign,fleet.view');
+    Route::post('/delivery/transfers/{id}/cancel', [DeliveryController::class, 'cancelVehicleOrderTransfer'])->middleware('permission:delivery_dispatch.view,delivery_dispatch.dispatch,delivery_dispatch.assign,fleet.view');
+    Route::post('/api/delivery/transfers/{id}/cancel', [DeliveryController::class, 'cancelVehicleOrderTransfer'])->middleware('permission:delivery_dispatch.view,delivery_dispatch.dispatch,delivery_dispatch.assign,fleet.view');
 
-    Route::post('/delivery/orders/{id}/request-credit-override', [DeliveryController::class, 'requestCreditOverride']);
-    Route::post('/delivery/orders/{id}/approve-credit-override', [DeliveryController::class, 'approveCreditOverride']);
-    Route::get('/delivery/orders/{id}/credit-override-status', [DeliveryController::class, 'getCreditOverrideStatus']);
-    Route::get('/delivery/orders/pending-credit-overrides', [DeliveryController::class, 'getPendingCreditOverrides']);
-    Route::get('/api/delivery/orders/pending-credit-overrides', [DeliveryController::class, 'getPendingCreditOverrides']);
+    Route::post('/delivery/orders/{id}/request-credit-override', [DeliveryController::class, 'requestCreditOverride'])->middleware('permission:delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view,orders.view');
+    Route::post('/delivery/orders/{id}/approve-credit-override', [DeliveryController::class, 'approveCreditOverride'])->middleware('permission:orders.approve,debt.approve');
+    Route::get('/delivery/orders/{id}/credit-override-status', [DeliveryController::class, 'getCreditOverrideStatus'])->middleware('permission:delivery_dispatch.view,orders.approve,debt.approve,fleet.view');
+    Route::get('/delivery/orders/pending-credit-overrides', [DeliveryController::class, 'getPendingCreditOverrides'])->middleware('permission:delivery_dispatch.view,orders.approve,debt.approve,fleet.view');
+    Route::get('/api/delivery/orders/pending-credit-overrides', [DeliveryController::class, 'getPendingCreditOverrides'])->middleware('permission:delivery_dispatch.view,orders.approve,debt.approve,fleet.view');
     Route::post('/orders/update-status', [OrderController::class, 'updateOrderStatus'])->middleware('permission:orders.status,orders.approve,orders.edit,inv_picking.pick,inv_picking.qc,delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
     Route::post('/api/orders/update-status', [OrderController::class, 'updateOrderStatus'])->middleware('permission:orders.status,orders.approve,orders.edit,inv_picking.pick,inv_picking.qc,delivery_dispatch.dispatch,delivery_dispatch.view,fleet.view');
     Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelOrder'])->middleware('permission:orders.cancel');
@@ -429,14 +413,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/inventory/picking', [PickingSyncController::class, 'pickingView'])->name('inventory.picking')->middleware('permission:inv_picking.view,inv_qc.view');
     Route::get('/picking', [PickingSyncController::class, 'pickingView'])->middleware('permission:inv_picking.view,inv_qc.view');
     Route::get('/orders/picking', [PickingSyncController::class, 'pickingView'])->middleware('permission:inv_picking.view,inv_qc.view');
-    Route::get('/inventory/picking/stream', [PickingSyncController::class, 'stream']);
-    Route::get('/inventory/picking/events', [PickingSyncController::class, 'getEvents']);
-    Route::get('/inventory/picking/latest-state', [PickingSyncController::class, 'getLatestState']);
-    Route::post('/inventory/picking/update-item', [PickingSyncController::class, 'updateItem']);
-    Route::post('/inventory/picking/save-batch', [PickingSyncController::class, 'savePickingOrQc']);
-    Route::post('/inventory/picking/report-shortage', [PickingSyncController::class, 'reportShortage']);
-    Route::post('/inventory/picking/split-backorder', [PickingSyncController::class, 'splitBackorder']);
-    Route::post('/inventory/picking/allocate-vehicle-shortage', [PickingSyncController::class, 'allocateVehicleShortage']);
+    Route::get('/inventory/picking/stream', [PickingSyncController::class, 'stream'])->middleware('permission:inv_picking.view,inv_qc.view,delivery_dispatch.view');
+    Route::get('/inventory/picking/events', [PickingSyncController::class, 'getEvents'])->middleware('permission:inv_picking.view,inv_qc.view,delivery_dispatch.view');
+    Route::get('/inventory/picking/latest-state', [PickingSyncController::class, 'getLatestState'])->middleware('permission:inv_picking.view,inv_qc.view,delivery_dispatch.view');
+    Route::post('/inventory/picking/update-item', [PickingSyncController::class, 'updateItem'])->middleware('permission:inv_picking.pick,inv_picking.qc,inv_picking.view,inv_qc.qc,inv_qc.view');
+    Route::post('/inventory/picking/save-batch', [PickingSyncController::class, 'savePickingOrQc'])->middleware('permission:inv_picking.pick,inv_picking.qc,inv_picking.view,inv_qc.qc,inv_qc.view');
+    Route::post('/inventory/picking/report-shortage', [PickingSyncController::class, 'reportShortage'])->middleware('permission:inv_picking.pick,inv_picking.qc,inv_qc.qc,delivery_dispatch.view');
+    Route::post('/inventory/picking/split-backorder', [PickingSyncController::class, 'splitBackorder'])->middleware('permission:inv_picking.pick,inv_picking.qc,inv_qc.qc,orders.edit');
+    Route::post('/inventory/picking/allocate-vehicle-shortage', [PickingSyncController::class, 'allocateVehicleShortage'])->middleware('permission:inv_picking.pick,inv_picking.qc,delivery_dispatch.assign,delivery_dispatch.view');
 
     // 1. Quáº£n lĂ½ Phiáº¿u Nháº­p kho (Goods Receipt - PNK)
     Route::get('/inventory/receipts', [WarehouseTransactionController::class, 'receipts'])->name('inventory.receipts')->middleware('permission:inventory.view,inv_import.view');
@@ -488,11 +472,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/staff/save', [WebViewController::class, 'staffSave'])->name('staff.save')->middleware('permission:staff_list.create,staff_list.edit');
 
     // Staff Groups (NhĂ³m nhĂ¢n sá»±: user_ids, phĂ¢n loáº¡i id, user_id trÆ°á»Ÿng nhĂ³m)
-    Route::get('/staff-groups', [StaffGroupController::class, 'index'])->name('staff_groups.index');
-    Route::post('/staff-groups', [StaffGroupController::class, 'store'])->name('staff_groups.store');
-    Route::put('/staff-groups/{id}', [StaffGroupController::class, 'update'])->name('staff_groups.update');
+    Route::get('/staff-groups', [StaffGroupController::class, 'index'])->name('staff_groups.index')->middleware('permission:staff_list.view,permissions.manage_role,danhmuc.view');
+    Route::post('/staff-groups', [StaffGroupController::class, 'store'])->name('staff_groups.store')->middleware('permission:staff_list.create,staff_list.edit,permissions.manage_role,danhmuc.manage');
+    Route::put('/staff-groups/{id}', [StaffGroupController::class, 'update'])->name('staff_groups.update')->middleware('permission:staff_list.edit,permissions.manage_role,danhmuc.manage');
     Route::delete('/staff-groups/{id}', [StaffGroupController::class, 'destroy'])->name('staff_groups.destroy')->middleware('permission:permissions.manage_role,danhmuc.manage');
-    Route::post('/staff-group-classifications', [StaffGroupController::class, 'storeClassification'])->name('staff_group_classifications.store');
+    Route::post('/staff-group-classifications', [StaffGroupController::class, 'storeClassification'])->name('staff_group_classifications.store')->middleware('permission:staff_list.create,staff_list.edit,permissions.manage_role,danhmuc.manage');
     Route::delete('/staff-group-classifications/{id}', [StaffGroupController::class, 'destroyClassification'])->name('staff_group_classifications.destroy')->middleware('permission:permissions.manage_role,danhmuc.manage');
 
     Route::get('/payroll', [WebViewController::class, 'payroll'])->name('payroll.index')->middleware('permission:payroll.view');
@@ -511,15 +495,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/audit', [WebViewController::class, 'auditLogs'])->middleware('permission:audit.view');
 
     // System Settings (Cáº¥u hĂ¬nh há»‡ thá»‘ng: ThĂ´ng tin cĂ´ng ty & TĂ i khoáº£n ngĂ¢n hĂ ng)
-    Route::get('/system-settings', [SystemSettingController::class, 'index'])->name('system_settings.index');
-    Route::get('/settings', [SystemSettingController::class, 'index']);
-    Route::post('/system-settings/company', [SystemSettingController::class, 'updateCompany'])->name('system_settings.update_company');
-    Route::post('/system-settings/bank-accounts', [SystemSettingController::class, 'storeBankAccount'])->name('system_settings.bank_accounts.store');
-    Route::post('/system-settings/bank-accounts/{id}', [SystemSettingController::class, 'updateBankAccount'])->name('system_settings.bank_accounts.update');
-    Route::put('/system-settings/bank-accounts/{id}', [SystemSettingController::class, 'updateBankAccount']);
+    Route::get('/system-settings', [SystemSettingController::class, 'index'])->name('system_settings.index')->middleware('permission:settings.view');
+    Route::get('/settings', [SystemSettingController::class, 'index'])->middleware('permission:settings.view');
+    Route::post('/system-settings/company', [SystemSettingController::class, 'updateCompany'])->name('system_settings.update_company')->middleware('permission:settings.view,danhmuc.manage');
+    Route::post('/system-settings/bank-accounts', [SystemSettingController::class, 'storeBankAccount'])->name('system_settings.bank_accounts.store')->middleware('permission:settings.view,danhmuc.manage');
+    Route::post('/system-settings/bank-accounts/{id}', [SystemSettingController::class, 'updateBankAccount'])->name('system_settings.bank_accounts.update')->middleware('permission:settings.view,danhmuc.manage');
+    Route::put('/system-settings/bank-accounts/{id}', [SystemSettingController::class, 'updateBankAccount'])->middleware('permission:settings.view,danhmuc.manage');
     Route::delete('/system-settings/bank-accounts/{id}', [SystemSettingController::class, 'deleteBankAccount'])->name('system_settings.bank_accounts.delete')->middleware('permission:danhmuc.manage');
-    Route::post('/system-settings/bank-accounts/{id}/default', [SystemSettingController::class, 'setDefaultBankAccount'])->name('system_settings.bank_accounts.default');
-    Route::post('/system-settings/bank-accounts/{id}/toggle-active', [SystemSettingController::class, 'toggleActiveBankAccount'])->name('system_settings.bank_accounts.toggle_active');
+    Route::post('/system-settings/bank-accounts/{id}/default', [SystemSettingController::class, 'setDefaultBankAccount'])->name('system_settings.bank_accounts.default')->middleware('permission:settings.view,danhmuc.manage');
+    Route::post('/system-settings/bank-accounts/{id}/toggle-active', [SystemSettingController::class, 'toggleActiveBankAccount'])->name('system_settings.bank_accounts.toggle_active')->middleware('permission:settings.view,danhmuc.manage');
 
     // Categories Hub (Warehouses, Branches, Fund types, Brands, Categories, Routes, Vehicles, Policies)
     Route::get('/categories', [WebViewController::class, 'categories'])->name('categories.index')->middleware('permission:danhmuc.view');

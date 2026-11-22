@@ -589,6 +589,12 @@ function warehouseReceiptApp() {
             items: []
         },
 
+        init() {
+            if (new URLSearchParams(window.location.search).get('action') === 'create') {
+                this.openCreateModal();
+            }
+        },
+
         openCreateModal() {
             this.form = {
                 warehouse_id: '{{ $warehouses->firstWhere('code', 'KHO-MQ-01')?->id ?? $warehouses->first()?->id ?? 1 }}',

@@ -113,9 +113,9 @@
                                 <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
                                 <span>{{ $b->name }}</span>
                             </td>
-                            <td class="py-2.5 px-3 text-center">---</td>
-                            <td class="py-2.5 px-3 text-right font-bold text-slate-900">0 đ</td>
-                            <td class="py-2.5 px-3 text-right font-bold text-sky-700">0 %</td>
+                            <td class="py-2.5 px-3 text-center font-mono">{{ number_format((int)($b->sku_count ?? 0)) }}</td>
+                            <td class="py-2.5 px-3 text-right font-bold text-slate-900">{{ number_format((float)($b->sales_amount ?? 0), 0, ',', '.') }} đ</td>
+                            <td class="py-2.5 px-3 text-right font-bold text-sky-700">{{ number_format((float)($b->revenue_share ?? 0), 1) }} %</td>
                             <td class="py-2.5 px-3 text-center text-slate-500">Ổn định</td>
                         </tr>
                     @empty

@@ -166,6 +166,13 @@ class UserController extends Controller
         ];
 
         try {
+            $actor = auth()->user();
+            $canManageStaff = $actor && (
+                $actor->hasRole('Manager')
+                || $actor->hasRole('Admin')
+                || $actor->hasAnyPermission('staff_list.create', 'staff_list.edit')
+            );
+
             $user = null;
             if ($id && is_numeric($id)) {
                 $user = User::find($id);
@@ -175,6 +182,19 @@ class UserController extends Controller
             }
             if (!$user && !empty($data['code'])) {
                 $user = User::where('code', $data['code'])->first();
+            }
+
+            // Chặn tự leo thang quyền / sửa lương / trạng thái khi người gọi chỉ tự sửa hồ sơ cá nhân
+            if (!$canManageStaff) {
+                if (!$actor || !$user || (string)$user->id !== (string)$actor->id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Bạn không có quyền chỉnh sửa thông tin nhân sự khác.',
+                    ], 403);
+                }
+                $allowedSelfKeys = ['name', 'phone', 'dob', 'citizen_id', 'education', 'bank_account', 'bank_name', 'address', 'family_members', 'avatar'];
+                $data = array_intersect_key($data, array_flip($allowedSelfKeys));
+                $roleSlug = null;
             }
 
             if ($request->filled('password')) {

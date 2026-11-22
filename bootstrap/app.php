@@ -15,7 +15,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
         $middleware->validateCsrfTokens(except: [
             'api/*',
-            'roles/save-permissions',
         ]);
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,

@@ -2643,16 +2643,36 @@ class WebViewController extends Controller
      */
     public function reports(Request $request, $type = 'sales')
     {
-        $salesRevenue = Order::whereNotIn('status', ['Hủy', 'Đã hủy', 'Báo giá'])->sum('total_amount');
-        $totalOrdersCount = Order::whereNotIn('status', ['Hủy', 'Đã hủy'])->count();
-        $totalReturnedOrders = Order::where('status', 'like', '%trả%')->count();
+        $excludedStatuses = ['Hủy', 'Đã hủy', 'Đã huỷ', 'Báo giá', 'Bản nháp', 'Từ chối hạn mức'];
+        $salesRevenue = (float) Order::whereNotIn('status', $excludedStatuses)->sum('total_amount');
+        $totalOrdersCount = Order::whereNotIn('status', $excludedStatuses)->count();
+        $totalReturnedOrders = Order::where(function ($q) {
+            $q->where('has_returns', true)->orWhere('status', 'like', '%trả%');
+        })->count();
         $totalProducts = Product::count();
-        $totalThu = \App\Models\Transaction::where('type', 'Thu')->sum('amount');
-        $totalChi = \App\Models\Transaction::where('type', 'Chi')->sum('amount');
-        $totalDebt = Dealer::sum('current_debt');
-        $totalInventoryValue = \App\Models\Product::sum(\Illuminate\Support\Facades\DB::raw('stock * COALESCE(cost_price, base_price, 0)'));
-        $lowStockCount = \App\Models\Product::where('stock', '<=', 10)->count();
-        $brands = \App\Models\Brand::all();
+        $totalThu = (float) \App\Models\Transaction::where('type', 'Thu')->sum('amount');
+        $totalChi = (float) \App\Models\Transaction::where('type', 'Chi')->sum('amount');
+        $totalDebt = (float) Dealer::sum('current_debt');
+        $totalInventoryValue = (float) Product::sum(\Illuminate\Support\Facades\DB::raw('stock_quantity * COALESCE(cost_price, price, 0)'));
+        $lowStockCount = Product::where('stock_quantity', '<=', 10)->count();
+
+        $brandAggs = \App\Models\OrderItem::query()
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->join('products', 'products.id', '=', 'order_items.product_id')
+            ->whereNotIn('orders.status', $excludedStatuses)
+            ->groupBy('products.brand_id')
+            ->selectRaw('products.brand_id, COUNT(DISTINCT order_items.product_id) AS sku_count, SUM(order_items.amount) AS total_sales')
+            ->get()
+            ->keyBy('brand_id');
+
+        $brands = \App\Models\Brand::all()->map(function ($b) use ($brandAggs, $salesRevenue) {
+            $agg = $brandAggs->get($b->id);
+            $rev = (float) ($agg->total_sales ?? 0);
+            $b->sku_count = (int) ($agg->sku_count ?? 0);
+            $b->sales_amount = $rev;
+            $b->revenue_share = $salesRevenue > 0 ? round(($rev / $salesRevenue) * 100, 1) : 0;
+            return $b;
+        });
 
         return view('reports.index', compact(
             'salesRevenue', 'totalOrdersCount', 'totalReturnedOrders', 'totalProducts',
