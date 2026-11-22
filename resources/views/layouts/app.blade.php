@@ -2512,5 +2512,8 @@
     @include('layouts.notifications')
 
     @stack('scripts')
+    @if(request()->is('orders*') || request()->is('*/orders*'))
+        <script src="{{ asset('js/orders/order-policies.js') }}?v={{ file_exists(public_path('js/orders/order-policies.js')) ? filemtime(public_path('js/orders/order-policies.js')) : time() }}"></script>
+    @endif
 </body>
 </html>
