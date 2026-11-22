@@ -13,11 +13,11 @@
     /* Khóa chặt toàn bộ trang theo chiều ngang, tuyệt đối không cho phép overflow / nhảy layout */
     html, body {
         max-width: 100vw !important;
-        overflow-x: hidden !important;
+        overflow-x: clip !important;
     }
     main {
         max-width: 100% !important;
-        overflow-x: hidden !important;
+        overflow-x: clip !important;
         box-sizing: border-box !important;
         padding-bottom: 0 !important; /* Gỡ bỏ padding 56px của main vì màn hình này có bottom bar riêng */
     }
@@ -41,7 +41,8 @@
         padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px)) !important;
         width: 100% !important;
         max-width: 100% !important;
-        overflow-x: hidden !important;
+        overflow-x: clip !important;
+        overflow-y: visible !important;
         box-sizing: border-box !important;
     }
     .order-form-main-card {
@@ -51,7 +52,8 @@
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
-        overflow-x: hidden !important;
+        overflow-x: clip !important;
+        overflow-y: visible !important;
     }
 
     /* 2. Thanh Tabs phía trên */
@@ -140,7 +142,7 @@
     .order-items-table-container {
         border: none !important;
         background: transparent !important;
-        overflow: hidden !important;
+        overflow: visible !important;
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
@@ -232,6 +234,7 @@
         max-width: 100% !important;
         padding-top: 0.25rem !important;
         border-top: 1px dashed #f1f5f9 !important;
+        overflow: visible !important;
         box-sizing: border-box !important;
     }
     .order-items-table td.col-product input.product-search-input {
@@ -1185,7 +1188,7 @@
                     <tbody class="divide-y divide-slate-100 font-medium">
                         <template x-for="(item, index) in getSalesItems()" :key="item._rowKey || (item._rowKey = 'it-' + (item.item_id_db || item.id || index) + '-' + Math.random())">
                             <tr class="order-item-row hover:bg-slate-50/60 transition-colors" 
-                                :class="activeProdDropdownIndex === index ? 'relative z-30 ' : ''">
+                                :class="activeProdDropdownIndex === index ? 'relative z-40 ' : ''">
                                 <!-- STT + Checkbox -->
                                 <td class="col-stt py-2 px-3 text-center align-top">
                                     <div class="h-10 flex items-center justify-center gap-1.5">
@@ -1195,56 +1198,72 @@
                                 </td>
 
                                 <!-- Tên / Mã SP Input với Menu gợi ý điều khiển bằng phím mũi tên Lên/Xuống + Enter -->
-                                <td class="col-product py-2 px-3 relative align-top" :class="activeProdDropdownIndex === index ? 'z-30' : ''">
+                                <td class="col-product py-2 px-3 relative align-top" :class="activeProdDropdownIndex === index ? 'z-40 overflow-visible' : ''">
                                     <div class="relative" @click.outside="if (activeProdDropdownIndex === index) activeProdDropdownIndex = null">
-                                        <input type="text"
-                                               autocomplete="off"
-                                               autocorrect="off"
-                                               spellcheck="false"
-                                               :id="'row-product-input-' + index"
-                                               x-model="item.searchQuery" 
-                                               @focus="activeProdDropdownIndex = index; prodHighlightIndex = 0"
-                                               @input="activeProdDropdownIndex = index; prodHighlightIndex = 0"
-                                               @keydown.down.prevent="
-                                                   activeProdDropdownIndex = index;
-                                                   const prods = getFilteredProducts(item.searchQuery, getItemIndex(item));
-                                                   prodHighlightIndex = Math.min(prodHighlightIndex + 1, prods.length - 1);
-                                                   scrollProdIntoView(index, prodHighlightIndex);
-                                               "
-                                               @keydown.up.prevent="
-                                                   prodHighlightIndex = Math.max(prodHighlightIndex - 1, 0);
-                                                   scrollProdIntoView(index, prodHighlightIndex);
-                                               "
-                                               @keydown.enter.prevent="
-                                                   if (activeProdDropdownIndex === index) {
-                                                       const prods = getFilteredProducts(item.searchQuery, getItemIndex(item));
-                                                       if (prods.length > 0 && prods[prodHighlightIndex]) {
-                                                           selectProductForRow(getItemIndex(item), prods[prodHighlightIndex]);
-                                                           activeProdDropdownIndex = null;
-                                                           $nextTick(() => {
-                                                               const qtyInput = document.getElementById('row-qty-input-' + index);
-                                                               if (qtyInput) {
-                                                                   qtyInput.focus();
-                                                                   qtyInput.select();
-                                                               }
-                                                           });
+                                        <div class="relative flex items-center">
+                                            <input type="text"
+                                                   autocomplete="off"
+                                                   autocorrect="off"
+                                                   spellcheck="false"
+                                                   :id="'row-product-input-' + index"
+                                                   x-model="item.searchQuery" 
+                                                   @focus="activeProdDropdownIndex = index; prodHighlightIndex = 0; $event.target.select()"
+                                                   @input="item._prodSearching = true; activeProdDropdownIndex = index; prodHighlightIndex = 0"
+                                                   @keydown.down.prevent="
+                                                       activeProdDropdownIndex = index;
+                                                       const prods = getFilteredProducts(getRowProductSearchQuery(item), getItemIndex(item));
+                                                       prodHighlightIndex = prods.length > 0 ? Math.min(prodHighlightIndex + 1, prods.length - 1) : 0;
+                                                       scrollProdIntoView(index, prodHighlightIndex);
+                                                   "
+                                                   @keydown.up.prevent="
+                                                       prodHighlightIndex = Math.max(prodHighlightIndex - 1, 0);
+                                                       scrollProdIntoView(index, prodHighlightIndex);
+                                                   "
+                                                   @keydown.enter.prevent="
+                                                       if (activeProdDropdownIndex === index) {
+                                                           const prods = getFilteredProducts(getRowProductSearchQuery(item), getItemIndex(item));
+                                                           if (prods.length > 0 && prods[prodHighlightIndex]) {
+                                                               selectProductForRow(getItemIndex(item), prods[prodHighlightIndex]);
+                                                               activeProdDropdownIndex = null;
+                                                               $nextTick(() => {
+                                                                   const qtyInput = document.getElementById('row-qty-input-' + index);
+                                                                   if (qtyInput) {
+                                                                       qtyInput.focus();
+                                                                       qtyInput.select();
+                                                                   }
+                                                               });
+                                                           }
                                                        }
-                                                   }
-                                               "
-                                               @keydown.escape.prevent="activeProdDropdownIndex = null"
-                                               placeholder="Tìm mã hoặc tên sản phẩm..." 
-                                               :placeholder="isMobileViewport ? 'Tìm mã hoặc tên sản phẩm...' : 'Tìm mã hoặc tên sản phẩm (phím ↑ ↓ Enter)...'" 
-                                               class="product-search-input w-full h-10 px-3.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-800 focus:border-sky-500 focus:outline-none shadow-xs hover:border-slate-400 transition-colors">
+                                                   "
+                                                   @keydown.escape.prevent="activeProdDropdownIndex = null"
+                                                   placeholder="Tìm mã hoặc tên sản phẩm..." 
+                                                   :placeholder="isMobileViewport ? 'Tìm mã hoặc tên sản phẩm...' : 'Tìm mã hoặc tên sản phẩm (phím ↑ ↓ Enter)...'" 
+                                                   class="product-search-input w-full h-10 pl-3.5 pr-8 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-800 focus:border-sky-500 focus:outline-none shadow-xs hover:border-slate-400 transition-colors">
+
+                                            <button type="button"
+                                                    x-show="(item.searchQuery || item.product_id) && !isReadonly"
+                                                    x-cloak
+                                                    @mousedown.prevent
+                                                    @click.stop="clearProductRow(getItemIndex(item), index)"
+                                                    class="absolute right-2 text-slate-400 hover:text-rose-500 p-1 rounded-md cursor-pointer transition-colors"
+                                                    title="Xóa để tìm sản phẩm khác">
+                                                <i class="fa-solid fa-xmark text-xs"></i>
+                                            </button>
+                                        </div>
 
                                         <!-- Menu Dropdown gợi ý sản phẩm -->
-                                        <div x-show="activeProdDropdownIndex === index && getFilteredProducts(item.searchQuery, getItemIndex(item)).length > 0" 
+                                        <div x-show="activeProdDropdownIndex === index" 
                                              x-cloak 
-                                             class="order-product-dropdown absolute left-0 top-full mt-1 w-[460px] max-w-[90vw] z-50 bg-white rounded-xl shadow-2xl border border-slate-200 max-h-60 overflow-y-auto py-1 text-xs">
+                                             class="order-product-dropdown absolute left-0 top-full mt-1 w-[460px] max-w-[90vw] z-[60] bg-white rounded-xl shadow-2xl border border-slate-200 max-h-60 overflow-y-auto py-1 text-xs">
                                             <template x-if="activeProdDropdownIndex === index">
                                                 <div>
-                                                    <template x-for="(p, pIdx) in getFilteredProducts(item.searchQuery, getItemIndex(item))" :key="p.id">
+                                                    <div class="px-3 py-1 bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between sticky top-0 z-10 border-b border-slate-100">
+                                                        <span>Gợi ý sản phẩm (<span x-text="getFilteredProducts(getRowProductSearchQuery(item), getItemIndex(item)).length"></span>)</span>
+                                                        <span class="text-sky-600 font-normal lowercase hidden sm:inline">dùng phím &uarr; &darr; &bull; Enter chọn</span>
+                                                    </div>
+                                                    <template x-for="(p, pIdx) in getFilteredProducts(getRowProductSearchQuery(item), getItemIndex(item))" :key="p.id">
                                                         <div :id="'prod-opt-' + index + '-' + pIdx"
-                                                             @mousedown.prevent="selectProductForRow(getItemIndex(item), p); activeProdDropdownIndex = null; $nextTick(() => { const q = document.getElementById('row-qty-input-' + index); if(q) { q.focus(); q.select(); } })"
+                                                             @mousedown.prevent
                                                              @click="selectProductForRow(getItemIndex(item), p); activeProdDropdownIndex = null; $nextTick(() => { const q = document.getElementById('row-qty-input-' + index); if(q) { q.focus(); q.select(); } })"
                                                              @mouseenter="prodHighlightIndex = pIdx"
                                                              class="px-3 py-2 cursor-pointer flex items-center justify-between transition-colors border-b border-slate-50 last:border-0"
@@ -1276,6 +1295,16 @@
                                                             </div>
                                                         </div>
                                                     </template>
+                                                    <div x-show="getFilteredProducts(getRowProductSearchQuery(item), getItemIndex(item)).length === 0" class="px-4 py-5 text-center text-slate-400">
+                                                        <i class="fa-solid fa-box-open text-lg text-slate-300 mb-1"></i>
+                                                        <div class="font-bold text-slate-600 text-xs">Không tìm thấy sản phẩm phù hợp</div>
+                                                        <button type="button"
+                                                                @mousedown.prevent
+                                                                @click.stop="item.searchQuery = ''; item._prodSearching = true; prodHighlightIndex = 0; $nextTick(() => document.getElementById('row-product-input-' + index)?.focus())"
+                                                                class="mt-1.5 px-2.5 py-1 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold rounded-lg text-[11px] cursor-pointer transition-colors">
+                                                            Xem tất cả sản phẩm
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </template>
                                         </div>
@@ -1555,45 +1584,58 @@
                             <div class="relative" 
                                  :class="activeGiftDropdownIndex === gIdx ? 'z-40' : 'z-10'"
                                  @click.outside="if (activeGiftDropdownIndex === gIdx) activeGiftDropdownIndex = null">
-                                <input type="text"
-                                       :id="'gift-product-input-' + gIdx"
-                                       autocomplete="off"
-                                       autocorrect="off"
-                                       spellcheck="false"
-                                       x-model="gItem.searchQuery"
-                                       @focus="activeGiftDropdownIndex = gIdx; giftHighlightIndex = 0"
-                                       @input="activeGiftDropdownIndex = gIdx; giftHighlightIndex = 0"
-                                       @keydown.down.prevent="
-                                           activeGiftDropdownIndex = gIdx;
-                                           const prods = getFilteredPromoProducts(gItem.searchQuery);
-                                           giftHighlightIndex = Math.min(giftHighlightIndex + 1, prods.length - 1);
-                                           scrollGiftProdIntoView(gIdx, giftHighlightIndex);
-                                       "
-                                       @keydown.up.prevent="
-                                           giftHighlightIndex = Math.max(giftHighlightIndex - 1, 0);
-                                           scrollGiftProdIntoView(gIdx, giftHighlightIndex);
-                                       "
-                                       @keydown.enter.prevent="
-                                           if (activeGiftDropdownIndex === gIdx) {
-                                               const prods = getFilteredPromoProducts(gItem.searchQuery);
-                                               if (prods.length > 0 && prods[giftHighlightIndex]) {
-                                                   selectGiftProductForRow(gItem, prods[giftHighlightIndex]);
+                                <div class="relative flex items-center">
+                                    <input type="text"
+                                           :id="'gift-product-input-' + gIdx"
+                                           autocomplete="off"
+                                           autocorrect="off"
+                                           spellcheck="false"
+                                           x-model="gItem.searchQuery"
+                                           @focus="activeGiftDropdownIndex = gIdx; giftHighlightIndex = 0; $event.target.select()"
+                                           @input="gItem._prodSearching = true; activeGiftDropdownIndex = gIdx; giftHighlightIndex = 0"
+                                           @keydown.down.prevent="
+                                               activeGiftDropdownIndex = gIdx;
+                                               const prods = getFilteredPromoProducts(getRowProductSearchQuery(gItem));
+                                               giftHighlightIndex = prods.length > 0 ? Math.min(giftHighlightIndex + 1, prods.length - 1) : 0;
+                                               scrollGiftProdIntoView(gIdx, giftHighlightIndex);
+                                           "
+                                           @keydown.up.prevent="
+                                               giftHighlightIndex = Math.max(giftHighlightIndex - 1, 0);
+                                               scrollGiftProdIntoView(gIdx, giftHighlightIndex);
+                                           "
+                                           @keydown.enter.prevent="
+                                               if (activeGiftDropdownIndex === gIdx) {
+                                                   const prods = getFilteredPromoProducts(getRowProductSearchQuery(gItem));
+                                                   if (prods.length > 0 && prods[giftHighlightIndex]) {
+                                                       selectGiftProductForRow(gItem, prods[giftHighlightIndex]);
+                                                   }
                                                }
-                                           }
-                                       "
-                                       @keydown.escape.prevent="activeGiftDropdownIndex = null"
-                                       placeholder="Gõ mã hoặc tên SP khuyến mại..."
-                                       class="w-full h-10 px-3.5 bg-white border border-slate-300 rounded-xl text-sm font-semibold focus:border-emerald-500 focus:outline-none shadow-xs hover:border-slate-400 transition-colors">
+                                           "
+                                           @keydown.escape.prevent="activeGiftDropdownIndex = null"
+                                           placeholder="Gõ mã hoặc tên SP khuyến mại..."
+                                           class="w-full h-10 pl-3.5 pr-8 bg-white border border-slate-300 rounded-xl text-sm font-semibold focus:border-emerald-500 focus:outline-none shadow-xs hover:border-slate-400 transition-colors">
+
+                                    <button type="button"
+                                            x-show="(gItem.searchQuery || gItem.product_id) && !isReadonly"
+                                            x-cloak
+                                            @mousedown.prevent
+                                            @click.stop="clearGiftProductRow(gItem, gIdx)"
+                                            class="absolute right-2 text-slate-400 hover:text-rose-500 p-1 rounded-md cursor-pointer transition-colors"
+                                            title="Xóa để tìm sản phẩm khác">
+                                        <i class="fa-solid fa-xmark text-xs"></i>
+                                    </button>
+                                </div>
 
                                 <!-- Dropdown gợi ý sản phẩm trên mobile (phủ trọn chiều ngang) -->
-                                <div x-show="activeGiftDropdownIndex === gIdx && getFilteredPromoProducts(gItem.searchQuery).length > 0"
+                                <div x-show="activeGiftDropdownIndex === gIdx"
                                      x-cloak
-                                     class="absolute left-0 top-full mt-1.5 w-full z-50 bg-white rounded-xl shadow-2xl border border-slate-200 max-h-64 overflow-y-auto py-1 text-xs divide-y divide-slate-100">
+                                     class="absolute left-0 top-full mt-1.5 w-full z-[60] bg-white rounded-xl shadow-2xl border border-slate-200 max-h-64 overflow-y-auto py-1 text-xs divide-y divide-slate-100">
                                     <template x-if="activeGiftDropdownIndex === gIdx">
                                         <div>
-                                            <template x-for="(p, pIdx) in getFilteredPromoProducts(gItem.searchQuery)" :key="'gift-opt-' + gIdx + '-' + p.id">
+                                            <template x-for="(p, pIdx) in getFilteredPromoProducts(getRowProductSearchQuery(gItem))" :key="'gift-opt-' + gIdx + '-' + p.id">
                                                 <div :id="'gift-opt-' + gIdx + '-' + pIdx"
-                                                     @mousedown.prevent="selectGiftProductForRow(gItem, p)"
+                                                     @mousedown.prevent
+                                                     @click="selectGiftProductForRow(gItem, p)"
                                                      @mouseenter="giftHighlightIndex = pIdx"
                                                      class="px-3 py-2.5 cursor-pointer transition-colors"
                                                      :class="giftHighlightIndex === pIdx ? 'bg-emerald-100 text-emerald-950 font-bold ring-1 ring-emerald-300' : 'hover:bg-slate-50'">
@@ -1610,6 +1652,9 @@
                                                     </div>
                                                 </div>
                                             </template>
+                                            <div x-show="getFilteredPromoProducts(getRowProductSearchQuery(gItem)).length === 0" class="px-4 py-4 text-center text-slate-400">
+                                                <div class="font-bold text-slate-600 text-xs">Không tìm thấy sản phẩm khuyến mại</div>
+                                            </div>
                                         </div>
                                     </template>
                                 </div>
@@ -1655,7 +1700,8 @@
                 </div>
 
                 <!-- Danh sách sản phẩm khuyến mại: Desktop Table Layout -->
-                <div class="hidden md:block overflow-x-auto rounded-xl border border-emerald-200 bg-white">
+                <div class="hidden md:block rounded-xl border border-emerald-200 bg-white"
+                     :class="activeGiftDropdownIndex !== null ? 'overflow-visible' : 'overflow-x-auto'">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead class="bg-emerald-100/80 text-emerald-950 font-bold uppercase text-xs tracking-wider">
                             <tr>
@@ -1669,47 +1715,67 @@
                         </thead>
                         <tbody class="divide-y divide-emerald-100 font-medium text-slate-800">
                             <template x-for="(gItem, gIdx) in getGiftItems()" :key="gItem._rowKey || ('gift-d-' + gIdx)">
-                                <tr class="hover:bg-emerald-50/50 transition-colors">
+                                <tr class="hover:bg-emerald-50/50 transition-colors"
+                                    :class="activeGiftDropdownIndex === gIdx ? 'relative z-40' : ''">
                                     <td class="py-2 px-3 text-center font-bold text-emerald-700" x-text="gIdx + 1"></td>
                                     <td class="py-2 px-3 relative" @click.outside="if (activeGiftDropdownIndex === gIdx) activeGiftDropdownIndex = null">
-                                        <input type="text"
-                                               :id="'gift-desk-input-' + gIdx"
-                                               autocomplete="off"
-                                               x-model="gItem.searchQuery"
-                                               @focus="activeGiftDropdownIndex = gIdx; giftHighlightIndex = 0"
-                                               @input="activeGiftDropdownIndex = gIdx; giftHighlightIndex = 0"
-                                               @keydown.down.prevent="
-                                                   activeGiftDropdownIndex = gIdx;
-                                                   const prods = getFilteredPromoProducts(gItem.searchQuery);
-                                                   giftHighlightIndex = Math.min(giftHighlightIndex + 1, prods.length - 1);
-                                                   scrollGiftProdIntoView(gIdx, giftHighlightIndex);
-                                               "
-                                               @keydown.up.prevent="
-                                                   giftHighlightIndex = Math.max(giftHighlightIndex - 1, 0);
-                                                   scrollGiftProdIntoView(gIdx, giftHighlightIndex);
-                                               "
-                                               @keydown.enter.prevent="
-                                                   if (activeGiftDropdownIndex === gIdx) {
-                                                       const prods = getFilteredPromoProducts(gItem.searchQuery);
-                                                       if (prods.length > 0 && prods[giftHighlightIndex]) {
-                                                           selectGiftProductForRow(gItem, prods[giftHighlightIndex]);
+                                        <div class="relative flex items-center">
+                                            <input type="text"
+                                                   :id="'gift-desk-input-' + gIdx"
+                                                   autocomplete="off"
+                                                   autocorrect="off"
+                                                   spellcheck="false"
+                                                   x-model="gItem.searchQuery"
+                                                   @focus="activeGiftDropdownIndex = gIdx; giftHighlightIndex = 0; $event.target.select()"
+                                                   @input="gItem._prodSearching = true; activeGiftDropdownIndex = gIdx; giftHighlightIndex = 0"
+                                                   @keydown.down.prevent="
+                                                       activeGiftDropdownIndex = gIdx;
+                                                       const prods = getFilteredPromoProducts(getRowProductSearchQuery(gItem));
+                                                       giftHighlightIndex = prods.length > 0 ? Math.min(giftHighlightIndex + 1, prods.length - 1) : 0;
+                                                       scrollGiftProdIntoView(gIdx, giftHighlightIndex);
+                                                   "
+                                                   @keydown.up.prevent="
+                                                       giftHighlightIndex = Math.max(giftHighlightIndex - 1, 0);
+                                                       scrollGiftProdIntoView(gIdx, giftHighlightIndex);
+                                                   "
+                                                   @keydown.enter.prevent="
+                                                       if (activeGiftDropdownIndex === gIdx) {
+                                                           const prods = getFilteredPromoProducts(getRowProductSearchQuery(gItem));
+                                                           if (prods.length > 0 && prods[giftHighlightIndex]) {
+                                                               selectGiftProductForRow(gItem, prods[giftHighlightIndex]);
+                                                           }
                                                        }
-                                                   }
-                                               "
-                                               @keydown.escape.prevent="activeGiftDropdownIndex = null"
-                                               placeholder="Tìm mã hoặc tên sản phẩm khuyến mại..."
-                                               :placeholder="isMobileViewport ? 'Tìm mã hoặc tên sản phẩm khuyến mại...' : 'Tìm mã hoặc tên sản phẩm khuyến mại (phím ↑ ↓ Enter)...'"
-                                               class="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl text-sm font-semibold focus:border-emerald-500 focus:outline-none shadow-xs hover:border-slate-400 transition-colors">
-                                        
+                                                   "
+                                                   @keydown.escape.prevent="activeGiftDropdownIndex = null"
+                                                   placeholder="Tìm mã hoặc tên sản phẩm khuyến mại..."
+                                                   :placeholder="isMobileViewport ? 'Tìm mã hoặc tên sản phẩm khuyến mại...' : 'Tìm mã hoặc tên sản phẩm khuyến mại (phím ↑ ↓ Enter)...'"
+                                                   class="w-full h-10 pl-3 pr-8 bg-white border border-slate-300 rounded-xl text-sm font-semibold focus:border-emerald-500 focus:outline-none shadow-xs hover:border-slate-400 transition-colors">
+
+                                            <button type="button"
+                                                    x-show="(gItem.searchQuery || gItem.product_id) && !isReadonly"
+                                                    x-cloak
+                                                    @mousedown.prevent
+                                                    @click.stop="clearGiftProductRow(gItem, gIdx)"
+                                                    class="absolute right-2 text-slate-400 hover:text-rose-500 p-1 rounded-md cursor-pointer transition-colors"
+                                                    title="Xóa để tìm sản phẩm khác">
+                                                <i class="fa-solid fa-xmark text-xs"></i>
+                                            </button>
+                                        </div>
+
                                         <!-- Dropdown gợi ý trên desktop -->
-                                        <div x-show="activeGiftDropdownIndex === gIdx && getFilteredPromoProducts(gItem.searchQuery).length > 0"
+                                        <div x-show="activeGiftDropdownIndex === gIdx"
                                              x-cloak
-                                             class="absolute left-3 top-full mt-1 w-[460px] z-50 bg-white rounded-xl shadow-2xl border border-emerald-200 max-h-56 overflow-y-auto py-1 text-xs">
+                                             class="order-product-dropdown absolute left-3 top-full mt-1 w-[460px] max-w-[90vw] z-[60] bg-white rounded-xl shadow-2xl border border-emerald-200 max-h-56 overflow-y-auto py-1 text-xs">
                                             <template x-if="activeGiftDropdownIndex === gIdx">
                                                 <div>
-                                                    <template x-for="(p, pIdx) in getFilteredPromoProducts(gItem.searchQuery)" :key="'gift-desk-opt-' + gIdx + '-' + p.id">
+                                                    <div class="px-3 py-1 bg-emerald-50/70 text-[10px] font-bold text-emerald-700 uppercase tracking-wider flex items-center justify-between sticky top-0 z-10 border-b border-emerald-100">
+                                                        <span>Sản phẩm khuyến mại (<span x-text="getFilteredPromoProducts(getRowProductSearchQuery(gItem)).length"></span>)</span>
+                                                        <span class="text-emerald-600 font-normal lowercase">dùng phím &uarr; &darr; &bull; Enter chọn</span>
+                                                    </div>
+                                                    <template x-for="(p, pIdx) in getFilteredPromoProducts(getRowProductSearchQuery(gItem))" :key="'gift-desk-opt-' + gIdx + '-' + p.id">
                                                         <div :id="'gift-desk-opt-' + gIdx + '-' + pIdx"
-                                                             @mousedown.prevent="selectGiftProductForRow(gItem, p)"
+                                                             @mousedown.prevent
+                                                             @click="selectGiftProductForRow(gItem, p)"
                                                              @mouseenter="giftHighlightIndex = pIdx"
                                                              class="px-3 py-2 cursor-pointer flex items-center justify-between transition-colors border-b border-slate-50 last:border-0"
                                                              :class="giftHighlightIndex === pIdx ? 'bg-emerald-100 text-emerald-950 font-bold ring-1 ring-emerald-300' : 'hover:bg-slate-50'">
@@ -1727,6 +1793,15 @@
                                                             <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 shrink-0">KM 0đ</span>
                                                         </div>
                                                     </template>
+                                                    <div x-show="getFilteredPromoProducts(getRowProductSearchQuery(gItem)).length === 0" class="px-4 py-4 text-center text-slate-400">
+                                                        <div class="font-bold text-slate-600 text-xs">Không tìm thấy sản phẩm khuyến mại</div>
+                                                        <button type="button"
+                                                                @mousedown.prevent
+                                                                @click.stop="gItem.searchQuery = ''; gItem._prodSearching = true; giftHighlightIndex = 0; $nextTick(() => document.getElementById('gift-desk-input-' + gIdx)?.focus())"
+                                                                class="mt-1.5 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg text-[11px] cursor-pointer transition-colors">
+                                                            Xem tất cả sản phẩm
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </template>
                                         </div>
@@ -1967,20 +2042,51 @@
     </div>
 
     <!-- Pre-load data in JSON scripts to avoid heavy AST compilation in JS -->
-    <script id="orders-products-json" type="application/json">{!! json_encode($products, JSON_UNESCAPED_UNICODE) !!}</script>
-    <script id="orders-dealers-json" type="application/json">{!! json_encode($dealers, JSON_UNESCAPED_UNICODE) !!}</script>
-    <script id="orders-policies-json" type="application/json">{!! json_encode($salesPolicies ?? [], JSON_UNESCAPED_UNICODE) !!}</script>
+    <script id="orders-products-json" type="application/json">{!! json_encode($products, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_INVALID_UTF8_SUBSTITUTE) !!}</script>
+    <script id="orders-dealers-json" type="application/json">{!! json_encode($dealers, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_INVALID_UTF8_SUBSTITUTE) !!}</script>
+    <script id="orders-policies-json" type="application/json">{!! json_encode($salesPolicies ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_INVALID_UTF8_SUBSTITUTE) !!}</script>
 
 </div>
 
 <script>
-// Parse catalog data once and index by ID for O(1) instant lookup
+// Normalize text for Vietnamese accent-insensitive, punctuation- and spacing-tolerant search
+const _normalizeSearchText = (str) => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/đ/g, 'd')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+};
+
+// Parse catalog data once and index by ID + normalized search fields for fast lookup
 const _rawProductsCatalog = JSON.parse(document.getElementById('orders-products-json')?.textContent || '[]');
 const _rawDealersData = JSON.parse(document.getElementById('orders-dealers-json')?.textContent || '[]');
 const _rawSalesPolicies = JSON.parse(document.getElementById('orders-policies-json')?.textContent || '[]');
 const _productsMap = new Map();
+const _productSearchIndex = new Map();
 for (let i = 0; i < _rawProductsCatalog.length; i++) {
-    _productsMap.set(String(_rawProductsCatalog[i].id), _rawProductsCatalog[i]);
+    const p = _rawProductsCatalog[i];
+    _productsMap.set(String(p.id), p);
+    const rawSku = String(p.sku || '').toLowerCase().trim();
+    const rawName = String(p.name || '').toLowerCase().trim();
+    const cleanSku = _normalizeSearchText(p.sku || '');
+    const cleanName = _normalizeSearchText(p.name || '');
+    const clean = `${cleanSku} ${cleanName}`.trim();
+    _productSearchIndex.set(String(p.id), {
+        raw: `${rawSku} ${rawName}`.trim(),
+        rawSku,
+        rawName,
+        cleanSku,
+        cleanName,
+        clean,
+        compactSku: cleanSku.replace(/\s+/g, ''),
+        compactName: cleanName.replace(/\s+/g, ''),
+        compact: clean.replace(/\s+/g, ''),
+    });
 }
 for (let i = 0; i < _rawDealersData.length; i++) {
     Object.freeze(_rawDealersData[i]);
@@ -2154,8 +2260,11 @@ function orderFormApp() {
         formData: {},
         items: [],
         isMobileViewport: typeof window !== 'undefined' ? window.innerWidth <= 768 : false,
+        _initialized: false,
 
         init() {
+            if (this._initialized) return;
+            this._initialized = true;
             window.addEventListener('resize', () => {
                 this.isMobileViewport = window.innerWidth <= 768;
             });
@@ -2243,6 +2352,7 @@ function orderFormApp() {
                     const lineBase = qty * price;
 
                     newItems.push({
+                        _rowKey: 'pos-' + cIt.product_id + '-' + Date.now() + '-' + Math.random(),
                         id: '',
                         itemId: String(cIt.product_id),
                         product_id: cIt.product_id,
@@ -2345,6 +2455,7 @@ function orderFormApp() {
                 },
                 items: [
                     {
+                        _rowKey: 'init-' + Date.now() + '-' + Math.random(),
                         id: '',
                         itemId: '',
                         product_id: '',
@@ -2690,6 +2801,75 @@ function orderFormApp() {
             return Math.max(0, this.getProjectedDebt() - limit);
         },
 
+        getRowProductSearchQuery(item) {
+            if (!item) return '';
+            // Khi vừa mở dropdown trên dòng đã chọn sẵn SP mà chưa gõ tìm mới, hiển thị toàn bộ danh sách để dễ chọn SP khác
+            if (item.product_id && !item._prodSearching && (!item.searchQuery || item.searchQuery === item.name || item.searchQuery === (`[${item.sku || ''}] ${item.name || ''}`).trim())) {
+                return '';
+            }
+            return item.searchQuery || '';
+        },
+
+        filterProductListByQuery(list, query) {
+            const source = Array.isArray(list) ? list : [];
+            if (!query || !String(query).trim()) {
+                return source.slice(0, 30);
+            }
+
+            const rawQ = String(query).toLowerCase().trim();
+            const cleanQ = _normalizeSearchText(rawQ);
+            const compactQ = cleanQ.replace(/\s+/g, '');
+            const tokens = cleanQ ? cleanQ.split(' ').filter(Boolean) : [];
+            const matches = [];
+
+            for (let i = 0; i < source.length; i++) {
+                const p = source[i];
+                let idx = _productSearchIndex.get(String(p.id));
+                if (!idx) {
+                    const cleanSku = _normalizeSearchText(p.sku || '');
+                    const cleanName = _normalizeSearchText(p.name || '');
+                    const clean = `${cleanSku} ${cleanName}`.trim();
+                    idx = {
+                        raw: `${String(p.sku || '').toLowerCase()} ${String(p.name || '').toLowerCase()}`.trim(),
+                        rawSku: String(p.sku || '').toLowerCase().trim(),
+                        rawName: String(p.name || '').toLowerCase().trim(),
+                        cleanSku,
+                        cleanName,
+                        clean,
+                        compactSku: cleanSku.replace(/\s+/g, ''),
+                        compactName: cleanName.replace(/\s+/g, ''),
+                        compact: clean.replace(/\s+/g, ''),
+                    };
+                }
+
+                let score = 0;
+                if (!cleanQ && !compactQ) {
+                    if (idx.raw.includes(rawQ)) score = 5;
+                } else if (idx.rawSku === rawQ || idx.cleanSku === cleanQ || (compactQ && idx.compactSku === compactQ)) {
+                    score = 1;
+                } else if (idx.rawSku.startsWith(rawQ) || idx.cleanSku.startsWith(cleanQ) || (compactQ && idx.compactSku.startsWith(compactQ))) {
+                    score = 2;
+                } else if (idx.cleanSku.includes(cleanQ) || (compactQ && idx.compactSku.includes(compactQ)) || idx.cleanName === cleanQ) {
+                    score = 3;
+                } else if (idx.rawName.includes(rawQ) || idx.cleanName.startsWith(cleanQ)) {
+                    score = 4;
+                } else if (idx.cleanName.includes(cleanQ) || idx.clean.includes(cleanQ)) {
+                    score = 5;
+                } else if (compactQ.length >= 2 && idx.compact.includes(compactQ)) {
+                    score = 6;
+                } else if (tokens.length > 1 && tokens.every(t => idx.clean.includes(t) || idx.compact.includes(t))) {
+                    score = 7;
+                }
+
+                if (score > 0) {
+                    matches.push({ p, score });
+                }
+            }
+
+            matches.sort((a, b) => a.score - b.score);
+            return matches.slice(0, 30).map(m => m.p);
+        },
+
         getFilteredProducts(query, currentIndex = -1) {
             // Lấy danh sách ID sản phẩm đã được chọn ở các dòng khác trong đơn hàng để không gợi ý trùng lặp
             const selectedProductIds = new Set();
@@ -2700,16 +2880,7 @@ function orderFormApp() {
             });
 
             const list = (this.productsCatalog || []).filter(p => !selectedProductIds.has(String(p.id)));
-
-            if (!query || !query.trim()) {
-                return list.slice(0, 30);
-            }
-            const q = query.toLowerCase().trim();
-            return list.filter(p => {
-                const sku = (p.sku || '').toLowerCase();
-                const name = (p.name || '').toLowerCase();
-                return sku.includes(q) || name.includes(q);
-            }).slice(0, 30);
+            return this.filterProductListByQuery(list, query);
         },
 
         getProduct(productId) {
@@ -2987,6 +3158,7 @@ function orderFormApp() {
             item.sku = p.sku;
             item.name = p.name;
             item.searchQuery = p.name;
+            item._prodSearching = false;
             item.unit = p.unit || 'cái';
 
             // Giá niêm yết / giá bán gốc (lấy giá bán p.price, không lấy giá vốn)
@@ -3016,28 +3188,73 @@ function orderFormApp() {
             this.updateLineTotal(index);
         },
 
+        clearProductRow(index, salesIndex = null) {
+            const item = this.items[index];
+            if (!item) return;
+
+            item.product_id = '';
+            item.itemId = '';
+            item.sku = '';
+            item.name = '';
+            item.searchQuery = '';
+            item._prodSearching = true;
+            item.unit = '';
+            item.unitPrice = 0;
+            item.originalPrice = 0;
+            item.costPrice = 0;
+            item._autoPromoDiscount = false;
+            item.selected_policy_id = '';
+            if (!item._manualDiscount) {
+                item.discount_percent = 0;
+                item.discount_amount = 0;
+            }
+            item.vat_percent = 0;
+            item.vat_amount = 0;
+            item.amount = 0;
+
+            const targetSalesIdx = salesIndex !== null ? salesIndex : this.getSalesItems().indexOf(item);
+            if (targetSalesIdx >= 0) {
+                this.activeProdDropdownIndex = targetSalesIdx;
+                this.prodHighlightIndex = 0;
+            }
+            this.updateLineTotal(index);
+            this.$nextTick(() => {
+                const input = targetSalesIdx >= 0 ? document.getElementById('row-product-input-' + targetSalesIdx) : null;
+                if (input) input.focus();
+            });
+        },
+
         onItemSearch(index, val) {
             if (!val) return;
             const item = this.items[index];
             if (!item) return;
 
-            const lower = val.trim().toLowerCase();
-            let matched = this.productsCatalog.find(p => 
-                val.includes(`[${p.sku}]`) ||
-                p.sku.toLowerCase() === lower || 
-                p.name.toLowerCase() === lower ||
-                `[${p.sku}] ${p.name}`.toLowerCase() === lower
-            );
+            const raw = val.trim().toLowerCase();
+            const clean = _normalizeSearchText(val);
+            const compact = clean.replace(/\s+/g, '');
 
-            if (!matched && lower.length >= 3) {
-                matched = this.productsCatalog.find(p => 
-                    p.sku.toLowerCase().includes(lower) || 
-                    p.name.toLowerCase().includes(lower)
-                );
+            let matched = this.productsCatalog.find(p => {
+                const idx = _productSearchIndex.get(String(p.id));
+                const pSkuLower = (p.sku || '').toLowerCase();
+                const pNameLower = (p.name || '').toLowerCase();
+                if (val.includes(`[${p.sku}]`) || pSkuLower === raw || pNameLower === raw || `[${p.sku}] ${p.name}`.toLowerCase() === raw) {
+                    return true;
+                }
+                if (idx && clean && (idx.cleanSku === clean || idx.cleanName === clean || (compact && idx.compactSku === compact))) {
+                    return true;
+                }
+                return false;
+            });
+
+            if (!matched && clean.length >= 3) {
+                matched = this.productsCatalog.find(p => {
+                    const idx = _productSearchIndex.get(String(p.id));
+                    return idx && (idx.cleanSku.includes(clean) || idx.cleanName.includes(clean) || (compact.length >= 3 && idx.compact.includes(compact)));
+                });
             }
 
             if (matched) {
-                const isAlreadySelected = (this.items || []).some((it, idx) => idx !== index && String(it.product_id) === String(matched.id));
+                const isAlreadySelected = (this.items || []).some((it, idx) => idx !== index && !it.isPromotionalGift && String(it.product_id) === String(matched.id));
                 if (!isAlreadySelected) {
                     this.selectProductForRow(index, matched);
                 }
@@ -4096,14 +4313,7 @@ function orderFormApp() {
         },
 
         getFilteredPromoProducts(query) {
-            if (!query || query.trim() === '') {
-                return this.productsCatalog ? this.productsCatalog.slice(0, 30) : [];
-            }
-            const q = query.toLowerCase().trim();
-            return (this.productsCatalog || []).filter(p => 
-                (p.name && p.name.toLowerCase().includes(q)) || 
-                (p.sku && p.sku.toLowerCase().includes(q))
-            ).slice(0, 30);
+            return this.filterProductListByQuery(this.productsCatalog || [], query);
         },
 
         addNewGiftRow() {
@@ -4152,6 +4362,16 @@ function orderFormApp() {
             });
         },
 
+        getVisibleGiftElement(mobId, deskId) {
+            const mobEl = document.getElementById(mobId);
+            const deskEl = document.getElementById(deskId);
+            const primary = this.isMobileViewport ? mobEl : deskEl;
+            const fallback = this.isMobileViewport ? deskEl : mobEl;
+            if (primary && primary.offsetParent !== null) return primary;
+            if (fallback && fallback.offsetParent !== null) return fallback;
+            return primary || fallback || null;
+        },
+
         selectGiftProductForRow(item, p) {
             if (!p || !item) return;
             item.product_id = p.id;
@@ -4159,6 +4379,7 @@ function orderFormApp() {
             item.sku = p.sku;
             item.name = p.name;
             item.searchQuery = p.name;
+            item._prodSearching = false;
             item.unit = p.unit || 'cái';
             item.unitPrice = 0;
             const sellPrice = Number(p.price) > 0 ? Number(p.price) : (Number(p.base_price) || Number(p.cost_price) || 0);
@@ -4174,7 +4395,7 @@ function orderFormApp() {
             this.calculateTotals();
             this.$nextTick(() => {
                 const giftIdx = this.getGiftItems().indexOf(item);
-                const qtyInput = document.getElementById('gift-qty-input-' + giftIdx) || document.getElementById('gift-desk-qty-' + giftIdx);
+                const qtyInput = this.getVisibleGiftElement('gift-qty-input-' + giftIdx, 'gift-desk-qty-' + giftIdx);
                 if (qtyInput) {
                     qtyInput.focus();
                     qtyInput.select();
@@ -4182,9 +4403,33 @@ function orderFormApp() {
             });
         },
 
+        clearGiftProductRow(item, gIdx = null) {
+            if (!item) return;
+            item.product_id = '';
+            item.itemId = '';
+            item.sku = '';
+            item.name = '';
+            item.searchQuery = '';
+            item._prodSearching = true;
+            item.unit = '';
+            item.originalPrice = 0;
+            item.costPrice = 0;
+            const giftIdx = gIdx !== null ? gIdx : this.getGiftItems().indexOf(item);
+            if (giftIdx >= 0) {
+                this.activeGiftDropdownIndex = giftIdx;
+                this.giftHighlightIndex = 0;
+            }
+            this.calculateTotals();
+            this.$nextTick(() => {
+                if (giftIdx < 0) return;
+                const input = this.getVisibleGiftElement('gift-product-input-' + giftIdx, 'gift-desk-input-' + giftIdx);
+                if (input) input.focus();
+            });
+        },
+
         scrollGiftProdIntoView(gIdx, pIdx) {
             this.$nextTick(() => {
-                const el = document.getElementById('gift-opt-' + gIdx + '-' + pIdx) || document.getElementById('gift-desk-opt-' + gIdx + '-' + pIdx);
+                const el = this.getVisibleGiftElement('gift-opt-' + gIdx + '-' + pIdx, 'gift-desk-opt-' + gIdx + '-' + pIdx);
                 if (el) el.scrollIntoView({ block: 'nearest' });
             });
         },
@@ -4278,6 +4523,7 @@ function orderFormApp() {
             if (salesCount <= 1 && !this.items[index]?.isPromotionalGift) {
                 // Keep 1 clean row if last is cleared
                 this.items[index] = {
+                    _rowKey: 'item-' + Date.now() + '-' + Math.random(),
                     id: '',
                     itemId: '',
                     product_id: '',
