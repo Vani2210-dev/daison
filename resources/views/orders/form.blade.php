@@ -3985,11 +3985,7 @@ function orderFormApp() {
 
                 formatPolicyOptionLabel(policy) {
                     if (!policy) return '';
-                    const baseItems = (this.items || []).filter(it => !it.isPromotionalGift && it.checked !== false && it.product_id);
-                    const pool = policy.stacking_mode === 'stackable_order' ? baseItems : baseItems.filter(it => !it._claimedByPolicyId);
-                    const ev = this.evaluatePolicyBenefitsOnItems(policy, pool);
-                    const prefix = ev.eligible ? `[Đạt${ev.benefitText ? ': ' + ev.benefitText : ''}]` : `[${ev.reason}]`;
-                    return `${prefix} ${policy.name}`;
+                    return policy.name || policy.code || '';
                 },
         
                 getPolicyEvaluation(policy) {
@@ -4041,10 +4037,7 @@ function orderFormApp() {
                 },
         
                 formatItemPolicyOptionLabel(policy, item) {
-                    if (!policy) return '';
-                    const ev = this.getItemPolicyEvaluation(item, policy);
-                    const prefix = ev.eligible ? `[Đạt${ev.benefitText ? ': ' + ev.benefitText : ''}]` : `[${ev.reason}]`;
-                    return `${prefix} ${policy.name}`;
+                    return this.formatPolicyOptionLabel(policy);
                 },
         
                 getApplicableOrderPoliciesForSlot(slotIndex) {
