@@ -2070,7 +2070,14 @@ class OrderController extends Controller
         }
 
         $dealer = $order->dealer;
-        $customerCode = $dealer?->code ?: ($order->dealer_id ? sprintf('%06d', $order->dealer_id) : '001120');
+        if (!$dealer && $order->customer_name) {
+            $dealer = \App\Models\Dealer::where('name', $order->customer_name)->first();
+        }
+        $customerCode = $dealer?->code;
+        if (!$customerCode && $order->dealer_id) {
+            $customerCode = is_numeric($order->dealer_id) ? sprintf('%06d', (int)$order->dealer_id) : (string)$order->dealer_id;
+        }
+        $customerCode = (string)($customerCode ?: '');
         $customerName = $dealer?->name ?: ($order->customer_name ?: 'Quý Khách Hàng');
         $customerAddress = $order->customer_address ?: ($dealer?->address ?: '');
         $customerPhone = $order->customer_phone ?: ($dealer?->phone ?: '');

@@ -5354,6 +5354,7 @@ function orderFormApp() {
             const o = {
                 order_code: this.formData.order_code || serverData?.order_code || (this.orderId ? ('DH-' + this.orderId) : 'CHƯA_LƯU'),
                 created_date: serverData?.created_date || new Date().toLocaleDateString('vi-VN'),
+                customer_code: serverData?.customer_code || this.formData.customer_code || (this.selectedDealer?.code) || '',
                 customer_display: this.formData.customer_name || serverData?.customer_display || 'Khách lẻ',
                 customer_name: this.formData.customer_name || serverData?.customer_name || 'Khách lẻ',
                 customer_address: this.formData.customer_address || serverData?.customer_address || '',
@@ -5740,6 +5741,10 @@ function orderFormApp() {
                         <tr>
                             <td style="width: 60%; vertical-align: top; border: none; padding: 0 12px 0 0;">
                                 <table style="width: 100%; border: none; border-collapse: collapse;">
+                                    <tr>
+                                        <td style="width: 120px; border: none; padding: 2px 0; font-weight: bold; color: #333; white-space: nowrap;">Mã khách hàng:</td>
+                                        <td style="border: none; padding: 2px 0; font-size: 13px;"><strong>${o.customer_code || '---'}</strong></td>
+                                    </tr>
                                     <tr>
                                         <td style="width: 120px; border: none; padding: 2px 0; font-weight: bold; color: #333; white-space: nowrap;">Khách hàng / Đại lý:</td>
                                         <td style="border: none; padding: 2px 0; font-size: 13px;"><strong style="text-transform: uppercase;">${(o.customer_name || o.customer_display || '---').replace(/^[A-Za-z0-9_-]+\s*-\s*/, '')}</strong></td>

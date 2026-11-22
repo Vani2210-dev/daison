@@ -397,10 +397,12 @@
 
     $allOrderIds = $orders->pluck('id')->map(fn($id) => (string)$id);
     $tableOrdersData = $orders->map(function($o) {
+        $custCode = $o->dealer?->code ?: ($o->dealer_id ? (is_numeric($o->dealer_id) ? sprintf('%06d', (int)$o->dealer_id) : (string)$o->dealer_id) : '');
         return [
             'id' => (string)$o->id,
             'code' => $o->order_code,
             'date' => $o->created_at ? $o->created_at->format('d/m/Y') : '',
+            'customer_code' => $custCode,
             'customer' => $o->dealer?->name ?? $o->customer_name ?? '',
             'phone' => $o->customer_phone ?: ($o->dealer?->phone ?: ''),
             'address' => $o->customer_address ?: ($o->dealer?->address ?: ''),
@@ -1272,7 +1274,11 @@
                             <span class="font-bold text-slate-900 whitespace-nowrap">Ngày lập:</span>
                             <span x-text="printOrderData?.created_date"></span>
                         </div>
-                        <div class="sm:col-span-6 flex items-baseline gap-1.5">
+                        <div class="sm:col-span-2 flex items-baseline gap-1.5">
+                            <span class="font-bold text-slate-900 whitespace-nowrap">Mã KH:</span>
+                            <span class="font-bold text-slate-900 font-mono" x-text="printOrderData?.customer_code || '---'"></span>
+                        </div>
+                        <div class="sm:col-span-4 flex items-baseline gap-1.5">
                             <span class="font-bold text-slate-900 whitespace-nowrap">Khách hàng:</span>
                             <span class="truncate font-semibold text-slate-900" x-text="(printOrderData?.customer_name || printOrderData?.customer_display || '').replace(/^[A-Za-z0-9_-]+\s*-\s*/, '')"></span>
                         </div>
@@ -1700,6 +1706,7 @@
                                     <tr class="bg-slate-50 text-slate-700 border-b border-slate-200 font-bold text-center">
                                         <th class="py-1.5 px-2 border border-slate-200 w-8">TT</th>
                                         <th class="py-1.5 px-2 border border-slate-200 text-left w-24">Mã đơn</th>
+                                        <th class="py-1.5 px-2 border border-slate-200 text-left w-20">Mã KH</th>
                                         <th class="py-1.5 px-2 border border-slate-200 text-left">Khách hàng</th>
                                         <th class="py-1.5 px-2 border border-slate-200 text-left w-24">Điện thoại</th>
                                         <th class="py-1.5 px-2 border border-slate-200 text-left">Địa chỉ giao hàng</th>
@@ -1713,6 +1720,7 @@
                                         <tr class="hover:bg-slate-50 border-b border-slate-200">
                                             <td class="py-1 px-2 border border-slate-200 text-center" x-text="idx + 1"></td>
                                             <td class="py-1 px-2 border border-slate-200 font-mono font-bold text-sky-700" x-text="o.order_code"></td>
+                                            <td class="py-1 px-2 border border-slate-200 font-mono font-bold text-slate-700 text-[10.5px]" x-text="o.customer_code || '---'"></td>
                                             <td class="py-1 px-2 border border-slate-200 font-semibold" x-text="(o.customer_name || '').replace(/^[A-Za-z0-9_-]+\s*-\s*/, '')"></td>
                                             <td class="py-1 px-2 border border-slate-200" x-text="o.customer_phone || ''"></td>
                                             <td class="py-1 px-2 border border-slate-200 text-[10.5px]" x-text="o.customer_address || ''"></td>
@@ -1744,6 +1752,7 @@
                                 <tr class="bg-slate-100 font-bold text-slate-800 text-center border-b border-slate-300">
                                     <th class="border border-slate-300 py-2 px-2 w-10 text-center">TT</th>
                                     <th class="border border-slate-300 py-2 px-2 w-28 text-left">Mã đơn hàng</th>
+                                    <th class="border border-slate-300 py-2 px-2 w-20 text-left">Mã KH</th>
                                     <th class="border border-slate-300 py-2 px-2 text-left">Khách hàng</th>
                                     <th class="border border-slate-300 py-2 px-2 w-28 text-left">Điện thoại</th>
                                     <th class="border border-slate-300 py-2 px-2 text-left">Kho xuất</th>
@@ -1757,6 +1766,7 @@
                                     <tr class="bg-white hover:bg-slate-50 transition-colors border-b border-slate-300 text-slate-800">
                                         <td class="border border-slate-300 py-1.5 px-2 text-center font-medium" x-text="idx + 1"></td>
                                         <td class="border border-slate-300 py-1.5 px-2 text-left font-mono font-bold text-sky-700" x-text="o.order_code"></td>
+                                        <td class="border border-slate-300 py-1.5 px-2 text-left font-mono font-bold text-slate-700 text-xs" x-text="o.customer_code || '---'"></td>
                                         <td class="border border-slate-300 py-1.5 px-2 text-left font-semibold">
                                             <span x-text="(o.customer_name || '').replace(/^[A-Za-z0-9_-]+\s*-\s*/, '')"></span>
                                         </td>
@@ -2368,16 +2378,16 @@ function ordersIndexApp() {
             csv += "BẢNG KÊ DANH SÁCH ĐƠN HÀNG XUẤT KHO\n";
             csv += "Thời gian xuất," + new Date().toLocaleString('vi-VN') + "\n";
             csv += "Tổng số chứng từ," + list.length + "\n\n";
-            csv += "STT,Mã đơn hàng,Ngày tạo,Khách hàng,Số điện thoại,Địa chỉ nhận hàng,Kho xuất,Thành tiền (đ),Người lên đơn,Trạng thái\n";
+            csv += "STT,Mã đơn hàng,Ngày tạo,Mã khách hàng,Khách hàng,Số điện thoại,Địa chỉ nhận hàng,Kho xuất,Thành tiền (đ),Người lên đơn,Trạng thái\n";
 
             let totalAmt = 0;
             list.forEach((o, idx) => {
                 const amt = Number(o.total || 0);
                 totalAmt += amt;
-                csv += `${idx + 1},"${o.code}","${o.date}","${(o.customer || '').replace(/"/g, '""')}","${o.phone}","${(o.address || '').replace(/"/g, '""')}","${(o.warehouse || '').replace(/"/g, '""')}",${amt},"${(o.creator || '').replace(/"/g, '""')}","${o.status}"\n`;
+                csv += `${idx + 1},"${o.code}","${o.date}","${(o.customer_code || '').replace(/"/g, '""')}","${(o.customer || '').replace(/"/g, '""')}","${o.phone}","${(o.address || '').replace(/"/g, '""')}","${(o.warehouse || '').replace(/"/g, '""')}",${amt},"${(o.creator || '').replace(/"/g, '""')}","${o.status}"\n`;
             });
 
-            csv += `\nTổng cộng,,,,,,,${totalAmt},,\n`;
+            csv += `\nTổng cộng,,,,,,,,${totalAmt},,\n`;
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
@@ -2588,12 +2598,13 @@ function ordersIndexApp() {
             const csvContent = "\uFEFF" + 
                 "THÔNG TIN CHỨNG TỪ\n" +
                 "Mã đơn hàng," + (order.code || '') + "\n" +
-                "Khách hàng," + (order.customer || '') + "\n" +
+                "Mã khách hàng,\"" + (order.customer_code || '') + "\"\n" +
+                "Khách hàng,\"" + (order.customer || '') + "\"\n" +
                 "Số điện thoại," + (order.phone || '') + "\n" +
-                "Địa chỉ giao hàng," + (order.address || '') + "\n" +
+                "Địa chỉ giao hàng,\"" + (order.address || '') + "\"\n" +
                 "Ngày lập," + (order.date || '') + "\n" +
-                "Kho xuất," + (order.warehouse || '') + "\n" +
-                "Trạng thái," + (order.status || '') + "\n" +
+                "Kho xuất,\"" + (order.warehouse || '') + "\"\n" +
+                "Trạng thái,\"" + (order.status || '') + "\"\n" +
                 "Tổng tiền," + (order.total || 0) + "\n";
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -3031,6 +3042,10 @@ function ordersIndexApp() {
                             <td style="width: 60%; vertical-align: top; border: none; padding: 0 12px 0 0;">
                                 <table style="width: 100%; border: none; border-collapse: collapse;">
                                     <tr>
+                                        <td style="width: 120px; border: none; padding: 2px 0; font-weight: bold; color: #333; white-space: nowrap;">Mã khách hàng:</td>
+                                        <td style="border: none; padding: 2px 0; font-size: 13px;"><strong>${o.customer_code || '---'}</strong></td>
+                                    </tr>
+                                    <tr>
                                         <td style="width: 120px; border: none; padding: 2px 0; font-weight: bold; color: #333; white-space: nowrap;">Khách hàng / Đại lý:</td>
                                         <td style="border: none; padding: 2px 0; font-size: 13px;"><strong style="text-transform: uppercase;">${(o.customer_name || o.customer_display || '---').replace(/^[A-Za-z0-9_-]+\s*-\s*/, '')}</strong></td>
                                     </tr>
@@ -3344,6 +3359,7 @@ function ordersIndexApp() {
                     <tr>
                         <td style="text-align:center;padding:4px 5px;border:1px solid #ccc;">${idx + 1}</td>
                         <td style="font-family:monospace;font-weight:bold;padding:4px 5px;border:1px solid #ccc;">${o.order_code}</td>
+                        <td style="font-family:monospace;font-weight:bold;padding:4px 5px;border:1px solid #ccc;color:#333;">${o.customer_code || '---'}</td>
                         <td style="padding:4px 5px;border:1px solid #ccc;font-weight:600;">${(o.customer_name || '').replace(/^[A-Za-z0-9_-]+\s*-\s*/, '')}</td>
                         <td style="padding:4px 5px;border:1px solid #ccc;">${o.customer_phone || ''}</td>
                         <td style="padding:4px 5px;border:1px solid #ccc;font-size:11px;">${o.customer_address || ''}</td>
@@ -3469,6 +3485,7 @@ function ordersIndexApp() {
                             <tr style="background-color: #f1f5f9;">
                                 <th style="border: 1px solid #ccc; padding: 4px; width: 30px; text-align: center;">TT</th>
                                 <th style="border: 1px solid #ccc; padding: 4px; width: 85px; text-align: left;">Mã đơn</th>
+                                <th style="border: 1px solid #ccc; padding: 4px; width: 75px; text-align: left;">Mã KH</th>
                                 <th style="border: 1px solid #ccc; padding: 4px; text-align: left;">Khách hàng</th>
                                 <th style="border: 1px solid #ccc; padding: 4px; width: 85px;">Điện thoại</th>
                                 <th style="border: 1px solid #ccc; padding: 4px; text-align: left;">Địa chỉ giao</th>
@@ -3542,9 +3559,9 @@ function ordersIndexApp() {
             csv += `Bằng chữ,"${(c.total_amount_words || '').replace(/"/g, '""')}"\n\n`;
 
             csv += "II. DANH SÁCH CÁC ĐƠN HÀNG ĐƯỢC GỘP\n";
-            csv += "STT,Mã đơn hàng,Ngày lập,Khách hàng,Số điện thoại,Địa chỉ nhận hàng,Kho xuất,Số lượng SP,Thành tiền (đ),Ghi chú\n";
+            csv += "STT,Mã đơn hàng,Ngày lập,Mã khách hàng,Khách hàng,Số điện thoại,Địa chỉ nhận hàng,Kho xuất,Số lượng SP,Thành tiền (đ),Ghi chú\n";
             (c.order_list || []).forEach((o, idx) => {
-                csv += `${idx + 1},"${o.order_code}","${o.created_date}","${(o.customer_name || '').replace(/"/g, '""')}","${o.customer_phone || ''}","${(o.customer_address || '').replace(/"/g, '""')}","${(o.warehouse || '').replace(/"/g, '""')}",${o.total_quantity},${o.final_total},"${(o.notes || '').replace(/"/g, '""')}"\n`;
+                csv += `${idx + 1},"${o.order_code}","${o.created_date}","${(o.customer_code || '').replace(/"/g, '""')}","${(o.customer_name || '').replace(/"/g, '""')}","${o.customer_phone || ''}","${(o.customer_address || '').replace(/"/g, '""')}","${(o.warehouse || '').replace(/"/g, '""')}",${o.total_quantity},${o.final_total},"${(o.notes || '').replace(/"/g, '""')}"\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -3590,6 +3607,7 @@ function ordersIndexApp() {
             csvContent += "THÔNG TIN ĐƠN HÀNG\n";
             csvContent += "Số hóa đơn," + (o.order_code || '') + "\n";
             csvContent += "Ngày lập," + (o.created_date || '') + "\n";
+            csvContent += "Mã khách hàng,\"" + ((o.customer_code || '').replace(/"/g, '""')) + "\"\n";
             csvContent += "Khách hàng,\"" + ((o.customer_name || o.customer_display || '').replace(/^[A-Za-z0-9_-]+\s*-\s*/, '')).replace(/"/g, '""') + "\"\n";
             csvContent += "Kho xuất,\"" + (o.warehouse || '').replace(/"/g, '""') + "\"\n";
             csvContent += "Nhân viên bán hàng,\"" + (o.sales_rep_name || o.creator_name || '').replace(/"/g, '""') + "\"\n";
