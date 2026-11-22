@@ -1558,18 +1558,6 @@
                             <span x-show="getSalesItemsWithProduct().length > 0">Chưa có chính sách ưu đãi nào đạt ngưỡng cho các sản phẩm hiện tại.</span>
                         </div>
                     </template>
-
-                    <!-- Gợi ý chính sách sắp đạt (Up-sell cho Sale) -->
-                    <template x-if="getUpcomingPolicyHints().length > 0">
-                        <div class="mt-2 flex flex-wrap gap-1.5">
-                            <template x-for="hint in getUpcomingPolicyHints()" :key="hint.policyId">
-                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">
-                                    <i class="fa-solid fa-lightbulb text-amber-500"></i>
-                                    <span x-text="hint.text"></span>
-                                </span>
-                            </template>
-                        </div>
-                    </template>
                 </div>
             </div>
 
@@ -3590,31 +3578,6 @@ function orderFormApp() {
                 getPolicyNextTierHint(policy) {
                     if (!policy) return '';
                     return this.getPolicyEvaluation(policy).nextTierHint || '';
-                },
-
-                getUpcomingPolicyHints() {
-                    const salesItems = this.getSalesItemsWithProduct();
-                    if (salesItems.length === 0) return [];
-
-                    const selectedIds = new Set((this.formData.sales_policy_ids || []).map(id => String(id)));
-                    const activeConflicts = this.getActiveConflictGroups();
-                    const hints = [];
-
-                    for (const p of (this.salesPoliciesCatalog || [])) {
-                        if (!p || selectedIds.has(String(p.id))) continue;
-                        if (!this.isCustomerEligibleForPolicy(p)) continue;
-                        if (p.conflict_group && activeConflicts.has(String(p.conflict_group).trim())) continue;
-
-                        const matching = salesItems.filter(it => !it._claimedByPolicyId && this.isProductInPolicy(p, it.product_id));
-                        if (matching.length === 0) continue;
-
-                        const ev = this.evaluatePolicyBenefitsOnItems(p, salesItems);
-                        if (!ev.eligible && ev.upsellHint) {
-                            hints.push({ policyId: p.id, text: `${p.code || p.name}: ${ev.upsellHint}` });
-                            if (hints.length >= 3) break;
-                        }
-                    }
-                    return hints;
                 },
 
                 addPolicyById(policyId) {
