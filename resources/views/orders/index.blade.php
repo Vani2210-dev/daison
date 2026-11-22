@@ -3205,11 +3205,11 @@ function ordersIndexApp() {
                                         <th style="text-align: left; padding-left: 5px;">Tên sản phẩm</th>
                                         <th style="width: 38px;">ĐVT</th>
                                         <th style="width: 35px;">SL</th>
-                                        <th style="width: 68px; white-space: nowrap;">Đơn giá</th>
+                                        <th style="width: 72px; white-space: nowrap;">Đơn giá<br><span style="font-size:9.5px;font-weight:normal;">(chưa VAT)</span></th>
                                         <th style="width: 46px; white-space: nowrap;">C.khấu</th>
                                         <th style="width: 66px; white-space: nowrap;">Tiền CK</th>
-                                        <th style="width: 76px; white-space: nowrap;">Tiền hàng</th>
-                                        <th style="width: 42px; white-space: nowrap;">% VAT</th>
+                                        <th style="width: 76px; white-space: nowrap;">Tiền chưa VAT</th>
+                                        <th style="width: 42px; white-space: nowrap;">Thuế</th>
                                         <th style="width: 68px; white-space: nowrap;">Tiền VAT</th>
                                         <th style="width: 82px; white-space: nowrap;">Tổng tiền</th>
                                     </tr>
@@ -3609,9 +3609,9 @@ function ordersIndexApp() {
                                     <th style="width: 40px;">SL Bán</th>
                                     <th style="width: 40px;">SL Tặng</th>
                                     <th style="width: 48px;">Tổng</th>
-                                    <th style="width: 70px; white-space: nowrap;">Đơn giá</th>
-                                    <th style="width: 78px; white-space: nowrap;">Tiền hàng</th>
-                                    <th style="width: 42px; white-space: nowrap;">% VAT</th>
+                                    <th style="width: 72px; white-space: nowrap;">Đơn giá<br><span style="font-size:9.5px;font-weight:normal;">(chưa VAT)</span></th>
+                                    <th style="width: 78px; white-space: nowrap;">Tiền chưa VAT</th>
+                                    <th style="width: 42px; white-space: nowrap;">Thuế</th>
                                     <th style="width: 68px; white-space: nowrap;">Tiền VAT</th>
                                     <th style="width: 84px; white-space: nowrap;">Tổng tiền</th>
                                 </tr>
@@ -3713,33 +3713,44 @@ function ordersIndexApp() {
             }
             const c = this.bulkPrintData.consolidated;
             let csv = "\uFEFF"; // UTF-8 BOM
-            csv += "PHIẾU GỘP TỔNG HỢP SẢN PHẨM\n";
-            csv += `Mã phiếu gộp,"${c.batch_code}"\n`;
-            csv += `Thời gian xuất,"${c.created_date}"\n`;
-            csv += `Kho xuất,"${(c.warehouse_display || '').replace(/"/g, '""')}"\n`;
-            csv += `Tổng số đơn gộp,${c.total_orders}\n`;
-            csv += `Mã các đơn,"${(c.order_codes_display || '').replace(/"/g, '""')}"\n\n`;
+
+            const escStr = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+            const escFormulaText = (val) => (val !== undefined && val !== null && String(val).trim() !== '') ? `="${String(val).replace(/"/g, '""')}"` : '""';
+
+            csv += "HỆ THỐNG PHÂN PHỐI ĐẠI SƠN\n";
+            csv += "Địa chỉ: Xóm 2, Xã Nam Giang, Huyện Nam Đàn, Tỉnh Nghệ An | Hotline: 0917.927.888\n\n";
+
+            csv += `,,${escStr("PHIẾU GỘP TỔNG HỢP SẢN PHẨM KIÊM BẢNG KÊ")}\n`;
+            csv += `,,${escStr(`Mã phiếu: ${c.batch_code || ''} - Ngày lập: ${c.created_date || ''}`)}\n\n`;
+
+            csv += `Mã phiếu gộp:,${escFormulaText(c.batch_code)},,,,,Kho xuất:,${escStr(c.warehouse_display || '')}\n`;
+            csv += `Thời gian xuất:,${escStr(c.created_date || '')},,,,,Tổng số đơn gộp:,${c.total_orders} đơn\n`;
+            csv += `Mã các đơn hàng:,${escStr(c.order_codes_display || '')},,,,,\n\n`;
 
             csv += "I. BẢNG TỔNG HỢP SẢN PHẨM\n";
             csv += "STT,Mã sản phẩm,Tên sản phẩm,Tên theo HĐ,ĐVT,SL Bán,SL Tặng,Tổng SL Xuất,Đơn giá (đ),Thành tiền (đ),Chi tiết phân bổ theo đơn hàng\n";
 
             (c.products || []).forEach((p, idx) => {
-                csv += `${idx + 1},"${p.sku || ''}","${(p.name || '').replace(/"/g, '""')}","${(p.tax_name || '').replace(/"/g, '""')}","${p.unit || ''}",${p.sold_quantity},${p.gift_quantity},${p.total_quantity},${p.unit_price},${p.total_amount},"${(p.allocation_text || '').replace(/"/g, '""')}"\n`;
+                csv += `${idx + 1},${escFormulaText(p.sku)},${escStr(p.name)},${escStr(p.tax_name)},${escStr(p.unit)},${p.sold_quantity},${p.gift_quantity},${p.total_quantity},${p.unit_price},${p.total_amount},${escStr(p.allocation_text)}\n`;
             });
 
             csv += `Tổng cộng,,,,${c.total_sold_quantity},${c.total_gift_quantity},${c.total_quantity},,${c.total_amount},\n`;
-            csv += `Bằng chữ,"${(c.total_amount_words || '').replace(/"/g, '""')}"\n\n`;
+            csv += `\nBằng chữ,${escStr(c.total_amount_words)}\n\n`;
 
             csv += "II. DANH SÁCH CÁC ĐƠN HÀNG ĐƯỢC GỘP\n";
             csv += "STT,Mã đơn hàng,Ngày lập,Mã khách hàng,Khách hàng,Số điện thoại,Địa chỉ nhận hàng,Kho xuất,Số lượng SP,Thành tiền (đ),Ghi chú\n";
             (c.order_list || []).forEach((o, idx) => {
-                csv += `${idx + 1},"${o.order_code}","${o.created_date}","${(o.customer_code || '').replace(/"/g, '""')}","${(o.customer_name || '').replace(/"/g, '""')}","${o.customer_phone || ''}","${(o.customer_address || '').replace(/"/g, '""')}","${(o.warehouse || '').replace(/"/g, '""')}",${o.total_quantity},${o.final_total},"${(o.notes || '').replace(/"/g, '""')}"\n`;
+                csv += `${idx + 1},${escFormulaText(o.order_code)},${escStr(o.created_date)},${escFormulaText(o.customer_code)},${escStr(o.customer_name)},${escFormulaText(o.customer_phone)},${escStr(o.customer_address)},${escStr(o.warehouse)},${o.total_quantity},${o.final_total},${escStr(o.notes)}\n`;
             });
+
+            csv += "\n\n";
+            csv += ",Người lập bảng,,,Thủ kho xuất,,,Kế toán duyệt\n";
+            csv += ",(Ký, ghi rõ họ tên),,,(Ký, ghi rõ họ tên),,,(Ký, ghi rõ họ tên)\n";
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = `Phieu_gop_tong_hop_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.download = `Phieu_gop_tong_hop_${(c.batch_code || '').replace(/[^a-zA-Z0-9_-]/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -3774,36 +3785,47 @@ function ordersIndexApp() {
             const o = orderData;
             const isTaxName = (type === 'invoice');
             const isSplitVat = (type === 'split_vat');
-            const fileName = (isSplitVat ? 'Hoa_don_tach_VAT_' : (isTaxName ? 'Hoa_don_' : 'Don_hang_')) + (o.order_code || o.id) + '.csv';
+            const fileName = (isSplitVat ? 'Bang_ke_tach_VAT_' : (isTaxName ? 'Hoa_don_' : 'Don_hang_')) + (o.order_code || o.id) + '.csv';
 
             let csvContent = "\uFEFF"; // UTF-8 BOM
-            csvContent += (isSplitVat ? "BẢNG KÊ BÁN HÀNG TÁCH THUẾ GTGT\n" : "THÔNG TIN ĐƠN HÀNG\n");
-            csvContent += "Số hóa đơn," + (o.order_code || '') + "\n";
-            csvContent += "Ngày lập," + (o.created_date || '') + "\n";
-            csvContent += "Mã khách hàng,\"" + ((o.customer_code || '').replace(/"/g, '""')) + "\"\n";
-            csvContent += "Khách hàng,\"" + ((o.customer_name || o.customer_display || '').replace(/^[A-Za-z0-9_-]+\s*-\s*/, '')).replace(/"/g, '""') + "\"\n";
-            csvContent += "Kho xuất,\"" + (o.warehouse || '').replace(/"/g, '""') + "\"\n";
-            csvContent += "Nhân viên bán hàng,\"" + (o.sales_rep_name || o.creator_name || '').replace(/"/g, '""') + "\"\n";
-            csvContent += "Diễn giải,\"" + (o.notes || '').replace(/"/g, '""') + "\"\n";
-            csvContent += "Địa chỉ giao hàng,\"" + (o.customer_address || '').replace(/"/g, '""') + "\"\n";
-            csvContent += "Số điện thoại," + (o.customer_phone || '') + "\n";
-            csvContent += "Hình thức thanh toán," + (o.payment_method || 'Tiền mặt') + "\n";
-            csvContent += "Tình trạng," + (o.delivery_status || 'Đã xuất hàng') + "\n\n";
+
+            const escStr = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+            const escFormulaText = (val) => (val !== undefined && val !== null && String(val).trim() !== '') ? `="${String(val).replace(/"/g, '""')}"` : '""';
+            const cleanCustomerName = (val) => String(val || '').replace(/^[A-Za-z0-9_-]+\s*-\s*/, '').trim();
+
+            // 1. Header Doanh Nghiệp (HỆ THỐNG PHÂN PHỐI ĐẠI SƠN)
+            csvContent += "HỆ THỐNG PHÂN PHỐI ĐẠI SƠN\n";
+            csvContent += "Địa chỉ: Xóm 2, Xã Nam Giang, Huyện Nam Đàn, Tỉnh Nghệ An | Hotline: 0917.927.888\n\n";
+
+            // 2. Tiêu Đề Chứng Từ
+            const docTitle = isSplitVat ? "BẢNG KÊ BÁN HÀNG TÁCH THUẾ GTGT" : (isTaxName ? "HÓA ĐƠN BÁN HÀNG (THEO TÊN HÓA ĐƠN)" : "HÓA ĐƠN BÁN HÀNG KIÊM PHIẾU XUẤT KHO");
+            csvContent += `,,${escStr(docTitle)}\n`;
+            csvContent += `,,${escStr(`Số: ${o.order_code || ''} - Ngày lập: ${o.created_date || ''}`)}\n\n`;
+
+            // 3. Thông tin chung 2 cột cân đối (Cột Trái A-B, Cột Phải G-H)
+            csvContent += `Mã khách hàng:,${escFormulaText(o.customer_code)},,,,,Mã đơn hàng:,${escFormulaText(o.order_code)}\n`;
+            csvContent += `Khách hàng:,${escStr(cleanCustomerName(o.customer_name || o.customer_display))},,,,,Ngày lập:,${escStr(o.created_date || '')}\n`;
+            csvContent += `Số điện thoại:,${escFormulaText(o.customer_phone)},,,,,Kho xuất:,${escStr(o.warehouse || '')}\n`;
+            csvContent += `Địa chỉ giao hàng:,${escStr(o.customer_address || '')},,,,,NV bán hàng:,${escStr(o.sales_rep_name || o.creator_name || '')}\n`;
+            csvContent += `Hình thức TT:,${escStr(o.payment_method || 'Tiền mặt')},,,,,Tình trạng:,${escStr(o.delivery_status || 'Đã xuất hàng')}\n`;
+            csvContent += `Ghi chú / Diễn giải:,${escStr(o.notes || '')},,,,,\n\n`;
 
             const regularItems = this.getRegularPrintItems(o);
             const giftItems = this.getGiftPrintItems(o);
 
             if (isSplitVat) {
-                csvContent += "DANH SÁCH SẢN PHẨM (BÓC TÁCH THUẾ GTGT)\n";
-                csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,ĐVT,SL,Đơn giá,C.khấu,Tiền CK,Tiền hàng,% VAT,Tiền VAT,Tổng tiền,Loại giá\n";
+                csvContent += "I. DANH SÁCH SẢN PHẨM (BÓC TÁCH THUẾ GTGT)\n";
+                csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,ĐVT,SL,Đơn giá (chưa VAT),C.khấu,Tiền CK,Tiền chưa VAT,Thuế,Tiền VAT,Tổng tiền,Loại giá\n";
 
+                let totalSoldQtyAll = 0;
+                let totalDiscAmtAll = 0;
                 let totalNetAll = 0;
                 let totalVatAll = 0;
                 let totalGrossAll = 0;
 
                 regularItems.forEach((it, idx) => {
-                    const prodName = it.name;
-                    const qtyVal = it.display_quantity ?? it.sold_quantity ?? it.quantity;
+                    const prodName = it.name || '';
+                    const qtyVal = Number(it.display_quantity ?? it.sold_quantity ?? it.quantity ?? 0);
                     const discText = this.getDiscountDisplay(it);
                     const discAmtVal = this.getDiscountAmountValue(it);
                     const vatRate = Number(it.vat_rate !== undefined && it.vat_rate !== null ? it.vat_rate : 8);
@@ -3812,58 +3834,93 @@ function ordersIndexApp() {
                     const lineVat = lineGross - lineNet;
                     const unitPriceNet = (qtyVal > 0) ? Math.round(lineNet / qtyVal) : ((vatRate > 0) ? Math.round(Number(it.unit_price || 0) / (1 + (vatRate / 100))) : Number(it.unit_price || 0));
 
+                    totalSoldQtyAll += qtyVal;
+                    totalDiscAmtAll += Number(discAmtVal || 0);
                     totalNetAll += lineNet;
                     totalVatAll += lineVat;
                     totalGrossAll += lineGross;
 
-                    csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},${qtyVal},${unitPriceNet},"${discText}",${discAmtVal},${lineNet},${vatRate}%,${lineVat},${lineGross},"${it.price_tier_code || it.price_type || ''}"\n`;
+                    csvContent += `${idx + 1},${escFormulaText(it.sku)},${escStr(prodName)},${escStr(it.tax_name || '')},${escStr(it.unit || '')},${qtyVal},${unitPriceNet},${escStr(discText)},${discAmtVal},${lineNet},${vatRate}%,${lineVat},${lineGross},${escStr(it.price_tier_code || it.price_type || '')}\n`;
                 });
 
-                csvContent += `Cộng tiền hàng (chưa thuế GTGT),,,,,,,,${totalNetAll},,${totalVatAll},${totalGrossAll},\n`;
-                if (Number(o.extra_discount || 0) > 0) {
-                    csvContent += `Chiết khấu giảm giá đơn hàng,,,,,,,,,,,-${o.extra_discount},\n`;
+                // Dòng tổng cộng 14 cột chuẩn xác
+                csvContent += `Cộng tiền hàng (chưa thuế GTGT),,,,,${totalSoldQtyAll},,,${totalDiscAmtAll > 0 ? totalDiscAmtAll : 0},${totalNetAll},,${totalVatAll},${totalGrossAll},\n`;
+
+                const extraDiscount = Number(o.extra_discount || 0);
+                if (extraDiscount > 0) {
+                    csvContent += `Chiết khấu giảm giá đơn hàng,,,,,,,,,,,, -${extraDiscount},\n`;
                 }
-                csvContent += `Tổng tiền thanh toán đã có thuế GTGT,,,,,,,,,,,${o.final_total || (totalGrossAll - Number(o.extra_discount || 0))},\n`;
+
+                const grandTotal = Number(o.final_total || (totalGrossAll - extraDiscount));
+                csvContent += `Tổng tiền thanh toán đã có thuế GTGT,,,,,,,,,,,,${grandTotal},\n`;
 
                 if (giftItems.length > 0) {
-                    csvContent += "\nHÀNG TẶNG KHUYẾN MẠI\n";
-                    csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,ĐVT,SL,Đơn giá,C.khấu,Tiền CK,Tiền hàng,% VAT,Tiền VAT,Tổng tiền,Loại giá\n";
+                    csvContent += "\nII. HÀNG TẶNG KHUYẾN MẠI\n";
+                    csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,ĐVT,SL,Đơn giá (chưa VAT),C.khấu,Tiền CK,Tiền chưa VAT,Thuế,Tiền VAT,Tổng tiền,Loại giá\n";
+                    let totalGiftQtyAll = 0;
                     giftItems.forEach((it, idx) => {
-                        const prodName = it.name;
-                        const qtyVal = it.display_quantity ?? it.gift_quantity ?? it.quantity;
-                        csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},${qtyVal},0,"-",0,0,0%,0,0,"${it.price_tier_code || 'KM'}"\n`;
+                        const prodName = it.name || '';
+                        const qtyVal = Number(it.display_quantity ?? it.gift_quantity ?? it.quantity ?? 0);
+                        totalGiftQtyAll += qtyVal;
+                        csvContent += `${idx + 1},${escFormulaText(it.sku)},${escStr(prodName)},${escStr(it.tax_name || '')},${escStr(it.unit || '')},${qtyVal},0,"-",0,0,0%,0,0,${escStr(it.price_tier_code || 'KM')}\n`;
                     });
+                    csvContent += `Cộng hàng tặng,,,,,${totalGiftQtyAll},,,,,,,,\n`;
                 }
             } else {
-                csvContent += "DANH SÁCH SẢN PHẨM\n";
-                csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,Đơn vị tính,Đơn giá,Số lượng,C.khấu,Tiền CK,Thành tiền,Loại giá\n";
+                csvContent += "I. DANH SÁCH SẢN PHẨM\n";
+                csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,ĐVT,SL,Đơn giá,C.khấu,Tiền CK,Thành tiền,Loại giá\n";
+
+                let totalSoldQty = 0;
+                let totalDiscAmt = 0;
+                let regularTotal = 0;
 
                 regularItems.forEach((it, idx) => {
                     const prodName = isTaxName ? (it.tax_name || it.name) : it.name;
-                    const qtyVal = it.display_quantity ?? it.sold_quantity ?? it.quantity;
+                    const qtyVal = Number(it.display_quantity ?? it.sold_quantity ?? it.quantity ?? 0);
                     const discText = this.getDiscountDisplay(it);
                     const discAmtVal = this.getDiscountAmountValue(it);
-                    csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},${it.unit_price || 0},${qtyVal},"${discText}",${discAmtVal},${it.total || it.amount || 0},"${it.price_tier_code || it.price_type || ''}"\n`;
-                });
-                csvContent += `Tổng tiền hàng (VND),,,,,,,,${this.getRegularItemsTotal(o)},,\n`;
+                    const lineTotal = Number(it.total || it.amount || 0);
 
-                if (giftItems.length > 0) {
-                    csvContent += "\nHÀNG TẶNG\n";
-                    csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,Đơn vị tính,Đơn giá,Số lượng,C.khấu,Tiền CK,Thành tiền,Loại giá\n";
-                    giftItems.forEach((it, idx) => {
-                        const prodName = isTaxName ? (it.tax_name || it.name) : it.name;
-                        const qtyVal = it.display_quantity ?? it.gift_quantity ?? it.quantity;
-                        const discText = this.getDiscountDisplay(it);
-                        csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},${it.unit_price || 0},${qtyVal},"${discText}",0,${it.total || it.amount || 0},"${it.price_tier_code || 'KM'}"\n`;
-                    });
-                    csvContent += `Tổng hàng tặng (VND),,,,,,,,${this.getGiftItemsTotal(o)},,\n`;
+                    totalSoldQty += qtyVal;
+                    totalDiscAmt += Number(discAmtVal || 0);
+                    regularTotal += lineTotal;
+
+                    csvContent += `${idx + 1},${escFormulaText(it.sku)},${escStr(prodName)},${escStr(it.tax_name || '')},${escStr(it.unit || '')},${qtyVal},${it.unit_price || 0},${escStr(discText)},${discAmtVal},${lineTotal},${escStr(it.price_tier_code || it.price_type || '')}\n`;
+                });
+
+                // Dòng tổng cộng 11 cột chuẩn xác
+                csvContent += `Cộng tiền hàng,,,,,${totalSoldQty},,,${totalDiscAmt > 0 ? totalDiscAmt : 0},${regularTotal},\n`;
+
+                const extraDiscount = Number(o.extra_discount || 0);
+                if (extraDiscount > 0) {
+                    csvContent += `Chiết khấu giảm giá đơn hàng,,,,,,,,,-${extraDiscount},\n`;
                 }
 
-                csvContent += `\nPhải thanh toán (VND),,,,,,,,${o.final_total || (this.getRegularItemsTotal(o) + this.getGiftItemsTotal(o))},,\n`;
+                const grandTotal = Number(o.final_total || (regularTotal - extraDiscount));
+                csvContent += `Tổng tiền thanh toán,,,,,,,,,${grandTotal},\n`;
+
+                if (giftItems.length > 0) {
+                    csvContent += "\nII. HÀNG TẶNG KHUYẾN MẠI\n";
+                    csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,ĐVT,SL,Đơn giá,C.khấu,Tiền CK,Thành tiền,Loại giá\n";
+                    let totalGiftQty = 0;
+                    giftItems.forEach((it, idx) => {
+                        const prodName = isTaxName ? (it.tax_name || it.name) : it.name;
+                        const qtyVal = Number(it.display_quantity ?? it.gift_quantity ?? it.quantity ?? 0);
+                        totalGiftQty += qtyVal;
+                        csvContent += `${idx + 1},${escFormulaText(it.sku)},${escStr(prodName)},${escStr(it.tax_name || '')},${escStr(it.unit || '')},${qtyVal},0,"-",0,0,${escStr(it.price_tier_code || 'KM')}\n`;
+                    });
+                    csvContent += `Cộng hàng tặng,,,,,${totalGiftQty},,,,,\n`;
+                }
             }
-            csvContent += `Bằng chữ,"${(o.final_total_words || '').replace(/"/g, '""')}"\n`;
-            csvContent += `Người lập,"${(o.creator_name || '').replace(/"/g, '""')}"\n`;
-            csvContent += `Người sửa cuối,"${(o.updater_name || '').replace(/"/g, '""')}"\n`;
+
+            // Bằng chữ & Khối chữ ký 4 bên
+            csvContent += `\nBằng chữ:,${escStr(o.final_total_words || '')}\n\n`;
+
+            csvContent += "\n";
+            csvContent += ",Người lập phiếu,,,Thủ kho xuất,,,Người giao hàng,,,Khách hàng nhận\n";
+            csvContent += ",(Ký, ghi rõ họ tên),,,(Ký, ghi rõ họ tên),,,(Ký, ghi rõ họ tên),,,(Ký, ghi rõ họ tên)\n";
+            csvContent += "\n\n\n";
+            csvContent += `,${escStr(o.creator_name || '')},,,,,,,,\n`;
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
