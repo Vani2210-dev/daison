@@ -2027,16 +2027,6 @@ for (let i = 0; i < _rawDealersData.length; i++) {
     Object.freeze(_rawDealersData[i]);
 }
 
-// Global safety stubs for policy methods to prevent Alpine evaluation ReferenceErrors
-window.getSelectedPolicies = window.getSelectedPolicies || function() { return []; };
-window.getAvailablePoliciesToAdd = window.getAvailablePoliciesToAdd || function() { return []; };
-window.getPolicyBenefitDescription = window.getPolicyBenefitDescription || function() { return ''; };
-window.getPolicyAppliedProductsSummary = window.getPolicyAppliedProductsSummary || function() { return ''; };
-window.formatPolicyOptionLabel = window.formatPolicyOptionLabel || function() { return ''; };
-window.clearAllOrderPolicies = window.clearAllOrderPolicies || function() {};
-window.addPolicyById = window.addPolicyById || function() {};
-window.removeSelectedPolicy = window.removeSelectedPolicy || function() {};
-
 function orderFormApp() {
     return {
         companySetting: @json(\App\Models\CompanySetting::getSettings()),
