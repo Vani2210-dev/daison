@@ -141,159 +141,163 @@
                     </div>
                 </div>
 
-                <!-- 3. DANH SÁCH SẢN PHẨM DẠNG THẺ NGANG TỐI ƯU THAO TÁC NHANH (MOBILE & DESKTOP) -->
-                <div x-show="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-2.5 sm:gap-3">
-                    <template x-for="p in filteredProducts" :key="p.id">
-                        <div 
-                            @click="openQuantityModal(p)"
-                            class="group bg-white rounded-2xl border transition-all duration-150 p-3 sm:p-4 cursor-pointer relative shadow-xs hover:shadow-md hover:border-purple-300 select-none flex flex-col gap-2"
-                            :class="getItemQuantityInCart(p.id) > 0 ? 'border-purple-400 bg-purple-50/15 ring-1 ring-purple-300' : 'border-slate-200/90'"
-                        >
-                            <!-- Dòng 1: Mã SKU & Đơn vị tính -->
-                            <div class="flex items-center justify-between gap-2">
-                                <div class="flex items-center gap-1.5 min-w-0">
-                                    <span class="font-mono text-xs sm:text-sm font-bold px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200/80 text-slate-700 tracking-wide truncate" x-text="p.sku" :title="p.sku"></span>
-                                    <template x-if="getItemQuantityInCart(p.id) > 0">
-                                        <span class="px-2 py-0.5 rounded-md bg-purple-100 text-purple-700 border border-purple-200 text-xs font-extrabold whitespace-nowrap flex items-center gap-1">
-                                            <i class="fa-solid fa-check text-[10px]"></i>
-                                            <span>Đã thêm <strong x-text="getItemQuantityInCart(p.id)"></strong></span>
-                                        </span>
+                <!-- 3. DANH SÁCH SẢN PHẨM DẠNG THẺ (GRID) - Dùng x-if để chỉ dựng DOM khi active, giảm 50% DOM nodes -->
+                <template x-if="viewMode === 'grid'">
+                    <div class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-2.5 sm:gap-3">
+                        <template x-for="p in filteredProducts" :key="p.id">
+                            <div 
+                                @click="openQuantityModal(p)"
+                                class="group bg-white rounded-2xl border transition-all duration-150 p-3 sm:p-4 cursor-pointer relative shadow-xs hover:shadow-md hover:border-purple-300 select-none flex flex-col gap-2"
+                                :class="p._inCart > 0 ? 'border-purple-400 bg-purple-50/15 ring-1 ring-purple-300' : 'border-slate-200/90'"
+                            >
+                                <!-- Dòng 1: Mã SKU & Đơn vị tính -->
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="flex items-center gap-1.5 min-w-0">
+                                        <span class="font-mono text-xs sm:text-sm font-bold px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200/80 text-slate-700 tracking-wide truncate" x-text="p.sku" :title="p.sku"></span>
+                                        <template x-if="p._inCart > 0">
+                                            <span class="px-2 py-0.5 rounded-md bg-purple-100 text-purple-700 border border-purple-200 text-xs font-extrabold whitespace-nowrap flex items-center gap-1">
+                                                <i class="fa-solid fa-check text-[10px]"></i>
+                                                <span>Đã thêm <strong x-text="p._inCart"></strong></span>
+                                            </span>
+                                        </template>
+                                    </div>
+                                    <div class="text-xs sm:text-sm text-slate-500 font-medium whitespace-nowrap shrink-0">
+                                        Đơn vị: <span class="font-bold text-slate-700" x-text="p.unit || 'Cái'"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Dòng 2: Tên sản phẩm -->
+                                <div class="w-full min-w-0 mt-0.5">
+                                    <h3 class="font-bold text-xl sm:text-2xl text-slate-900 leading-snug break-words group-hover:text-purple-700 transition" x-text="p.name"></h3>
+                                    <template x-if="p.specification">
+                                        <p class="text-xs sm:text-sm text-slate-400 mt-0.5 italic break-words" x-text="p.specification"></p>
                                     </template>
                                 </div>
-                                <div class="text-xs sm:text-sm text-slate-500 font-medium whitespace-nowrap shrink-0">
-                                    Đơn vị: <span class="font-bold text-slate-700" x-text="p.unit || 'Cái'"></span>
-                                </div>
-                            </div>
 
-                            <!-- Dòng 2: Tên sản phẩm (hiển thị đầy đủ 100% chiều ngang) -->
-                            <div class="w-full min-w-0 mt-0.5">
-                                <h3 class="font-bold text-xl sm:text-2xl text-slate-900 leading-snug break-words group-hover:text-purple-700 transition" x-text="p.name"></h3>
-                                <template x-if="p.specification">
-                                    <p class="text-xs sm:text-sm text-slate-400 mt-0.5 italic break-words" x-text="p.specification"></p>
-                                </template>
-                            </div>
-
-                            <!-- Dòng 3: Giá & Tồn kho (bên trái) + Số lượng & Nút Thêm (bên phải) -->
-                            <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100/90">
-                                <div class="min-w-0 flex-1">
-                                    <div class="font-black text-lg sm:text-xl text-purple-700 leading-tight whitespace-nowrap" x-text="formatCurrency(p.price)"></div>
-                                    <div class="flex items-center gap-1 text-[13px] sm:text-sm font-bold mt-0.5 min-w-0"
-                                         :class="getProductAvailableStock(p) > 0 ? 'text-emerald-700' : 'text-rose-600'">
-                                        <i class="fa-solid shrink-0" :class="getProductAvailableStock(p) > 0 ? 'fa-circle-check text-emerald-500' : 'fa-circle-xmark text-rose-500'"></i>
-                                        <span class="truncate" x-text="getProductAvailableStock(p) > 0 ? 'Còn ' + formatNumber(getProductAvailableStock(p)) + ' ' + (p.unit || '') : 'Hết hàng'"></span>
-                                    </div>
-                                </div>
-
-                                <!-- Bộ điều chỉnh SL trực tiếp + Nút Thêm -->
-                                <div @click.stop class="shrink-0 flex items-center gap-1.5 sm:gap-2">
-                                    <div class="flex items-center bg-slate-50 border border-slate-200/90 rounded-xl p-0.5 shadow-2xs">
-                                        <button type="button"
-                                                @click="decrementDraftQty(p)"
-                                                :disabled="getProductAvailableStock(p) <= 0 || getDraftQty(p) <= 1"
-                                                class="w-7 h-9 sm:w-8 sm:h-9 flex items-center justify-center rounded-lg text-purple-700 hover:bg-purple-100/70 active:scale-95 transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                                                title="Giảm số lượng">
-                                            <i class="fa-solid fa-minus text-xs"></i>
-                                        </button>
-                                        <input type="number"
-                                               min="1"
-                                               :max="getProductAvailableStock(p)"
-                                               :value="getDraftQty(p)"
-                                               @input="setDraftQty(p, $event.target.value)"
-                                               @blur="clampDraftQtyInput(p, $event.target)"
-                                               @keydown.enter.prevent="quickAddToCart(p)"
-                                               :disabled="getProductAvailableStock(p) <= 0"
-                                               class="w-8 sm:w-10 h-9 bg-transparent text-center font-black text-base text-slate-900 border-none focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
-                                        <button type="button"
-                                                @click="incrementDraftQty(p)"
-                                                :disabled="getProductAvailableStock(p) <= 0 || getDraftQty(p) >= getProductAvailableStock(p)"
-                                                class="w-7 h-9 sm:w-8 sm:h-9 flex items-center justify-center rounded-lg text-purple-700 hover:bg-purple-100/70 active:scale-95 transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                                                title="Tăng số lượng">
-                                            <i class="fa-solid fa-plus text-xs"></i>
-                                        </button>
+                                <!-- Dòng 3: Giá & Tồn kho + Bộ điều chỉnh số lượng -->
+                                <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100/90">
+                                    <div class="min-w-0 flex-1">
+                                        <div class="font-black text-lg sm:text-xl text-purple-700 leading-tight whitespace-nowrap" x-text="formatCurrency(p.price)"></div>
+                                        <div class="flex items-center gap-1 text-[13px] sm:text-sm font-bold mt-0.5 min-w-0"
+                                             :class="p._avail > 0 ? 'text-emerald-700' : 'text-rose-600'">
+                                            <i class="fa-solid shrink-0" :class="p._avail > 0 ? 'fa-circle-check text-emerald-500' : 'fa-circle-xmark text-rose-500'"></i>
+                                            <span class="truncate" x-text="p._avail > 0 ? 'Còn ' + formatNumber(p._avail) + ' ' + (p.unit || '') : 'Hết hàng'"></span>
+                                        </div>
                                     </div>
 
-                                    <button type="button"
-                                            @click.stop="quickAddToCart(p)"
-                                            :disabled="getProductAvailableStock(p) <= 0"
-                                            class="h-10 px-3 sm:px-4 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-1.5 transition shadow-sm select-none whitespace-nowrap"
-                                            :class="getProductAvailableStock(p) <= 0 ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-purple-600/25 cursor-pointer active:scale-95'">
-                                        <i class="fa-solid" :class="getProductAvailableStock(p) <= 0 ? 'fa-ban' : 'fa-cart-plus'"></i>
-                                        <span x-text="getProductAvailableStock(p) <= 0 ? 'Hết' : 'Thêm'"></span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-
-                <!-- 4. DANH SÁCH SẢN PHẨM DẠNG LIST (BẢNG) -->
-                <div x-show="viewMode === 'list'" class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse text-xs sm:text-sm">
-                            <thead>
-                                <tr class="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200 uppercase tracking-wider text-xs">
-                                    <th class="py-3 px-3 text-center w-12">STT</th>
-                                    <th class="py-3 px-3 min-w-[110px]">Mã SKU</th>
-                                    <th class="py-3 px-3 min-w-[240px]">Tên Sản Phẩm & Quy Cách</th>
-                                    <th class="py-3 px-3 min-w-[120px]">Danh Mục</th>
-                                    <th class="py-3 px-3 text-center min-w-[80px]">ĐVT</th>
-                                    <th class="py-3 px-3 text-right min-w-[110px]">Giá Bán</th>
-                                    <th class="py-3 px-3 text-center min-w-[110px]">Tồn Khả Dụng</th>
-                                    <th class="py-3 px-3 text-center min-w-[90px]">Đã Chọn</th>
-                                    <th class="py-3 px-3 text-center w-20">Chọn</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                <template x-for="(p, idx) in filteredProducts" :key="p.id">
-                                    <tr 
-                                        @click="openQuantityModal(p)"
-                                        class="hover:bg-purple-50/40 transition cursor-pointer group"
-                                        :class="getItemQuantityInCart(p.id) > 0 ? 'bg-purple-50/30' : ''"
-                                    >
-                                        <td class="py-3 px-3 text-center text-slate-400 font-mono" x-text="idx + 1"></td>
-                                        <td class="py-3 px-3 font-mono font-bold text-slate-800 text-xs" x-text="p.sku"></td>
-                                        <td class="py-3 px-3">
-                                            <div class="font-bold text-base sm:text-lg text-slate-900 group-hover:text-purple-700 transition" x-text="p.name"></div>
-                                            <template x-if="p.specification">
-                                                <div class="text-xs text-slate-400 line-clamp-1 italic" x-text="p.specification"></div>
-                                            </template>
-                                        </td>
-                                        <td class="py-3 px-3 text-slate-600" x-text="p.category_name || '-'"></td>
-                                        <td class="py-3 px-3 text-center font-bold text-slate-700" x-text="p.unit || '-'"></td>
-                                        <td class="py-3 px-3 text-right font-black text-purple-700 text-sm sm:text-base" x-text="formatCurrency(p.price)"></td>
-                                        <td class="py-3 px-3 text-center">
-                                            <span 
-                                                class="px-2 py-0.5 rounded-full text-xs font-extrabold"
-                                                :class="getProductAvailableStock(p) > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'"
-                                                x-text="getProductAvailableStock(p) > 0 ? formatNumber(getProductAvailableStock(p)) : 'Hết hàng'"
-                                            ></span>
-                                        </td>
-                                        <td class="py-3 px-3 text-center">
-                                            <template x-if="getItemQuantityInCart(p.id) > 0">
-                                                <span class="px-2 py-0.5 rounded-full bg-purple-600 text-white font-black text-xs" x-text="getItemQuantityInCart(p.id)"></span>
-                                            </template>
-                                            <template x-if="!getItemQuantityInCart(p.id)">
-                                                <span class="text-slate-300">-</span>
-                                            </template>
-                                        </td>
-                                        <td class="py-3 px-3 text-center" @click.stop>
-                                            <button 
-                                                type="button" 
-                                                @click="openQuantityModal(p)"
-                                                :disabled="getProductAvailableStock(p) <= 0"
-                                                class="px-2.5 py-1 rounded-lg font-bold text-xs transition select-none flex items-center justify-center gap-1 mx-auto"
-                                                :class="getProductAvailableStock(p) <= 0 ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' : 'bg-purple-100 hover:bg-purple-200 text-purple-800 cursor-pointer active:scale-95'"
-                                            >
-                                                <i class="fa-solid" :class="getProductAvailableStock(p) <= 0 ? 'fa-ban text-[10px]' : 'fa-plus text-[10px]'"></i>
-                                                <span x-text="getProductAvailableStock(p) <= 0 ? 'Hết hàng' : 'Chọn'"></span>
+                                    <!-- Bộ điều chỉnh SL trực tiếp + Nút Thêm -->
+                                    <div @click.stop class="shrink-0 flex items-center gap-1.5 sm:gap-2">
+                                        <div class="flex items-center bg-slate-50 border border-slate-200/90 rounded-xl p-0.5 shadow-2xs">
+                                            <button type="button"
+                                                    @click="decrementDraftQty(p)"
+                                                    :disabled="p._avail <= 0 || getDraftQty(p) <= 1"
+                                                    class="w-7 h-9 sm:w-8 sm:h-9 flex items-center justify-center rounded-lg text-purple-700 hover:bg-purple-100/70 active:scale-95 transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    title="Giảm số lượng">
+                                                <i class="fa-solid fa-minus text-xs"></i>
                                             </button>
-                                        </td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
+                                            <input type="number"
+                                                   min="1"
+                                                   :max="p._avail"
+                                                   :value="getDraftQty(p)"
+                                                   @input="setDraftQty(p, $event.target.value)"
+                                                   @blur="clampDraftQtyInput(p, $event.target)"
+                                                   @keydown.enter.prevent="quickAddToCart(p)"
+                                                   :disabled="p._avail <= 0"
+                                                   class="w-8 sm:w-10 h-9 bg-transparent text-center font-black text-base text-slate-900 border-none focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                            <button type="button"
+                                                    @click="incrementDraftQty(p)"
+                                                    :disabled="p._avail <= 0 || getDraftQty(p) >= p._avail"
+                                                    class="w-7 h-9 sm:w-8 sm:h-9 flex items-center justify-center rounded-lg text-purple-700 hover:bg-purple-100/70 active:scale-95 transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    title="Tăng số lượng">
+                                                <i class="fa-solid fa-plus text-xs"></i>
+                                            </button>
+                                        </div>
+
+                                        <button type="button"
+                                                @click.stop="quickAddToCart(p)"
+                                                :disabled="p._avail <= 0"
+                                                class="h-10 px-3 sm:px-4 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-1.5 transition shadow-sm select-none whitespace-nowrap"
+                                                :class="p._avail <= 0 ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-purple-600/25 cursor-pointer active:scale-95'">
+                                            <i class="fa-solid" :class="p._avail <= 0 ? 'fa-ban' : 'fa-cart-plus'"></i>
+                                            <span x-text="p._avail <= 0 ? 'Hết' : 'Thêm'"></span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
                     </div>
-                </div>
+                </template>
+
+                <!-- 4. DANH SÁCH SẢN PHẨM DẠNG LIST (BẢNG) - Dùng x-if để chỉ dựng bảng khi chuyển sang List view -->
+                <template x-if="viewMode === 'list'">
+                    <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                                <thead>
+                                    <tr class="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200 uppercase tracking-wider text-xs">
+                                        <th class="py-3 px-3 text-center w-12">STT</th>
+                                        <th class="py-3 px-3 min-w-[110px]">Mã SKU</th>
+                                        <th class="py-3 px-3 min-w-[240px]">Tên Sản Phẩm & Quy Cách</th>
+                                        <th class="py-3 px-3 min-w-[120px]">Danh Mục</th>
+                                        <th class="py-3 px-3 text-center min-w-[80px]">ĐVT</th>
+                                        <th class="py-3 px-3 text-right min-w-[110px]">Giá Bán</th>
+                                        <th class="py-3 px-3 text-center min-w-[110px]">Tồn Khả Dụng</th>
+                                        <th class="py-3 px-3 text-center min-w-[90px]">Đã Chọn</th>
+                                        <th class="py-3 px-3 text-center w-20">Chọn</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <template x-for="(p, idx) in filteredProducts" :key="p.id">
+                                        <tr 
+                                            @click="openQuantityModal(p)"
+                                            class="hover:bg-purple-50/40 transition cursor-pointer group"
+                                            :class="p._inCart > 0 ? 'bg-purple-50/30' : ''"
+                                        >
+                                            <td class="py-3 px-3 text-center text-slate-400 font-mono" x-text="idx + 1"></td>
+                                            <td class="py-3 px-3 font-mono font-bold text-slate-800 text-xs" x-text="p.sku"></td>
+                                            <td class="py-3 px-3">
+                                                <div class="font-bold text-base sm:text-lg text-slate-900 group-hover:text-purple-700 transition" x-text="p.name"></div>
+                                                <template x-if="p.specification">
+                                                    <div class="text-xs text-slate-400 line-clamp-1 italic" x-text="p.specification"></div>
+                                                </template>
+                                            </td>
+                                            <td class="py-3 px-3 text-slate-600" x-text="p.category_name || '-'"></td>
+                                            <td class="py-3 px-3 text-center font-bold text-slate-700" x-text="p.unit || '-'"></td>
+                                            <td class="py-3 px-3 text-right font-black text-purple-700 text-sm sm:text-base" x-text="formatCurrency(p.price)"></td>
+                                            <td class="py-3 px-3 text-center">
+                                                <span 
+                                                    class="px-2 py-0.5 rounded-full text-xs font-extrabold"
+                                                    :class="p._avail > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'"
+                                                    x-text="p._avail > 0 ? formatNumber(p._avail) : 'Hết hàng'"
+                                                ></span>
+                                            </td>
+                                            <td class="py-3 px-3 text-center">
+                                                <template x-if="p._inCart > 0">
+                                                    <span class="px-2 py-0.5 rounded-full bg-purple-600 text-white font-black text-xs" x-text="p._inCart"></span>
+                                                </template>
+                                                <template x-if="!p._inCart">
+                                                    <span class="text-slate-300">-</span>
+                                                </template>
+                                            </td>
+                                            <td class="py-3 px-3 text-center" @click.stop>
+                                                <button 
+                                                    type="button" 
+                                                    @click="openQuantityModal(p)"
+                                                    :disabled="p._avail <= 0"
+                                                    class="px-2.5 py-1 rounded-lg font-bold text-xs transition select-none flex items-center justify-center gap-1 mx-auto"
+                                                    :class="p._avail <= 0 ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' : 'bg-purple-100 hover:bg-purple-200 text-purple-800 cursor-pointer active:scale-95'"
+                                                >
+                                                    <i class="fa-solid" :class="p._avail <= 0 ? 'fa-ban text-[10px]' : 'fa-plus text-[10px]'"></i>
+                                                    <span x-text="p._avail <= 0 ? 'Hết hàng' : 'Chọn'"></span>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </template>
 
                 <!-- Empty State -->
                 <div x-show="filteredProducts.length === 0" class="bg-white p-10 rounded-2xl border border-slate-200 text-center text-slate-400">
@@ -666,12 +670,9 @@
 function posApp() {
     const _rawPosProducts = JSON.parse(document.getElementById('pos-products-json')?.textContent || '[]');
     return {
-        // Dữ liệu từ Controller (Object.freeze ngăn Alpine.js tạo deep proxy reactivity cho hàng nghìn thuộc tính tĩnh)
+        // Dữ liệu từ Controller (Object.freeze ngăn Alpine.js tạo deep proxy reactivity cho hàng nghìn thuộc tính tĩnh, tăng tốc UI)
         products: Object.freeze(_rawPosProducts),
-        categories: Object.freeze(@json($categories ?? [])),
-        brands: Object.freeze(@json($brands ?? [])),
         warehouses: Object.freeze(@json($warehouses ?? [])),
-        priceTiers: Object.freeze(@json($priceTiers ?? [])),
         userRestrictedBrandId: @json($userRestrictedBrandId ?? null),
         userRestrictedBrandName: @json($userRestrictedBrandName ?? null),
 
@@ -712,7 +713,7 @@ function posApp() {
 
             this.loadCartFromStorage();
 
-            // Hiển thị thông báo toast tức thì nếu vừa lưu đơn hàng thành công từ POS
+            // Hiển thị thông báo Toast nếu vừa lưu đơn hàng thành công từ POS chuyển về
             const flashToast = sessionStorage.getItem('pos_flash_toast');
             if (flashToast) {
                 sessionStorage.removeItem('pos_flash_toast');
@@ -747,14 +748,36 @@ function posApp() {
             }
         },
 
-        // Danh sách sản phẩm sau lọc & tìm kiếm
+        // Danh sách sản phẩm sau lọc, tìm kiếm & sắp xếp (Tối ưu: tính sẵn _avail & _inCart để template truy xuất O(1))
         get filteredProducts() {
-            let list = this.products;
+            const list = this.products;
+            const wh = this.selectedWarehouse;
+
+            // Map số lượng trong giỏ để tra cứu O(1)
+            const cartMap = {};
+            for (let i = 0; i < this.cart.length; i++) {
+                cartMap[this.cart[i].product_id] = this.cart[i].quantity;
+            }
+
+            // Gán _avail và _inCart 1 lần duy nhất cho danh sách
+            let res = list.map(p => {
+                let avail = 0;
+                if (p.warehouse_stocks && wh && p.warehouse_stocks[wh]) {
+                    avail = Number(p.warehouse_stocks[wh].available || 0);
+                } else {
+                    avail = Number(p.available_stock !== undefined ? p.available_stock : (p.stock_quantity || 0));
+                }
+                return {
+                    ...p,
+                    _avail: avail,
+                    _inCart: cartMap[p.id] || 0
+                };
+            });
 
             // 1. Lọc theo từ khóa tìm kiếm
             if (this.searchQuery && this.searchQuery.trim() !== '') {
                 const q = this.searchQuery.toLowerCase().trim();
-                list = list.filter(p => {
+                res = res.filter(p => {
                     const name = (p.name || '').toLowerCase();
                     const sku = (p.sku || '').toLowerCase();
                     const spec = (p.specification || '').toLowerCase();
@@ -764,37 +787,37 @@ function posApp() {
 
             // 2. Lọc theo Danh mục
             if (this.selectedCategory !== 'all') {
-                list = list.filter(p => String(p.category_id) === String(this.selectedCategory));
+                res = res.filter(p => String(p.category_id) === String(this.selectedCategory));
             }
 
             // 3. Lọc theo Thương hiệu
             if (this.selectedBrand !== 'all') {
-                list = list.filter(p => String(p.brand_id) === String(this.selectedBrand));
+                res = res.filter(p => String(p.brand_id) === String(this.selectedBrand));
             }
 
             // 4. Lọc theo Tồn kho
             if (this.stockFilter === 'in_stock') {
-                list = list.filter(p => this.getProductAvailableStock(p) > 0);
+                res = res.filter(p => p._avail > 0);
             } else if (this.stockFilter === 'low_stock') {
-                list = list.filter(p => {
-                    const st = this.getProductAvailableStock(p);
-                    return st > 0 && st <= 20;
-                });
+                res = res.filter(p => p._avail > 0 && p._avail <= 20);
             } else if (this.stockFilter === 'out_of_stock') {
-                list = list.filter(p => this.getProductAvailableStock(p) <= 0);
+                res = res.filter(p => p._avail <= 0);
             }
 
-            // 5. Sắp xếp
-            list = [...list].sort((a, b) => {
-                if (this.sortBy === 'name_asc') return (a.name || '').localeCompare(b.name || '');
-                if (this.sortBy === 'name_desc') return (b.name || '').localeCompare(a.name || '');
-                if (this.sortBy === 'price_asc') return (Number(a.price) || 0) - (Number(b.price) || 0);
-                if (this.sortBy === 'price_desc') return (Number(b.price) || 0) - (Number(a.price) || 0);
-                if (this.sortBy === 'stock_desc') return this.getProductAvailableStock(b) - this.getProductAvailableStock(a);
-                return 0;
-            });
+            // 5. Sắp xếp (sử dụng trực tiếp thuộc tính đã tính, không gọi hàm lặp lại)
+            if (this.sortBy === 'name_asc') {
+                res.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            } else if (this.sortBy === 'name_desc') {
+                res.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+            } else if (this.sortBy === 'price_asc') {
+                res.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+            } else if (this.sortBy === 'price_desc') {
+                res.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+            } else if (this.sortBy === 'stock_desc') {
+                res.sort((a, b) => b._avail - a._avail);
+            }
 
-            return list;
+            return res;
         },
 
         // Tính tồn kho khả dụng của sản phẩm theo kho đang chọn
@@ -805,11 +828,6 @@ function posApp() {
                 return whStock ? Number(whStock.available || 0) : 0;
             }
             return Number(product.available_stock !== undefined ? product.available_stock : (product.stock_quantity || 0));
-        },
-
-        // Đếm số sản phẩm trong 1 danh mục
-        getCategoryCount(categoryId) {
-            return this.products.filter(p => String(p.category_id) === String(categoryId)).length;
         },
 
         // Kiểm tra sản phẩm đã có bao nhiêu cái trong giỏ hàng
@@ -904,7 +922,7 @@ function posApp() {
         // ─── Thao tác nhanh ngay trên từng dòng thẻ sản phẩm ─────────
         getDraftQty(product) {
             if (!product) return 1;
-            const avail = this.getProductAvailableStock(product);
+            const avail = product._avail !== undefined ? product._avail : this.getProductAvailableStock(product);
             if (avail <= 0) return 0;
             const val = this.draftQuantities[product.id];
             const num = Number(val);
@@ -914,7 +932,7 @@ function posApp() {
 
         setDraftQty(product, rawVal) {
             if (!product) return;
-            const avail = this.getProductAvailableStock(product);
+            const avail = product._avail !== undefined ? product._avail : this.getProductAvailableStock(product);
             if (avail <= 0) {
                 this.draftQuantities[product.id] = 0;
                 return;
@@ -931,7 +949,7 @@ function posApp() {
 
         clampDraftQtyInput(product, inputEl) {
             if (!product) return;
-            const avail = this.getProductAvailableStock(product);
+            const avail = product._avail !== undefined ? product._avail : this.getProductAvailableStock(product);
             let num = parseInt(this.draftQuantities[product.id], 10);
             if (avail <= 0) {
                 num = 0;
@@ -945,7 +963,7 @@ function posApp() {
 
         incrementDraftQty(product) {
             if (!product) return;
-            const avail = this.getProductAvailableStock(product);
+            const avail = product._avail !== undefined ? product._avail : this.getProductAvailableStock(product);
             if (avail <= 0) return;
             const cur = this.getDraftQty(product);
             this.draftQuantities[product.id] = Math.min(avail, cur + 1);
@@ -959,7 +977,7 @@ function posApp() {
 
         quickAddToCart(product) {
             if (!product) return;
-            const avail = this.getProductAvailableStock(product);
+            const avail = product._avail !== undefined ? product._avail : this.getProductAvailableStock(product);
             if (avail <= 0) {
                 this.showPosToast('Sản phẩm "' + (product.name || '') + '" đã hết tồn kho!');
                 return;

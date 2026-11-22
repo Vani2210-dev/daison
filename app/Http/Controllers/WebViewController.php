@@ -573,26 +573,19 @@ class WebViewController extends Controller
             $products = $allProducts;
         }
 
-        $categories = Category::orderBy('name')->get(['id', 'name']);
-        
-        $brandsQuery = Brand::orderBy('name');
-        if ($restrictedBrandId) {
-            $brandsQuery->where('id', $restrictedBrandId);
-        }
-        $brands = $brandsQuery->get(['id', 'name']);
-
-        // pos.blade.php không sử dụng danh sách dealers (chỉ lưu selectedDealerId theo session nếu có).
-        // Thay thế query 867 đại lý bằng collect() để loại bỏ query thừa và giảm 250KB payload JSON vô ích
-        $dealers = collect();
-        [$warehouses, $isDriverUser, $driverVehicle, $mainCompanyWarehouse, $employeeWarehouse] = $this->getAvailableWarehousesForUser();
-        $priceTiers = PriceTier::where('status', 'Hoạt động')
-            ->orderByRaw("CASE WHEN name LIKE '%Nguyên Giá%' THEN 0 ELSE 1 END")
-            ->orderBy('order_num')
-            ->orderBy('id')
-            ->get();
-
         $userRestrictedBrandId = $restrictedBrandId;
-        $userRestrictedBrandName = $restrictedBrandId ? ($brands->firstWhere('id', $restrictedBrandId)?->name ?? '') : null;
+        $userRestrictedBrandName = null;
+        if ($restrictedBrandId) {
+            $userRestrictedBrandName = Brand::where('id', $restrictedBrandId)->value('name');
+        }
+
+        // Tối ưu triệt để: Không query dealers, priceTiers, categories, brands vì POS không dùng (loại bỏ 4 queries thừa và giảm dung lượng payload)
+        $categories = collect();
+        $brands = collect();
+        $dealers = collect();
+        $priceTiers = collect();
+
+        [$warehouses, $isDriverUser, $driverVehicle, $mainCompanyWarehouse, $employeeWarehouse] = $this->getAvailableWarehousesForUser();
 
         return view('orders.pos', compact(
             'products',
