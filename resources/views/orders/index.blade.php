@@ -1468,6 +1468,12 @@
                         <i class="fa-solid fa-file-excel text-[11px]"></i>
                         <span>Xuất excel tên HĐ</span>
                     </button>
+                    <button type="button" @click="exportOrderExcelPrint(printOrderData, 'split_vat')"
+                            class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded font-semibold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                            title="Xuất Excel bảng kê tách thuế GTGT">
+                        <i class="fa-solid fa-file-excel text-[11px]"></i>
+                        <span>Xuất excel tách VAT</span>
+                    </button>
                     <button type="button" @click="exportOrderExcelPrint(printOrderData, 'standard')"
                             class="px-3 py-1.5 bg-[#1976d2] hover:bg-[#1565c0] text-white rounded font-semibold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5">
                         <i class="fa-solid fa-file-excel text-[11px]"></i>
@@ -1494,6 +1500,12 @@
                             title="In có thông tin công ty theo tên hóa đơn GTGT">
                         <i class="fa-solid fa-print text-[11px]"></i>
                         <span>In theo tên HĐ</span>
+                    </button>
+                    <button type="button" @click="executePrintOrder('split_vat')"
+                            class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                            title="In phiếu bán hàng bóc tách thuế GTGT (VAT)">
+                        <i class="fa-solid fa-receipt text-[11px]"></i>
+                        <span>In tách VAT</span>
                     </button>
                     <button type="button" @click="executePrintOrder('standard')"
                             class="px-3 py-1.5 bg-[#1976d2] hover:bg-[#1565c0] text-white rounded font-semibold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
@@ -1813,6 +1825,12 @@
                         <i class="fa-solid fa-print text-[11px]"></i>
                         <span>In theo tên HĐ</span>
                     </button>
+                    <button type="button" @click="executePrintConsolidated('split_vat')"
+                            class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                            title="In phiếu gộp bóc tách thuế GTGT (VAT)">
+                        <i class="fa-solid fa-receipt text-[11px]"></i>
+                        <span>In gộp tách VAT</span>
+                    </button>
                     <button type="button" @click="executePrintConsolidated('standard')"
                             class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold text-xs shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
                             title="In phiếu gộp đầy đủ thông tin và giá">
@@ -1844,6 +1862,12 @@
                             title="In hàng loạt theo tên HĐ">
                         <i class="fa-solid fa-print text-[11px]"></i>
                         <span>In theo tên HĐ</span>
+                    </button>
+                    <button type="button" @click="executePrintBatch('split_vat')"
+                            class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                            title="In hàng loạt từng đơn bóc tách thuế GTGT (VAT)">
+                        <i class="fa-solid fa-receipt text-[11px]"></i>
+                        <span>In tách VAT</span>
                     </button>
                     <button type="button" @click="executePrintBatch('standard')"
                             class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold text-xs shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
@@ -2838,6 +2862,7 @@ function ordersIndexApp() {
         buildSingleOrderContentHtml(o, mode) {
             const isNoPrice = (mode === 'no_price' || mode === 'no_price_with_header');
             const isTaxName = (mode === 'tax_name');
+            const isSplitVat = (mode === 'split_vat');
             const hasCompanyHeader = (mode !== 'no_price');
 
             let title = 'PHIẾU BÁN HÀNG KIÊM XUẤT KHO';
@@ -2851,6 +2876,9 @@ function ordersIndexApp() {
             } else if (mode === 'tax_name') {
                 title = 'BẢNG KÊ BÁN HÀNG THEO HÓA ĐƠN';
                 subTitle = 'BẢNG KÊ CHI TIẾT HÀNG HÓA THEO TÊN HÓA ĐƠN GTGT';
+            } else if (mode === 'split_vat') {
+                title = 'PHIẾU BÁN HÀNG TÁCH THUẾ GTGT';
+                subTitle = 'BẢNG KÊ CHI TIẾT HÀNG HÓA & TIỀN THUẾ GTGT';
             }
 
             const regularItems = this.getRegularPrintItems(o);
@@ -2859,8 +2887,8 @@ function ordersIndexApp() {
 
             let regularTableRows = '';
             regularItems.forEach((it, idx) => {
-                const prodName = isTaxName ? (it.tax_name || it.name) : it.name;
-                const subName = (!isTaxName && it.tax_name && it.tax_name !== it.name) ? `<div style="font-size:10.5px;color:#555;font-style:italic;">${it.tax_name}</div>` : '';
+                const prodName = (isTaxName || isSplitVat) ? (it.tax_name || it.name) : it.name;
+                const subName = (!isTaxName && !isSplitVat && it.tax_name && it.tax_name !== it.name) ? `<div style="font-size:10.5px;color:#555;font-style:italic;">${it.tax_name}</div>` : '';
                 const discText = this.getDiscountDisplay(it);
                 const discAmtText = this.getDiscountAmountDisplay(it);
                 const qtyVal = it.display_quantity ?? it.sold_quantity ?? it.quantity;
@@ -2873,6 +2901,28 @@ function ordersIndexApp() {
                             <td style="padding:5px 6px;border:1px solid #111;font-weight:600;text-align:left;">${prodName}${subName}</td>
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${it.unit || ''}</td>
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:13px;">${this.formatNumber(qtyVal)}</td>
+                        </tr>
+                    `;
+                } else if (isSplitVat) {
+                    const vatRate = Number(it.vat_rate !== undefined && it.vat_rate !== null ? it.vat_rate : 8);
+                    const lineGross = Number(it.total || it.amount || 0);
+                    const lineNet = (vatRate > 0) ? Math.round(lineGross / (1 + (vatRate / 100))) : lineGross;
+                    const lineVat = lineGross - lineNet;
+                    const unitPriceGross = Number(it.unit_price || 0);
+                    const unitPriceNet = (qtyVal > 0) ? Math.round(lineNet / qtyVal) : ((vatRate > 0) ? Math.round(unitPriceGross / (1 + (vatRate / 100))) : unitPriceGross);
+
+                    regularTableRows += `
+                        <tr>
+                            <td style="text-align:center;padding:5px 4px;border:1px solid #111;">${idx + 1}</td>
+                            <td style="padding:5px 4px;border:1px solid #111;font-weight:600;text-align:left;">${it.sku || ''}</td>
+                            <td style="padding:5px 4px;border:1px solid #111;font-weight:600;text-align:left;">${prodName}</td>
+                            <td style="text-align:center;padding:5px 4px;border:1px solid #111;">${it.unit || ''}</td>
+                            <td style="text-align:right;padding:5px 4px;border:1px solid #111;font-weight:bold;font-size:12px;white-space:nowrap;">${this.formatNumber(qtyVal)}</td>
+                            <td style="text-align:right;padding:5px 4px;border:1px solid #111;white-space:nowrap;">${this.formatNumber(unitPriceNet)}</td>
+                            <td style="text-align:right;padding:5px 4px;border:1px solid #111;white-space:nowrap;">${this.formatNumber(lineNet)}</td>
+                            <td style="text-align:center;padding:5px 4px;border:1px solid #111;font-weight:bold;">${vatRate}%</td>
+                            <td style="text-align:right;padding:5px 4px;border:1px solid #111;white-space:nowrap;">${this.formatNumber(lineVat)}</td>
+                            <td style="text-align:right;padding:5px 4px;border:1px solid #111;font-weight:bold;white-space:nowrap;">${this.formatNumber(lineGross)}</td>
                         </tr>
                     `;
                 } else {
@@ -2896,7 +2946,48 @@ function ordersIndexApp() {
             const regularTotalQty = regularItems.reduce((s, it) => s + Number(it.display_quantity ?? it.sold_quantity ?? it.quantity ?? 0), 0);
 
             let regularSummaryHtml = '';
-            if (!isNoPrice) {
+            if (isSplitVat) {
+                const totalNetAll = regularItems.reduce((sum, it) => {
+                    const vr = Number(it.vat_rate !== undefined && it.vat_rate !== null ? it.vat_rate : 8);
+                    const lg = Number(it.total || it.amount || 0);
+                    return sum + ((vr > 0) ? Math.round(lg / (1 + (vr / 100))) : lg);
+                }, 0);
+                const totalVatAll = regularTotalAmount - totalNetAll;
+
+                if (Number(o.extra_discount || 0) > 0) {
+                    regularSummaryHtml = `
+                        <tr>
+                            <td colspan="6" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Cộng tiền hàng (chưa thuế GTGT)</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(totalNetAll)} VND</td>
+                            <td style="border:1px solid #111;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(totalVatAll)} VND</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(regularTotalAmount)} VND</td>
+                        </tr>
+                        <tr>
+                            <td colspan="9" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Chiết khấu đơn</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">-${this.formatNumber(o.extra_discount)} VND</td>
+                        </tr>
+                        <tr>
+                            <td colspan="9" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">Tổng thanh toán đã có thuế GTGT</td>
+                            <td style="text-align:right;font-weight:900;padding:5px 6px;border:1px solid #111;font-size:13.5px;color:#000;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">${this.formatNumber(o.final_total || Math.max(0, regularTotalAmount - Number(o.extra_discount)))} VND</td>
+                        </tr>
+                    `;
+                } else {
+                    regularSummaryHtml = `
+                        <tr>
+                            <td colspan="6" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Cộng tiền hàng (chưa thuế GTGT)</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(totalNetAll)} VND</td>
+                            <td style="border:1px solid #111;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(totalVatAll)} VND</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(regularTotalAmount)} VND</td>
+                        </tr>
+                        <tr>
+                            <td colspan="9" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">Tổng tiền thanh toán đã có thuế GTGT</td>
+                            <td style="text-align:right;font-weight:900;padding:5px 6px;border:1px solid #111;font-size:13px;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">${this.formatNumber(o.final_total || regularTotalAmount)} VND</td>
+                        </tr>
+                    `;
+                }
+            } else if (!isNoPrice) {
                 if (Number(o.extra_discount || 0) > 0) {
                     regularSummaryHtml = `
                         <tr>
@@ -3105,6 +3196,19 @@ function ordersIndexApp() {
                                         <th style="width: 55px;">ĐVT</th>
                                         <th style="width: 65px;">SL</th>
                                     </tr>
+                                ` : (isSplitVat ? `
+                                    <tr>
+                                        <th style="width: 30px;">TT</th>
+                                        <th style="width: 72px; text-align: left; padding-left: 5px;">Mã SP</th>
+                                        <th style="text-align: left; padding-left: 5px;">Tên sản phẩm</th>
+                                        <th style="width: 40px;">ĐVT</th>
+                                        <th style="width: 38px;">SL</th>
+                                        <th style="width: 74px;">Đơn giá (chưa VAT)</th>
+                                        <th style="width: 82px;">Tiền chưa VAT</th>
+                                        <th style="width: 44px;">Thuế</th>
+                                        <th style="width: 72px;">Tiền VAT</th>
+                                        <th style="width: 86px;">Tổng thanh toán</th>
+                                    </tr>
                                 ` : `
                                     <tr>
                                         <th style="width: 34px;">TT</th>
@@ -3117,10 +3221,10 @@ function ordersIndexApp() {
                                         <th style="width: 80px;">Tiền CK</th>
                                         <th style="width: 96px;">Thành tiền</th>
                                     </tr>
-                                `}
+                                `)}
                             </thead>
                             <tbody>
-                                ${regularTableRows || `<tr><td colspan="${isNoPrice ? 5 : 9}" style="text-align:center;padding:8px;font-style:italic;color:#666;border:1px solid #111;">Không có sản phẩm bán</td></tr>`}
+                                ${regularTableRows || `<tr><td colspan="${isNoPrice ? 5 : (isSplitVat ? 10 : 9)}" style="text-align:center;padding:8px;font-style:italic;color:#666;border:1px solid #111;">Không có sản phẩm bán</td></tr>`}
                                 ${regularSummaryHtml}
                             </tbody>
                         </table>
@@ -3281,6 +3385,7 @@ function ordersIndexApp() {
             const c = this.bulkPrintData.consolidated;
             const isNoPrice = (mode === 'no_price');
             const isTaxName = (mode === 'tax_name');
+            const isSplitVat = (mode === 'split_vat');
 
             let title = 'PHIẾU TỔNG HỢP XUẤT KHO KIÊM BẢNG KÊ';
             let subTitle = `PHIẾU GỘP TỔNG HỢP SẢN PHẨM TỪ ${c.total_orders} ĐƠN HÀNG`;
@@ -3290,9 +3395,15 @@ function ordersIndexApp() {
             } else if (isTaxName) {
                 title = 'BẢNG KÊ TỔNG HỢP XUẤT HÀNG THEO HÓA ĐƠN';
                 subTitle = `TỔNG HỢP SẢN PHẨM THEO TÊN HÓA ĐƠN GTGT (${c.total_orders} ĐƠN HÀNG)`;
+            } else if (isSplitVat) {
+                title = 'PHIẾU GỘP TỔNG HỢP XUẤT KHO (TÁCH THUẾ GTGT)';
+                subTitle = `BẢNG KÊ GỘP SẢN PHẨM & BÓC TÁCH THUẾ SUẤT GTGT TỪ ${c.total_orders} ĐƠN HÀNG`;
             }
 
             let rowsHtml = '';
+            let totalNetConsolidated = 0;
+            let totalVatConsolidated = 0;
+
             (c.products || []).forEach((p, idx) => {
                 const prodName = isTaxName ? (p.tax_name || p.name) : p.name;
                 const subName = (!isTaxName && p.tax_name && p.tax_name !== p.name) ? `<div style="font-size:10.5px;color:#555;font-style:italic;">${p.tax_name}</div>` : '';
@@ -3309,6 +3420,34 @@ function ordersIndexApp() {
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${this.formatNumber(p.sold_quantity)}</td>
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;">${this.formatNumber(p.gift_quantity)}</td>
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:13px;background-color:#f8fafc;">${this.formatNumber(p.total_quantity)}</td>
+                        </tr>
+                    `;
+                } else if (isSplitVat) {
+                    const vatRate = Number(p.vat_rate !== undefined && p.vat_rate !== null ? p.vat_rate : 8);
+                    const lineGross = Number(p.total_amount || 0);
+                    const lineNet = (vatRate > 0) ? Math.round(lineGross / (1 + (vatRate / 100))) : lineGross;
+                    const lineVat = lineGross - lineNet;
+                    const qtyVal = Number(p.sold_quantity || 0);
+                    const unitPriceNet = (qtyVal > 0) ? Math.round(lineNet / qtyVal) : ((vatRate > 0) ? Math.round(Number(p.unit_price || 0) / (1 + (vatRate / 100))) : Number(p.unit_price || 0));
+                    totalNetConsolidated += lineNet;
+                    totalVatConsolidated += lineVat;
+
+                    rowsHtml += `
+                        <tr>
+                            <td style="text-align:center;padding:5px 5px;border:1px solid #111;">${idx + 1}</td>
+                            <td style="padding:5px 5px;border:1px solid #111;font-weight:600;text-align:left;font-size:11px;">${p.sku || ''}</td>
+                            <td style="padding:5px 5px;border:1px solid #111;font-weight:600;text-align:left;">
+                                ${prodName}${subName}
+                            </td>
+                            <td style="text-align:center;padding:5px 5px;border:1px solid #111;">${p.unit || ''}</td>
+                            <td style="text-align:right;padding:5px 5px;border:1px solid #111;">${this.formatNumber(p.sold_quantity)}</td>
+                            <td style="text-align:right;padding:5px 5px;border:1px solid #111;">${this.formatNumber(p.gift_quantity)}</td>
+                            <td style="text-align:right;padding:5px 5px;border:1px solid #111;font-weight:bold;">${this.formatNumber(p.total_quantity)}</td>
+                            <td style="text-align:right;padding:5px 5px;border:1px solid #111;">${this.formatNumber(unitPriceNet)}</td>
+                            <td style="text-align:right;padding:5px 5px;border:1px solid #111;">${this.formatNumber(lineNet)}</td>
+                            <td style="text-align:center;padding:5px 4px;border:1px solid #111;">${vatRate}%</td>
+                            <td style="text-align:right;padding:5px 5px;border:1px solid #111;">${this.formatNumber(lineVat)}</td>
+                            <td style="text-align:right;padding:5px 5px;border:1px solid #111;font-weight:bold;">${this.formatNumber(lineGross)}</td>
                         </tr>
                     `;
                 } else {
@@ -3338,6 +3477,20 @@ function ordersIndexApp() {
                         <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">${this.formatNumber(c.total_sold_quantity)}</td>
                         <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">${this.formatNumber(c.total_gift_quantity)}</td>
                         <td style="text-align:right;font-weight:black;padding:5px 6px;border:1px solid #111;font-size:13px;background-color:#f1f5f9;">${this.formatNumber(c.total_quantity)}</td>
+                    </tr>
+                `;
+            } else if (isSplitVat) {
+                summaryFoot = `
+                    <tr>
+                        <td colspan="4" style="border:1px solid #111;padding:5px 6px;text-align:right;font-weight:bold;">Tổng cộng:</td>
+                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">${this.formatNumber(c.total_sold_quantity)}</td>
+                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">${this.formatNumber(c.total_gift_quantity)}</td>
+                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">${this.formatNumber(c.total_quantity)}</td>
+                        <td style="border:1px solid #111;"></td>
+                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">${this.formatNumber(totalNetConsolidated)}</td>
+                        <td style="border:1px solid #111;text-align:center;"></td>
+                        <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;">${this.formatNumber(totalVatConsolidated)}</td>
+                        <td style="text-align:right;font-weight:black;padding:5px 6px;border:1px solid #111;font-size:13px;background-color:#f8fafc;">${this.formatNumber(c.total_amount)}</td>
                     </tr>
                 `;
             } else {
@@ -3443,6 +3596,21 @@ function ordersIndexApp() {
                                     <th style="width: 60px;">SL Tặng</th>
                                     <th style="width: 80px;">Tổng Xuất</th>
                                 </tr>
+                            ` : (isSplitVat ? `
+                                <tr>
+                                    <th style="width: 28px;">TT</th>
+                                    <th style="width: 70px; text-align: left; padding-left: 5px;">Mã SP</th>
+                                    <th style="text-align: left; padding-left: 5px;">Tên sản phẩm</th>
+                                    <th style="width: 38px;">ĐVT</th>
+                                    <th style="width: 40px;">SL Bán</th>
+                                    <th style="width: 40px;">SL Tặng</th>
+                                    <th style="width: 48px;">Tổng</th>
+                                    <th style="width: 70px;">Đơn giá</th>
+                                    <th style="width: 78px;">Tiền chưa VAT</th>
+                                    <th style="width: 38px;">Thuế</th>
+                                    <th style="width: 68px;">Tiền VAT</th>
+                                    <th style="width: 84px;">Tổng tiền</th>
+                                </tr>
                             ` : `
                                 <tr>
                                     <th style="width: 32px;">TT</th>
@@ -3455,7 +3623,7 @@ function ordersIndexApp() {
                                     <th style="width: 80px;">Đơn giá</th>
                                     <th style="width: 95px;">Thành tiền</th>
                                 </tr>
-                            `}
+                            `)}
                         </thead>
                         <tbody>
                             ${rowsHtml}
@@ -3601,10 +3769,11 @@ function ordersIndexApp() {
             }
             const o = orderData;
             const isTaxName = (type === 'invoice');
-            const fileName = (isTaxName ? 'Hoa_don_' : 'Don_hang_') + (o.order_code || o.id) + '.csv';
+            const isSplitVat = (type === 'split_vat');
+            const fileName = (isSplitVat ? 'Hoa_don_tach_VAT_' : (isTaxName ? 'Hoa_don_' : 'Don_hang_')) + (o.order_code || o.id) + '.csv';
 
             let csvContent = "\uFEFF"; // UTF-8 BOM
-            csvContent += "THÔNG TIN ĐƠN HÀNG\n";
+            csvContent += (isSplitVat ? "BẢNG KÊ BÁN HÀNG TÁCH THUẾ GTGT\n" : "THÔNG TIN ĐƠN HÀNG\n");
             csvContent += "Số hóa đơn," + (o.order_code || '') + "\n";
             csvContent += "Ngày lập," + (o.created_date || '') + "\n";
             csvContent += "Mã khách hàng,\"" + ((o.customer_code || '').replace(/"/g, '""')) + "\"\n";
@@ -3620,31 +3789,72 @@ function ordersIndexApp() {
             const regularItems = this.getRegularPrintItems(o);
             const giftItems = this.getGiftPrintItems(o);
 
-            csvContent += "DANH SÁCH SẢN PHẨM\n";
-            csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,Đơn vị tính,Đơn giá,Số lượng,C.khấu,Tiền CK,Thành tiền,Loại giá\n";
+            if (isSplitVat) {
+                csvContent += "DANH SÁCH SẢN PHẨM (BÓC TÁCH THUẾ GTGT)\n";
+                csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,Đơn vị tính,Đơn giá chưa VAT,Số lượng,Tiền chưa VAT,Thuế suất,Tiền thuế GTGT,Thành tiền có VAT,Loại giá\n";
 
-            regularItems.forEach((it, idx) => {
-                const prodName = isTaxName ? (it.tax_name || it.name) : it.name;
-                const qtyVal = it.display_quantity ?? it.sold_quantity ?? it.quantity;
-                const discText = this.getDiscountDisplay(it);
-                const discAmtVal = this.getDiscountAmountValue(it);
-                csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},${it.unit_price || 0},${qtyVal},"${discText}",${discAmtVal},${it.total || it.amount || 0},"${it.price_tier_code || it.price_type || ''}"\n`;
-            });
-            csvContent += `Tổng tiền hàng (VND),,,,,,,,${this.getRegularItemsTotal(o)},,\n`;
+                let totalNetAll = 0;
+                let totalVatAll = 0;
+                let totalGrossAll = 0;
 
-            if (giftItems.length > 0) {
-                csvContent += "\nHÀNG TẶNG\n";
-                csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,Đơn vị tính,Đơn giá,Số lượng,C.khấu,Tiền CK,Thành tiền,Loại giá\n";
-                giftItems.forEach((it, idx) => {
-                    const prodName = isTaxName ? (it.tax_name || it.name) : it.name;
-                    const qtyVal = it.display_quantity ?? it.gift_quantity ?? it.quantity;
-                    const discText = this.getDiscountDisplay(it);
-                    csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},${it.unit_price || 0},${qtyVal},"${discText}",0,${it.total || it.amount || 0},"${it.price_tier_code || 'KM'}"\n`;
+                regularItems.forEach((it, idx) => {
+                    const prodName = it.name;
+                    const qtyVal = it.display_quantity ?? it.sold_quantity ?? it.quantity;
+                    const vatRate = Number(it.vat_rate !== undefined && it.vat_rate !== null ? it.vat_rate : 8);
+                    const lineGross = Number(it.total || it.amount || 0);
+                    const lineNet = (vatRate > 0) ? Math.round(lineGross / (1 + (vatRate / 100))) : lineGross;
+                    const lineVat = lineGross - lineNet;
+                    const unitPriceNet = (qtyVal > 0) ? Math.round(lineNet / qtyVal) : ((vatRate > 0) ? Math.round(Number(it.unit_price || 0) / (1 + (vatRate / 100))) : Number(it.unit_price || 0));
+
+                    totalNetAll += lineNet;
+                    totalVatAll += lineVat;
+                    totalGrossAll += lineGross;
+
+                    csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},${unitPriceNet},${qtyVal},${lineNet},${vatRate}%,${lineVat},${lineGross},"${it.price_tier_code || it.price_type || ''}"\n`;
                 });
-                csvContent += `Tổng hàng tặng (VND),,,,,,,,${this.getGiftItemsTotal(o)},,\n`;
-            }
 
-            csvContent += `\nPhải thanh toán (VND),,,,,,,,${o.final_total || (this.getRegularItemsTotal(o) + this.getGiftItemsTotal(o))},,\n`;
+                csvContent += `Cộng tiền hàng (chưa thuế GTGT),,,,,,${totalNetAll},,${totalVatAll},${totalGrossAll},\n`;
+                if (Number(o.extra_discount || 0) > 0) {
+                    csvContent += `Chiết khấu giảm giá đơn hàng,,,,,,,,,-${o.extra_discount},\n`;
+                }
+                csvContent += `Tổng tiền thanh toán đã có thuế GTGT,,,,,,,,,${o.final_total || (totalGrossAll - Number(o.extra_discount || 0))},\n`;
+
+                if (giftItems.length > 0) {
+                    csvContent += "\nHÀNG TẶNG KHUYẾN MẠI\n";
+                    csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,Đơn vị tính,Đơn giá chưa VAT,Số lượng,Tiền chưa VAT,Thuế suất,Tiền thuế GTGT,Thành tiền có VAT,Loại giá\n";
+                    giftItems.forEach((it, idx) => {
+                        const prodName = it.name;
+                        const qtyVal = it.display_quantity ?? it.gift_quantity ?? it.quantity;
+                        csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},0,${qtyVal},0,0%,0,0,"${it.price_tier_code || 'KM'}"\n`;
+                    });
+                }
+            } else {
+                csvContent += "DANH SÁCH SẢN PHẨM\n";
+                csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,Đơn vị tính,Đơn giá,Số lượng,C.khấu,Tiền CK,Thành tiền,Loại giá\n";
+
+                regularItems.forEach((it, idx) => {
+                    const prodName = isTaxName ? (it.tax_name || it.name) : it.name;
+                    const qtyVal = it.display_quantity ?? it.sold_quantity ?? it.quantity;
+                    const discText = this.getDiscountDisplay(it);
+                    const discAmtVal = this.getDiscountAmountValue(it);
+                    csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},${it.unit_price || 0},${qtyVal},"${discText}",${discAmtVal},${it.total || it.amount || 0},"${it.price_tier_code || it.price_type || ''}"\n`;
+                });
+                csvContent += `Tổng tiền hàng (VND),,,,,,,,${this.getRegularItemsTotal(o)},,\n`;
+
+                if (giftItems.length > 0) {
+                    csvContent += "\nHÀNG TẶNG\n";
+                    csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,Đơn vị tính,Đơn giá,Số lượng,C.khấu,Tiền CK,Thành tiền,Loại giá\n";
+                    giftItems.forEach((it, idx) => {
+                        const prodName = isTaxName ? (it.tax_name || it.name) : it.name;
+                        const qtyVal = it.display_quantity ?? it.gift_quantity ?? it.quantity;
+                        const discText = this.getDiscountDisplay(it);
+                        csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},${it.unit_price || 0},${qtyVal},"${discText}",0,${it.total || it.amount || 0},"${it.price_tier_code || 'KM'}"\n`;
+                    });
+                    csvContent += `Tổng hàng tặng (VND),,,,,,,,${this.getGiftItemsTotal(o)},,\n`;
+                }
+
+                csvContent += `\nPhải thanh toán (VND),,,,,,,,${o.final_total || (this.getRegularItemsTotal(o) + this.getGiftItemsTotal(o))},,\n`;
+            }
             csvContent += `Bằng chữ,"${(o.final_total_words || '').replace(/"/g, '""')}"\n`;
             csvContent += `Người lập,"${(o.creator_name || '').replace(/"/g, '""')}"\n`;
             csvContent += `Người sửa cuối,"${(o.updater_name || '').replace(/"/g, '""')}"\n`;

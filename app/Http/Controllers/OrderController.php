@@ -2134,6 +2134,7 @@ class OrderController extends Controller
                     'customer_price'   => 0,
                     'price_tier_code'  => 'KM',
                     'price_type'       => $it->applied_tier_policy ?: 'Hàng khuyến mại',
+                    'vat_rate'         => $it->product && $it->product->vat_rate !== null ? (float)$it->product->vat_rate : 8,
                     'is_gift'          => true,
                     'isPromotionalGift'=> true,
                 ];
@@ -2180,6 +2181,7 @@ class OrderController extends Controller
                 'price_type'       => ($it->applied_tier_policy === 'Theo phiếu' || empty($it->applied_tier_policy))
                     ? ('Theo phiếu (' . ($dealer?->tier ?: 'Nguyên Giá') . ')')
                     : $it->applied_tier_policy,
+                'vat_rate'         => $it->product && $it->product->vat_rate !== null ? (float)$it->product->vat_rate : 8,
                 'is_gift'          => false,
                 'isPromotionalGift'=> false,
             ];
@@ -2204,6 +2206,7 @@ class OrderController extends Controller
                     'customer_price'   => 0,
                     'price_tier_code'  => 'KM',
                     'price_type'       => 'Hàng tặng kèm',
+                    'vat_rate'         => $it->product && $it->product->vat_rate !== null ? (float)$it->product->vat_rate : 8,
                     'is_gift'          => true,
                     'isPromotionalGift'=> true,
                 ];
@@ -2367,6 +2370,7 @@ class OrderController extends Controller
                         'name' => $item['name'],
                         'tax_name' => $item['tax_name'] ?? $item['name'],
                         'unit' => $item['unit'] ?? 'Cây',
+                        'vat_rate' => (float)($item['vat_rate'] ?? 8),
                         'unit_price' => (float)($item['unit_price'] ?? 0),
                         'sold_quantity' => 0,
                         'gift_quantity' => 0,
