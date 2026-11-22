@@ -212,7 +212,7 @@ input[type=number] {
                             <th class="py-3 px-3.5 min-w-[320px]">Sản phẩm / Mặt hàng (gõ mã, tên để tìm kiếm)</th>
                             <th class="py-3 px-2 w-20 text-center">ĐVT</th>
                             <th class="py-3 px-2 w-36 text-center">Số lượng đặt</th>
-                            <th class="py-3 px-2 w-36 text-right">Đơn giá nhập</th>
+                            <th class="py-3 px-2 w-36 text-right">Đơn giá</th>
                             <th class="py-3 px-2 w-24 text-right">CK (%)</th>
                             <th class="py-3 px-3 w-36 text-right">Thành tiền</th>
                             <th class="py-3 px-2 w-10 text-center"></th>
@@ -298,8 +298,8 @@ input[type=number] {
                                                         </div>
                                                     </div>
                                                     <div class="shrink-0 text-right">
-                                                        <div class="font-black text-sky-700 text-xs" x-text="formatMoney(p.cost_price)"></div>
-                                                        <div class="text-[10px] text-slate-400">giá nhập tham khảo</div>
+                                                        <div class="font-black text-sky-700 text-xs" x-text="formatMoney(p.price)"></div>
+                                                        <div class="text-[10px] text-slate-400">giá bán</div>
                                                     </div>
                                                 </div>
                                             </template>
@@ -812,7 +812,7 @@ function supplierOrderCreateApp() {
             it.searchQuery = `[${p.sku}] ${p.name}`;
             it.unit = p.unit || 'cái';
             it.stock_quantity = p.stock_quantity || 0;
-            it.unit_price = p.cost_price || 0;
+            it.unit_price = p.price || 0;
             it.ordered_quantity = (parseFloat(it.ordered_quantity) > 0) ? it.ordered_quantity : 1;
 
             this.activeProdDropdownIndex = null;

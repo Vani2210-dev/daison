@@ -107,17 +107,7 @@ class SupplierOrderController extends Controller
             ->orderByRaw("CASE WHEN type = 'Kho tổng' THEN 1 WHEN type = 'Kho chi nhánh' THEN 2 ELSE 3 END, name ASC")
             ->get(['id', 'code', 'name', 'address']);
 
-        $products = Product::where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'sku', 'name', 'unit', 'cost_price', 'latest_cost_price', 'stock_quantity'])
-            ->map(fn($p) => [
-                'id'             => $p->id,
-                'sku'            => $p->sku,
-                'name'           => $p->name,
-                'unit'           => $p->unit ?: 'cái',
-                'cost_price'     => (float)($p->latest_cost_price ?: $p->cost_price ?: 0),
-                'stock_quantity' => (float)($p->stock_quantity ?? 0),
-            ]);
+        $products = $this->getCatalogProducts();
 
         if ($request->wantsJson() && !$request->isMethod('get')) {
             return response()->json([
@@ -142,23 +132,32 @@ class SupplierOrderController extends Controller
             ->orderByRaw("CASE WHEN type = 'Kho tổng' THEN 1 WHEN type = 'Kho chi nhánh' THEN 2 ELSE 3 END, name ASC")
             ->get(['id', 'code', 'name', 'address']);
 
-        $products = Product::where('is_active', true)
+        $products = $this->getCatalogProducts();
+
+        $selectedSupplierId = $request->input('supplier_id');
+
+        return view('supplier_orders.create', compact('suppliers', 'warehouses', 'products', 'selectedSupplierId'));
+    }
+
+    /**
+     * Lấy danh sách sản phẩm chuẩn hóa dùng cho đặt hàng NCC (bao gồm giá bán).
+     */
+    private function getCatalogProducts()
+    {
+        return Product::where('is_active', true)
             ->with('brand:id,name')
             ->orderBy('name')
-            ->get(['id', 'sku', 'name', 'unit', 'cost_price', 'latest_cost_price', 'stock_quantity', 'brand_id'])
+            ->get(['id', 'sku', 'name', 'unit', 'price', 'cost_price', 'latest_cost_price', 'stock_quantity', 'brand_id'])
             ->map(fn($p) => [
                 'id'             => $p->id,
                 'sku'            => $p->sku,
                 'name'           => $p->name,
                 'unit'           => $p->unit ?: 'cái',
+                'price'          => (float)($p->price ?? 0),
                 'cost_price'     => (float)($p->latest_cost_price ?: $p->cost_price ?: 0),
                 'stock_quantity' => (float)($p->stock_quantity ?? 0),
                 'brand_name'     => $p->brand?->name ?? '',
             ]);
-
-        $selectedSupplierId = $request->input('supplier_id');
-
-        return view('supplier_orders.create', compact('suppliers', 'warehouses', 'products', 'selectedSupplierId'));
     }
 
     /**

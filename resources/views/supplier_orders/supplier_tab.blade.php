@@ -988,7 +988,7 @@ function supplierOrdersApp() {
                 this.formData.items[idx].product_name = p.name;
                 this.formData.items[idx].sku = p.sku;
                 this.formData.items[idx].unit = p.unit;
-                this.formData.items[idx].unit_price = p.cost_price;
+                this.formData.items[idx].unit_price = p.price || 0;
                 this.recalcTotals();
             }
         },
