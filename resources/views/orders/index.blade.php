@@ -2398,25 +2398,127 @@ function ordersIndexApp() {
                 return;
             }
 
-            let csv = "\uFEFF"; // UTF-8 BOM
-            csv += "BẢNG KÊ DANH SÁCH ĐƠN HÀNG XUẤT KHO\n";
-            csv += "Thời gian xuất," + new Date().toLocaleString('vi-VN') + "\n";
-            csv += "Tổng số chứng từ," + list.length + "\n\n";
-            csv += "STT,Mã đơn hàng,Ngày tạo,Mã khách hàng,Khách hàng,Số điện thoại,Địa chỉ nhận hàng,Kho xuất,Thành tiền (đ),Người lên đơn,Trạng thái\n";
+            const fileName = `Bang_ke_don_hang_${new Date().toISOString().slice(0, 10)}.xls`;
+
+            let html = `
+<html xmlns:o="urn:schemas-microsoft-com:office:office" 
+      xmlns:x="urn:schemas-microsoft-com:office:excel" 
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!--[if gte mso 9]>
+<xml>
+  <x:ExcelWorkbook>
+    <x:ExcelWorksheets>
+      <x:ExcelWorksheet>
+        <x:Name>Bang_ke_don_hang</x:Name>
+        <x:WorksheetOptions>
+          <x:DisplayGridlines/>
+          <x:Print>
+            <x:ValidPrinterInfo/>
+            <x:PaperSizeIndex>9</x:PaperSizeIndex>
+            <x:HorizontalResolution>600</x:HorizontalResolution>
+            <x:VerticalResolution>600</x:VerticalResolution>
+          </x:Print>
+        </x:WorksheetOptions>
+      </x:ExcelWorksheet>
+    </x:ExcelWorksheets>
+  </x:ExcelWorkbook>
+</xml>
+<![endif]-->
+<style>
+  body { font-family: 'Times New Roman', Arial, sans-serif; font-size: 11pt; color: #000000; }
+  table { border-collapse: collapse; }
+  .tbl-bordered th, .tbl-bordered td { border: 0.5pt solid #000000; padding: 5px 6px; font-size: 10.5pt; }
+  .text-fmt { mso-number-format: "\\@"; text-align: left; }
+  .text-center { text-align: center; }
+  .text-right { text-align: right; }
+  .num-fmt { mso-number-format: "\\#\\,\\#\\#0"; text-align: right; }
+  
+  .company-title { font-size: 13.5pt; font-weight: bold; color: #1b4a8c; text-transform: uppercase; }
+  .company-sub { font-size: 10pt; color: #475569; }
+  .doc-title { font-size: 16pt; font-weight: bold; color: #1b4a8c; text-align: center; text-transform: uppercase; }
+  .doc-sub { font-size: 10.5pt; font-style: italic; color: #334155; text-align: center; }
+  
+  .th-header { 
+    background-color: #1b4a8c; 
+    color: #ffffff; 
+    font-weight: bold; 
+    text-align: center; 
+    border: 0.5pt solid #000000; 
+    padding: 6px 4px; 
+    font-size: 10pt;
+  }
+  
+  .row-total-net { 
+    background-color: #f1f5f9; 
+    font-weight: bold; 
+    border: 0.5pt solid #000000; 
+  }
+</style>
+</head>
+<body>
+<table>
+  <tr><td colspan="11" class="company-title" style="border:none;">HỆ THỐNG PHÂN PHỐI ĐẠI SƠN</td></tr>
+  <tr><td colspan="11" class="company-sub" style="border:none;">Địa chỉ: Xóm 2, Xã Nam Giang, Huyện Nam Đàn, Tỉnh Nghệ An | Hotline: 0917.927.888</td></tr>
+  <tr><td colspan="11" style="border:none; height:10px;"></td></tr>
+  <tr><td colspan="11" class="doc-title" style="border:none;">BẢNG KÊ DANH SÁCH ĐƠN HÀNG XUẤT KHO</td></tr>
+  <tr><td colspan="11" class="doc-sub" style="border:none;">Thời gian xuất: ${new Date().toLocaleString('vi-VN')} &nbsp;-&nbsp; Tổng số chứng từ: ${list.length} đơn</td></tr>
+  <tr><td colspan="11" style="border:none; height:12px;"></td></tr>
+</table>
+
+<table class="tbl-bordered">
+  <tr>
+    <th class="th-header" style="width: 35px;">STT</th>
+    <th class="th-header" style="width: 100px;">Mã đơn hàng</th>
+    <th class="th-header" style="width: 120px;">Ngày tạo</th>
+    <th class="th-header" style="width: 90px;">Mã KH</th>
+    <th class="th-header" style="width: 200px;">Khách hàng</th>
+    <th class="th-header" style="width: 105px;">Số điện thoại</th>
+    <th class="th-header" style="width: 250px;">Địa chỉ nhận hàng</th>
+    <th class="th-header" style="width: 130px;">Kho xuất</th>
+    <th class="th-header" style="width: 110px;">Thành tiền (đ)</th>
+    <th class="th-header" style="width: 120px;">Người lên đơn</th>
+    <th class="th-header" style="width: 90px;">Trạng thái</th>
+  </tr>
+`;
 
             let totalAmt = 0;
             list.forEach((o, idx) => {
                 const amt = Number(o.total || 0);
                 totalAmt += amt;
-                csv += `${idx + 1},"${o.code}","${o.date}","${(o.customer_code || '').replace(/"/g, '""')}","${(o.customer || '').replace(/"/g, '""')}","${o.phone}","${(o.address || '').replace(/"/g, '""')}","${(o.warehouse || '').replace(/"/g, '""')}",${amt},"${(o.creator || '').replace(/"/g, '""')}","${o.status}"\n`;
+                html += `
+  <tr>
+    <td class="text-center">${idx + 1}</td>
+    <td class="text-fmt" style="font-weight:600;">${o.code || ''}</td>
+    <td class="text-center">${o.date || ''}</td>
+    <td class="text-fmt" style="font-weight:600;">${o.customer_code || ''}</td>
+    <td class="text-fmt">${o.customer || ''}</td>
+    <td class="text-fmt">${o.phone || ''}</td>
+    <td class="text-fmt">${o.address || ''}</td>
+    <td class="text-fmt">${o.warehouse || ''}</td>
+    <td class="num-fmt" style="font-weight:bold;">${amt}</td>
+    <td class="text-fmt">${o.creator || ''}</td>
+    <td class="text-center">${o.status || ''}</td>
+  </tr>
+                `;
             });
 
-            csv += `\nTổng cộng,,,,,,,,${totalAmt},,\n`;
+            html += `
+  <tr class="row-total-net">
+    <td colspan="8" class="text-right" style="font-weight:bold;">Tổng cộng:</td>
+    <td class="num-fmt" style="font-weight:bold; font-size:11.5pt;">${totalAmt}</td>
+    <td colspan="2"></td>
+  </tr>
+</table>
+</body>
+</html>
+`;
 
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const blob = new Blob(['\uFEFF' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = `Bang_ke_don_hang_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.download = fileName;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -3712,45 +3814,232 @@ function ordersIndexApp() {
                 return;
             }
             const c = this.bulkPrintData.consolidated;
-            let csv = "\uFEFF"; // UTF-8 BOM
+            const fileName = `Phieu_gop_tong_hop_${(c.batch_code || '').replace(/[^a-zA-Z0-9_-]/g, '_')}_${new Date().toISOString().slice(0, 10)}.xls`;
 
-            const escStr = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
-            const escFormulaText = (val) => (val !== undefined && val !== null && String(val).trim() !== '') ? `="${String(val).replace(/"/g, '""')}"` : '""';
+            let html = `
+<html xmlns:o="urn:schemas-microsoft-com:office:office" 
+      xmlns:x="urn:schemas-microsoft-com:office:excel" 
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!--[if gte mso 9]>
+<xml>
+  <x:ExcelWorkbook>
+    <x:ExcelWorksheets>
+      <x:ExcelWorksheet>
+        <x:Name>Phieu_gop_tong_hop</x:Name>
+        <x:WorksheetOptions>
+          <x:DisplayGridlines/>
+          <x:Print>
+            <x:ValidPrinterInfo/>
+            <x:PaperSizeIndex>9</x:PaperSizeIndex>
+            <x:HorizontalResolution>600</x:HorizontalResolution>
+            <x:VerticalResolution>600</x:VerticalResolution>
+          </x:Print>
+        </x:WorksheetOptions>
+      </x:ExcelWorksheet>
+    </x:ExcelWorksheets>
+  </x:ExcelWorkbook>
+</xml>
+<![endif]-->
+<style>
+  body { font-family: 'Times New Roman', Arial, sans-serif; font-size: 11pt; color: #000000; }
+  table { border-collapse: collapse; }
+  .tbl-bordered th, .tbl-bordered td { border: 0.5pt solid #000000; padding: 5px 6px; font-size: 10.5pt; }
+  .text-fmt { mso-number-format: "\\@"; text-align: left; }
+  .text-center { text-align: center; }
+  .text-right { text-align: right; }
+  .num-fmt { mso-number-format: "\\#\\,\\#\\#0"; text-align: right; }
+  
+  .company-title { font-size: 13.5pt; font-weight: bold; color: #1b4a8c; text-transform: uppercase; }
+  .company-sub { font-size: 10pt; color: #475569; }
+  .doc-title { font-size: 16pt; font-weight: bold; color: #1b4a8c; text-align: center; text-transform: uppercase; }
+  .doc-sub { font-size: 10.5pt; font-style: italic; color: #334155; text-align: center; }
+  
+  .meta-label { font-weight: bold; color: #1e293b; font-size: 10.5pt; white-space: nowrap; }
+  .meta-val { font-size: 10.5pt; }
+  
+  .section-header { 
+    background-color: #e2e8f0; 
+    color: #0f172a; 
+    font-weight: bold; 
+    font-size: 11pt; 
+    text-transform: uppercase; 
+    padding: 6px 8px; 
+    border: 0.5pt solid #000000; 
+  }
+  
+  .th-header { 
+    background-color: #1b4a8c; 
+    color: #ffffff; 
+    font-weight: bold; 
+    text-align: center; 
+    border: 0.5pt solid #000000; 
+    padding: 6px 4px; 
+    font-size: 10pt;
+  }
+  
+  .row-total-net { 
+    background-color: #f1f5f9; 
+    font-weight: bold; 
+    border: 0.5pt solid #000000; 
+  }
+  
+  .sign-title { font-weight: bold; text-align: center; font-size: 10.5pt; text-transform: uppercase; }
+  .sign-sub { font-style: italic; text-align: center; font-size: 9pt; color: #64748b; }
+</style>
+</head>
+<body>
+<table>
+  <tr><td colspan="11" class="company-title" style="border:none;">HỆ THỐNG PHÂN PHỐI ĐẠI SƠN</td></tr>
+  <tr><td colspan="11" class="company-sub" style="border:none;">Địa chỉ: Xóm 2, Xã Nam Giang, Huyện Nam Đàn, Tỉnh Nghệ An | Hotline: 0917.927.888</td></tr>
+  <tr><td colspan="11" style="border:none; height:10px;"></td></tr>
+  <tr><td colspan="11" class="doc-title" style="border:none;">PHIẾU GỘP TỔNG HỢP SẢN PHẨM KIÊM BẢNG KÊ</td></tr>
+  <tr><td colspan="11" class="doc-sub" style="border:none;">Mã phiếu: ${c.batch_code || ''} &nbsp;-&nbsp; Ngày lập: ${c.created_date || ''}</td></tr>
+  <tr><td colspan="11" style="border:none; height:12px;"></td></tr>
+  <tr>
+    <td colspan="2" class="meta-label" style="border:none;">Mã phiếu gộp:</td>
+    <td colspan="3" class="text-fmt meta-val" style="border:none; font-weight:bold;">${c.batch_code || ''}</td>
+    <td colspan="2" class="meta-label" style="border:none;">Kho xuất:</td>
+    <td colspan="4" class="meta-val" style="border:none; font-weight:bold;">${c.warehouse_display || ''}</td>
+  </tr>
+  <tr>
+    <td colspan="2" class="meta-label" style="border:none;">Thời gian xuất:</td>
+    <td colspan="3" class="meta-val" style="border:none;">${c.created_date || ''}</td>
+    <td colspan="2" class="meta-label" style="border:none;">Tổng số đơn gộp:</td>
+    <td colspan="4" class="meta-val" style="border:none; font-weight:bold; color:#0284c7;">${c.total_orders} đơn</td>
+  </tr>
+  <tr>
+    <td colspan="2" class="meta-label" style="border:none;">Mã các đơn hàng:</td>
+    <td colspan="9" class="text-fmt meta-val" style="border:none;">${c.order_codes_display || ''}</td>
+  </tr>
+  <tr><td colspan="11" style="border:none; height:10px;"></td></tr>
+</table>
 
-            csv += "HỆ THỐNG PHÂN PHỐI ĐẠI SƠN\n";
-            csv += "Địa chỉ: Xóm 2, Xã Nam Giang, Huyện Nam Đàn, Tỉnh Nghệ An | Hotline: 0917.927.888\n\n";
-
-            csv += `,,${escStr("PHIẾU GỘP TỔNG HỢP SẢN PHẨM KIÊM BẢNG KÊ")}\n`;
-            csv += `,,${escStr(`Mã phiếu: ${c.batch_code || ''} - Ngày lập: ${c.created_date || ''}`)}\n\n`;
-
-            csv += `Mã phiếu gộp:,${escFormulaText(c.batch_code)},,,,,Kho xuất:,${escStr(c.warehouse_display || '')}\n`;
-            csv += `Thời gian xuất:,${escStr(c.created_date || '')},,,,,Tổng số đơn gộp:,${c.total_orders} đơn\n`;
-            csv += `Mã các đơn hàng:,${escStr(c.order_codes_display || '')},,,,,\n\n`;
-
-            csv += "I. BẢNG TỔNG HỢP SẢN PHẨM\n";
-            csv += "STT,Mã sản phẩm,Tên sản phẩm,Tên theo HĐ,ĐVT,SL Bán,SL Tặng,Tổng SL Xuất,Đơn giá (đ),Thành tiền (đ),Chi tiết phân bổ theo đơn hàng\n";
+<table class="tbl-bordered">
+  <tr>
+    <td colspan="11" class="section-header">I. BẢNG TỔNG HỢP SẢN PHẨM</td>
+  </tr>
+  <tr>
+    <th class="th-header" style="width: 35px;">STT</th>
+    <th class="th-header" style="width: 90px;">Mã sản phẩm</th>
+    <th class="th-header" style="width: 230px;">Tên sản phẩm</th>
+    <th class="th-header" style="width: 190px;">Tên theo HĐ</th>
+    <th class="th-header" style="width: 50px;">ĐVT</th>
+    <th class="th-header" style="width: 60px;">SL Bán</th>
+    <th class="th-header" style="width: 60px;">SL Tặng</th>
+    <th class="th-header" style="width: 75px;">Tổng Xuất</th>
+    <th class="th-header" style="width: 95px;">Đơn giá (đ)</th>
+    <th class="th-header" style="width: 110px;">Thành tiền (đ)</th>
+    <th class="th-header" style="width: 250px;">Chi tiết phân bổ theo đơn hàng</th>
+  </tr>
+`;
 
             (c.products || []).forEach((p, idx) => {
-                csv += `${idx + 1},${escFormulaText(p.sku)},${escStr(p.name)},${escStr(p.tax_name)},${escStr(p.unit)},${p.sold_quantity},${p.gift_quantity},${p.total_quantity},${p.unit_price},${p.total_amount},${escStr(p.allocation_text)}\n`;
+                html += `
+  <tr>
+    <td class="text-center">${idx + 1}</td>
+    <td class="text-fmt" style="font-weight:600;">${p.sku || ''}</td>
+    <td class="text-fmt">${p.name || ''}</td>
+    <td class="text-fmt">${p.tax_name || ''}</td>
+    <td class="text-center">${p.unit || ''}</td>
+    <td class="num-fmt">${p.sold_quantity}</td>
+    <td class="num-fmt">${p.gift_quantity}</td>
+    <td class="num-fmt" style="font-weight:bold;">${p.total_quantity}</td>
+    <td class="num-fmt">${p.unit_price}</td>
+    <td class="num-fmt" style="font-weight:bold;">${p.total_amount}</td>
+    <td class="text-fmt">${p.allocation_text || ''}</td>
+  </tr>
+                `;
             });
 
-            csv += `Tổng cộng,,,,${c.total_sold_quantity},${c.total_gift_quantity},${c.total_quantity},,${c.total_amount},\n`;
-            csv += `\nBằng chữ,${escStr(c.total_amount_words)}\n\n`;
+            html += `
+  <tr class="row-total-net">
+    <td colspan="5" class="text-right" style="font-weight:bold;">Tổng cộng:</td>
+    <td class="num-fmt" style="font-weight:bold;">${c.total_sold_quantity}</td>
+    <td class="num-fmt" style="font-weight:bold;">${c.total_gift_quantity}</td>
+    <td class="num-fmt" style="font-weight:bold;">${c.total_quantity}</td>
+    <td></td>
+    <td class="num-fmt" style="font-weight:bold;">${c.total_amount}</td>
+    <td></td>
+  </tr>
+</table>
 
-            csv += "II. DANH SÁCH CÁC ĐƠN HÀNG ĐƯỢC GỘP\n";
-            csv += "STT,Mã đơn hàng,Ngày lập,Mã khách hàng,Khách hàng,Số điện thoại,Địa chỉ nhận hàng,Kho xuất,Số lượng SP,Thành tiền (đ),Ghi chú\n";
+<table style="margin-top: 8px;">
+  <tr>
+    <td colspan="11" style="border:none; padding: 6px 0; font-size: 11pt;">
+      <strong>Tổng tiền thanh toán (bằng chữ):</strong> 
+      <em style="font-weight:bold; text-transform:capitalize; color:#0f172a;">${c.total_amount_words || ''}</em>
+    </td>
+  </tr>
+  <tr><td colspan="11" style="border:none; height:12px;"></td></tr>
+</table>
+
+<table class="tbl-bordered">
+  <tr>
+    <td colspan="11" class="section-header">II. DANH SÁCH CÁC ĐƠN HÀNG ĐƯỢC GỘP</td>
+  </tr>
+  <tr>
+    <th class="th-header" style="width: 35px;">STT</th>
+    <th class="th-header" style="width: 95px;">Mã đơn hàng</th>
+    <th class="th-header" style="width: 120px;">Ngày lập</th>
+    <th class="th-header" style="width: 90px;">Mã KH</th>
+    <th class="th-header" style="width: 200px;">Khách hàng</th>
+    <th class="th-header" style="width: 100px;">Số điện thoại</th>
+    <th class="th-header" style="width: 250px;">Địa chỉ nhận hàng</th>
+    <th class="th-header" style="width: 130px;">Kho xuất</th>
+    <th class="th-header" style="width: 65px;">Số lượng SP</th>
+    <th class="th-header" style="width: 110px;">Thành tiền (đ)</th>
+    <th class="th-header" style="width: 150px;">Ghi chú</th>
+  </tr>
+`;
+
             (c.order_list || []).forEach((o, idx) => {
-                csv += `${idx + 1},${escFormulaText(o.order_code)},${escStr(o.created_date)},${escFormulaText(o.customer_code)},${escStr(o.customer_name)},${escFormulaText(o.customer_phone)},${escStr(o.customer_address)},${escStr(o.warehouse)},${o.total_quantity},${o.final_total},${escStr(o.notes)}\n`;
+                html += `
+  <tr>
+    <td class="text-center">${idx + 1}</td>
+    <td class="text-fmt" style="font-weight:600;">${o.order_code || ''}</td>
+    <td class="text-center">${o.created_date || ''}</td>
+    <td class="text-fmt" style="font-weight:600;">${o.customer_code || ''}</td>
+    <td class="text-fmt">${o.customer_name || ''}</td>
+    <td class="text-fmt">${o.customer_phone || ''}</td>
+    <td class="text-fmt">${o.customer_address || ''}</td>
+    <td class="text-fmt">${o.warehouse || ''}</td>
+    <td class="num-fmt">${o.total_quantity}</td>
+    <td class="num-fmt" style="font-weight:bold;">${o.final_total}</td>
+    <td class="text-fmt" style="font-style:italic;">${o.notes || ''}</td>
+  </tr>
+                `;
             });
 
-            csv += "\n\n";
-            csv += ",Người lập bảng,,,Thủ kho xuất,,,Kế toán duyệt\n";
-            csv += ",(Ký, ghi rõ họ tên),,,(Ký, ghi rõ họ tên),,,(Ký, ghi rõ họ tên)\n";
+            html += `
+</table>
 
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+<table style="margin-top: 16px;">
+  <tr>
+    <td colspan="4" class="sign-title" style="border:none;">Người lập bảng</td>
+    <td colspan="3" class="sign-title" style="border:none;">Thủ kho xuất</td>
+    <td colspan="4" class="sign-title" style="border:none;">Kế toán duyệt</td>
+  </tr>
+  <tr>
+    <td colspan="4" class="sign-sub" style="border:none;">(Ký, ghi rõ họ tên)</td>
+    <td colspan="3" class="sign-sub" style="border:none;">(Ký, ghi rõ họ tên)</td>
+    <td colspan="4" class="sign-sub" style="border:none;">(Ký, ghi rõ họ tên)</td>
+  </tr>
+  <tr>
+    <td colspan="4" style="border:none; height: 55px;"></td>
+    <td colspan="3" style="border:none; height: 55px;"></td>
+    <td colspan="4" style="border:none; height: 55px;"></td>
+  </tr>
+</table>
+</body>
+</html>
+`;
+
+            const blob = new Blob(['\uFEFF' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = `Phieu_gop_tong_hop_${(c.batch_code || '').replace(/[^a-zA-Z0-9_-]/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.download = fileName;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -3785,37 +4074,188 @@ function ordersIndexApp() {
             const o = orderData;
             const isTaxName = (type === 'invoice');
             const isSplitVat = (type === 'split_vat');
-            const fileName = (isSplitVat ? 'Bang_ke_tach_VAT_' : (isTaxName ? 'Hoa_don_' : 'Don_hang_')) + (o.order_code || o.id) + '.csv';
+            const fileName = (isSplitVat ? 'Bang_ke_tach_VAT_' : (isTaxName ? 'Hoa_don_' : 'Don_hang_')) + (o.order_code || o.id) + '.xls';
+            const sheetName = isSplitVat ? 'Bang_ke_tach_VAT' : (isTaxName ? 'Hoa_don_GTGT' : 'Don_hang');
+            const numCols = isSplitVat ? 14 : 11;
+            const docTitle = isSplitVat ? "BẢNG KÊ BÁN HÀNG TÁCH THUẾ GTGT" : (isTaxName ? "HÓA ĐƠN BÁN HÀNG (THEO TÊN HÓA ĐƠN)" : "HÓA ĐƠN BÁN HÀNG KIÊM PHIẾU XUẤT KHO");
 
-            let csvContent = "\uFEFF"; // UTF-8 BOM
-
-            const escStr = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
-            const escFormulaText = (val) => (val !== undefined && val !== null && String(val).trim() !== '') ? `="${String(val).replace(/"/g, '""')}"` : '""';
             const cleanCustomerName = (val) => String(val || '').replace(/^[A-Za-z0-9_-]+\s*-\s*/, '').trim();
 
-            // 1. Header Doanh Nghiệp (HỆ THỐNG PHÂN PHỐI ĐẠI SƠN)
-            csvContent += "HỆ THỐNG PHÂN PHỐI ĐẠI SƠN\n";
-            csvContent += "Địa chỉ: Xóm 2, Xã Nam Giang, Huyện Nam Đàn, Tỉnh Nghệ An | Hotline: 0917.927.888\n\n";
+            let html = `
+<html xmlns:o="urn:schemas-microsoft-com:office:office" 
+      xmlns:x="urn:schemas-microsoft-com:office:excel" 
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!--[if gte mso 9]>
+<xml>
+  <x:ExcelWorkbook>
+    <x:ExcelWorksheets>
+      <x:ExcelWorksheet>
+        <x:Name>${sheetName}</x:Name>
+        <x:WorksheetOptions>
+          <x:DisplayGridlines/>
+          <x:Print>
+            <x:ValidPrinterInfo/>
+            <x:PaperSizeIndex>9</x:PaperSizeIndex>
+            <x:HorizontalResolution>600</x:HorizontalResolution>
+            <x:VerticalResolution>600</x:VerticalResolution>
+          </x:Print>
+        </x:WorksheetOptions>
+      </x:ExcelWorksheet>
+    </x:ExcelWorksheets>
+  </x:ExcelWorkbook>
+</xml>
+<![endif]-->
+<style>
+  body { font-family: 'Times New Roman', Arial, sans-serif; font-size: 11pt; color: #000000; }
+  table { border-collapse: collapse; }
+  .tbl-bordered th, .tbl-bordered td { border: 0.5pt solid #000000; padding: 5px 6px; font-size: 10.5pt; }
+  .text-fmt { mso-number-format: "\\@"; text-align: left; }
+  .text-center { text-align: center; }
+  .text-right { text-align: right; }
+  .num-fmt { mso-number-format: "\\#\\,\\#\\#0"; text-align: right; }
+  
+  .company-title { font-size: 13.5pt; font-weight: bold; color: #1b4a8c; text-transform: uppercase; }
+  .company-sub { font-size: 10pt; color: #475569; }
+  .doc-title { font-size: 16pt; font-weight: bold; color: #1b4a8c; text-align: center; text-transform: uppercase; }
+  .doc-sub { font-size: 10.5pt; font-style: italic; color: #334155; text-align: center; }
+  
+  .meta-label { font-weight: bold; color: #1e293b; font-size: 10.5pt; white-space: nowrap; }
+  .meta-val { font-size: 10.5pt; }
+  
+  .section-header { 
+    background-color: #e2e8f0; 
+    color: #0f172a; 
+    font-weight: bold; 
+    font-size: 11pt; 
+    text-transform: uppercase; 
+    padding: 6px 8px; 
+    border: 0.5pt solid #000000; 
+  }
+  
+  .th-header { 
+    background-color: #1b4a8c; 
+    color: #ffffff; 
+    font-weight: bold; 
+    text-align: center; 
+    border: 0.5pt solid #000000; 
+    padding: 6px 4px; 
+    font-size: 10pt;
+  }
+  
+  .row-total-net { 
+    background-color: #f1f5f9; 
+    font-weight: bold; 
+    border: 0.5pt solid #000000; 
+  }
+  
+  .row-discount { 
+    background-color: #fff1f2; 
+    color: #be123c; 
+    font-weight: bold; 
+    border: 0.5pt solid #000000; 
+  }
+  
+  .row-grand-total { 
+    background-color: #fef3c7; 
+    color: #92400e; 
+    font-weight: bold; 
+    font-size: 11.5pt; 
+    border: 0.5pt solid #000000; 
+  }
+  
+  .sign-title { font-weight: bold; text-align: center; font-size: 10.5pt; text-transform: uppercase; }
+  .sign-sub { font-style: italic; text-align: center; font-size: 9pt; color: #64748b; }
+</style>
+</head>
+<body>
+<table>
+  <!-- Header Doanh nghiệp -->
+  <tr>
+    <td colspan="${numCols}" class="company-title" style="border:none;">HỆ THỐNG PHÂN PHỐI ĐẠI SƠN</td>
+  </tr>
+  <tr>
+    <td colspan="${numCols}" class="company-sub" style="border:none;">Địa chỉ: Xóm 2, Xã Nam Giang, Huyện Nam Đàn, Tỉnh Nghệ An | Hotline: 0917.927.888</td>
+  </tr>
+  <tr><td colspan="${numCols}" style="border:none; height: 10px;"></td></tr>
+  
+  <!-- Tiêu đề chứng từ -->
+  <tr>
+    <td colspan="${numCols}" class="doc-title" style="border:none;">${docTitle}</td>
+  </tr>
+  <tr>
+    <td colspan="${numCols}" class="doc-sub" style="border:none;">Số: ${o.order_code || ''} &nbsp;-&nbsp; Ngày lập: ${o.created_date || ''}</td>
+  </tr>
+  <tr><td colspan="${numCols}" style="border:none; height: 12px;"></td></tr>
+  
+  <!-- Thông tin chung 2 cột -->
+  <tr>
+    <td colspan="2" class="meta-label" style="border:none;">Mã khách hàng:</td>
+    <td colspan="${isSplitVat ? 4 : 3}" class="text-fmt meta-val" style="border:none; font-weight:bold;">${o.customer_code || ''}</td>
+    <td colspan="2" class="meta-label" style="border:none;">Mã đơn hàng:</td>
+    <td colspan="${isSplitVat ? 6 : 4}" class="text-fmt meta-val" style="border:none; font-weight:bold;">${o.order_code || ''}</td>
+  </tr>
+  <tr>
+    <td colspan="2" class="meta-label" style="border:none;">Khách hàng:</td>
+    <td colspan="${isSplitVat ? 4 : 3}" class="text-fmt meta-val" style="border:none; font-weight:bold;">${cleanCustomerName(o.customer_name || o.customer_display)}</td>
+    <td colspan="2" class="meta-label" style="border:none;">Ngày lập:</td>
+    <td colspan="${isSplitVat ? 6 : 4}" class="meta-val" style="border:none;">${o.created_date || ''}</td>
+  </tr>
+  <tr>
+    <td colspan="2" class="meta-label" style="border:none;">Số điện thoại:</td>
+    <td colspan="${isSplitVat ? 4 : 3}" class="text-fmt meta-val" style="border:none;">${o.customer_phone || ''}</td>
+    <td colspan="2" class="meta-label" style="border:none;">Kho xuất:</td>
+    <td colspan="${isSplitVat ? 6 : 4}" class="meta-val" style="border:none;">${o.warehouse || ''}</td>
+  </tr>
+  <tr>
+    <td colspan="2" class="meta-label" style="border:none;">Địa chỉ giao hàng:</td>
+    <td colspan="${isSplitVat ? 4 : 3}" class="meta-val" style="border:none;">${o.customer_address || ''}</td>
+    <td colspan="2" class="meta-label" style="border:none;">NV bán hàng:</td>
+    <td colspan="${isSplitVat ? 6 : 4}" class="meta-val" style="border:none;">${o.sales_rep_name || o.creator_name || ''}</td>
+  </tr>
+  <tr>
+    <td colspan="2" class="meta-label" style="border:none;">Hình thức TT:</td>
+    <td colspan="${isSplitVat ? 4 : 3}" class="meta-val" style="border:none;">${o.payment_method || 'Tiền mặt'}</td>
+    <td colspan="2" class="meta-label" style="border:none;">Tình trạng:</td>
+    <td colspan="${isSplitVat ? 6 : 4}" class="meta-val" style="border:none;">${o.delivery_status || 'Đã xuất hàng'}</td>
+  </tr>
+  <tr>
+    <td colspan="2" class="meta-label" style="border:none;">Ghi chú / Diễn giải:</td>
+    <td colspan="${numCols - 2}" class="meta-val" style="border:none; font-style:italic;">${o.notes || ''}</td>
+  </tr>
+  <tr><td colspan="${numCols}" style="border:none; height: 10px;"></td></tr>
+</table>
 
-            // 2. Tiêu Đề Chứng Từ
-            const docTitle = isSplitVat ? "BẢNG KÊ BÁN HÀNG TÁCH THUẾ GTGT" : (isTaxName ? "HÓA ĐƠN BÁN HÀNG (THEO TÊN HÓA ĐƠN)" : "HÓA ĐƠN BÁN HÀNG KIÊM PHIẾU XUẤT KHO");
-            csvContent += `,,${escStr(docTitle)}\n`;
-            csvContent += `,,${escStr(`Số: ${o.order_code || ''} - Ngày lập: ${o.created_date || ''}`)}\n\n`;
-
-            // 3. Thông tin chung 2 cột cân đối (Cột Trái A-B, Cột Phải G-H)
-            csvContent += `Mã khách hàng:,${escFormulaText(o.customer_code)},,,,,Mã đơn hàng:,${escFormulaText(o.order_code)}\n`;
-            csvContent += `Khách hàng:,${escStr(cleanCustomerName(o.customer_name || o.customer_display))},,,,,Ngày lập:,${escStr(o.created_date || '')}\n`;
-            csvContent += `Số điện thoại:,${escFormulaText(o.customer_phone)},,,,,Kho xuất:,${escStr(o.warehouse || '')}\n`;
-            csvContent += `Địa chỉ giao hàng:,${escStr(o.customer_address || '')},,,,,NV bán hàng:,${escStr(o.sales_rep_name || o.creator_name || '')}\n`;
-            csvContent += `Hình thức TT:,${escStr(o.payment_method || 'Tiền mặt')},,,,,Tình trạng:,${escStr(o.delivery_status || 'Đã xuất hàng')}\n`;
-            csvContent += `Ghi chú / Diễn giải:,${escStr(o.notes || '')},,,,,\n\n`;
+<table class="tbl-bordered">
+  <!-- Tiêu đề Bảng 1 -->
+  <tr>
+    <td colspan="${numCols}" class="section-header">${isSplitVat ? 'I. DANH SÁCH SẢN PHẨM (BÓC TÁCH THUẾ GTGT)' : 'I. DANH SÁCH SẢN PHẨM'}</td>
+  </tr>
+`;
 
             const regularItems = this.getRegularPrintItems(o);
             const giftItems = this.getGiftPrintItems(o);
 
             if (isSplitVat) {
-                csvContent += "I. DANH SÁCH SẢN PHẨM (BÓC TÁCH THUẾ GTGT)\n";
-                csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,ĐVT,SL,Đơn giá (chưa VAT),C.khấu,Tiền CK,Tiền chưa VAT,Thuế,Tiền VAT,Tổng tiền,Loại giá\n";
+                html += `
+  <tr>
+    <th class="th-header" style="width: 35px;">TT</th>
+    <th class="th-header" style="width: 90px;">Mã SP</th>
+    <th class="th-header" style="width: 220px;">Tên sản phẩm</th>
+    <th class="th-header" style="width: 180px;">Tên HĐ</th>
+    <th class="th-header" style="width: 45px;">ĐVT</th>
+    <th class="th-header" style="width: 50px;">SL</th>
+    <th class="th-header" style="width: 90px;">Đơn giá (chưa VAT)</th>
+    <th class="th-header" style="width: 60px;">C.khấu</th>
+    <th class="th-header" style="width: 80px;">Tiền CK</th>
+    <th class="th-header" style="width: 95px;">Tiền chưa VAT</th>
+    <th class="th-header" style="width: 55px;">Thuế</th>
+    <th class="th-header" style="width: 85px;">Tiền VAT</th>
+    <th class="th-header" style="width: 105px;">Tổng tiền</th>
+    <th class="th-header" style="width: 65px;">Loại giá</th>
+  </tr>
+                `;
 
                 let totalSoldQtyAll = 0;
                 let totalDiscAmtAll = 0;
@@ -3840,35 +4280,131 @@ function ordersIndexApp() {
                     totalVatAll += lineVat;
                     totalGrossAll += lineGross;
 
-                    csvContent += `${idx + 1},${escFormulaText(it.sku)},${escStr(prodName)},${escStr(it.tax_name || '')},${escStr(it.unit || '')},${qtyVal},${unitPriceNet},${escStr(discText)},${discAmtVal},${lineNet},${vatRate}%,${lineVat},${lineGross},${escStr(it.price_tier_code || it.price_type || '')}\n`;
+                    html += `
+  <tr>
+    <td class="text-center">${idx + 1}</td>
+    <td class="text-fmt" style="font-weight:600;">${it.sku || ''}</td>
+    <td class="text-fmt">${prodName}</td>
+    <td class="text-fmt">${it.tax_name || ''}</td>
+    <td class="text-center">${it.unit || ''}</td>
+    <td class="num-fmt">${qtyVal}</td>
+    <td class="num-fmt">${unitPriceNet}</td>
+    <td class="text-center">${discText}</td>
+    <td class="num-fmt">${discAmtVal || 0}</td>
+    <td class="num-fmt">${lineNet}</td>
+    <td class="text-center">${vatRate}%</td>
+    <td class="num-fmt">${lineVat}</td>
+    <td class="num-fmt" style="font-weight:bold;">${lineGross}</td>
+    <td class="text-center">${it.price_tier_code || it.price_type || ''}</td>
+  </tr>
+                    `;
                 });
 
-                // Dòng tổng cộng 14 cột chuẩn xác
-                csvContent += `Cộng tiền hàng (chưa thuế GTGT),,,,,${totalSoldQtyAll},,,${totalDiscAmtAll > 0 ? totalDiscAmtAll : 0},${totalNetAll},,${totalVatAll},${totalGrossAll},\n`;
+                html += `
+  <tr class="row-total-net">
+    <td colspan="5" class="text-right" style="font-weight:bold;">Cộng tiền hàng (chưa thuế GTGT):</td>
+    <td class="num-fmt" style="font-weight:bold;">${totalSoldQtyAll}</td>
+    <td colspan="2"></td>
+    <td class="num-fmt" style="font-weight:bold;">${totalDiscAmtAll > 0 ? totalDiscAmtAll : 0}</td>
+    <td class="num-fmt" style="font-weight:bold;">${totalNetAll}</td>
+    <td></td>
+    <td class="num-fmt" style="font-weight:bold;">${totalVatAll}</td>
+    <td class="num-fmt" style="font-weight:bold;">${totalGrossAll}</td>
+    <td></td>
+  </tr>
+                `;
 
                 const extraDiscount = Number(o.extra_discount || 0);
                 if (extraDiscount > 0) {
-                    csvContent += `Chiết khấu giảm giá đơn hàng,,,,,,,,,,,, -${extraDiscount},\n`;
+                    html += `
+  <tr class="row-discount">
+    <td colspan="12" class="text-right" style="font-weight:bold;">Chiết khấu giảm giá đơn hàng:</td>
+    <td class="num-fmt" style="font-weight:bold; color:#be123c;">-${extraDiscount}</td>
+    <td></td>
+  </tr>
+                    `;
                 }
 
                 const grandTotal = Number(o.final_total || (totalGrossAll - extraDiscount));
-                csvContent += `Tổng tiền thanh toán đã có thuế GTGT,,,,,,,,,,,,${grandTotal},\n`;
+                html += `
+  <tr class="row-grand-total">
+    <td colspan="12" class="text-right" style="font-weight:bold;">Tổng tiền thanh toán đã có thuế GTGT:</td>
+    <td class="num-fmt" style="font-weight:bold; font-size:11.5pt;">${grandTotal}</td>
+    <td></td>
+  </tr>
+                `;
 
                 if (giftItems.length > 0) {
-                    csvContent += "\nII. HÀNG TẶNG KHUYẾN MẠI\n";
-                    csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,ĐVT,SL,Đơn giá (chưa VAT),C.khấu,Tiền CK,Tiền chưa VAT,Thuế,Tiền VAT,Tổng tiền,Loại giá\n";
+                    html += `
+  <tr><td colspan="${numCols}" style="border:none; height:12px;"></td></tr>
+  <tr>
+    <td colspan="${numCols}" class="section-header">II. HÀNG TẶNG KHUYẾN MẠI</td>
+  </tr>
+  <tr>
+    <th class="th-header" style="width: 35px;">TT</th>
+    <th class="th-header" style="width: 90px;">Mã SP</th>
+    <th class="th-header" style="width: 220px;">Tên sản phẩm</th>
+    <th class="th-header" style="width: 180px;">Tên HĐ</th>
+    <th class="th-header" style="width: 45px;">ĐVT</th>
+    <th class="th-header" style="width: 50px;">SL</th>
+    <th class="th-header" style="width: 90px;">Đơn giá (chưa VAT)</th>
+    <th class="th-header" style="width: 60px;">C.khấu</th>
+    <th class="th-header" style="width: 80px;">Tiền CK</th>
+    <th class="th-header" style="width: 95px;">Tiền chưa VAT</th>
+    <th class="th-header" style="width: 55px;">Thuế</th>
+    <th class="th-header" style="width: 85px;">Tiền VAT</th>
+    <th class="th-header" style="width: 105px;">Tổng tiền</th>
+    <th class="th-header" style="width: 65px;">Loại giá</th>
+  </tr>
+                    `;
                     let totalGiftQtyAll = 0;
                     giftItems.forEach((it, idx) => {
                         const prodName = it.name || '';
                         const qtyVal = Number(it.display_quantity ?? it.gift_quantity ?? it.quantity ?? 0);
                         totalGiftQtyAll += qtyVal;
-                        csvContent += `${idx + 1},${escFormulaText(it.sku)},${escStr(prodName)},${escStr(it.tax_name || '')},${escStr(it.unit || '')},${qtyVal},0,"-",0,0,0%,0,0,${escStr(it.price_tier_code || 'KM')}\n`;
+                        html += `
+  <tr>
+    <td class="text-center">${idx + 1}</td>
+    <td class="text-fmt" style="font-weight:600;">${it.sku || ''}</td>
+    <td class="text-fmt">${prodName}</td>
+    <td class="text-fmt">${it.tax_name || ''}</td>
+    <td class="text-center">${it.unit || ''}</td>
+    <td class="num-fmt">${qtyVal}</td>
+    <td class="num-fmt">0</td>
+    <td class="text-center">-</td>
+    <td class="num-fmt">0</td>
+    <td class="num-fmt">0</td>
+    <td class="text-center">0%</td>
+    <td class="num-fmt">0</td>
+    <td class="num-fmt">0</td>
+    <td class="text-center">${it.price_tier_code || 'KM'}</td>
+  </tr>
+                        `;
                     });
-                    csvContent += `Cộng hàng tặng,,,,,${totalGiftQtyAll},,,,,,,,\n`;
+                    html += `
+  <tr class="row-total-net">
+    <td colspan="5" class="text-right" style="font-weight:bold;">Cộng hàng tặng:</td>
+    <td class="num-fmt" style="font-weight:bold;">${totalGiftQtyAll}</td>
+    <td colspan="8"></td>
+  </tr>
+                    `;
                 }
             } else {
-                csvContent += "I. DANH SÁCH SẢN PHẨM\n";
-                csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,ĐVT,SL,Đơn giá,C.khấu,Tiền CK,Thành tiền,Loại giá\n";
+                html += `
+  <tr>
+    <th class="th-header" style="width: 35px;">TT</th>
+    <th class="th-header" style="width: 90px;">Mã SP</th>
+    <th class="th-header" style="width: 240px;">Tên sản phẩm</th>
+    <th class="th-header" style="width: 200px;">Tên HĐ</th>
+    <th class="th-header" style="width: 50px;">ĐVT</th>
+    <th class="th-header" style="width: 55px;">SL</th>
+    <th class="th-header" style="width: 95px;">Đơn giá</th>
+    <th class="th-header" style="width: 65px;">C.khấu</th>
+    <th class="th-header" style="width: 85px;">Tiền CK</th>
+    <th class="th-header" style="width: 110px;">Thành tiền</th>
+    <th class="th-header" style="width: 70px;">Loại giá</th>
+  </tr>
+                `;
 
                 let totalSoldQty = 0;
                 let totalDiscAmt = 0;
@@ -3885,44 +4421,149 @@ function ordersIndexApp() {
                     totalDiscAmt += Number(discAmtVal || 0);
                     regularTotal += lineTotal;
 
-                    csvContent += `${idx + 1},${escFormulaText(it.sku)},${escStr(prodName)},${escStr(it.tax_name || '')},${escStr(it.unit || '')},${qtyVal},${it.unit_price || 0},${escStr(discText)},${discAmtVal},${lineTotal},${escStr(it.price_tier_code || it.price_type || '')}\n`;
+                    html += `
+  <tr>
+    <td class="text-center">${idx + 1}</td>
+    <td class="text-fmt" style="font-weight:600;">${it.sku || ''}</td>
+    <td class="text-fmt">${prodName}</td>
+    <td class="text-fmt">${it.tax_name || ''}</td>
+    <td class="text-center">${it.unit || ''}</td>
+    <td class="num-fmt">${qtyVal}</td>
+    <td class="num-fmt">${it.unit_price || 0}</td>
+    <td class="text-center">${discText}</td>
+    <td class="num-fmt">${discAmtVal || 0}</td>
+    <td class="num-fmt" style="font-weight:bold;">${lineTotal}</td>
+    <td class="text-center">${it.price_tier_code || it.price_type || ''}</td>
+  </tr>
+                    `;
                 });
 
-                // Dòng tổng cộng 11 cột chuẩn xác
-                csvContent += `Cộng tiền hàng,,,,,${totalSoldQty},,,${totalDiscAmt > 0 ? totalDiscAmt : 0},${regularTotal},\n`;
+                html += `
+  <tr class="row-total-net">
+    <td colspan="5" class="text-right" style="font-weight:bold;">Cộng tiền hàng:</td>
+    <td class="num-fmt" style="font-weight:bold;">${totalSoldQty}</td>
+    <td colspan="2"></td>
+    <td class="num-fmt" style="font-weight:bold;">${totalDiscAmt > 0 ? totalDiscAmt : 0}</td>
+    <td class="num-fmt" style="font-weight:bold;">${regularTotal}</td>
+    <td></td>
+  </tr>
+                `;
 
                 const extraDiscount = Number(o.extra_discount || 0);
                 if (extraDiscount > 0) {
-                    csvContent += `Chiết khấu giảm giá đơn hàng,,,,,,,,,-${extraDiscount},\n`;
+                    html += `
+  <tr class="row-discount">
+    <td colspan="9" class="text-right" style="font-weight:bold;">Chiết khấu giảm giá đơn hàng:</td>
+    <td class="num-fmt" style="font-weight:bold; color:#be123c;">-${extraDiscount}</td>
+    <td></td>
+  </tr>
+                    `;
                 }
 
                 const grandTotal = Number(o.final_total || (regularTotal - extraDiscount));
-                csvContent += `Tổng tiền thanh toán,,,,,,,,,${grandTotal},\n`;
+                html += `
+  <tr class="row-grand-total">
+    <td colspan="9" class="text-right" style="font-weight:bold;">Tổng tiền thanh toán:</td>
+    <td class="num-fmt" style="font-weight:bold; font-size:11.5pt;">${grandTotal}</td>
+    <td></td>
+  </tr>
+                `;
 
                 if (giftItems.length > 0) {
-                    csvContent += "\nII. HÀNG TẶNG KHUYẾN MẠI\n";
-                    csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,ĐVT,SL,Đơn giá,C.khấu,Tiền CK,Thành tiền,Loại giá\n";
+                    html += `
+  <tr><td colspan="${numCols}" style="border:none; height:12px;"></td></tr>
+  <tr>
+    <td colspan="${numCols}" class="section-header">II. HÀNG TẶNG KHUYẾN MẠI</td>
+  </tr>
+  <tr>
+    <th class="th-header" style="width: 35px;">TT</th>
+    <th class="th-header" style="width: 90px;">Mã SP</th>
+    <th class="th-header" style="width: 240px;">Tên sản phẩm</th>
+    <th class="th-header" style="width: 200px;">Tên HĐ</th>
+    <th class="th-header" style="width: 50px;">ĐVT</th>
+    <th class="th-header" style="width: 55px;">SL</th>
+    <th class="th-header" style="width: 95px;">Đơn giá</th>
+    <th class="th-header" style="width: 65px;">C.khấu</th>
+    <th class="th-header" style="width: 85px;">Tiền CK</th>
+    <th class="th-header" style="width: 110px;">Thành tiền</th>
+    <th class="th-header" style="width: 70px;">Loại giá</th>
+  </tr>
+                    `;
                     let totalGiftQty = 0;
                     giftItems.forEach((it, idx) => {
                         const prodName = isTaxName ? (it.tax_name || it.name) : it.name;
                         const qtyVal = Number(it.display_quantity ?? it.gift_quantity ?? it.quantity ?? 0);
                         totalGiftQty += qtyVal;
-                        csvContent += `${idx + 1},${escFormulaText(it.sku)},${escStr(prodName)},${escStr(it.tax_name || '')},${escStr(it.unit || '')},${qtyVal},0,"-",0,0,${escStr(it.price_tier_code || 'KM')}\n`;
+                        html += `
+  <tr>
+    <td class="text-center">${idx + 1}</td>
+    <td class="text-fmt" style="font-weight:600;">${it.sku || ''}</td>
+    <td class="text-fmt">${prodName}</td>
+    <td class="text-fmt">${it.tax_name || ''}</td>
+    <td class="text-center">${it.unit || ''}</td>
+    <td class="num-fmt">${qtyVal}</td>
+    <td class="num-fmt">0</td>
+    <td class="text-center">-</td>
+    <td class="num-fmt">0</td>
+    <td class="num-fmt">0</td>
+    <td class="text-center">${it.price_tier_code || 'KM'}</td>
+  </tr>
+                        `;
                     });
-                    csvContent += `Cộng hàng tặng,,,,,${totalGiftQty},,,,,\n`;
+                    html += `
+  <tr class="row-total-net">
+    <td colspan="5" class="text-right" style="font-weight:bold;">Cộng hàng tặng:</td>
+    <td class="num-fmt" style="font-weight:bold;">${totalGiftQty}</td>
+    <td colspan="5"></td>
+  </tr>
+                    `;
                 }
             }
 
-            // Bằng chữ & Khối chữ ký 4 bên
-            csvContent += `\nBằng chữ:,${escStr(o.final_total_words || '')}\n\n`;
+            html += `
+</table>
 
-            csvContent += "\n";
-            csvContent += ",Người lập phiếu,,,Thủ kho xuất,,,Người giao hàng,,,Khách hàng nhận\n";
-            csvContent += ",(Ký, ghi rõ họ tên),,,(Ký, ghi rõ họ tên),,,(Ký, ghi rõ họ tên),,,(Ký, ghi rõ họ tên)\n";
-            csvContent += "\n\n\n";
-            csvContent += `,${escStr(o.creator_name || '')},,,,,,,,\n`;
+<!-- Bằng chữ -->
+<table style="margin-top: 8px;">
+  <tr>
+    <td colspan="${numCols}" style="border:none; padding: 6px 0; font-size: 11pt;">
+      <strong>Tổng tiền thanh toán (bằng chữ):</strong> 
+      <em style="font-weight:bold; text-transform:capitalize; color:#0f172a;">${o.final_total_words || ''}</em>
+    </td>
+  </tr>
+  <tr><td colspan="${numCols}" style="border:none; height: 16px;"></td></tr>
+  
+  <!-- Khối chữ ký 4 bên -->
+  <tr>
+    <td colspan="${isSplitVat ? 3 : 2}" class="sign-title" style="border:none;">Người lập phiếu</td>
+    <td colspan="${isSplitVat ? 4 : 3}" class="sign-title" style="border:none;">Thủ kho xuất</td>
+    <td colspan="${isSplitVat ? 3 : 3}" class="sign-title" style="border:none;">Người giao hàng</td>
+    <td colspan="${isSplitVat ? 4 : 3}" class="sign-title" style="border:none;">Khách hàng nhận</td>
+  </tr>
+  <tr>
+    <td colspan="${isSplitVat ? 3 : 2}" class="sign-sub" style="border:none;">(Ký, ghi rõ họ tên)</td>
+    <td colspan="${isSplitVat ? 4 : 3}" class="sign-sub" style="border:none;">(Ký, ghi rõ họ tên)</td>
+    <td colspan="${isSplitVat ? 3 : 3}" class="sign-sub" style="border:none;">(Ký, ghi rõ họ tên)</td>
+    <td colspan="${isSplitVat ? 4 : 3}" class="sign-sub" style="border:none;">(Ký, ghi rõ họ tên)</td>
+  </tr>
+  <tr>
+    <td colspan="${isSplitVat ? 3 : 2}" style="border:none; height: 55px;"></td>
+    <td colspan="${isSplitVat ? 4 : 3}" style="border:none; height: 55px;"></td>
+    <td colspan="${isSplitVat ? 3 : 3}" style="border:none; height: 55px;"></td>
+    <td colspan="${isSplitVat ? 4 : 3}" style="border:none; height: 55px;"></td>
+  </tr>
+  <tr>
+    <td colspan="${isSplitVat ? 3 : 2}" style="border:none; text-align:center; font-weight:bold;">${o.creator_name || ''}</td>
+    <td colspan="${isSplitVat ? 4 : 3}" style="border:none; text-align:center;"></td>
+    <td colspan="${isSplitVat ? 3 : 3}" style="border:none; text-align:center;"></td>
+    <td colspan="${isSplitVat ? 4 : 3}" style="border:none; text-align:center;"></td>
+  </tr>
+</table>
+</body>
+</html>
+`;
 
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const blob = new Blob(['\uFEFF' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
             link.setAttribute("href", url);
