@@ -1478,68 +1478,60 @@
             </div>
 
             <!-- KHỐI CHỌN CHÍNH SÁCH BÁN HÀNG TẬP TRUNG (1 VỊ TRÍ PHÍA DƯỚI) -->
-            <div class="order-policy-section mt-3 rounded-xl border border-sky-200 bg-sky-50/40 p-3 sm:p-4 space-y-3 shadow-2xs">
-                <!-- Tiêu đề & Tổng kết -->
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-sky-200/60 pb-2.5">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <span class="w-6 h-6 rounded-lg bg-sky-600 text-white flex items-center justify-center text-xs shadow-2xs shrink-0">
+            <div class="order-policy-section mt-3 rounded-2xl border border-sky-200 bg-sky-50/40 p-3.5 sm:p-4 space-y-3 shadow-2xs">
+                <!-- Tiêu đề & Nút Bỏ chọn -->
+                <div class="flex items-center justify-between gap-3 border-b border-sky-200/70 pb-3">
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <span class="w-7 h-7 rounded-lg bg-sky-600 text-white flex items-center justify-center text-sm shadow-2xs shrink-0">
                             <i class="fa-solid fa-tags"></i>
                         </span>
-                        <label class="text-xs sm:text-[11px] font-extrabold text-sky-950 uppercase tracking-wide m-0">
+                        <label class="text-sm font-black text-sky-950 uppercase tracking-wide m-0">
                             Chính sách bán hàng / Khuyến mại
                         </label>
                         <template x-if="getSelectedPolicies().length > 0">
-                            <span class="px-2 py-0.5 rounded-full text-[11px] sm:text-[10px] font-bold bg-sky-100 text-sky-800 border border-sky-300"
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-100 text-sky-800 border border-sky-300 shadow-2xs"
                                   x-text="'Đang áp dụng ' + getSelectedPolicies().length + ' chính sách'"></span>
                         </template>
                         <template x-if="getSelectedPolicies().length === 0 && getAvailablePoliciesToAdd().length > 0">
-                            <span class="px-2 py-0.5 rounded-full text-[11px] sm:text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200"
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs"
                                   x-text="getAvailablePoliciesToAdd().length + ' chính sách đủ điều kiện'"></span>
-                        </template>
-                        <template x-if="!formData.dealer_id">
-                            <span class="text-xs sm:text-[11px] text-amber-700 font-semibold italic">
-                                (Chọn Khách hàng để lọc chính sách theo nhóm đại lý)
-                            </span>
                         </template>
                     </div>
 
-                    <!-- Nút Bỏ chọn toàn bộ nếu có bất kỳ chính sách nào đang chọn -->
+                    <!-- Nút Bỏ chọn toàn bộ: đặt gọn ở góc phải -->
                     <template x-if="getSelectedPolicies().length > 0">
                         <button type="button"
                                 @click="clearAllOrderPolicies()"
-                                class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-700 border border-slate-300 hover:border-rose-300 text-xs sm:text-[11px] font-bold transition cursor-pointer shadow-2xs">
-                            <i class="fa-solid fa-xmark text-rose-500"></i>
-                            <span>Bỏ chọn toàn bộ</span>
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 hover:border-rose-300 text-xs font-bold transition cursor-pointer shadow-2xs shrink-0">
+                            <i class="fa-solid fa-xmark text-sm"></i>
+                            <span>Bỏ chọn tất cả</span>
                         </button>
                     </template>
                 </div>
 
-                <!-- Danh sách các chính sách ĐANG ĐƯỢC CHỌN (mỗi chính sách áp dụng riêng cho các sản phẩm của nó) -->
+                <!-- Danh sách các chính sách ĐANG ĐƯỢC CHỌN -->
                 <template x-if="getSelectedPolicies().length > 0">
-                    <div class="space-y-2">
+                    <div class="space-y-2.5">
                         <template x-for="p in getSelectedPolicies()" :key="p.id">
-                            <div class="p-2.5 sm:p-3 bg-white rounded-xl border border-sky-300 shadow-2xs flex items-start justify-between gap-3">
-                                <div class="min-w-0 flex-1 space-y-1">
+                            <div class="p-3 sm:p-3.5 bg-white rounded-xl border border-sky-300 shadow-2xs flex items-start justify-between gap-3 hover:border-sky-400 transition-colors">
+                                <div class="min-w-0 flex-1 space-y-1.5">
                                     <div class="flex items-center gap-2 flex-wrap">
-                                        <span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider"
-                                              :class="p.policy_type === 'quantity' ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-800'"
+                                        <span class="px-2.5 py-0.5 rounded-md text-xs font-black uppercase tracking-wider"
+                                              :class="p.policy_type === 'quantity' ? 'bg-purple-100 text-purple-800 border border-purple-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'"
                                               x-text="p.policy_type === 'quantity' ? 'Hàng tặng' : (p.policy_type === 'percentage' ? 'Chiết khấu %' : 'Giảm tiền')"></span>
-                                        <span class="font-bold text-xs text-slate-900" x-text="p.name"></span>
+                                        <span class="font-bold text-sm sm:text-base text-slate-900" x-text="p.name"></span>
                                     </div>
-                                    <div class="text-xs text-slate-600 flex items-center gap-2 flex-wrap">
-                                        <span class="font-bold text-emerald-700 flex items-center gap-1">
-                                            <i class="fa-solid fa-circle-check text-emerald-600 text-[11px]"></i>
-                                            <span x-text="getPolicyBenefitDescription(p)"></span>
-                                        </span>
-                                        <span class="text-slate-300">•</span>
-                                        <span class="text-[11px] text-slate-500 font-medium" x-text="'Áp dụng cho: ' + getPolicyAppliedProductsSummary(p)"></span>
+                                    <div class="text-sm font-bold text-emerald-700 flex items-center gap-1.5">
+                                        <i class="fa-solid fa-circle-check text-emerald-600 text-sm shrink-0"></i>
+                                        <span x-text="getPolicyBenefitDescription(p)"></span>
                                     </div>
+                                    <div class="text-xs sm:text-[13px] text-slate-600 font-medium pl-5" x-text="'Áp dụng cho: ' + getPolicyAppliedProductsSummary(p)"></div>
                                 </div>
                                 <button type="button"
                                         @click="removeSelectedPolicy(p.id)"
-                                        class="w-7 h-7 rounded-lg bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 hover:border-rose-300 flex items-center justify-center transition cursor-pointer shrink-0"
+                                        class="w-8 h-8 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 hover:border-rose-300 flex items-center justify-center transition cursor-pointer shrink-0 mt-0.5 shadow-2xs"
                                         title="Bỏ chính sách này">
-                                    <i class="fa-solid fa-xmark text-xs"></i>
+                                    <i class="fa-solid fa-xmark text-sm"></i>
                                 </button>
                             </div>
                         </template>
@@ -1551,7 +1543,7 @@
                     <template x-if="getAvailablePoliciesToAdd().length > 0">
                         <div class="flex items-center gap-2">
                             <select @change="if ($event.target.value) { addPolicyById($event.target.value); $event.target.value = ''; }"
-                                    class="w-full h-10 sm:h-9 px-3 bg-white border border-slate-300 hover:border-sky-400 focus:border-sky-500 rounded-xl text-xs font-bold text-slate-800 focus:outline-none cursor-pointer shadow-2xs">
+                                    class="w-full h-11 px-3.5 bg-white border border-slate-300 hover:border-sky-400 focus:border-sky-500 rounded-xl text-sm font-bold text-slate-800 focus:outline-none cursor-pointer shadow-2xs transition-colors">
                                 <option value="" x-text="getSelectedPolicies().length === 0 ? '-- Bấm vào đây để chọn chính sách bán hàng / khuyến mại --' : '+ Chọn thêm chính sách áp dụng cho sản phẩm khác...'"></option>
                                 <template x-for="p in getAvailablePoliciesToAdd()" :key="p.id">
                                     <option :value="p.id" x-text="formatPolicyOptionLabel(p)"></option>
@@ -1560,17 +1552,10 @@
                         </div>
                     </template>
 
-                    <template x-if="getAvailablePoliciesToAdd().length === 0 && getSelectedPolicies().length > 0">
-                        <div class="text-[11px] text-slate-500 italic p-2 bg-white/70 rounded-lg border border-dashed border-slate-200 text-center">
-                            <i class="fa-solid fa-check text-emerald-600 mr-1"></i>
-                            Đã chọn chính sách cho các sản phẩm trong đơn. (Không còn chính sách nào khác đủ điều kiện cho các sản phẩm còn lại).
-                        </div>
-                    </template>
-
                     <template x-if="getAvailablePoliciesToAdd().length === 0 && getSelectedPolicies().length === 0">
-                        <div class="p-3 bg-white/80 rounded-xl border border-dashed border-slate-300 text-center text-xs text-slate-500 italic">
-                            <span x-show="getSalesItemsWithProduct().length === 0">Chưa có sản phẩm trong đơn hàng. Vui lòng thêm sản phẩm ở bảng phía trên để chọn chính sách.</span>
-                            <span x-show="getSalesItemsWithProduct().length > 0">Chưa có chính sách nào đủ điều kiện áp dụng cho các sản phẩm trong đơn (cần đạt số lượng mua tối thiểu hoặc mua giá Nguyên Giá).</span>
+                        <div class="p-3.5 bg-white/80 rounded-xl border border-dashed border-slate-300 text-center text-xs sm:text-sm text-slate-500">
+                            <span x-show="getSalesItemsWithProduct().length === 0">Chưa có sản phẩm trong đơn. Vui lòng thêm sản phẩm ở bảng trên để áp dụng chính sách.</span>
+                            <span x-show="getSalesItemsWithProduct().length > 0">Chưa có chính sách nào đủ điều kiện cho các sản phẩm hiện tại trong đơn.</span>
                         </div>
                     </template>
                 </div>
