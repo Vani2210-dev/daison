@@ -3203,11 +3203,11 @@ function ordersIndexApp() {
                                         <th style="text-align: left; padding-left: 5px;">Tên sản phẩm</th>
                                         <th style="width: 40px;">ĐVT</th>
                                         <th style="width: 38px;">SL</th>
-                                        <th style="width: 74px;">Đơn giá (chưa VAT)</th>
-                                        <th style="width: 82px;">Tiền chưa VAT</th>
-                                        <th style="width: 44px;">Thuế</th>
-                                        <th style="width: 72px;">Tiền VAT</th>
-                                        <th style="width: 86px;">Tổng thanh toán</th>
+                                        <th style="width: 75px; white-space: nowrap;">Đơn giá</th>
+                                        <th style="width: 82px; white-space: nowrap;">Tiền hàng</th>
+                                        <th style="width: 46px; white-space: nowrap;">% VAT</th>
+                                        <th style="width: 72px; white-space: nowrap;">Tiền VAT</th>
+                                        <th style="width: 86px; white-space: nowrap;">Tổng tiền</th>
                                     </tr>
                                 ` : `
                                     <tr>
@@ -3605,11 +3605,11 @@ function ordersIndexApp() {
                                     <th style="width: 40px;">SL Bán</th>
                                     <th style="width: 40px;">SL Tặng</th>
                                     <th style="width: 48px;">Tổng</th>
-                                    <th style="width: 70px;">Đơn giá</th>
-                                    <th style="width: 78px;">Tiền chưa VAT</th>
-                                    <th style="width: 38px;">Thuế</th>
-                                    <th style="width: 68px;">Tiền VAT</th>
-                                    <th style="width: 84px;">Tổng tiền</th>
+                                    <th style="width: 70px; white-space: nowrap;">Đơn giá</th>
+                                    <th style="width: 78px; white-space: nowrap;">Tiền hàng</th>
+                                    <th style="width: 42px; white-space: nowrap;">% VAT</th>
+                                    <th style="width: 68px; white-space: nowrap;">Tiền VAT</th>
+                                    <th style="width: 84px; white-space: nowrap;">Tổng tiền</th>
                                 </tr>
                             ` : `
                                 <tr>
@@ -3791,7 +3791,7 @@ function ordersIndexApp() {
 
             if (isSplitVat) {
                 csvContent += "DANH SÁCH SẢN PHẨM (BÓC TÁCH THUẾ GTGT)\n";
-                csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,Đơn vị tính,Đơn giá chưa VAT,Số lượng,Tiền chưa VAT,Thuế suất,Tiền thuế GTGT,Thành tiền có VAT,Loại giá\n";
+                csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,ĐVT,SL,Đơn giá,Tiền hàng,% VAT,Tiền VAT,Tổng tiền,Loại giá\n";
 
                 let totalNetAll = 0;
                 let totalVatAll = 0;
@@ -3810,7 +3810,7 @@ function ordersIndexApp() {
                     totalVatAll += lineVat;
                     totalGrossAll += lineGross;
 
-                    csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},${unitPriceNet},${qtyVal},${lineNet},${vatRate}%,${lineVat},${lineGross},"${it.price_tier_code || it.price_type || ''}"\n`;
+                    csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},${qtyVal},${unitPriceNet},${lineNet},${vatRate}%,${lineVat},${lineGross},"${it.price_tier_code || it.price_type || ''}"\n`;
                 });
 
                 csvContent += `Cộng tiền hàng (chưa thuế GTGT),,,,,,${totalNetAll},,${totalVatAll},${totalGrossAll},\n`;
@@ -3821,11 +3821,11 @@ function ordersIndexApp() {
 
                 if (giftItems.length > 0) {
                     csvContent += "\nHÀNG TẶNG KHUYẾN MẠI\n";
-                    csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,Đơn vị tính,Đơn giá chưa VAT,Số lượng,Tiền chưa VAT,Thuế suất,Tiền thuế GTGT,Thành tiền có VAT,Loại giá\n";
+                    csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,ĐVT,SL,Đơn giá,Tiền hàng,% VAT,Tiền VAT,Tổng tiền,Loại giá\n";
                     giftItems.forEach((it, idx) => {
                         const prodName = it.name;
                         const qtyVal = it.display_quantity ?? it.gift_quantity ?? it.quantity;
-                        csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},0,${qtyVal},0,0%,0,0,"${it.price_tier_code || 'KM'}"\n`;
+                        csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},${qtyVal},0,0,0%,0,0,"${it.price_tier_code || 'KM'}"\n`;
                     });
                 }
             } else {
