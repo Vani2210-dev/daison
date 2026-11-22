@@ -2919,6 +2919,8 @@ function ordersIndexApp() {
                             <td style="text-align:center;padding:5px 4px;border:1px solid #111;">${it.unit || ''}</td>
                             <td style="text-align:right;padding:5px 4px;border:1px solid #111;font-weight:bold;font-size:12px;white-space:nowrap;">${this.formatNumber(qtyVal)}</td>
                             <td style="text-align:right;padding:5px 4px;border:1px solid #111;white-space:nowrap;">${this.formatNumber(unitPriceNet)}</td>
+                            <td style="text-align:right;padding:5px 4px;border:1px solid #111;white-space:nowrap;">${discText}</td>
+                            <td style="text-align:right;padding:5px 4px;border:1px solid #111;white-space:nowrap;">${discAmtText}</td>
                             <td style="text-align:right;padding:5px 4px;border:1px solid #111;white-space:nowrap;">${this.formatNumber(lineNet)}</td>
                             <td style="text-align:center;padding:5px 4px;border:1px solid #111;font-weight:bold;">${vatRate}%</td>
                             <td style="text-align:right;padding:5px 4px;border:1px solid #111;white-space:nowrap;">${this.formatNumber(lineVat)}</td>
@@ -2957,32 +2959,32 @@ function ordersIndexApp() {
                 if (Number(o.extra_discount || 0) > 0) {
                     regularSummaryHtml = `
                         <tr>
-                            <td colspan="6" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Cộng tiền hàng (chưa thuế GTGT)</td>
+                            <td colspan="8" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Cộng tiền hàng (chưa thuế GTGT)</td>
                             <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(totalNetAll)} VND</td>
                             <td style="border:1px solid #111;"></td>
                             <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(totalVatAll)} VND</td>
                             <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(regularTotalAmount)} VND</td>
                         </tr>
                         <tr>
-                            <td colspan="9" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Chiết khấu đơn</td>
+                            <td colspan="11" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Chiết khấu đơn</td>
                             <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">-${this.formatNumber(o.extra_discount)} VND</td>
                         </tr>
                         <tr>
-                            <td colspan="9" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">Tổng thanh toán đã có thuế GTGT</td>
+                            <td colspan="11" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">Tổng thanh toán đã có thuế GTGT</td>
                             <td style="text-align:right;font-weight:900;padding:5px 6px;border:1px solid #111;font-size:13.5px;color:#000;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">${this.formatNumber(o.final_total || Math.max(0, regularTotalAmount - Number(o.extra_discount)))} VND</td>
                         </tr>
                     `;
                 } else {
                     regularSummaryHtml = `
                         <tr>
-                            <td colspan="6" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Cộng tiền hàng (chưa thuế GTGT)</td>
+                            <td colspan="8" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Cộng tiền hàng (chưa thuế GTGT)</td>
                             <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(totalNetAll)} VND</td>
                             <td style="border:1px solid #111;"></td>
                             <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(totalVatAll)} VND</td>
                             <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(regularTotalAmount)} VND</td>
                         </tr>
                         <tr>
-                            <td colspan="9" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">Tổng tiền thanh toán đã có thuế GTGT</td>
+                            <td colspan="11" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">Tổng tiền thanh toán đã có thuế GTGT</td>
                             <td style="text-align:right;font-weight:900;padding:5px 6px;border:1px solid #111;font-size:13px;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">${this.formatNumber(o.final_total || regularTotalAmount)} VND</td>
                         </tr>
                     `;
@@ -3198,16 +3200,18 @@ function ordersIndexApp() {
                                     </tr>
                                 ` : (isSplitVat ? `
                                     <tr>
-                                        <th style="width: 30px;">TT</th>
-                                        <th style="width: 72px; text-align: left; padding-left: 5px;">Mã SP</th>
+                                        <th style="width: 28px;">TT</th>
+                                        <th style="width: 65px; text-align: left; padding-left: 5px;">Mã SP</th>
                                         <th style="text-align: left; padding-left: 5px;">Tên sản phẩm</th>
-                                        <th style="width: 40px;">ĐVT</th>
-                                        <th style="width: 38px;">SL</th>
-                                        <th style="width: 75px; white-space: nowrap;">Đơn giá</th>
-                                        <th style="width: 82px; white-space: nowrap;">Tiền hàng</th>
-                                        <th style="width: 46px; white-space: nowrap;">% VAT</th>
-                                        <th style="width: 72px; white-space: nowrap;">Tiền VAT</th>
-                                        <th style="width: 86px; white-space: nowrap;">Tổng tiền</th>
+                                        <th style="width: 38px;">ĐVT</th>
+                                        <th style="width: 35px;">SL</th>
+                                        <th style="width: 68px; white-space: nowrap;">Đơn giá</th>
+                                        <th style="width: 46px; white-space: nowrap;">C.khấu</th>
+                                        <th style="width: 66px; white-space: nowrap;">Tiền CK</th>
+                                        <th style="width: 76px; white-space: nowrap;">Tiền hàng</th>
+                                        <th style="width: 42px; white-space: nowrap;">% VAT</th>
+                                        <th style="width: 68px; white-space: nowrap;">Tiền VAT</th>
+                                        <th style="width: 82px; white-space: nowrap;">Tổng tiền</th>
                                     </tr>
                                 ` : `
                                     <tr>
@@ -3224,7 +3228,7 @@ function ordersIndexApp() {
                                 `)}
                             </thead>
                             <tbody>
-                                ${regularTableRows || `<tr><td colspan="${isNoPrice ? 5 : (isSplitVat ? 10 : 9)}" style="text-align:center;padding:8px;font-style:italic;color:#666;border:1px solid #111;">Không có sản phẩm bán</td></tr>`}
+                                ${regularTableRows || `<tr><td colspan="${isNoPrice ? 5 : (isSplitVat ? 12 : 9)}" style="text-align:center;padding:8px;font-style:italic;color:#666;border:1px solid #111;">Không có sản phẩm bán</td></tr>`}
                                 ${regularSummaryHtml}
                             </tbody>
                         </table>
@@ -3791,7 +3795,7 @@ function ordersIndexApp() {
 
             if (isSplitVat) {
                 csvContent += "DANH SÁCH SẢN PHẨM (BÓC TÁCH THUẾ GTGT)\n";
-                csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,ĐVT,SL,Đơn giá,Tiền hàng,% VAT,Tiền VAT,Tổng tiền,Loại giá\n";
+                csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,ĐVT,SL,Đơn giá,C.khấu,Tiền CK,Tiền hàng,% VAT,Tiền VAT,Tổng tiền,Loại giá\n";
 
                 let totalNetAll = 0;
                 let totalVatAll = 0;
@@ -3800,6 +3804,8 @@ function ordersIndexApp() {
                 regularItems.forEach((it, idx) => {
                     const prodName = it.name;
                     const qtyVal = it.display_quantity ?? it.sold_quantity ?? it.quantity;
+                    const discText = this.getDiscountDisplay(it);
+                    const discAmtVal = this.getDiscountAmountValue(it);
                     const vatRate = Number(it.vat_rate !== undefined && it.vat_rate !== null ? it.vat_rate : 8);
                     const lineGross = Number(it.total || it.amount || 0);
                     const lineNet = (vatRate > 0) ? Math.round(lineGross / (1 + (vatRate / 100))) : lineGross;
@@ -3810,22 +3816,22 @@ function ordersIndexApp() {
                     totalVatAll += lineVat;
                     totalGrossAll += lineGross;
 
-                    csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},${qtyVal},${unitPriceNet},${lineNet},${vatRate}%,${lineVat},${lineGross},"${it.price_tier_code || it.price_type || ''}"\n`;
+                    csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},${qtyVal},${unitPriceNet},"${discText}",${discAmtVal},${lineNet},${vatRate}%,${lineVat},${lineGross},"${it.price_tier_code || it.price_type || ''}"\n`;
                 });
 
-                csvContent += `Cộng tiền hàng (chưa thuế GTGT),,,,,,${totalNetAll},,${totalVatAll},${totalGrossAll},\n`;
+                csvContent += `Cộng tiền hàng (chưa thuế GTGT),,,,,,,,${totalNetAll},,${totalVatAll},${totalGrossAll},\n`;
                 if (Number(o.extra_discount || 0) > 0) {
-                    csvContent += `Chiết khấu giảm giá đơn hàng,,,,,,,,,-${o.extra_discount},\n`;
+                    csvContent += `Chiết khấu giảm giá đơn hàng,,,,,,,,,,,-${o.extra_discount},\n`;
                 }
-                csvContent += `Tổng tiền thanh toán đã có thuế GTGT,,,,,,,,,${o.final_total || (totalGrossAll - Number(o.extra_discount || 0))},\n`;
+                csvContent += `Tổng tiền thanh toán đã có thuế GTGT,,,,,,,,,,,${o.final_total || (totalGrossAll - Number(o.extra_discount || 0))},\n`;
 
                 if (giftItems.length > 0) {
                     csvContent += "\nHÀNG TẶNG KHUYẾN MẠI\n";
-                    csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,ĐVT,SL,Đơn giá,Tiền hàng,% VAT,Tiền VAT,Tổng tiền,Loại giá\n";
+                    csvContent += "TT,Mã SP,Tên sản phẩm,Tên HĐ,ĐVT,SL,Đơn giá,C.khấu,Tiền CK,Tiền hàng,% VAT,Tiền VAT,Tổng tiền,Loại giá\n";
                     giftItems.forEach((it, idx) => {
                         const prodName = it.name;
                         const qtyVal = it.display_quantity ?? it.gift_quantity ?? it.quantity;
-                        csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},${qtyVal},0,0,0%,0,0,"${it.price_tier_code || 'KM'}"\n`;
+                        csvContent += `${idx + 1},"${(it.sku || '').replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${(it.tax_name || '').replace(/"/g, '""')}",${it.unit || ''},${qtyVal},0,"-",0,0,0%,0,0,"${it.price_tier_code || 'KM'}"\n`;
                     });
                 }
             } else {
