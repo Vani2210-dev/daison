@@ -192,22 +192,23 @@ class PromotionAdvanceController extends Controller
      */
     public function settle(Request $request, $id)
     {
-        $advance = PromotionAdvance::findOrFail($id);
-
         $request->validate([
             'quantity' => 'required|numeric|min:0.01',
         ]);
 
         $repayQty = (float)$request->quantity;
-        if ($repayQty > (float)$advance->remaining_quantity) {
-            return response()->json([
-                'success' => false,
-                'message' => "Số lượng hoàn ứng ({$repayQty}) không được vượt quá số lượng còn nợ ({$advance->remaining_quantity})!"
-            ], 422);
-        }
 
         DB::beginTransaction();
         try {
+            $advance = PromotionAdvance::lockForUpdate()->findOrFail($id);
+            if ($repayQty > (float)$advance->remaining_quantity) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "Số lượng hoàn ứng ({$repayQty}) không được vượt quá số lượng còn nợ ({$advance->remaining_quantity})!"
+                ], 422);
+            }
+
             $currentUser = Auth::user();
             $newReturned = (float)$advance->returned_quantity + $repayQty;
             $newRemaining = max(0, (float)$advance->advance_quantity - $newReturned);
@@ -258,6 +259,7 @@ class PromotionAdvanceController extends Controller
         ]);
 
         $brandName = trim($request->brand_name);
+        $brandId = $request->filled('brand_id') ? (int)$request->brand_id : Brand::whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($brandName)])->value('id');
         $productId = (int)$request->product_id;
         $totalRepayQty = (float)$request->quantity;
         $refCode = $request->reference_code ?: 'PNK-TRA-BU-' . date('Ymd');
@@ -267,14 +269,21 @@ class PromotionAdvanceController extends Controller
         try {
             $currentUser = Auth::user();
 
-            // Tìm các phiếu ứng còn nợ của Hãng và sản phẩm này theo thứ tự cũ nhất trước (FIFO)
-            $advances = PromotionAdvance::where('brand_name', $brandName)
+            // Tìm các phiếu ứng còn nợ của Hãng và sản phẩm này theo thứ tự cũ nhất trước (FIFO) + khóa hàng
+            $advances = PromotionAdvance::where(function ($q) use ($brandName, $brandId) {
+                    $q->whereRaw('LOWER(TRIM(brand_name)) = ?', [mb_strtolower($brandName)]);
+                    if ($brandId) {
+                        $q->orWhere('brand_id', $brandId);
+                    }
+                })
                 ->where('product_id', $productId)
                 ->where('remaining_quantity', '>', 0)
                 ->orderBy('id', 'asc')
+                ->lockForUpdate()
                 ->get();
 
             if ($advances->isEmpty()) {
+                DB::rollBack();
                 return response()->json([
                     'success' => false,
                     'message' => "Không tìm thấy khoản nợ KM nào của Hãng [{$brandName}] đối với sản phẩm này!"

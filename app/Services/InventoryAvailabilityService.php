@@ -71,6 +71,7 @@ class InventoryAvailabilityService
                 'Báo giá',
                 'Bản nháp',
                 'Từ chối hạn mức',
+                'Đã gộp đơn',
                 'Hủy',
                 'Đã hủy',
                 'Đã huỷ',

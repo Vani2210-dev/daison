@@ -452,6 +452,7 @@ class DeliveryController extends Controller
         if (empty($orderCodes) && $vehiclePlate && $vehiclePlate !== 'Xe giao hàng') {
             $orderCodes = \App\Models\Order::where('assigned_vehicle_plate', $vehiclePlate)
                 ->whereIn('status', ['Đã giao', 'Giao thành công'])
+                ->where('settled_with_accountant', false)
                 ->pluck('order_code')
                 ->toArray();
         }
@@ -467,6 +468,12 @@ class DeliveryController extends Controller
 
         // TRƯỜNG HỢP 1: Lái xe gửi bàn giao tiền chờ kế toán duyệt
         if ($action === 'submit' || $action === 'pending') {
+            if ($existingHandover && $existingHandover->status === 'Đã hoàn thành') {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Biên bản {$code} đã được Kế toán duyệt hoàn thành, không thể gửi lại.",
+                ], 422);
+            }
             if (!empty($orderCodes) && is_array($orderCodes)) {
                 \App\Models\Order::whereIn('order_code', $orderCodes)->update([
                     'payment_status' => 'Chờ duyệt nộp quỹ',
@@ -529,10 +536,10 @@ class DeliveryController extends Controller
             ]);
         }
 
-        // Kiểm tra quyền hạn: Kế toán hoặc Ban giám đốc có quyền duyệt / từ chối
+        // Kiểm tra quyền hạn: Kế toán hoặc Ban giám đốc có quyền duyệt / từ chối (tuyệt đối chỉ tin cậy user đang đăng nhập)
         if ($action === 'reject' || $action === 'approve') {
             $user = auth()->user();
-            if ($user && ($user->hasRole('Fleet') || $user->hasRole('Warehouse_Staff'))) {
+            if (!$user || $user->hasRole('Fleet') || $user->hasRole('Warehouse_Staff')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Lái xe / Phụ kho không có quyền phê duyệt hoặc từ chối nộp tiền. Thao tác này chỉ dành cho Kế toán được chỉ định.',
@@ -544,30 +551,19 @@ class DeliveryController extends Controller
                 $targetAccountantId = $existingHandover->accountant_id;
                 $isDesignated = false;
 
-                if ($user) {
-                    if ($user->hasRole('Executive') || $user->hasRole('Admin') || $user->hasRole('Finance_Accountant') || $user->hasRole('Sales_Accountant') || $user->hasRole('Manager') || $user->is_super_admin) {
-                        $isDesignated = true;
-                    }
-                    if ($user->department === 'Accounting' || stripos($user->department, 'Kế toán') !== false || stripos($user->department, 'Executive') !== false || stripos($user->department, 'Ban Giám Đốc') !== false) {
-                        $isDesignated = true;
-                    }
-                    if ($targetAccountantId && $user->id == $targetAccountantId) {
-                        $isDesignated = true;
-                    }
-                    if ($targetAccountantName && (
-                        strcasecmp(trim($user->name), trim($targetAccountantName)) === 0 ||
-                        stripos($targetAccountantName, $user->name) !== false ||
-                        stripos($user->name, $targetAccountantName) !== false
-                    )) {
-                        $isDesignated = true;
-                    }
+                if ($user->hasRole('Executive') || $user->hasRole('Admin') || $user->hasRole('Finance_Accountant') || $user->hasRole('Sales_Accountant') || $user->hasRole('Manager') || $user->is_super_admin) {
+                    $isDesignated = true;
                 }
-
-                $clientAccountantName = $data['accountantName'] ?? null;
-                if ($clientAccountantName && $targetAccountantName && (
-                    strcasecmp(trim($clientAccountantName), trim($targetAccountantName)) === 0 ||
-                    stripos($targetAccountantName, $clientAccountantName) !== false ||
-                    stripos($clientAccountantName, $targetAccountantName) !== false
+                if ($user->department === 'Accounting' || stripos((string)$user->department, 'Kế toán') !== false || stripos((string)$user->department, 'Executive') !== false || stripos((string)$user->department, 'Ban Giám Đốc') !== false) {
+                    $isDesignated = true;
+                }
+                if ($targetAccountantId && $user->id == $targetAccountantId) {
+                    $isDesignated = true;
+                }
+                if ($targetAccountantName && (
+                    strcasecmp(trim($user->name), trim($targetAccountantName)) === 0 ||
+                    stripos($targetAccountantName, $user->name) !== false ||
+                    stripos($user->name, $targetAccountantName) !== false
                 )) {
                     $isDesignated = true;
                 }
@@ -581,264 +577,281 @@ class DeliveryController extends Controller
             }
         }
 
-        // TRƯỜNG HỢP 2: Kế toán từ chối biên bản nộp tiền
+        // TRƯỜNG HỢP 2: Kế toán từ chối biên bản nộp tiền (bọc lockForUpdate tránh race)
         if ($action === 'reject') {
-            if (!empty($orderCodes) && is_array($orderCodes)) {
-                \App\Models\Order::whereIn('order_code', $orderCodes)->update([
-                    'payment_status' => 'Đã thu tiền mặt',
+            return DB::transaction(function () use ($code, $orderCodes, $rejectedReason, $accountantName, $vehiclePlate, $driverName) {
+                $lockedHandover = DriverCashHandover::where('code', $code)->lockForUpdate()->first();
+                if ($lockedHandover && in_array($lockedHandover->status, ['Đã hoàn thành', 'Đã từ chối'], true)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Biên bản {$code} đã ở trạng thái [{$lockedHandover->status}], không thể từ chối lại.",
+                    ], 422);
+                }
+
+                if (!empty($orderCodes) && is_array($orderCodes)) {
+                    \App\Models\Order::whereIn('order_code', $orderCodes)->update([
+                        'payment_status' => 'Đã thu tiền mặt',
+                    ]);
+                }
+
+                // Cập nhật database
+                DriverCashHandover::where('code', $code)->update([
+                    'status'              => 'Đã từ chối',
+                    'rejected_reason'     => $rejectedReason,
+                    'rejected_at'         => now(),
+                    'rejected_by_name'    => auth()->user()?->name ?? $accountantName,
+                    'rejected_by_user_id' => auth()->id(),
                 ]);
-            }
 
-            // Cập nhật database
-            DriverCashHandover::where('code', $code)->update([
-                'status'              => 'Đã từ chối',
-                'rejected_reason'     => $rejectedReason,
-                'rejected_at'         => now(),
-                'rejected_by_name'    => auth()->user()?->name ?? $accountantName,
-                'rejected_by_user_id' => auth()->id(),
-            ]);
+                try {
+                    \App\Models\AuditLog::create([
+                        'timestamp'            => now()->format('Y-m-d H:i:s'),
+                        'performer_name'       => auth()->user()?->name ?? $accountantName,
+                        'user_id'              => auth()->id(),
+                        'action'               => 'Từ Chối Bàn Giao Tiền COD',
+                        'module'               => 'Tài Chính & Quỹ',
+                        'target_document_code' => $code,
+                        'field_name'           => 'Biên bản bàn giao tiền COD',
+                        'old_value'            => 'Chờ kế toán duyệt',
+                        'new_value'            => 'Đã từ chối',
+                        'notes'                => "Kế toán {$accountantName} từ chối biên bản nộp tiền {$code} từ Lái xe {$driverName}. Lý do: {$rejectedReason}",
+                    ]);
+                } catch (\Throwable $e) {}
 
-            try {
-                \App\Models\AuditLog::create([
-                    'timestamp'            => now()->format('Y-m-d H:i:s'),
-                    'performer_name'       => auth()->user()?->name ?? $accountantName,
-                    'user_id'              => auth()->id(),
-                    'action'               => 'Từ Chối Bàn Giao Tiền COD',
-                    'module'               => 'Tài Chính & Quỹ',
-                    'target_document_code' => $code,
-                    'field_name'           => 'Biên bản bàn giao tiền COD',
-                    'old_value'            => 'Chờ kế toán duyệt',
-                    'new_value'            => 'Đã từ chối',
-                    'notes'                => "Kế toán {$accountantName} từ chối biên bản nộp tiền {$code} từ Lái xe {$driverName}. Lý do: {$rejectedReason}",
+                try {
+                    \App\Models\Announcement::create([
+                        'title'             => "❌ Từ chối biên bản nộp tiền COD: {$code} (Xe {$vehiclePlate})",
+                        'content'           => "Kế toán " . (auth()->user()?->name ?? $accountantName) . " đã từ chối nhận tiền biên bản {$code} từ Lái xe {$driverName}.\nLý do: {$rejectedReason}.\nLái xe vui lòng kiểm đếm lại tiền mặt thực tế và các đơn COD.",
+                        'author'            => auth()->user()?->name ?? $accountantName,
+                        'author_role'       => 'Kế toán',
+                        'priority'          => 'Khẩn cấp',
+                        'target_department' => 'Vận tải',
+                        'read_by'           => [],
+                    ]);
+                } catch (\Throwable $e) {}
+
+                return response()->json([
+                    'success'   => true,
+                    'message'   => "Đã từ chối biên bản nộp tiền {$code}.",
+                    'code'      => $code,
+                    'status'    => 'Đã từ chối',
+                    'handovers' => $this->getDriverCashHandoversBootstrapData(),
                 ]);
-            } catch (\Throwable $e) {}
-
-            try {
-                \App\Models\Announcement::create([
-                    'title'             => "❌ Từ chối biên bản nộp tiền COD: {$code} (Xe {$vehiclePlate})",
-                    'content'           => "Kế toán " . (auth()->user()?->name ?? $accountantName) . " đã từ chối nhận tiền biên bản {$code} từ Lái xe {$driverName}.\nLý do: {$rejectedReason}.\nLái xe vui lòng kiểm đếm lại tiền mặt thực tế và các đơn COD.",
-                    'author'            => auth()->user()?->name ?? $accountantName,
-                    'author_role'       => 'Kế toán',
-                    'priority'          => 'Khẩn cấp',
-                    'target_department' => 'Vận tải',
-                    'read_by'           => [],
-                ]);
-            } catch (\Throwable $e) {}
-
-            return response()->json([
-                'success'   => true,
-                'message'   => "Đã từ chối biên bản nộp tiền {$code}.",
-                'code'      => $code,
-                'status'    => 'Đã từ chối',
-                'handovers' => $this->getDriverCashHandoversBootstrapData(),
-            ]);
+            });
         }
 
-        // TRƯỜNG HỢP 3: Kế toán duyệt & Tự động tạo phiếu thu cho các đơn hàng
-        $fund = \App\Models\FinancialFund::where('name', 'LIKE', '%tiền mặt%')->first() ?: \App\Models\FinancialFund::first();
-        $createdTransactions = [];
-        $orderReceiptCodes = [];
+        // TRƯỜNG HỢP 3: Kế toán duyệt & Tự động tạo phiếu thu cho các đơn hàng (bọc trong DB transaction + lockForUpdate chống duyệt trùng)
+        return DB::transaction(function () use (
+            $code, $vehiclePlate, $driverName, $copilotName, $accountantName,
+            $amount, $paymentMethod, $orderCodes, $notes, $data
+        ) {
+            $lockedHandover = DriverCashHandover::where('code', $code)->lockForUpdate()->first();
+            if ($lockedHandover && in_array($lockedHandover->status, ['Đã hoàn thành', 'Đã từ chối'], true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Biên bản {$code} đã ở trạng thái [{$lockedHandover->status}], không thể duyệt lại.",
+                ], 422);
+            }
 
-        if (!empty($orderCodes) && is_array($orderCodes)) {
-            $ordersToSettle = \App\Models\Order::with(['items', 'dealer'])->whereIn('order_code', $orderCodes)->get();
+            if (\App\Models\PeriodLock::isLockedDate(now(), 'finance')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kỳ kế toán hiện tại đã bị khóa sổ, không thể duyệt nộp quỹ.',
+                ], 422);
+            }
+
+            $fundQuery = \App\Models\FinancialFund::where('name', 'LIKE', '%tiền mặt%')->lockForUpdate()->first();
+            $fund = $fundQuery ?: \App\Models\FinancialFund::lockForUpdate()->first();
+            $createdTransactions = [];
+            $orderReceiptCodes = [];
+            $ordersToSettle = collect();
             $totalCalculatedAmount = 0;
 
-            foreach ($ordersToSettle as $ord) {
-                $ordAmount = (float) ($ord->driver_debt_amount ?: $ord->total_amount);
-                $totalCalculatedAmount += $ordAmount;
-                $ordTxCode = 'PT-' . $ord->order_code;
-                $orderReceiptCodes[$ord->order_code] = $ordTxCode;
-
-                // Chi tiết các mặt hàng trong đơn hàng
-                $orderItems = [];
-                if ($ord->items) {
-                    foreach ($ord->items as $it) {
-                        $orderItems[] = [
-                            'sku'        => $it->sku ?? $it->product_sku ?? '',
-                            'name'       => $it->name ?? $it->product_name ?? 'Sản phẩm',
-                            'unit'       => $it->unit ?? 'Cái',
-                            'quantity'   => (float) ($it->quantity ?? 1),
-                            'unitPrice'  => (float) ($it->unit_price ?? 0),
-                            'totalPrice' => (float) ($it->amount ?? (($it->quantity ?? 1) * ($it->unit_price ?? 0))),
-                        ];
-                    }
-                }
-
-                $txDetails = [
-                    'order' => [
-                        'orderCode'    => $ord->order_code,
-                        'dealerName'   => $ord->dealer_name ?: ($ord->customer_name ?: "Khách hàng {$ord->order_code}"),
-                        'address'      => $ord->customer_address ?? ($ord->dealer?->address ?? ''),
-                        'phone'        => $ord->customer_phone ?? ($ord->dealer?->phone ?? ''),
-                        'orderTotal'   => (float) $ord->total_amount,
-                        'collectedCod' => $ordAmount,
-                        'items'        => $orderItems,
-                    ],
-                    'items'        => $orderItems,
-                    'handoverCode' => $code,
-                    'vehiclePlate' => $vehiclePlate,
-                    'driverName'   => $driverName,
-                    'copilotName'  => $copilotName,
-                    'accountant'   => $accountantName,
-                ];
-
-                // Tự động tạo hoặc cập nhật phiếu thu cho từng đơn hàng kèm chi tiết đơn hàng & hàng hóa
-                $tx = \App\Models\Transaction::updateOrCreate(
-                    ['code' => $ordTxCode],
-                    [
-                        'type'                  => 'Thu',
-                        'fund_id'               => $fund?->id ?? 1,
-                        'category'              => 'Thu tiền mặt COD đơn hàng',
-                        'amount'                => $ordAmount,
-                        'customer_partner_name' => $ord->dealer_name ?: ($ord->customer_name ?: "Khách hàng {$ord->order_code}"),
-                        'order_id'              => $ord->id,
-                        'date'                  => now()->format('Y-m-d'),
-                        'notes'                 => "Phiếu thu tiền mặt COD đơn {$ord->order_code} theo Biên bản bàn giao {$code} (Xe {$vehiclePlate}, Lái xe {$driverName}). Kế toán duyệt: {$accountantName}." . ($notes ? " Ghi chú: {$notes}" : ''),
-                        'details'               => $txDetails,
-                    ]
-                );
-                $createdTransactions[] = $tx;
-
-                // Cập nhật trạng thái đơn hàng: status chỉ dừng ở "Đã giao", trạng thái thanh toán và giải phóng khỏi xe
-                $newPaymentStatus = in_array($ord->payment_method, ['Ghi nợ', 'Ghi nợ đại lý', 'Ký nợ', 'Ký nợ đại lý']) 
-                    ? 'Ghi nợ đại lý' 
-                    : 'Đã thanh toán';
-
-                $ord->update([
-                    'status'                  => 'Đã giao',
-                    'payment_status'          => $newPaymentStatus,
-                    'settled_with_accountant' => true,
-                    'assigned_vehicle_plate'  => null,
-                ]);
-
-                // Khấu trừ công nợ đại lý nếu có khoản thu vượt đơn cấn trừ nợ cũ
-                if ($ord->dealer_id) {
-                    $netOrder = max(0, (float) $ord->total_amount - (float) ($ord->total_returned_amount ?? 0));
-                    $collected = (float) ($ord->driver_debt_amount ?: $ord->total_amount);
-                    $surplus = max(0, $collected - $netOrder);
-
-                    if ($surplus > 0) {
-                        $dealer = \App\Models\Dealer::find($ord->dealer_id) ?: \App\Models\Dealer::where('code', $ord->dealer_id)->first();
-                        if ($dealer) {
-                            $dealer->current_debt = max(0, (float) $dealer->current_debt - $surplus);
-                            $dealer->save();
-                        }
-                    }
-                }
-            }
-
-            // Tự động giải phóng tất cả các đơn hàng đã giao thành công của xe này khỏi xe (giữ status là 'Đã giao')
-            if ($vehiclePlate) {
-                $vehOrders = \App\Models\Order::where('assigned_vehicle_plate', $vehiclePlate)
-                    ->whereIn('status', ['Đã giao', 'Giao thành công'])
+            if (!empty($orderCodes) && is_array($orderCodes)) {
+                $ordersToSettle = \App\Models\Order::with(['items', 'dealer'])
+                    ->whereIn('order_code', $orderCodes)
+                    ->lockForUpdate()
                     ->get();
 
-                foreach ($vehOrders as $vo) {
-                    $pStatus = in_array($vo->payment_method, ['Ghi nợ', 'Ghi nợ đại lý', 'Ký nợ', 'Ký nợ đại lý']) 
-                        ? 'Ghi nợ đại lý' 
-                        : 'Đã thanh toán';
+                foreach ($ordersToSettle as $ord) {
+                    $ordAmount = $ord->driver_debt_amount !== null ? (float) $ord->driver_debt_amount : (float) $ord->total_amount;
+                    $totalCalculatedAmount += $ordAmount;
+                    $ordTxCode = 'PT-' . $ord->order_code;
+                    $orderReceiptCodes[$ord->order_code] = $ordTxCode;
 
-                    $vo->update([
-                        'status'                  => 'Đã giao',
-                        'payment_status'          => $pStatus,
-                        'settled_with_accountant' => true,
-                        'assigned_vehicle_plate'  => null,
-                    ]);
-                }
+                    // Chi tiết các mặt hàng trong đơn hàng
+                    $orderItems = [];
+                    if ($ord->items) {
+                        foreach ($ord->items as $it) {
+                            $orderItems[] = [
+                                'sku'        => $it->sku ?? $it->product_sku ?? '',
+                                'name'       => $it->name ?? $it->product_name ?? 'Sản phẩm',
+                                'unit'       => $it->unit ?? 'Cái',
+                                'quantity'   => (float) ($it->quantity ?? 1),
+                                'unitPrice'  => (float) ($it->unit_price ?? 0),
+                                'totalPrice' => (float) ($it->amount ?? (($it->quantity ?? 1) * ($it->unit_price ?? 0))),
+                            ];
+                        }
+                    }
 
-                // Kiểm tra nếu xe không còn đơn nào thì đưa xe về Sẵn sàng / Rảnh
-                $remainingVehOrders = \App\Models\Order::where('assigned_vehicle_plate', $vehiclePlate)
-                    ->whereNotIn('status', ['Đã hoàn kho', 'Đã hủy', 'Hủy'])
-                    ->count();
-                if ($remainingVehOrders === 0) {
-                    \App\Models\Vehicle::where('plate_number', $vehiclePlate)->update([
-                        'status'          => 'Sẵn sàng',
-                        'dispatch_status' => 'Rảnh',
-                        'departure_time'  => null,
-                    ]);
-                }
-            }
-
-            // Tăng quỹ theo tổng số tiền thực thu của các đơn
-            $incrementAmt = $totalCalculatedAmount > 0 ? $totalCalculatedAmount : $amount;
-            if ($fund && $incrementAmt > 0) {
-                $fund->increment('current_balance', $incrementAmt);
-            }
-        } elseif ($amount > 0) {
-            // Trường hợp không có orderCodes nhưng có số tiền tổng
-            $txCode = 'PT-COD-' . date('Ymd') . '-' . str_pad((string) rand(10, 99), 2, '0', STR_PAD_LEFT);
-            $tx = \App\Models\Transaction::updateOrCreate(
-                ['code' => $txCode],
-                [
-                    'type'                  => 'Thu',
-                    'fund_id'               => $fund?->id ?? 1,
-                    'category'              => 'Nộp tiền mặt COD giao hàng',
-                    'amount'                => $amount,
-                    'customer_partner_name' => "Lái xe: {$driverName} (Xe {$vehiclePlate})",
-                    'date'                  => now()->format('Y-m-d'),
-                    'notes'                 => "Bàn giao tiền COD xe {$vehiclePlate} cho Kế toán {$accountantName}. Biên bản: {$code}." . ($notes ? " Ghi chú: {$notes}" : ''),
-                    'details'               => [
+                    $txDetails = [
+                        'order' => [
+                            'orderCode'    => $ord->order_code,
+                            'dealerName'   => $ord->dealer_name ?: ($ord->customer_name ?: "Khách hàng {$ord->order_code}"),
+                            'address'      => $ord->customer_address ?? ($ord->dealer?->address ?? ''),
+                            'phone'        => $ord->customer_phone ?? ($ord->dealer?->phone ?? ''),
+                            'orderTotal'   => (float) $ord->total_amount,
+                            'collectedCod' => $ordAmount,
+                            'items'        => $orderItems,
+                        ],
+                        'items'        => $orderItems,
                         'handoverCode' => $code,
                         'vehiclePlate' => $vehiclePlate,
                         'driverName'   => $driverName,
                         'copilotName'  => $copilotName,
                         'accountant'   => $accountantName,
-                        'items'        => [],
-                    ],
-                ]
-            );
-            $createdTransactions[] = $tx;
+                    ];
 
-            if ($fund) {
-                $fund->increment('current_balance', $amount);
-            }
-        }
+                    // Tự động tạo hoặc cập nhật phiếu thu cho từng đơn hàng kèm chi tiết đơn hàng & hàng hóa
+                    $tx = \App\Models\Transaction::updateOrCreate(
+                        ['code' => $ordTxCode],
+                        [
+                            'type'                  => 'Thu',
+                            'fund_id'               => $fund?->id ?? 1,
+                            'category'              => 'Thu tiền mặt COD đơn hàng',
+                            'amount'                => $ordAmount,
+                            'customer_partner_name' => $ord->dealer_name ?: ($ord->customer_name ?: "Khách hàng {$ord->order_code}"),
+                            'order_id'              => $ord->id,
+                            'date'                  => now()->format('Y-m-d'),
+                            'notes'                 => "Phiếu thu tiền mặt COD đơn {$ord->order_code} theo Biên bản bàn giao {$code} (Xe {$vehiclePlate}, Lái xe {$driverName}). Kế toán duyệt: {$accountantName}." . ($notes ? " Ghi chú: {$notes}" : ''),
+                            'details'               => $txDetails,
+                        ]
+                    );
+                    $createdTransactions[] = $tx;
 
-        // Tự động đối trừ giảm công nợ cho Lái xe khi nộp tiền mặt/COD về quỹ thành công
-        $settledAmount = $totalCalculatedAmount > 0 ? $totalCalculatedAmount : $amount;
-        $driverUserId = $existingHandover?->driver_id ?? ($data['driverId'] ?? null);
-        $driverUser = $driverUserId ? \App\Models\User::find($driverUserId) : null;
-        if (!$driverUser && $driverName) {
-            $driverUser = \App\Models\User::where('name', $driverName)->first();
-        }
-        if ($driverUser && $settledAmount > 0) {
-            $driverUser->current_debt = max(0, (float)$driverUser->current_debt - $settledAmount);
-            $driverUser->save();
-        }
+                    // Chỉ giải phóng & cập nhật đúng các đơn thuộc biên bản nộp tiền này
+                    $newPaymentStatus = in_array($ord->payment_method, ['Ghi nợ', 'Ghi nợ đại lý', 'Ký nợ', 'Ký nợ đại lý'])
+                        ? 'Ghi nợ đại lý'
+                        : 'Đã thanh toán';
 
-        // Cập nhật lại công nợ các Đại lý có đơn hàng trong đợt thu tiền này
-        if (!empty($ordersToSettle)) {
-            $settledDealerIds = $ordersToSettle->pluck('dealer_id')->filter()->unique();
-            foreach ($settledDealerIds as $dId) {
-                $dl = \App\Models\Dealer::find($dId) ?: \App\Models\Dealer::where('code', $dId)->first();
-                if ($dl) {
-                    $dl->recalculateCurrentDebt();
+                    $ord->update([
+                        'status'                  => 'Đã giao',
+                        'payment_status'          => $newPaymentStatus,
+                        'settled_with_accountant' => true,
+                        'assigned_vehicle_plate'  => null,
+                    ]);
+
+                    // Khấu trừ công nợ đại lý nếu có khoản thu vượt đơn cấn trừ nợ cũ
+                    if ($ord->dealer_id) {
+                        $netOrder = max(0, (float) $ord->total_amount - (float) ($ord->total_returned_amount ?? 0));
+                        $collected = $ord->driver_debt_amount !== null ? (float) $ord->driver_debt_amount : (float) $ord->total_amount;
+                        $surplus = max(0, $collected - $netOrder);
+
+                        if ($surplus > 0) {
+                            $dealer = \App\Models\Dealer::lockForUpdate()->find($ord->dealer_id)
+                                ?: \App\Models\Dealer::where('code', $ord->dealer_id)->lockForUpdate()->first();
+                            if ($dealer) {
+                                $dealer->current_debt = max(0, (float) $dealer->current_debt - $surplus);
+                                $dealer->save();
+                            }
+                        }
+                    }
+                }
+
+                // Kiểm tra nếu xe không còn đơn nào chưa kết thúc thì đưa xe về Sẵn sàng / Rảnh
+                if ($vehiclePlate) {
+                    $remainingVehOrders = \App\Models\Order::where('assigned_vehicle_plate', $vehiclePlate)
+                        ->whereNotIn('status', ['Đã hoàn kho', 'Đã hủy', 'Hủy'])
+                        ->count();
+                    if ($remainingVehOrders === 0) {
+                        \App\Models\Vehicle::where('plate_number', $vehiclePlate)->update([
+                            'status'          => 'Sẵn sàng',
+                            'dispatch_status' => 'Rảnh',
+                            'departure_time'  => null,
+                        ]);
+                    }
+                }
+
+                // Tăng quỹ theo tổng số tiền thực thu của các đơn
+                $incrementAmt = $totalCalculatedAmount > 0 ? $totalCalculatedAmount : $amount;
+                if ($fund && $incrementAmt > 0) {
+                    $fund->increment('current_balance', $incrementAmt);
+                }
+            } elseif ($amount > 0) {
+                // Trường hợp không có orderCodes nhưng có số tiền tổng
+                $txCode = 'PT-COD-' . date('Ymd') . '-' . str_pad((string) rand(10, 99), 2, '0', STR_PAD_LEFT);
+                $tx = \App\Models\Transaction::updateOrCreate(
+                    ['code' => $txCode],
+                    [
+                        'type'                  => 'Thu',
+                        'fund_id'               => $fund?->id ?? 1,
+                        'category'              => 'Nộp tiền mặt COD giao hàng',
+                        'amount'                => $amount,
+                        'customer_partner_name' => "Lái xe: {$driverName} (Xe {$vehiclePlate})",
+                        'date'                  => now()->format('Y-m-d'),
+                        'notes'                 => "Bàn giao tiền COD xe {$vehiclePlate} cho Kế toán {$accountantName}. Biên bản: {$code}." . ($notes ? " Ghi chú: {$notes}" : ''),
+                        'details'               => [
+                            'handoverCode' => $code,
+                            'vehiclePlate' => $vehiclePlate,
+                            'driverName'   => $driverName,
+                            'copilotName'  => $copilotName,
+                            'accountant'   => $accountantName,
+                            'items'        => [],
+                        ],
+                    ]
+                );
+                $createdTransactions[] = $tx;
+
+                if ($fund) {
+                    $fund->increment('current_balance', $amount);
                 }
             }
-        }
 
-        // Cập nhật DriverCashHandover trong DB
-        $firstReceiptCode = !empty($orderReceiptCodes) ? reset($orderReceiptCodes) : ('PT-COD-' . date('Ymd'));
-        DriverCashHandover::updateOrCreate(
-            ['code' => $code],
-            [
-                'vehicle_plate'       => $vehiclePlate,
-                'driver_name'         => $driverName,
-                'copilot_name'        => $copilotName,
-                'accountant_name'     => $accountantName,
-                'handover_amount'     => $amount,
-                'payment_method'      => $paymentMethod,
-                'order_codes'         => $orderCodes,
-                'order_count'         => count($orderCodes),
-                'status'              => 'Đã hoàn thành',
-                'approved_at'         => now(),
-                'approved_by_name'    => auth()->user()?->name ?? $accountantName,
-                'approved_by_user_id' => auth()->id(),
-                'approval_notes'      => $notes,
-                'order_receipt_codes' => $orderReceiptCodes,
-                'receipt_code'        => $firstReceiptCode,
-            ]
-        );
+            // Tự động đối trừ giảm công nợ cho Lái xe khi nộp tiền mặt/COD về quỹ thành công
+            $settledAmount = $totalCalculatedAmount > 0 ? $totalCalculatedAmount : $amount;
+            $driverUserId = $lockedHandover?->driver_id ?? ($data['driverId'] ?? null);
+            $driverUser = $driverUserId ? \App\Models\User::lockForUpdate()->find($driverUserId) : null;
+            if (!$driverUser && $driverName) {
+                $driverUser = \App\Models\User::where('name', $driverName)->lockForUpdate()->first();
+            }
+            if ($driverUser && $settledAmount > 0) {
+                $driverUser->current_debt = max(0, (float)$driverUser->current_debt - $settledAmount);
+                $driverUser->save();
+            }
+
+            // Cập nhật lại công nợ các Đại lý có đơn hàng trong đợt thu tiền này
+            if ($ordersToSettle->isNotEmpty()) {
+                $settledDealerIds = $ordersToSettle->pluck('dealer_id')->filter()->unique();
+                foreach ($settledDealerIds as $dId) {
+                    $dl = \App\Models\Dealer::lockForUpdate()->find($dId) ?: \App\Models\Dealer::where('code', $dId)->lockForUpdate()->first();
+                    if ($dl) {
+                        $dl->recalculateCurrentDebt();
+                    }
+                }
+            }
+
+            // Cập nhật DriverCashHandover trong DB
+            $firstReceiptCode = !empty($orderReceiptCodes) ? reset($orderReceiptCodes) : ('PT-COD-' . date('Ymd'));
+            DriverCashHandover::updateOrCreate(
+                ['code' => $code],
+                [
+                    'vehicle_plate'       => $vehiclePlate,
+                    'driver_name'         => $driverName,
+                    'copilot_name'        => $copilotName,
+                    'accountant_name'     => $accountantName,
+                    'handover_amount'     => $amount,
+                    'payment_method'      => $paymentMethod,
+                    'order_codes'         => $orderCodes,
+                    'order_count'         => count($orderCodes),
+                    'status'              => 'Đã hoàn thành',
+                    'approved_at'         => now(),
+                    'approved_by_name'    => auth()->user()?->name ?? $accountantName,
+                    'approved_by_user_id' => auth()->id(),
+                    'approval_notes'      => $notes,
+                    'order_receipt_codes' => $orderReceiptCodes,
+                    'receipt_code'        => $firstReceiptCode,
+                ]
+            );
 
             try {
                 \App\Models\AuditLog::create([
@@ -867,26 +880,32 @@ class DeliveryController extends Controller
                 ]);
             } catch (\Throwable $e) {}
 
-        // Khi tất toán với kế toán xong thì xe về trạng thái Rảnh / Sẵn sàng
-        if ($vehiclePlate) {
-            $veh = Vehicle::where('plate_number', $vehiclePlate)->first();
-            if ($veh) {
-                $veh->status = 'Sẵn sàng';
-                $veh->dispatch_status = 'Rảnh';
-                $veh->departure_time = null;
-                $veh->save();
+            // Khi tất toán với kế toán xong thì xe về trạng thái Rảnh / Sẵn sàng nếu không còn đơn khác
+            if ($vehiclePlate) {
+                $stillOnVeh = \App\Models\Order::where('assigned_vehicle_plate', $vehiclePlate)
+                    ->whereNotIn('status', ['Đã hoàn kho', 'Đã hủy', 'Hủy'])
+                    ->count();
+                if ($stillOnVeh === 0) {
+                    $veh = Vehicle::where('plate_number', $vehiclePlate)->first();
+                    if ($veh) {
+                        $veh->status = 'Sẵn sàng';
+                        $veh->dispatch_status = 'Rảnh';
+                        $veh->departure_time = null;
+                        $veh->save();
+                    }
+                }
             }
-        }
 
-        return response()->json([
-            'success'           => true,
-            'message'           => 'Kế toán đã duyệt nộp tiền và tự động lập phiếu thu cho các đơn hàng thành công!',
-            'code'              => $code,
-            'orderReceiptCodes' => $orderReceiptCodes,
-            'transactions'      => $createdTransactions,
-            'status'            => 'Đã hoàn thành',
-            'handovers'         => $this->getDriverCashHandoversBootstrapData(),
-        ]);
+            return response()->json([
+                'success'           => true,
+                'message'           => 'Kế toán đã duyệt nộp tiền và tự động lập phiếu thu cho các đơn hàng thành công!',
+                'code'              => $code,
+                'orderReceiptCodes' => $orderReceiptCodes,
+                'transactions'      => $createdTransactions,
+                'status'            => 'Đã hoàn thành',
+                'handovers'         => $this->getDriverCashHandoversBootstrapData(),
+            ]);
+        });
     }
 
 

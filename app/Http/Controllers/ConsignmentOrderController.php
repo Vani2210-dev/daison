@@ -280,7 +280,7 @@ class ConsignmentOrderController extends Controller
         }
 
         return DB::transaction(function () use ($id, $currentUser) {
-            $order = ConsignmentOrder::with('items')->findOrFail($id);
+            $order = ConsignmentOrder::with('items')->lockForUpdate()->findOrFail($id);
 
             if (!in_array($order->status, ['pending', 'draft'])) {
                 return response()->json(['success' => false, 'message' => 'Đơn không ở trạng thái chờ duyệt!'], 422);
@@ -308,21 +308,26 @@ class ConsignmentOrderController extends Controller
     public function dispatchStock($id, Request $request)
     {
         $currentUser = Auth::user();
-        if (!$currentUser || !$currentUser->isAccountant()) {
+        if (!$currentUser || (!$currentUser->isAccountant() && !$currentUser->hasAnyPermission('consignments.approve', 'inv_export.create'))) {
             return response()->json(['success' => false, 'message' => 'Chỉ Kế toán / Thủ kho mới có quyền xác nhận xuất kho!'], 403);
         }
 
-        $order = ConsignmentOrder::with(['items', 'warehouse'])->findOrFail($id);
-        if ($order->stock_deducted) {
-            return response()->json(['success' => false, 'message' => 'Đơn này đã được xuất kho và cộng vào kho ôm của NV!'], 422);
-        }
+        return DB::transaction(function () use ($id, $currentUser) {
+            $order = ConsignmentOrder::with(['items', 'warehouse'])->lockForUpdate()->findOrFail($id);
+            if ($order->stock_deducted) {
+                return response()->json(['success' => false, 'message' => 'Đơn này đã được xuất kho và cộng vào kho ôm của NV!'], 422);
+            }
+            if (!in_array($order->status, ['approved', 'Đang bốc hàng', 'Đã bốc xong', 'Đã kiểm hàng'], true)) {
+                return response()->json(['success' => false, 'message' => 'Chỉ có thể xuất kho cho đơn hàng ôm đã được duyệt!'], 422);
+            }
 
-        $order->transferStockToEmployeeHoldingWarehouse($currentUser->id, $currentUser->name);
+            $order->transferStockToEmployeeHoldingWarehouse($currentUser->id, $currentUser->name);
 
-        return response()->json([
-            'success' => true,
-            'message' => "Đã xuất kho cho đơn {$order->code}! Hàng đã được cộng vào Kho Hàng Ôm của nhân viên {$order->staff_name}.",
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => "Đã xuất kho cho đơn {$order->code}! Hàng đã được cộng vào Kho Hàng Ôm của nhân viên {$order->staff_name}.",
+            ]);
+        });
     }
 
     /**
@@ -330,24 +335,34 @@ class ConsignmentOrderController extends Controller
      */
     public function reject($id, Request $request)
     {
-        $request->validate(['reason' => 'nullable|string']);
-
-        $order = ConsignmentOrder::findOrFail($id);
-
-        if (!in_array($order->status, ['pending', 'draft'])) {
-            return response()->json(['success' => false, 'message' => 'Đơn không ở trạng thái chờ duyệt!'], 422);
+        $currentUser = Auth::user();
+        if (!$currentUser || (!$currentUser->isAccountant() && !$currentUser->hasAnyPermission('consignments.approve', 'orders.approve'))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền từ chối đơn hàng ôm!'
+            ], 403);
         }
 
-        $order->update([
-            'status'          => 'cancelled',
-            'rejected_reason' => $request->reason ?? 'Không duyệt',
-            'rejected_at'     => now(),
-        ]);
+        $request->validate(['reason' => 'nullable|string']);
 
-        return response()->json([
-            'success' => true,
-            'message' => "Đã từ chối đơn {$order->code}.",
-        ]);
+        return DB::transaction(function () use ($id, $request) {
+            $order = ConsignmentOrder::lockForUpdate()->findOrFail($id);
+
+            if (!in_array($order->status, ['pending', 'draft'])) {
+                return response()->json(['success' => false, 'message' => 'Đơn không ở trạng thái chờ duyệt!'], 422);
+            }
+
+            $order->update([
+                'status'          => 'cancelled',
+                'rejected_reason' => $request->reason ?? 'Không duyệt',
+                'rejected_at'     => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Đã từ chối đơn {$order->code}.",
+            ]);
+        });
     }
 
     /**
@@ -368,10 +383,10 @@ class ConsignmentOrderController extends Controller
         ]);
 
         return DB::transaction(function () use ($id, $request) {
-            $consignmentOrder = ConsignmentOrder::with('items')->findOrFail($id);
+            $consignmentOrder = ConsignmentOrder::with('items')->lockForUpdate()->findOrFail($id);
 
-            if (!in_array($consignmentOrder->status, ['in_progress', 'approved'])) {
-                return response()->json(['success' => false, 'message' => 'Đơn ôm không ở trạng thái đang bán!'], 422);
+            if ($consignmentOrder->status !== 'in_progress' || !$consignmentOrder->stock_deducted) {
+                return response()->json(['success' => false, 'message' => 'Đơn ôm chưa xuất kho hoặc không ở trạng thái đang bán!'], 422);
             }
 
             $retailOrder = ConsignmentRetailOrder::create([
@@ -391,7 +406,9 @@ class ConsignmentOrderController extends Controller
             $totalAmount = 0;
 
             foreach ($request->items as $itemData) {
-                $consignmentItem = ConsignmentOrderItem::findOrFail($itemData['consignment_order_item_id']);
+                $consignmentItem = ConsignmentOrderItem::where('consignment_order_id', $consignmentOrder->id)
+                    ->lockForUpdate()
+                    ->findOrFail($itemData['consignment_order_item_id']);
                 $quantity = (float) $itemData['quantity'];
 
                 // Kiểm tra SL ôm còn lại
@@ -399,7 +416,9 @@ class ConsignmentOrderController extends Controller
                     throw new \Exception("Sản phẩm \"{$consignmentItem->name}\" không đủ (còn: {$consignmentItem->remaining_quantity}, cần bán: {$quantity})");
                 }
 
-                $unitPrice = $itemData['unit_price'] ?? $consignmentItem->sell_price;
+                $unitPrice = isset($itemData['unit_price']) && $itemData['unit_price'] !== null
+                    ? (float)$itemData['unit_price']
+                    : (float)$consignmentItem->sell_price;
                 $amount = $unitPrice * $quantity;
 
                 ConsignmentRetailOrderItem::create([
@@ -423,9 +442,11 @@ class ConsignmentOrderController extends Controller
 
             $retailOrder->update(['total_amount' => $totalAmount]);
 
-            // Cập nhật tổng đã bán trên đơn ôm
+            // Cập nhật tổng đã bán & giá trị hàng ôm còn giữ (tính theo giá nhận ôm)
             $consignmentOrder->increment('sold_amount', $totalAmount);
-            $consignmentOrder->remaining_amount = (float)$consignmentOrder->total_amount - (float)$consignmentOrder->sold_amount - (float)$consignmentOrder->returned_amount;
+            $consignmentOrder->load('items');
+            $remainingHoldingValue = (float)$consignmentOrder->items->sum(fn($it) => max(0, (float)$it->remaining_quantity) * (float)$it->unit_price);
+            $consignmentOrder->remaining_amount = max(0, round($remainingHoldingValue, 2));
             $consignmentOrder->save();
 
             // Đồng bộ số dư tồn kho ôm của nhân viên
@@ -451,16 +472,18 @@ class ConsignmentOrderController extends Controller
         ]);
 
         return DB::transaction(function () use ($id, $request) {
-            $order = ConsignmentOrder::with('items')->findOrFail($id);
+            $order = ConsignmentOrder::with('items')->lockForUpdate()->findOrFail($id);
 
-            if (!in_array($order->status, ['in_progress', 'approved'])) {
-                return response()->json(['success' => false, 'message' => 'Đơn ôm không ở trạng thái đang bán!'], 422);
+            if ($order->status !== 'in_progress' || !$order->stock_deducted) {
+                return response()->json(['success' => false, 'message' => 'Đơn ôm chưa xuất kho hoặc không ở trạng thái đang bán!'], 422);
             }
 
             $returnedAmount = 0;
 
             foreach ($request->items as $itemData) {
-                $consignmentItem = ConsignmentOrderItem::findOrFail($itemData['consignment_order_item_id']);
+                $consignmentItem = ConsignmentOrderItem::where('consignment_order_id', $order->id)
+                    ->lockForUpdate()
+                    ->findOrFail($itemData['consignment_order_item_id']);
                 $quantity = (float) $itemData['quantity'];
 
                 if ($quantity > (float) $consignmentItem->remaining_quantity) {
@@ -481,16 +504,19 @@ class ConsignmentOrderController extends Controller
                 $consignmentItem->increment('returned_quantity', $quantity);
                 $consignmentItem->decrement('remaining_quantity', $quantity);
 
-                $returnedAmount += $consignmentItem->unit_price * $quantity;
+                $returnedAmount += (float)$consignmentItem->unit_price * $quantity;
             }
 
-            // Giảm công nợ NV
-            $staff = User::findOrFail($order->staff_id);
-            $staff->decrement('current_debt', $returnedAmount);
+            // Giảm công nợ NV (không để âm)
+            $staff = User::lockForUpdate()->findOrFail($order->staff_id);
+            $staff->current_debt = max(0, (float)$staff->current_debt - $returnedAmount);
+            $staff->save();
 
-            // Cập nhật tổng trả lại trên đơn ôm
+            // Cập nhật tổng trả lại & giá trị ôm còn giữ trên đơn ôm
             $order->increment('returned_amount', $returnedAmount);
-            $order->remaining_amount = (float)$order->total_amount - (float)$order->sold_amount - (float)$order->returned_amount;
+            $order->load('items');
+            $remainingHoldingValue = (float)$order->items->sum(fn($it) => max(0, (float)$it->remaining_quantity) * (float)$it->unit_price);
+            $order->remaining_amount = max(0, round($remainingHoldingValue, 2));
             $order->save();
 
             // Đồng bộ số dư tồn kho ôm của nhân viên
@@ -509,10 +535,10 @@ class ConsignmentOrderController extends Controller
     public function settle($id)
     {
         return DB::transaction(function () use ($id) {
-            $order = ConsignmentOrder::with('items')->findOrFail($id);
+            $order = ConsignmentOrder::with('items')->lockForUpdate()->findOrFail($id);
 
-            if ($order->status !== 'in_progress') {
-                return response()->json(['success' => false, 'message' => 'Đơn ôm chưa ở trạng thái đang bán!'], 422);
+            if ($order->status !== 'in_progress' || !$order->stock_deducted) {
+                return response()->json(['success' => false, 'message' => 'Đơn ôm chưa xuất kho hoặc chưa ở trạng thái đang bán!'], 422);
             }
 
             // Kiểm tra còn hàng tồn ôm chưa trả
@@ -525,19 +551,23 @@ class ConsignmentOrderController extends Controller
                 ], 422);
             }
 
-            // Trừ công nợ NV (phần đã bán)
-            $staff = User::findOrFail($order->staff_id);
-            $soldAmount = (float) $order->sold_amount;
-            if ($soldAmount > 0) {
-                $staff->decrement('current_debt', $soldAmount);
+            // Trừ phần nợ ôm tương ứng lượng hàng đã bán theo đúng đơn giá nhận ôm (khớp với lúc xuất kho)
+            $staff = User::lockForUpdate()->findOrFail($order->staff_id);
+            $soldHoldingDebt = (float)$order->items->sum(fn($it) => max(0, (float)$it->sold_quantity) * (float)$it->unit_price);
+            if ($soldHoldingDebt <= 0 && (float)$order->total_amount > (float)$order->returned_amount) {
+                $soldHoldingDebt = max(0, (float)$order->total_amount - (float)$order->returned_amount);
+            }
+            if ($soldHoldingDebt > 0) {
+                $staff->current_debt = max(0, (float)$staff->current_debt - $soldHoldingDebt);
+                $staff->save();
             }
 
             $user = Auth::user();
             $order->update([
-                'status'          => 'settled',
-                'settled_at'      => now(),
-                'settled_by'      => $user?->id,
-                'settled_by_name' => $user?->name,
+                'status'           => 'settled',
+                'settled_at'       => now(),
+                'settled_by'       => $user?->id,
+                'settled_by_name'  => $user?->name,
                 'remaining_amount' => 0,
             ]);
 
@@ -546,7 +576,7 @@ class ConsignmentOrderController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Quyết toán đơn {$order->code} thành công! Đã trừ " . number_format($soldAmount) . "đ công nợ NV {$staff->name}.",
+                'message' => "Quyết toán đơn {$order->code} thành công! Đã tất toán " . number_format($soldHoldingDebt) . "đ công nợ giữ hàng của NV {$staff->name}.",
             ]);
         });
     }

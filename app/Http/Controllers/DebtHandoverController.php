@@ -526,25 +526,27 @@ class DebtHandoverController extends Controller
      */
     public function confirmDebtHandover(Request $request, $id)
     {
-        $handover = DebtHandover::where('id', $id)->orWhere('code', $id)->first();
-        if (!$handover) {
-            return response()->json(['success' => false, 'message' => 'Không tìm thấy biên bản bàn giao'], 404);
-        }
-
-        if (!in_array($handover->status, ['pending', 'pending_sale', 'pending_accountant'])) {
-            return response()->json(['success' => false, 'message' => "Biên bản này đã ở trạng thái: {$handover->status}"], 422);
-        }
-
         $user = auth()->user();
         $approverName = $user?->name ?? 'Người xác nhận';
 
         DB::beginTransaction();
         try {
+            $handover = DebtHandover::where('id', $id)->orWhere('code', $id)->lockForUpdate()->first();
+            if (!$handover) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy biên bản bàn giao'], 404);
+            }
+
+            if (!in_array($handover->status, ['pending', 'pending_sale', 'pending_accountant'])) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => "Biên bản này đã ở trạng thái: {$handover->status}"], 422);
+            }
+
             $amount = (float)$handover->amount;
 
             // 1. Giảm công nợ của Người bàn giao (Lái xe / Người vận chuyển)
             if ($handover->from_user_id) {
-                $fromUser = User::find($handover->from_user_id);
+                $fromUser = User::lockForUpdate()->find($handover->from_user_id);
                 if ($fromUser) {
                     $fromUser->current_debt = max(0, (float)$fromUser->current_debt - $amount);
                     $fromUser->save();
@@ -554,7 +556,7 @@ class DebtHandoverController extends Controller
             // 2. Chuyển công nợ sang bên nhận:
             $toUser = null;
             if ($handover->to_user_id) {
-                $toUser = User::find($handover->to_user_id);
+                $toUser = User::lockForUpdate()->find($handover->to_user_id);
                 if ($toUser) {
                     $toUser->current_debt = (float)$toUser->current_debt + $amount;
                     $toUser->save();
@@ -562,14 +564,14 @@ class DebtHandoverController extends Controller
             }
 
             // Ghi nhận công nợ vào Đại lý nếu thuộc đại lý
-            $isDealerSales = ($handover->to_staff_type === 'dealer_sales') 
-                || !empty($handover->target_dealer_id) 
+            $isDealerSales = ($handover->to_staff_type === 'dealer_sales')
+                || !empty($handover->target_dealer_id)
                 || ($toUser && (!empty($toUser->dealer_id) || $toUser->staff_type === 'dealer_sales'));
 
             if ($isDealerSales) {
                 $dealerId = $handover->target_dealer_id ?: $toUser?->dealer_id;
                 if ($dealerId) {
-                    $dealer = Dealer::find($dealerId);
+                    $dealer = Dealer::lockForUpdate()->find($dealerId);
                     if ($dealer) {
                         $dealer->current_debt = (float)$dealer->current_debt + $amount;
                         $dealer->save();
@@ -580,7 +582,7 @@ class DebtHandoverController extends Controller
             // 3. Cập nhật đơn hàng: chuyển quyền quản lý đơn & giải phóng trách nhiệm lái xe
             $orderIds = $handover->order_ids ?: ($handover->order_id ? [$handover->order_id] : []);
             if (!empty($orderIds)) {
-                $orders = Order::whereIn('id', $orderIds)->get();
+                $orders = Order::whereIn('id', $orderIds)->lockForUpdate()->get();
                 foreach ($orders as $order) {
                     $order->driver_debt_amount = 0;
                     if ($toUser) {
@@ -602,7 +604,7 @@ class DebtHandoverController extends Controller
 
                     // Tự động tính toán lại công nợ đại lý
                     if ($order->dealer_id) {
-                        $dl = Dealer::find($order->dealer_id) ?: Dealer::where('code', $order->dealer_id)->first();
+                        $dl = Dealer::lockForUpdate()->find($order->dealer_id) ?: Dealer::where('code', $order->dealer_id)->lockForUpdate()->first();
                         if ($dl) {
                             $dl->recalculateCurrentDebt();
                         }

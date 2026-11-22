@@ -100,6 +100,14 @@ class WarehouseTransactionController extends Controller
             'items.*.quantity.min' => 'Số lượng nhập phải lớn hơn 0',
         ]);
 
+        if (\App\Models\PeriodLock::isLockedDate(now(), 'inventory')) {
+            $errMsg = 'Kỳ kế toán kho hiện tại đã bị khóa sổ, không thể lập phiếu nhập kho.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $errMsg], 422);
+            }
+            return back()->withInput()->with('error', $errMsg);
+        }
+
         DB::beginTransaction();
         try {
             $status = $request->input('status', 'Hoàn thành'); // Hoàn thành hoặc Bản nháp
@@ -141,7 +149,7 @@ class WarehouseTransactionController extends Controller
                 $mfgDate = !empty($it['manufacturing_date']) ? $it['manufacturing_date'] : null;
                 $expDate = !empty($it['expiry_date']) ? $it['expiry_date'] : null;
 
-                $product = Product::find($productId);
+                $product = Product::lockForUpdate()->find($productId);
                 $costBefore = $product ? (float)($product->latest_cost_price ?: $product->cost_price) : 0;
 
                 // Tự động tạo mã lô nếu người dùng nhập HSD mà không điền mã lô
@@ -174,11 +182,19 @@ class WarehouseTransactionController extends Controller
                         $product->save();
                     }
 
-                    // Tăng tồn kho theo kho
-                    $whStock = WarehouseStock::firstOrCreate(
-                        ['product_id' => $productId, 'warehouse_id' => $request->warehouse_id],
-                        ['stock_quantity' => 0, 'reserved_quantity' => 0]
-                    );
+                    // Tăng tồn kho theo kho (với lockForUpdate)
+                    $whStock = WarehouseStock::where('product_id', $productId)
+                        ->where('warehouse_id', $request->warehouse_id)
+                        ->lockForUpdate()
+                        ->first();
+                    if (!$whStock) {
+                        $whStock = WarehouseStock::create([
+                            'product_id' => $productId,
+                            'warehouse_id' => $request->warehouse_id,
+                            'stock_quantity' => 0,
+                            'reserved_quantity' => 0,
+                        ]);
+                    }
                     $whStock->increment('stock_quantity', $quantity);
 
                     // Ghi nhận Lô hàng & Hạn sử dụng vào bảng product_batches
@@ -308,6 +324,14 @@ class WarehouseTransactionController extends Controller
             'items.*.quantity.min' => 'Số lượng xuất phải lớn hơn 0',
         ]);
 
+        if (\App\Models\PeriodLock::isLockedDate(now(), 'inventory')) {
+            $errMsg = 'Kỳ kế toán kho hiện tại đã bị khóa sổ, không thể lập phiếu xuất kho.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $errMsg], 422);
+            }
+            return back()->withInput()->with('error', $errMsg);
+        }
+
         DB::beginTransaction();
         try {
             $status = $request->input('status', 'Hoàn thành');
@@ -326,20 +350,23 @@ class WarehouseTransactionController extends Controller
             $receiver = $request->input('supplier_name', 'Nội bộ công ty');
             $notes = "[Lý do: {$reasonType}] " . ($request->input('notes') ?? '');
 
-            // Kiểm tra số lượng tồn kho trước khi xuất nếu hoàn thành
+            // Kiểm tra & khóa tồn kho trước khi xuất nếu hoàn thành
+            $lockedProducts = [];
             if ($status === 'Hoàn thành') {
                 foreach ($request->items as $it) {
-                    $productId = $it['product_id'];
+                    $productId = (int)$it['product_id'];
                     $qty = (float)$it['quantity'];
 
+                    $lockedProducts[$productId] = Product::lockForUpdate()->find($productId);
                     $whStock = WarehouseStock::where('product_id', $productId)
                         ->where('warehouse_id', $warehouseId)
+                        ->lockForUpdate()
                         ->first();
                     $currentStock = $whStock ? (float)$whStock->stock_quantity : 0;
 
                     // Nếu kho không đủ hàng và người dùng không cho phép xuất âm
                     if ($currentStock < $qty && !$request->boolean('allow_negative_stock')) {
-                        $p = Product::find($productId);
+                        $p = $lockedProducts[$productId];
                         $pName = $p ? "{$p->name} ({$p->sku})" : "Sản phẩm #{$productId}";
                         $wh = Warehouse::find($warehouseId);
                         $whName = $wh ? $wh->name : "Kho #{$warehouseId}";
@@ -359,7 +386,7 @@ class WarehouseTransactionController extends Controller
                 $qty = (float)$it['quantity'];
                 $price = (float)($it['export_price'] ?? 0);
                 if ($price <= 0) {
-                    $p = Product::find($it['product_id']);
+                    $p = $lockedProducts[(int)$it['product_id']] ?? Product::find($it['product_id']);
                     $price = $p ? (float)($p->cost_price ?: $p->latest_cost_price) : 0;
                 }
                 $totalAmount += ($qty * $price);
@@ -378,10 +405,10 @@ class WarehouseTransactionController extends Controller
             ]);
 
             foreach ($request->items as $it) {
-                $productId = $it['product_id'];
+                $productId = (int)$it['product_id'];
                 $quantity = (float)$it['quantity'];
                 $price = (float)($it['export_price'] ?? 0);
-                $product = Product::find($productId);
+                $product = $lockedProducts[$productId] ?? Product::lockForUpdate()->find($productId);
 
                 if ($price <= 0 && $product) {
                     $price = (float)($product->cost_price ?: $product->latest_cost_price);
@@ -396,15 +423,44 @@ class WarehouseTransactionController extends Controller
                     'notes' => $it['notes'] ?? null,
                 ]);
 
-                // Nếu hoàn thành -> Giảm tồn kho
+                // Nếu hoàn thành -> Giảm tồn kho + trừ FEFO trên các lô (ProductBatch)
                 if ($status === 'Hoàn thành' && $product) {
                     $product->decrement('stock_quantity', $quantity);
 
-                    $whStock = WarehouseStock::firstOrCreate(
-                        ['product_id' => $productId, 'warehouse_id' => $warehouseId],
-                        ['stock_quantity' => 0, 'reserved_quantity' => 0]
-                    );
+                    $whStock = WarehouseStock::where('product_id', $productId)
+                        ->where('warehouse_id', $warehouseId)
+                        ->lockForUpdate()
+                        ->first();
+                    if (!$whStock) {
+                        $whStock = WarehouseStock::create([
+                            'product_id' => $productId,
+                            'warehouse_id' => $warehouseId,
+                            'stock_quantity' => 0,
+                            'reserved_quantity' => 0,
+                        ]);
+                    }
                     $whStock->decrement('stock_quantity', $quantity);
+
+                    // Trừ lô theo FEFO (lô hết hạn sớm nhất xuất trước)
+                    $qtyToDeductFromBatches = $quantity;
+                    $activeBatches = ProductBatch::where('product_id', $productId)
+                        ->where('warehouse_id', $warehouseId)
+                        ->where('remaining_quantity', '>', 0)
+                        ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC, id ASC')
+                        ->lockForUpdate()
+                        ->get();
+
+                    foreach ($activeBatches as $batch) {
+                        if ($qtyToDeductFromBatches <= 0) break;
+                        $avail = (float)$batch->remaining_quantity;
+                        $take = min($avail, $qtyToDeductFromBatches);
+                        $batch->remaining_quantity = max(0, $avail - $take);
+                        if ($batch->remaining_quantity <= 0) {
+                            $batch->status = 'depleted';
+                        }
+                        $batch->save();
+                        $qtyToDeductFromBatches -= $take;
+                    }
                 }
             }
 
@@ -465,32 +521,96 @@ class WarehouseTransactionController extends Controller
      */
     public function cancel(Request $request, $id)
     {
-        $tx = InventoryTransaction::with('items')->findOrFail($id);
-
-        if ($tx->status === 'Đã hủy') {
-            return response()->json(['success' => false, 'message' => 'Phiếu này đã bị hủy trước đó!'], 400);
-        }
-
         DB::beginTransaction();
         try {
+            $tx = InventoryTransaction::with('items')->lockForUpdate()->findOrFail($id);
+
+            if (\App\Models\PeriodLock::isLockedDate($tx->created_at ?? now(), 'inventory')) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Kỳ kế toán của phiếu kho này đã bị khóa sổ, không thể hủy!'], 422);
+            }
+
+            if ($tx->status === 'Đã hủy') {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Phiếu này đã bị hủy trước đó!'], 400);
+            }
+
             // Nếu phiếu đã hoàn thành, hoàn lại tồn kho
             if ($tx->status === 'Hoàn thành' || $tx->status === 'Đã nhận hàng') {
                 foreach ($tx->items as $item) {
-                    $prod = Product::find($item->product_id);
+                    $prod = Product::lockForUpdate()->find($item->product_id);
                     $whStock = WarehouseStock::where('product_id', $item->product_id)
                         ->where('warehouse_id', $tx->warehouse_id)
+                        ->lockForUpdate()
                         ->first();
 
                     if ($tx->type === 'import') {
-                        // Phiếu nhập bị hủy -> trừ lại tồn kho
-                        if ($prod) $prod->decrement('stock_quantity', $item->quantity);
-                        if ($whStock) $whStock->decrement('stock_quantity', $item->quantity);
+                        // Kiểm tra xem các lô của phiếu nhập này đã bị xuất dùng chưa
+                        $itemBatches = ProductBatch::where('inventory_transaction_item_id', $item->id)->lockForUpdate()->get();
+                        $consumedInBatch = $itemBatches->contains(function ($b) {
+                            return (float)$b->remaining_quantity + 0.0001 < (float)$b->import_quantity;
+                        });
+                        if ($consumedInBatch) {
+                            DB::rollBack();
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Không thể hủy phiếu nhập [{$tx->code}] vì lô hàng thuộc phiếu này đã được xuất kho/bán một phần!",
+                            ], 422);
+                        }
+
+                        // Kiểm tra tồn kho không bị âm sau khi trừ hoàn nhập
+                        $curWhQty = $whStock ? (float)$whStock->stock_quantity : 0;
+                        if ($curWhQty + 0.0001 < (float)$item->quantity && !$request->boolean('allow_negative_stock')) {
+                            DB::rollBack();
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Không thể hủy phiếu nhập [{$tx->code}] vì tồn kho hiện tại ({$curWhQty}) nhỏ hơn số lượng cần hoàn trừ ({$item->quantity}).",
+                            ], 422);
+                        }
+
+                        if ($prod) {
+                            $prod->stock_quantity = max(0, (float)$prod->stock_quantity - (float)$item->quantity);
+                            $prod->save();
+                        }
+                        if ($whStock) {
+                            $whStock->stock_quantity = max(0, (float)$whStock->stock_quantity - (float)$item->quantity);
+                            $whStock->save();
+                        }
                         // Xóa các lô hàng phát sinh từ phiếu nhập bị hủy
                         ProductBatch::where('inventory_transaction_item_id', $item->id)->delete();
                     } elseif ($tx->type === 'export') {
-                        // Phiếu xuất bị hủy -> cộng lại tồn kho
+                        // Phiếu xuất bị hủy -> cộng lại tồn kho & hoàn lại remaining_quantity cho lô đã trừ gần nhất nếu thiếu
                         if ($prod) $prod->increment('stock_quantity', $item->quantity);
-                        if ($whStock) $whStock->increment('stock_quantity', $item->quantity);
+                        if ($whStock) {
+                            $whStock->increment('stock_quantity', $item->quantity);
+                        } else {
+                            WarehouseStock::create([
+                                'product_id' => $item->product_id,
+                                'warehouse_id' => $tx->warehouse_id,
+                                'stock_quantity' => $item->quantity,
+                                'reserved_quantity' => 0,
+                            ]);
+                        }
+
+                        $qtyToRestore = (float)$item->quantity;
+                        $depletedBatches = ProductBatch::where('product_id', $item->product_id)
+                            ->where('warehouse_id', $tx->warehouse_id)
+                            ->whereColumn('remaining_quantity', '<', 'import_quantity')
+                            ->orderByDesc('expiry_date')
+                            ->orderByDesc('id')
+                            ->lockForUpdate()
+                            ->get();
+
+                        foreach ($depletedBatches as $batch) {
+                            if ($qtyToRestore <= 0) break;
+                            $capacity = max(0, (float)$batch->import_quantity - (float)$batch->remaining_quantity);
+                            if ($capacity <= 0) continue;
+                            $restore = min($capacity, $qtyToRestore);
+                            $batch->remaining_quantity = (float)$batch->remaining_quantity + $restore;
+                            $batch->status = 'active';
+                            $batch->save();
+                            $qtyToRestore -= $restore;
+                        }
                     }
                 }
             }

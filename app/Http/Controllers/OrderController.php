@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Dealer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
@@ -462,24 +463,10 @@ class OrderController extends Controller
             ]);
         }
 
-        $newOrder = Order::create([
-            'order_code'    => $orderId,
-            'customer_name' => $request->input('customerName', 'Đại Lý Điện Nước Hoàn Mỹ'),
-            'status'        => $status,
-            'subtotal'      => 23650000,
-            'total_amount'  => 23650000,
-            'order_type'    => 'normal',
-        ]);
-
         return response()->json([
-            'success' => true,
-            'message' => 'Đã tạo mới và cập nhật trạng thái đơn hàng',
-            'order' => [
-                'id'        => (string) $newOrder->id,
-                'orderCode' => $newOrder->order_code,
-                'status'    => $newOrder->status,
-            ]
-        ]);
+            'success' => false,
+            'message' => "Không tìm thấy đơn hàng [{$orderId}] cần cập nhật trạng thái!",
+        ], 404);
     }
 
     /**
@@ -520,281 +507,339 @@ class OrderController extends Controller
         $orderId = $data['id'] ?? null;
         $orderCode = $data['orderCode'] ?? ($data['order_code'] ?? null);
 
-        $order = null;
-        if ($orderId) {
-            $order = Order::find($orderId);
-        }
-        if (!$order && $orderCode) {
-            $order = Order::where('order_code', $orderCode)->first();
-        }
-
-        $isNewOrder = ($order === null);
-        $oldStatus = $order?->status;
-        $oldTotal = (float) ($order?->total_amount ?? 0);
-        $oldVehiclePlate = $order?->assigned_vehicle_plate;
-        $oldPaymentStatus = $order?->payment_status;
-
-        $dealerId = null;
-        if (!empty($data['dealerId']) && is_numeric($data['dealerId'])) {
-            $dealerId = (int)$data['dealerId'];
-        } elseif (!empty($data['dealer_id']) && is_numeric($data['dealer_id'])) {
-            $dealerId = (int)$data['dealer_id'];
-        } elseif ($order && !empty($order->dealer_id)) {
-            $dealerId = (int)$order->dealer_id;
-        } elseif (!empty($data['dealerName'])) {
-            $matchedDealer = Dealer::where('name', $data['dealerName'])->first();
-            if ($matchedDealer) {
-                $dealerId = $matchedDealer->id;
+        DB::beginTransaction();
+        try {
+            $order = null;
+            if ($orderId) {
+                $order = Order::lockForUpdate()->find($orderId);
             }
-        }
-
-        $creatorName = $data['orderCreator'] ?? ($data['createdByName'] ?? null);
-        $creatorId = null;
-        if (!empty($data['creatorId']) && is_numeric($data['creatorId'])) {
-            $creatorId = (int)$data['creatorId'];
-        } elseif (!empty($data['createdById']) && is_numeric($data['createdById'])) {
-            $creatorId = (int)$data['createdById'];
-        } elseif ($order && !empty($order->creator_id)) {
-            $creatorId = (int)$order->creator_id;
-        } elseif (auth()->check()) {
-            $creatorId = auth()->id();
-        }
-        if (!$creatorName && auth()->check()) {
-            $creatorName = auth()->user()->name;
-        }
-
-        // Tự động gán Đại lý nếu Người tạo đơn hoặc Sales phụ trách là Sale Đại Lý Phụ Thuộc
-        $activeUser = $creatorId ? \App\Models\User::find($creatorId) : auth()->user();
-        $salesRepId = $data['salesRepId'] ?? ($data['sales_rep_id'] ?? ($data['employee_id'] ?? null));
-        $salesRepUser = ($salesRepId && is_numeric($salesRepId)) ? \App\Models\User::find($salesRepId) : null;
-
-        $dependentSales = null;
-        if ($activeUser && ($activeUser->staff_type === 'dealer_sales' || $activeUser->dealer_id)) {
-            $dependentSales = $activeUser;
-        } elseif ($salesRepUser && ($salesRepUser->staff_type === 'dealer_sales' || $salesRepUser->dealer_id)) {
-            $dependentSales = $salesRepUser;
-        }
-
-        if ($dependentSales && $dependentSales->dealer_id) {
-            $dealerId = $dependentSales->dealer_id;
-            $depDealer = \App\Models\Dealer::find($dealerId);
-            if ($depDealer) {
-                $data['dealerName'] = $depDealer->name;
-                if (empty($data['customerPhone'])) $data['customerPhone'] = $depDealer->phone;
-                if (empty($data['address'])) $data['address'] = $depDealer->address;
+            if (!$order && $orderCode) {
+                $order = Order::where('order_code', $orderCode)->lockForUpdate()->first();
             }
-        }
 
-        // Nếu đơn hàng có tên khách hàng nhưng chưa liên kết đại lý (hoặc thêm mới từ form), tự động tìm hoặc tạo đại lý
-        $cName = trim($data['customerName'] ?? ($data['customer_name'] ?? ($data['dealerName'] ?? '')));
-        $cPhone = trim($data['customerPhone'] ?? ($data['customer_phone'] ?? ''));
-        $cAddr = trim($data['address'] ?? ($data['customer_address'] ?? ''));
-        $cTaxCode = trim($data['taxCode'] ?? ($data['tax_code'] ?? ($data['customer_tax_code'] ?? '')));
-
-        if (!$dealerId && !empty($cName)) {
-            $matched = Dealer::where('name', $cName)
-                ->when(!empty($cPhone), function($q) use ($cPhone) {
-                    $q->orWhere('phone', $cPhone);
-                })
-                ->first();
-            if ($matched) {
-                $dealerId = $matched->id;
-            } else {
-                $newDealerCode = 'DL-' . str_pad((string)(Dealer::count() + 1), 4, '0', STR_PAD_LEFT);
-                $newDealer = Dealer::create([
-                    'code'              => $newDealerCode,
-                    'name'              => $cName,
-                    'owner_name'        => $cName,
-                    'phone'             => $cPhone,
-                    'address'           => $cAddr,
-                    'tax_code'          => $cTaxCode ?: null,
-                    'tier'              => $data['dealerTier'] ?? ($data['dealer_tier'] ?? 'Đại lý Cấp 2'),
-                    'credit_limit'      => 100000000,
-                    'initial_debt'      => 0,
-                    'current_debt'      => 0,
-                    'payment_term_days' => 30,
-                    'status'            => 'Hoạt động',
-                ]);
-                $dealerId = $newDealer->id;
-            }
-        }
-
-        // Kiểm tra quy định Mã số thuế (MST): Khách không có MST chỉ được lên tối đa 3 đơn, đơn thứ 4 bị chặn
-        if ($dealerId) {
-            $dealerCheck = Dealer::find($dealerId);
-            if ($dealerCheck && empty(trim($dealerCheck->tax_code ?? ''))) {
-                $existingCount = Order::where('dealer_id', $dealerCheck->id)
-                    ->whereNotIn('status', ['Hủy', 'Đã hủy'])
-                    ->when($order, function($q) use ($order) {
-                        $q->where('id', '!=', $order->id);
-                    })
-                    ->count();
-
-                if ($existingCount >= 3) {
+            $actor = auth()->user();
+            if ($order) {
+                if (\App\Models\PeriodLock::isLockedDate($order->created_at ?? now(), 'sales')) {
+                    DB::rollBack();
                     return response()->json([
                         'success' => false,
-                        'message' => "Không thể lên đơn: Khách hàng [{$dealerCheck->name}] chưa có Mã số thuế (MST) và đã đạt giới hạn 3 đơn hàng. Đơn thứ 4 không thể lên đơn! Vui lòng cập nhật MST cho khách hàng trước khi tiếp tục."
+                        'message' => 'Kỳ kế toán bán hàng cho đơn [' . $order->order_code . '] đã bị khóa sổ, không thể chỉnh sửa.',
                     ], 422);
                 }
-            }
-        }
 
-        $assignedDriverId = null;
-        if (!empty($data['assignedDriverId']) && is_numeric($data['assignedDriverId'])) {
-            $assignedDriverId = (int)$data['assignedDriverId'];
-        } elseif (!empty($data['assigned_driver_id']) && is_numeric($data['assigned_driver_id'])) {
-            $assignedDriverId = (int)$data['assigned_driver_id'];
-        } elseif ($order && !empty($order->assigned_driver_id)) {
-            $assignedDriverId = (int)$order->assigned_driver_id;
-        }
-
-        $vehiclePlate = !empty($data['assignedVehiclePlate']) 
-            ? (string)$data['assignedVehiclePlate'] 
-            : (!empty($data['assigned_vehicle_plate']) ? (string)$data['assigned_vehicle_plate'] : ($order?->assigned_vehicle_plate ?? null));
-
-        // Bỏ cơ chế bắt buộc lái xe chỉ xuất kho nhân viên: tôn trọng kho người dùng chọn trong form
-        $warehouseName = $data['warehouse'] ?? ($data['warehouse_name'] ?? ($order?->warehouse ?? (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng')));
-        $orderTypeInput = $data['orderType'] ?? ($data['order_type'] ?? '');
-        $isHoldingStockSale = !empty($data['is_holding_stock']) 
-            || !empty($data['is_holding_stock_sale']) 
-            || str_contains($warehouseName, 'Kho Hàng Ôm') 
-            || in_array($orderTypeInput, ['holding_sale', 'consignment']);
-
-        if ($isHoldingStockSale && !$assignedDriverId && ($salesRepId ?: $creatorId)) {
-            $assignedDriverId = $salesRepId ?: $creatorId;
-        }
-
-        $items = $data['items'] ?? null;
-        $calculatedItemsSum = 0;
-        if (is_array($items) && count($items) > 0) {
-            foreach ($items as $it) {
-                $qty = (float) ($it['quantity'] ?? ($it['qty'] ?? 1));
-                $uPrice = (float) ($it['unitPrice'] ?? ($it['unit_price'] ?? 0));
-                $amt = (float) ($it['amount'] ?? ($it['lineTotal'] ?? ($qty * $uPrice)));
-                $calculatedItemsSum += $amt;
-            }
-        } elseif ($order) {
-            $calculatedItemsSum = (float) $order->items()->sum('amount');
-        }
-
-        $subtotal = isset($data['subtotal']) && (float)$data['subtotal'] > 0
-            ? (float)$data['subtotal']
-            : (isset($data['subtotalAmount']) && (float)$data['subtotalAmount'] > 0
-                ? (float)$data['subtotalAmount']
-                : ($calculatedItemsSum > 0 ? $calculatedItemsSum : (float)($order?->subtotal ?? 0)));
-
-        $discount = isset($data['discountAmount'])
-            ? (float)$data['discountAmount']
-            : (isset($data['discount_amount']) ? (float)$data['discount_amount'] : (float)($order?->discount_amount ?? 0));
-
-        $discountPercent = isset($data['discountPercent'])
-            ? (float)$data['discountPercent']
-            : (isset($data['discount_percent']) 
-                ? (float)$data['discount_percent'] 
-                : ($order?->discount_percent !== null ? (float)$order->discount_percent : null));
-
-        if ($discountPercent === null && $subtotal > 0 && $discount > 0) {
-            $discountPercent = round(($discount / $subtotal) * 100, 2);
-        }
-
-        $tax = isset($data['taxAmount'])
-            ? (float)$data['taxAmount']
-            : (float)($order?->tax_amount ?? 0);
-
-        $total = isset($data['totalAmount']) && (float)$data['totalAmount'] > 0
-            ? (float)$data['totalAmount']
-            : ($calculatedItemsSum > 0
-                ? max(0, $calculatedItemsSum - $discount + $tax)
-                : ((float)($order?->total_amount ?? 0) > 0
-                    ? (float)$order->total_amount
-                    : max(0, $subtotal - $discount + $tax)));
-
-        $resolvedOrderType = $isHoldingStockSale ? 'holding_sale' : ($data['orderType'] ?? ($data['order_type'] ?? ($order?->order_type ?? 'normal')));
-
-        $hasPolicyIdsInput = array_key_exists('salesPolicyIds', $data) || array_key_exists('sales_policy_ids', $data);
-        $hasPolicyIdInput = array_key_exists('salesPolicyId', $data) || array_key_exists('sales_policy_id', $data);
-        $resolvedPolicyIds = $order?->sales_policy_ids ?? ($order?->sales_policy_id ? [(int)$order->sales_policy_id] : []);
-        if ($hasPolicyIdsInput) {
-            $rawPIds = $data['salesPolicyIds'] ?? ($data['sales_policy_ids'] ?? []);
-            if (is_string($rawPIds)) {
-                $decoded = json_decode($rawPIds, true);
-                $rawPIds = is_array($decoded) ? $decoded : [];
-            }
-            $resolvedPolicyIds = array_values(array_unique(array_filter(array_map('intval', is_array($rawPIds) ? $rawPIds : []), fn($id) => $id > 0)));
-        } elseif ($hasPolicyIdInput) {
-            $singlePId = $data['salesPolicyId'] ?? ($data['sales_policy_id'] ?? null);
-            $resolvedPolicyIds = (!empty($singlePId) && is_numeric($singlePId) && (int)$singlePId > 0) ? [(int)$singlePId] : [];
-        }
-        $resolvedPolicyId = !empty($resolvedPolicyIds) ? (int)$resolvedPolicyIds[0] : null;
-
-        $orderAttributes = [
-            'order_code'             => $orderCode ?: ($order ? $order->order_code : 'DH-' . date('Y') . '-' . rand(1000, 9999)),
-            'dealer_id'              => $dealerId,
-            'creator_id'             => $creatorId,
-            'sales_rep_id'           => $salesRepId ?: ($order?->sales_rep_id ?? null),
-            'order_creator'          => $creatorName ?: ($order?->order_creator ?? null),
-            'customer_name'          => $data['dealerName'] ?? ($data['customer_name'] ?? ($order?->customer_name ?? 'Khách lẻ')),
-            'customer_phone'         => $data['customerPhone'] ?? ($data['customer_phone'] ?? ($order?->customer_phone ?? '')),
-            'customer_address'       => $data['address'] ?? ($data['customer_address'] ?? ($order?->customer_address ?? '')),
-            'warehouse'              => $data['warehouse'] ?? ($data['warehouse_name'] ?? ($order?->warehouse ?? (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng'))),
-            'delivery_date'          => array_key_exists('deliveryDate', $data) 
-                ? ($data['deliveryDate'] ?: null) 
-                : (array_key_exists('delivery_date', $data) 
-                    ? ($data['delivery_date'] ?: null) 
-                    : ($order?->delivery_date ?? null)),
-            'picking_date'           => array_key_exists('pickingDate', $data) 
-                ? ($data['pickingDate'] ?: null) 
-                : (array_key_exists('picking_date', $data) 
-                    ? ($data['picking_date'] ?: null) 
-                    : ($order?->picking_date ?? null)),
-            'order_type'             => $resolvedOrderType,
-            'project_name'           => $data['projectName'] ?? ($data['project_name'] ?? null),
-            'contract_number'        => $data['contractNumber'] ?? ($data['contract_number'] ?? null),
-            'assigned_driver_id'     => $assignedDriverId,
-            'assigned_vehicle_plate' => $vehiclePlate,
-            'driver_debt_amount'     => (float) ($data['driverDebtAmount'] ?? ($data['driver_debt_amount'] ?? ($order?->driver_debt_amount ?? 0))),
-            'has_returns'            => !empty($data['hasReturns']) || !empty($data['has_returns']),
-            'total_returned_amount'  => (float) ($data['totalReturnedAmount'] ?? ($data['total_returned_amount'] ?? 0)),
-            'return_slip_code'       => $data['returnSlipCode'] ?? ($data['return_slip_code'] ?? null),
-            'status'                 => (function() use ($data, $order, $isHoldingStockSale) {
-                if (!empty($data['status'])) {
-                    return $data['status'];
+                if ($actor && !$actor->canViewAllOrders()
+                    && !$actor->hasAnyPermission('delivery_dispatch.dispatch', 'inv_picking.qc', 'inv_qc.qc')) {
+                    $isOwnOrAssigned = ((int)$order->creator_id === (int)$actor->id)
+                        || ((int)$order->sales_rep_id === (int)$actor->id)
+                        || ((int)$order->assigned_driver_id === (int)$actor->id)
+                        || ($order->order_creator && ($order->order_creator === $actor->name || $order->order_creator === $actor->code));
+                    if (!$isOwnOrAssigned) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Bạn không có quyền chỉnh sửa đơn hàng của nhân sự khác.',
+                        ], 403);
+                    }
                 }
-                if ($isHoldingStockSale) return 'Đã giao hàng';
-                return $order?->status ?? 'Chốt đơn';
-            })(),
-            'payment_status'          => $data['paymentStatus'] ?? ($data['payment_status'] ?? 'Chưa thanh toán'),
-            'payment_method'          => $data['paymentMethod'] ?? ($data['payment_method'] ?? 'Ghi nợ đại lý'),
-            'settled_with_accountant' => isset($data['settledWithAccountant']) 
-                ? (bool)$data['settledWithAccountant'] 
-                : (isset($data['settled_with_accountant']) 
-                    ? (bool)$data['settled_with_accountant'] 
-                    : ($order?->settled_with_accountant ?? false)),
-            'subtotal'               => $subtotal,
-            'discount_percent'       => (float)($discountPercent ?? 0),
-            'discount_amount'        => $discount,
-            'sales_policy_id'        => $resolvedPolicyId,
-            'sales_policy_ids'       => $resolvedPolicyIds,
-            'tax_amount'             => $tax,
-            'total_amount'           => $total,
-            'shortage_reported'      => false,
-            'shortage_reported_at'   => null,
-            'shortage_reported_note' => null,
-            'failed_delivery_reason' => $data['failedDeliveryReason'] ?? ($data['failed_delivery_reason'] ?? ($order?->failed_delivery_reason ?? null)),
-            'failed_delivery_note'   => $data['failedDeliveryNote'] ?? ($data['failed_delivery_note'] ?? ($order?->failed_delivery_note ?? null)),
-            'failed_delivery_at'     => $data['failedDeliveryAt'] ?? ($data['failed_delivery_at'] ?? ($order?->failed_delivery_at ?? null)),
-            'failed_delivery_by'     => $data['failedDeliveryBy'] ?? ($data['failed_delivery_by'] ?? ($order?->failed_delivery_by ?? null)),
-            'rescheduled_date'       => $data['rescheduledDate'] ?? ($data['rescheduled_date'] ?? ($order?->rescheduled_date ?? null)),
-            'notes'                  => (string) ($data['notes'] ?? ''),
-            'parent_order_id'        => null,
-            'parent_order_code'      => null,
-            'backorder_status'       => null,
-            'has_shortage_warning'   => isset($data['hasShortageWarning']) 
-                ? (bool)$data['hasShortageWarning'] 
-                : (isset($data['has_shortage_warning']) 
-                    ? (bool)$data['has_shortage_warning'] 
-                    : ($order?->has_shortage_warning ?? false)),
-        ];
+            } elseif (\App\Models\PeriodLock::isLockedDate($data['pickingDate'] ?? ($data['picking_date'] ?? now()), 'sales')) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kỳ kế toán bán hàng hiện tại đang bị khóa sổ, không thể tạo đơn mới.',
+                ], 422);
+            }
+
+            $isNewOrder = ($order === null);
+            $oldStatus = $order?->status;
+            $oldTotal = (float) ($order?->total_amount ?? 0);
+            $oldVehiclePlate = $order?->assigned_vehicle_plate;
+            $oldPaymentStatus = $order?->payment_status;
+
+            $dealerId = null;
+            if (!empty($data['dealerId']) && is_numeric($data['dealerId'])) {
+                $dealerId = (int)$data['dealerId'];
+            } elseif (!empty($data['dealer_id']) && is_numeric($data['dealer_id'])) {
+                $dealerId = (int)$data['dealer_id'];
+            } elseif ($order && !empty($order->dealer_id)) {
+                $dealerId = (int)$order->dealer_id;
+            } elseif (!empty($data['dealerName'])) {
+                $matchedDealer = Dealer::where('name', $data['dealerName'])->first();
+                if ($matchedDealer) {
+                    $dealerId = $matchedDealer->id;
+                }
+            }
+
+            $creatorName = $data['orderCreator'] ?? ($data['createdByName'] ?? null);
+            $creatorId = null;
+            if (!empty($data['creatorId']) && is_numeric($data['creatorId'])) {
+                $creatorId = (int)$data['creatorId'];
+            } elseif (!empty($data['createdById']) && is_numeric($data['createdById'])) {
+                $creatorId = (int)$data['createdById'];
+            } elseif ($order && !empty($order->creator_id)) {
+                $creatorId = (int)$order->creator_id;
+            } elseif (auth()->check()) {
+                $creatorId = auth()->id();
+            }
+            if (!$creatorName && auth()->check()) {
+                $creatorName = auth()->user()->name;
+            }
+
+            // Tự động gán Đại lý nếu Người tạo đơn hoặc Sales phụ trách là Sale Đại Lý Phụ Thuộc
+            $activeUser = $creatorId ? \App\Models\User::find($creatorId) : auth()->user();
+            $salesRepId = $data['salesRepId'] ?? ($data['sales_rep_id'] ?? ($data['employee_id'] ?? null));
+            $salesRepUser = ($salesRepId && is_numeric($salesRepId)) ? \App\Models\User::find($salesRepId) : null;
+
+            $dependentSales = null;
+            if ($activeUser && ($activeUser->staff_type === 'dealer_sales' || $activeUser->dealer_id)) {
+                $dependentSales = $activeUser;
+            } elseif ($salesRepUser && ($salesRepUser->staff_type === 'dealer_sales' || $salesRepUser->dealer_id)) {
+                $dependentSales = $salesRepUser;
+            }
+
+            if ($dependentSales && $dependentSales->dealer_id) {
+                $dealerId = $dependentSales->dealer_id;
+                $depDealer = \App\Models\Dealer::find($dealerId);
+                if ($depDealer) {
+                    $data['dealerName'] = $depDealer->name;
+                    if (empty($data['customerPhone'])) $data['customerPhone'] = $depDealer->phone;
+                    if (empty($data['address'])) $data['address'] = $depDealer->address;
+                }
+            }
+
+            // Nếu đơn hàng có tên khách hàng nhưng chưa liên kết đại lý (hoặc thêm mới từ form), tự động tìm hoặc tạo đại lý
+            $cName = trim($data['customerName'] ?? ($data['customer_name'] ?? ($data['dealerName'] ?? '')));
+            $cPhone = trim($data['customerPhone'] ?? ($data['customer_phone'] ?? ''));
+            $cAddr = trim($data['address'] ?? ($data['customer_address'] ?? ''));
+            $cTaxCode = trim($data['taxCode'] ?? ($data['tax_code'] ?? ($data['customer_tax_code'] ?? '')));
+
+            if (!$dealerId && !empty($cName)) {
+                $matched = Dealer::where('name', $cName)
+                    ->when(!empty($cPhone), function($q) use ($cPhone) {
+                        $q->orWhere('phone', $cPhone);
+                    })
+                    ->first();
+                if ($matched) {
+                    $dealerId = $matched->id;
+                } else {
+                    $newDealerCode = 'DL-' . str_pad((string)(Dealer::count() + 1), 4, '0', STR_PAD_LEFT);
+                    $newDealer = Dealer::create([
+                        'code'              => $newDealerCode,
+                        'name'              => $cName,
+                        'owner_name'        => $cName,
+                        'phone'             => $cPhone,
+                        'address'           => $cAddr,
+                        'tax_code'          => $cTaxCode ?: null,
+                        'tier'              => $data['dealerTier'] ?? ($data['dealer_tier'] ?? 'Đại lý Cấp 2'),
+                        'credit_limit'      => 100000000,
+                        'initial_debt'      => 0,
+                        'current_debt'      => 0,
+                        'payment_term_days' => 30,
+                        'status'            => 'Hoạt động',
+                    ]);
+                    $dealerId = $newDealer->id;
+                }
+            }
+
+            // Kiểm tra quy định Mã số thuế (MST): Khách không có MST chỉ được lên tối đa 3 đơn, đơn thứ 4 bị chặn
+            if ($dealerId) {
+                $dealerCheck = Dealer::lockForUpdate()->find($dealerId);
+                if ($dealerCheck && empty(trim($dealerCheck->tax_code ?? ''))) {
+                    $existingCount = Order::where('dealer_id', $dealerCheck->id)
+                        ->whereNotIn('status', ['Hủy', 'Đã hủy', 'Đã huỷ'])
+                        ->when($order, function($q) use ($order) {
+                            $q->where('id', '!=', $order->id);
+                        })
+                        ->count();
+
+                    if ($existingCount >= 3) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Không thể lên đơn: Khách hàng [{$dealerCheck->name}] chưa có Mã số thuế (MST) và đã đạt giới hạn 3 đơn hàng. Đơn thứ 4 không thể lên đơn! Vui lòng cập nhật MST cho khách hàng trước khi tiếp tục."
+                        ], 422);
+                    }
+                }
+            }
+
+            $assignedDriverId = null;
+            if (!empty($data['assignedDriverId']) && is_numeric($data['assignedDriverId'])) {
+                $assignedDriverId = (int)$data['assignedDriverId'];
+            } elseif (!empty($data['assigned_driver_id']) && is_numeric($data['assigned_driver_id'])) {
+                $assignedDriverId = (int)$data['assigned_driver_id'];
+            } elseif ($order && !empty($order->assigned_driver_id)) {
+                $assignedDriverId = (int)$order->assigned_driver_id;
+            }
+
+            $vehiclePlate = !empty($data['assignedVehiclePlate'])
+                ? (string)$data['assignedVehiclePlate']
+                : (!empty($data['assigned_vehicle_plate']) ? (string)$data['assigned_vehicle_plate'] : ($order?->assigned_vehicle_plate ?? null));
+
+            // Bỏ cơ chế bắt buộc lái xe chỉ xuất kho nhân viên: tôn trọng kho người dùng chọn trong form
+            $warehouseName = $data['warehouse'] ?? ($data['warehouse_name'] ?? ($order?->warehouse ?? (\App\Models\Warehouse::first()?->name ?? 'Kho Tổng')));
+            $orderTypeInput = $data['orderType'] ?? ($data['order_type'] ?? ($order?->order_type ?? ''));
+            $isHoldingStockSale = !empty($data['is_holding_stock'])
+                || !empty($data['is_holding_stock_sale'])
+                || str_contains($warehouseName, 'Kho Hàng Ôm')
+                || in_array($orderTypeInput, ['holding_sale', 'consignment']);
+
+            if ($isHoldingStockSale && !$assignedDriverId && ($salesRepId ?: $creatorId)) {
+                $assignedDriverId = $salesRepId ?: $creatorId;
+            }
+
+            $items = $data['items'] ?? null;
+            $calculatedItemsSum = 0;
+            if (is_array($items) && count($items) > 0) {
+                foreach ($items as $it) {
+                    $qty = max(0.0, (float) ($it['quantity'] ?? ($it['qty'] ?? 1)));
+                    $uPrice = max(0.0, (float) ($it['unitPrice'] ?? ($it['unit_price'] ?? 0)));
+                    $itDiscPct = min(100.0, max(0.0, (float) ($it['discount_percent'] ?? ($it['discountPercent'] ?? 0))));
+                    $itDiscAmt = max(0.0, (float) ($it['discount_amount'] ?? ($it['discountAmount'] ?? 0)));
+                    if ($itDiscPct > 0 && $itDiscAmt <= 0) {
+                        $itDiscAmt = round(($qty * $uPrice * $itDiscPct) / 100, 2);
+                    }
+                    $itDiscAmt = min($qty * $uPrice, $itDiscAmt);
+                    $amt = max(0, round(($qty * $uPrice) - $itDiscAmt, 2));
+                    $calculatedItemsSum += $amt;
+                }
+            } elseif ($order) {
+                $calculatedItemsSum = (float) ($order->subtotal > 0 ? $order->subtotal : $order->items()->sum('amount'));
+            }
+
+            $subtotal = (is_array($items) && count($items) > 0)
+                ? $calculatedItemsSum
+                : (isset($data['subtotal']) && (float)$data['subtotal'] >= 0
+                    ? (float)$data['subtotal']
+                    : (isset($data['subtotalAmount']) && (float)$data['subtotalAmount'] >= 0
+                        ? (float)$data['subtotalAmount']
+                        : (float)($order?->subtotal ?? $calculatedItemsSum)));
+
+            $discountPercent = (array_key_exists('discountPercent', $data) || array_key_exists('discount_percent', $data))
+                ? min(100.0, max(0.0, (float)($data['discountPercent'] ?? $data['discount_percent'] ?? 0)))
+                : ($order?->discount_percent !== null ? (float)$order->discount_percent : 0.0);
+
+            $hasDiscountAmtInput = array_key_exists('discountAmount', $data) || array_key_exists('discount_amount', $data);
+            $discount = $hasDiscountAmtInput
+                ? max(0.0, (float)($data['discountAmount'] ?? $data['discount_amount'] ?? 0))
+                : (float)($order?->discount_amount ?? 0);
+
+            if ($discountPercent > 0 && !$hasDiscountAmtInput && $subtotal > 0) {
+                $discount = round(($subtotal * $discountPercent) / 100, 2);
+            } elseif ($discountPercent <= 0 && $subtotal > 0 && $discount > 0) {
+                $discountPercent = min(100.0, round(($discount / $subtotal) * 100, 2));
+            }
+            $discount = min($subtotal, max(0.0, $discount));
+
+            $tax = (array_key_exists('taxAmount', $data) || array_key_exists('tax_amount', $data))
+                ? max(0.0, (float)($data['taxAmount'] ?? $data['tax_amount'] ?? 0))
+                : (float)($order?->tax_amount ?? 0);
+
+            $total = max(0, round($subtotal - $discount + $tax, 2));
+
+            $resolvedOrderType = $isHoldingStockSale ? 'holding_sale' : ($data['orderType'] ?? ($data['order_type'] ?? ($order?->order_type ?? 'normal')));
+
+            $hasPolicyIdsInput = array_key_exists('salesPolicyIds', $data) || array_key_exists('sales_policy_ids', $data);
+            $hasPolicyIdInput = array_key_exists('salesPolicyId', $data) || array_key_exists('sales_policy_id', $data);
+            $resolvedPolicyIds = $order?->sales_policy_ids ?? ($order?->sales_policy_id ? [(int)$order->sales_policy_id] : []);
+            if ($hasPolicyIdsInput) {
+                $rawPIds = $data['salesPolicyIds'] ?? ($data['sales_policy_ids'] ?? []);
+                if (is_string($rawPIds)) {
+                    $decoded = json_decode($rawPIds, true);
+                    $rawPIds = is_array($decoded) ? $decoded : [];
+                }
+                $resolvedPolicyIds = array_values(array_unique(array_filter(array_map('intval', is_array($rawPIds) ? $rawPIds : []), fn($id) => $id > 0)));
+            } elseif ($hasPolicyIdInput) {
+                $singlePId = $data['salesPolicyId'] ?? ($data['sales_policy_id'] ?? null);
+                $resolvedPolicyIds = (!empty($singlePId) && is_numeric($singlePId) && (int)$singlePId > 0) ? [(int)$singlePId] : [];
+            }
+            $resolvedPolicyId = !empty($resolvedPolicyIds) ? (int)$resolvedPolicyIds[0] : null;
+
+            $orderAttributes = [
+                'order_code'             => $orderCode ?: ($order ? $order->order_code : 'DH-' . date('Y') . '-' . rand(1000, 9999)),
+                'dealer_id'              => $dealerId,
+                'creator_id'             => $creatorId,
+                'sales_rep_id'           => $salesRepId ?: ($order?->sales_rep_id ?? null),
+                'order_creator'          => $creatorName ?: ($order?->order_creator ?? null),
+                'customer_name'          => $data['dealerName'] ?? ($data['customer_name'] ?? ($order?->customer_name ?? 'Khách lẻ')),
+                'customer_phone'         => $data['customerPhone'] ?? ($data['customer_phone'] ?? ($order?->customer_phone ?? '')),
+                'customer_address'       => $data['address'] ?? ($data['customer_address'] ?? ($order?->customer_address ?? '')),
+                'warehouse'              => $warehouseName,
+                'delivery_date'          => array_key_exists('deliveryDate', $data)
+                    ? ($data['deliveryDate'] ?: null)
+                    : (array_key_exists('delivery_date', $data)
+                        ? ($data['delivery_date'] ?: null)
+                        : ($order?->delivery_date ?? null)),
+                'picking_date'           => array_key_exists('pickingDate', $data)
+                    ? ($data['pickingDate'] ?: null)
+                    : (array_key_exists('picking_date', $data)
+                        ? ($data['picking_date'] ?: null)
+                        : ($order?->picking_date ?? null)),
+                'order_type'             => $resolvedOrderType,
+                'project_name'           => array_key_exists('projectName', $data)
+                    ? $data['projectName']
+                    : (array_key_exists('project_name', $data) ? $data['project_name'] : ($order?->project_name ?? null)),
+                'contract_number'        => array_key_exists('contractNumber', $data)
+                    ? $data['contractNumber']
+                    : (array_key_exists('contract_number', $data) ? $data['contract_number'] : ($order?->contract_number ?? null)),
+                'assigned_driver_id'     => $assignedDriverId,
+                'assigned_vehicle_plate' => $vehiclePlate,
+                'driver_debt_amount'     => (array_key_exists('driverDebtAmount', $data) || array_key_exists('driver_debt_amount', $data))
+                    ? max(0.0, (float)($data['driverDebtAmount'] ?? $data['driver_debt_amount'] ?? 0))
+                    : (float)($order?->driver_debt_amount ?? 0),
+                'has_returns'            => (array_key_exists('hasReturns', $data) || array_key_exists('has_returns', $data))
+                    ? (!empty($data['hasReturns']) || !empty($data['has_returns']))
+                    : (bool)($order?->has_returns ?? false),
+                'total_returned_amount'  => (array_key_exists('totalReturnedAmount', $data) || array_key_exists('total_returned_amount', $data))
+                    ? max(0.0, (float)($data['totalReturnedAmount'] ?? $data['total_returned_amount'] ?? 0))
+                    : (float)($order?->total_returned_amount ?? 0),
+                'return_slip_code'       => (array_key_exists('returnSlipCode', $data) || array_key_exists('return_slip_code', $data))
+                    ? ($data['returnSlipCode'] ?? $data['return_slip_code'] ?? null)
+                    : ($order?->return_slip_code ?? null),
+                'status'                 => (function() use ($data, $order, $isHoldingStockSale) {
+                    if (!empty($data['status'])) {
+                        return $data['status'];
+                    }
+                    if ($order) return $order->status;
+                    if ($isHoldingStockSale) return 'Đã giao hàng';
+                    return 'Chốt đơn';
+                })(),
+                'payment_status'          => $data['paymentStatus'] ?? ($data['payment_status'] ?? ($order?->payment_status ?? 'Chưa thanh toán')),
+                'payment_method'          => $data['paymentMethod'] ?? ($data['payment_method'] ?? ($order?->payment_method ?? 'Ghi nợ đại lý')),
+                'settled_with_accountant' => isset($data['settledWithAccountant'])
+                    ? (bool)$data['settledWithAccountant']
+                    : (isset($data['settled_with_accountant'])
+                        ? (bool)$data['settled_with_accountant']
+                        : ($order?->settled_with_accountant ?? false)),
+                'subtotal'               => $subtotal,
+                'discount_percent'       => (float)($discountPercent ?? 0),
+                'discount_amount'        => $discount,
+                'sales_policy_id'        => $resolvedPolicyId,
+                'sales_policy_ids'       => $resolvedPolicyIds,
+                'tax_amount'             => $tax,
+                'total_amount'           => $total,
+                'shortage_reported'      => array_key_exists('shortageReported', $data) ? (bool)$data['shortageReported'] : (bool)($order?->shortage_reported ?? false),
+                'shortage_reported_at'   => array_key_exists('shortageReportedAt', $data) ? $data['shortageReportedAt'] : ($order?->shortage_reported_at ?? null),
+                'shortage_reported_note' => array_key_exists('shortageReportedNote', $data) ? $data['shortageReportedNote'] : ($order?->shortage_reported_note ?? null),
+                'failed_delivery_reason' => $data['failedDeliveryReason'] ?? ($data['failed_delivery_reason'] ?? ($order?->failed_delivery_reason ?? null)),
+                'failed_delivery_note'   => $data['failedDeliveryNote'] ?? ($data['failed_delivery_note'] ?? ($order?->failed_delivery_note ?? null)),
+                'failed_delivery_at'     => $data['failedDeliveryAt'] ?? ($data['failed_delivery_at'] ?? ($order?->failed_delivery_at ?? null)),
+                'failed_delivery_by'     => $data['failedDeliveryBy'] ?? ($data['failed_delivery_by'] ?? ($order?->failed_delivery_by ?? null)),
+                'rescheduled_date'       => $data['rescheduledDate'] ?? ($data['rescheduled_date'] ?? ($order?->rescheduled_date ?? null)),
+                'notes'                  => array_key_exists('notes', $data) ? (string) ($data['notes'] ?? '') : (string) ($order?->notes ?? ''),
+                'parent_order_id'        => array_key_exists('parentOrderId', $data)
+                    ? $data['parentOrderId']
+                    : (array_key_exists('parent_order_id', $data) ? $data['parent_order_id'] : ($order?->parent_order_id ?? null)),
+                'parent_order_code'      => array_key_exists('parentOrderCode', $data)
+                    ? $data['parentOrderCode']
+                    : (array_key_exists('parent_order_code', $data) ? $data['parent_order_code'] : ($order?->parent_order_code ?? null)),
+                'backorder_status'       => array_key_exists('backorderStatus', $data)
+                    ? $data['backorderStatus']
+                    : (array_key_exists('backorder_status', $data) ? $data['backorder_status'] : ($order?->backorder_status ?? null)),
+                'has_shortage_warning'   => isset($data['hasShortageWarning'])
+                    ? (bool)$data['hasShortageWarning']
+                    : (isset($data['has_shortage_warning'])
+                        ? (bool)$data['has_shortage_warning']
+                        : ($order?->has_shortage_warning ?? false)),
+            ];
 
         if (empty($orderAttributes['parent_order_id']) && !empty($orderAttributes['parent_order_code'])) {
             $pOrd = Order::where('order_code', $orderAttributes['parent_order_code'])->first(['id']);
@@ -918,6 +963,7 @@ class OrderController extends Controller
                             return ($s['sku'] ?? 'SP') . " (cần {$s['requested']}, khả dụng: {$s['available']})";
                         })->implode('; ');
 
+                        DB::rollBack();
                         return response()->json([
                             'success'   => false,
                             'message'   => "🚫 Không thể lên đơn hàng do kho [{$targetWh}] hết tồn khả dụng: {$shortageDetails}",
@@ -949,7 +995,7 @@ class OrderController extends Controller
         if (is_array($items) && count($items) > 0) {
             $order->items()->delete();
 
-            // Tối ưu Batch: Thu thập trước ID, SKU, Name để tra cứu trong 1 truy vấn duy nhất thay vì query lặp
+            // Tối ưu Batch: Thu thập trước ID, SKU, Name theo phạm vi accessibleBy để tra cứu 1 lần
             $candidateProdIds = [];
             $candidateSkus = [];
             $candidateNames = [];
@@ -964,20 +1010,22 @@ class OrderController extends Controller
                 if ($name !== '') $candidateNames[] = $name;
             }
 
-            $validProdIds = !empty($candidateProdIds)
-                ? \App\Models\Product::whereIn('id', array_unique($candidateProdIds))->pluck('id', 'id')->all()
-                : [];
+            $prodScope = \App\Models\Product::query();
+            if ($isNewOrder && $actor && !$actor->canViewAllProducts()) {
+                $prodScope->accessibleBy($actor);
+            }
 
-            $fallbackProducts = (!empty($candidateSkus) || !empty($candidateNames))
-                ? \App\Models\Product::where(function($q) use ($candidateSkus, $candidateNames) {
-                    if (!empty($candidateSkus)) $q->whereIn('sku', array_unique($candidateSkus));
+            $productsPool = (!empty($candidateProdIds) || !empty($candidateSkus) || !empty($candidateNames))
+                ? (clone $prodScope)->where(function ($q) use ($candidateProdIds, $candidateSkus, $candidateNames) {
+                    if (!empty($candidateProdIds)) $q->whereIn('id', array_unique($candidateProdIds));
+                    if (!empty($candidateSkus)) $q->orWhereIn('sku', array_unique($candidateSkus));
                     if (!empty($candidateNames)) $q->orWhereIn('name', array_unique($candidateNames));
-                })->get(['id', 'sku', 'name'])
+                })->get(['id', 'sku', 'name', 'price', 'cost_price'])
                 : collect();
 
-            $fallbackBySku = $fallbackProducts->whereNotNull('sku')->keyBy('sku');
-            $fallbackByName = $fallbackProducts->whereNotNull('name')->keyBy('name');
-            $defaultFirstProdId = null;
+            $productsById = $productsPool->keyBy('id');
+            $fallbackBySku = $productsPool->whereNotNull('sku')->keyBy('sku');
+            $fallbackByName = $productsPool->whereNotNull('name')->keyBy('name');
 
             foreach ($items as $it) {
                 $itName = $it['name'] ?? ($it['product_name'] ?? '');
@@ -991,31 +1039,31 @@ class OrderController extends Controller
                     $candidateId = (int)$it['product_id'];
                 }
 
-                $prodId = ($candidateId && isset($validProdIds[$candidateId])) ? $candidateId : null;
-
-                if (!$prodId && ($itSku || $itName)) {
-                    if ($itSku && isset($fallbackBySku[$itSku])) {
-                        $prodId = $fallbackBySku[$itSku]->id;
-                    } elseif ($itName && isset($fallbackByName[$itName])) {
-                        $prodId = $fallbackByName[$itName]->id;
-                    }
+                $prodObj = ($candidateId && $productsById->has($candidateId)) ? $productsById->get($candidateId) : null;
+                if (!$prodObj && $itSku && $fallbackBySku->has($itSku)) {
+                    $prodObj = $fallbackBySku->get($itSku);
+                }
+                if (!$prodObj && $itName && $fallbackByName->has($itName)) {
+                    $prodObj = $fallbackByName->get($itName);
                 }
 
-                if (!$prodId) {
-                    if ($defaultFirstProdId === null) {
-                        $defaultFirstProdId = \App\Models\Product::first()?->id ?? 1;
-                    }
-                    $prodId = $defaultFirstProdId;
+                if (!$prodObj) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Không tìm thấy hoặc bạn không có quyền truy cập sản phẩm [' . ($itSku ?: ($itName ?: 'SP')) . ']. Vui lòng chọn sản phẩm hợp lệ!',
+                    ], 422);
                 }
+                $prodId = $prodObj->id;
 
-                $qty = (float) ($it['quantity'] ?? ($it['qty'] ?? 1));
-                $giftQty = (float) ($it['gift_quantity'] ?? ($it['giftQty'] ?? 0));
-                $retQty = (float) ($it['returnedQty'] ?? ($it['returned_qty'] ?? 0));
-                $delivQty = isset($it['deliveredQty']) ? (float) $it['deliveredQty'] : (isset($it['delivered_qty']) ? (float) $it['delivered_qty'] : max(0, $qty - $retQty));
-                $uPrice = (float) ($it['unitPrice'] ?? ($it['unit_price'] ?? 0));
+                $qty = max(0.0, (float) ($it['quantity'] ?? ($it['qty'] ?? 1)));
+                $giftQty = max(0.0, (float) ($it['gift_quantity'] ?? ($it['giftQty'] ?? 0)));
+                $retQty = max(0.0, (float) ($it['returnedQty'] ?? ($it['returned_qty'] ?? 0)));
+                $delivQty = isset($it['deliveredQty']) ? max(0.0, (float) $it['deliveredQty']) : (isset($it['delivered_qty']) ? max(0.0, (float) $it['delivered_qty']) : max(0, $qty - $retQty));
+                $uPrice = max(0.0, (float) ($it['unitPrice'] ?? ($it['unit_price'] ?? 0)));
 
                 $tierPolicy = $it['appliedTierPolicy'] ?? ($it['applied_tier_policy'] ?? 'Đại lý Cấp 1');
-                $isItemGift = !empty($it['isPromotionalGift']) 
+                $isItemGift = !empty($it['isPromotionalGift'])
                     || !empty($it['is_gift'])
                     || ($giftQty > 0 && $giftQty >= $qty)
                     || (float)$uPrice == 0
@@ -1023,8 +1071,8 @@ class OrderController extends Controller
                     || str_contains(mb_strtolower($tierPolicy), 'quà tặng')
                     || str_contains(mb_strtolower($tierPolicy), 'tặng');
 
-                $itDiscAmt = (float) ($it['discount_amount'] ?? ($it['discountAmount'] ?? 0));
-                $itDiscPct = (float) ($it['discount_percent'] ?? ($it['discountPercent'] ?? 0));
+                $itDiscAmt = max(0.0, (float) ($it['discount_amount'] ?? ($it['discountAmount'] ?? 0)));
+                $itDiscPct = min(100.0, max(0.0, (float) ($it['discount_percent'] ?? ($it['discountPercent'] ?? 0))));
 
                 if ($isItemGift) {
                     $uPrice = 0;
@@ -1037,18 +1085,19 @@ class OrderController extends Controller
                     if ($itDiscPct > 0 && $itDiscAmt <= 0) {
                         $itDiscAmt = round(($qty * $uPrice * $itDiscPct) / 100, 2);
                     }
+                    $itDiscAmt = min($qty * $uPrice, $itDiscAmt);
                     $amt = max(0, round(($qty * $uPrice) - $itDiscAmt, 2));
                 }
 
                 // Resolve picking & QC fields
-                $oldItem = $existingItemsMap->get($itSku) ?? $existingItemsMap->get($it['id'] ?? '');
+                $oldItem = $existingItemsMap->get($itSku) ?? $existingItemsMap->get((string)($it['id'] ?? ''));
 
                 $assignedStaff = $it['assignedStaff'] ?? ($it['assigned_staff'] ?? ($oldItem?->assigned_staff ?? null));
                 $assignedList = $it['assignedStaffList'] ?? ($it['assigned_staff_list'] ?? ($oldItem?->assigned_staff_list ?? ($assignedStaff ? [$assignedStaff] : [])));
-                $pickedQty = isset($it['pickedQty']) 
-                    ? (float)$it['pickedQty'] 
-                    : (isset($it['picked_qty']) 
-                        ? (float)$it['picked_qty'] 
+                $pickedQty = isset($it['pickedQty'])
+                    ? (float)$it['pickedQty']
+                    : (isset($it['picked_qty'])
+                        ? (float)$it['picked_qty']
                         : (float)($oldItem?->picked_qty ?? 0));
 
                 $reqTotal = $qty + $giftQty;
@@ -1075,10 +1124,10 @@ class OrderController extends Controller
                 }
 
                 $isChecked = $isHoldingStockSale ? true : (!empty($it['isChecked']) || !empty($it['is_checked']) || (bool)($oldItem?->is_checked ?? false));
-                $checkedQty = $isHoldingStockSale ? $reqTotal : (isset($it['checkedQty']) 
-                    ? (float)$it['checkedQty'] 
-                    : (isset($it['checked_qty']) 
-                        ? (float)$it['checked_qty'] 
+                $checkedQty = $isHoldingStockSale ? $reqTotal : (isset($it['checkedQty'])
+                    ? (float)$it['checkedQty']
+                    : (isset($it['checked_qty'])
+                        ? (float)$it['checked_qty']
                         : (float)($oldItem?->checked_qty ?? ($isChecked ? $reqTotal : 0))));
                 if ($reqTotal > 0 && $checkedQty < $reqTotal) {
                     $isChecked = false;
@@ -1087,7 +1136,6 @@ class OrderController extends Controller
                 $checkedAt = $it['checkedAt'] ?? ($it['checked_at'] ?? ($oldItem?->checked_at ?? null));
                 $checkNotes = $it['checkNotes'] ?? ($it['check_notes'] ?? ($oldItem?->check_notes ?? null));
 
-                $prodObj = ($prodId && isset($prod) && $prod?->id == $prodId) ? $prod : ($prodId ? \App\Models\Product::find($prodId) : null);
                 $actualCost = $isItemGift ? 0 : (float) ($it['costPrice'] ?? ($it['cost_price'] ?? ($prodObj?->cost_price ?: ($uPrice * 0.8))));
                 $actualOrigPrice = $isItemGift ? 0 : (float) ($it['originalPrice'] ?? ($it['original_price'] ?? ($prodObj?->price ?: $uPrice)));
                 if (!$isItemGift && $actualOrigPrice == $actualCost && $prodObj?->price > 0) {
@@ -1096,9 +1144,9 @@ class OrderController extends Controller
 
                 OrderItem::create([
                     'order_id'            => $order->id,
-                    'product_id'          => $prodId ?: 1,
-                    'sku'                 => $itSku ?: 'SKU-PVC',
-                    'name'                => $itName ?: 'Vật tư PVC',
+                    'product_id'          => $prodId,
+                    'sku'                 => $itSku ?: ($prodObj->sku ?: 'SKU-PVC'),
+                    'name'                => $itName ?: ($prodObj->name ?: 'Vật tư PVC'),
                     'unit'                => $it['unit'] ?? 'cây',
                     'quantity'            => $qty,
                     'gift_quantity'       => $giftQty,
@@ -1128,9 +1176,9 @@ class OrderController extends Controller
 
             $order->load('items');
             $recalculatedSubtotal = (float)$order->items->sum('amount');
-            $recalculatedDiscount = (float)($order->discount_amount ?? 0);
+            $recalculatedDiscount = min($recalculatedSubtotal, max(0.0, (float)($order->discount_amount ?? 0)));
             if (($order->discount_percent ?? 0) > 0 && $recalculatedDiscount <= 0 && $recalculatedSubtotal > 0) {
-                $recalculatedDiscount = round(($recalculatedSubtotal * (float)$order->discount_percent) / 100, 2);
+                $recalculatedDiscount = min($recalculatedSubtotal, round(($recalculatedSubtotal * (float)$order->discount_percent) / 100, 2));
             }
             $recalculatedTotal = max(0, round($recalculatedSubtotal - $recalculatedDiscount + (float)($order->tax_amount ?? 0), 2));
             $order->subtotal = $recalculatedSubtotal;
@@ -1435,18 +1483,17 @@ class OrderController extends Controller
                 ];
             });
 
-        // ===== PHÁT HIỆN VƯỢT HẠN MỨC CÔNG NỢ KHI LẬP ĐƠN =====
+        // ===== PHÁT HIỆN VƯỢT HẠN MỨC CÔNG NỢ KHI LẬP / CẬP NHẬT ĐƠN =====
         $creditWarning = null;
         $isDebtOrder = in_array($order->payment_method, ['Ghi nợ', 'Ghi nợ đại lý'])
             || in_array($order->payment_status, ['Ghi nợ', 'Ghi nợ đại lý', 'Chưa thanh toán']);
+        $isNonCommittedStatus = in_array($order->status, ['Báo giá', 'Bản nháp', 'Từ chối hạn mức', 'Đã gộp đơn', 'Hủy', 'Đã hủy', 'Đã huỷ']);
 
-        if ($isNewOrder && $isDebtOrder && $order->dealer_id) {
-            $dealer = Dealer::find($order->dealer_id);
+        if (!$isNonCommittedStatus && !$isHoldingStockSale && $isDebtOrder && $order->dealer_id
+            && ($isNewOrder || $order->credit_overrun_status !== 'Đã duyệt')) {
+            $dealer = Dealer::lockForUpdate()->find($order->dealer_id);
             if ($dealer && (float)($dealer->credit_limit ?? 0) > 0) {
-                // Tận dụng công nợ đã tính ở dòng 1293 thay vì chạy lại getDebtExcludingOrder
-                $prevDebt = $updatedDealerDebt !== null
-                    ? max(0, $updatedDealerDebt - (float)$order->total_amount)
-                    : $dealer->getDebtExcludingOrder($order->id);
+                $prevDebt = $dealer->getDebtExcludingOrder($order->id);
                 $creditLimit = (float)$dealer->credit_limit;
                 $newTotal    = (float)$order->total_amount;
                 $projectedDebt = $prevDebt + $newTotal;
@@ -1496,6 +1543,8 @@ class OrderController extends Controller
         // Chỉ trừ tồn kho thực tế khi đơn chuyển sang trạng thái xuất kho/giao vận; trước đó chỉ tạm giữ tồn khả dụng
         $this->syncStockForStatus($order, $oldStatus);
 
+        DB::commit();
+
         // Xóa cache danh mục tồn kho POS để trang POS luôn nhận dữ liệu cập nhật tức thì
         \App\Services\InventoryAvailabilityService::clearCache();
 
@@ -1516,6 +1565,14 @@ class OrderController extends Controller
             'dealerDebt' => $updatedDealerDebt,
             'auditLogs'  => $latestAuditLogs,
         ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('saveOrder Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi lưu đơn hàng: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -1845,8 +1902,10 @@ class OrderController extends Controller
                     $staffId = null;
                     if (preg_match('/KHO-OM-(\d+)/', $targetWarehouse->code, $m)) {
                         $staffId = (int)$m[1];
-                    } elseif ($order->created_by_id) {
-                        $staffId = (int)$order->created_by_id;
+                    } elseif ($order->creator_id) {
+                        $staffId = (int)$order->creator_id;
+                    } elseif ($order->sales_rep_id) {
+                        $staffId = (int)$order->sales_rep_id;
                     }
 
                     if ($staffId) {
@@ -2214,7 +2273,7 @@ class OrderController extends Controller
         }
 
         $extraDiscount = (float)($order->discount_amount ?? 0);
-        $finalTotal = (float)($order->total_amount > 0 ? $order->total_amount : max(0, $totalItemsAmount - $extraDiscount));
+        $finalTotal = $order->total_amount !== null ? (float)$order->total_amount : max(0, $totalItemsAmount - $extraDiscount);
 
         $orderCreatorName = $order->order_creator ?: ($order->creator?->name ?: ($order->salesRep?->name ?: ''));
         $salesRepName = $order->salesRep?->name ?: ($dealer?->salesRep?->name ?: $orderCreatorName);
@@ -2248,12 +2307,12 @@ class OrderController extends Controller
             'sales_rep_name'        => $salesRepName,
             'creator_name'          => $orderCreatorName,
             'updater_name'          => $updaterName,
-            'subtotal'              => (float)($order->subtotal > 0 ? $order->subtotal : ($subtotal > 0 ? $subtotal : $totalItemsAmount)),
+            'subtotal'              => (float)($order->subtotal !== null ? $order->subtotal : ($subtotal > 0 ? $subtotal : $totalItemsAmount)),
             'total_discount'        => (float)($totalDiscount > 0 ? $totalDiscount : 0),
-            'total_items_amount'    => (float)($totalItemsAmount > 0 ? $totalItemsAmount : $order->subtotal),
+            'total_items_amount'    => (float)($totalItemsAmount >= 0 ? $totalItemsAmount : ($order->subtotal ?? 0)),
             'extra_discount'        => $extraDiscount,
-            'final_total'           => (float)($order->total_amount > 0 ? $order->total_amount : $finalTotal),
-            'final_total_words'     => self::convertNumberToVietnameseWords((float)($order->total_amount > 0 ? $order->total_amount : $finalTotal)),
+            'final_total'           => (float)($order->total_amount !== null ? $order->total_amount : $finalTotal),
+            'final_total_words'     => self::convertNumberToVietnameseWords((float)($order->total_amount !== null ? $order->total_amount : $finalTotal)),
             'items'                 => $items,
         ];
     }
@@ -2264,8 +2323,9 @@ class OrderController extends Controller
     public function getOrderPrintData($id)
     {
         $order = Order::with(['items.product.category', 'dealer.salesRep', 'creator', 'assignedDriver', 'warehouseStaff', 'salesRep'])
-            ->where('id', $id)
-            ->orWhere('order_code', $id)
+            ->where(function ($q) use ($id) {
+                $q->where('id', $id)->orWhere('order_code', $id);
+            })
             ->first();
 
         if (!$order) {
@@ -2273,9 +2333,10 @@ class OrderController extends Controller
         }
 
         $user = auth()->user();
-        if ($user && !$user->canViewAllOrders()) {
+        if ($user && !$user->canViewAllOrders() && !$user->hasAnyPermission('delivery_dispatch.view', 'inv_picking.view', 'inv_qc.view')) {
             $isOwn = ((int)$order->creator_id === (int)$user->id) ||
                      ((int)$order->sales_rep_id === (int)$user->id) ||
+                     ((int)$order->assigned_driver_id === (int)$user->id) ||
                      ($order->order_creator && ($order->order_creator === $user->name || $order->order_creator === $user->code));
             if (!$isOwn) {
                 return response()->json(['success' => false, 'message' => 'Bạn không có quyền xem hoặc in đơn hàng của nhân sự khác!'], 403);
@@ -2304,10 +2365,15 @@ class OrderController extends Controller
             return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 đơn hàng!'], 400);
         }
 
-        $orders = Order::with(['items.product.category', 'dealer.salesRep', 'creator', 'assignedDriver', 'warehouseStaff', 'salesRep'])
-            ->whereIn('id', $orderIds)
-            ->orWhereIn('order_code', $orderIds)
-            ->get();
+        $user = auth()->user();
+        $ordersQuery = Order::with(['items.product.category', 'dealer.salesRep', 'creator', 'assignedDriver', 'warehouseStaff', 'salesRep'])
+            ->where(function ($q) use ($orderIds) {
+                $q->whereIn('id', $orderIds)->orWhereIn('order_code', $orderIds);
+            });
+        if ($user && !$user->canViewAllOrders() && !$user->hasAnyPermission('delivery_dispatch.view', 'inv_picking.view', 'inv_qc.view')) {
+            $ordersQuery->accessibleBy($user);
+        }
+        $orders = $ordersQuery->get();
 
         if ($orders->isEmpty()) {
             return response()->json(['success' => false, 'message' => 'Không tìm thấy các đơn hàng đã chọn!'], 404);
@@ -2441,55 +2507,75 @@ class OrderController extends Controller
      */
     public function cancelOrder(Request $request, $id)
     {
-        $order = Order::where('id', $id)->orWhere('order_code', $id)->first();
-        if (!$order) {
-            return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng cần hủy!'], 404);
-        }
-
-        $user = auth()->user();
-        if ($user && !$user->hasAnyPermission('orders.cancel')) {
-            return response()->json(['success' => false, 'message' => 'Bạn không có quyền hủy đơn hàng!'], 403);
-        }
-
-        if ($user && !$user->canViewAllOrders()) {
-            $isOwn = ((int)$order->creator_id === (int)$user->id) ||
-                     ((int)$order->sales_rep_id === (int)$user->id) ||
-                     ($order->order_creator && ($order->order_creator === $user->name || $order->order_creator === $user->code));
-            if (!$isOwn) {
-                return response()->json(['success' => false, 'message' => 'Bạn chỉ được hủy đơn hàng do chính mình tạo hoặc phụ trách!'], 403);
+        DB::beginTransaction();
+        try {
+            $order = Order::where(function ($q) use ($id) {
+                $q->where('id', $id)->orWhere('order_code', $id);
+            })->lockForUpdate()->first();
+            if (!$order) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng cần hủy!'], 404);
             }
-        }
 
-        if (in_array($order->status, ['Hủy', 'Đã hủy', 'Đã huỷ'])) {
-            return response()->json(['success' => false, 'message' => 'Đơn hàng này đã ở trạng thái hủy trước đó.'], 422);
-        }
-
-        if (in_array($order->status, ['Đã giao', 'Giao thành công'])) {
-            return response()->json(['success' => false, 'message' => 'Đơn hàng đã giao thành công, không thể hủy. Vui lòng lập phiếu hoàn trả nếu khách trả hàng.'], 422);
-        }
-
-        $oldStatus = $order->status;
-        $reason = trim((string)($request->input('reason') ?? $request->input('notes') ?? 'Hủy đơn hàng'));
-
-        // 1. Hoàn trả tồn kho nếu đơn đã từng bị trừ tồn
-        if ($order->stock_deducted) {
-            $this->restoreOrderStock($order);
-        }
-
-        // 2. Cập nhật trạng thái đơn
-        $order->status = 'Đã hủy';
-        if ($reason) {
-            $order->notes = ($order->notes ? $order->notes . " | " : "") . "Lý do hủy: " . $reason;
-        }
-        $order->save();
-
-        // 3. Tính lại công nợ đại lý
-        $updatedDealerDebt = null;
-        if ($order->dealer_id) {
-            $dealer = Dealer::find($order->dealer_id);
-            if ($dealer) {
-                $updatedDealerDebt = $dealer->recalculateCurrentDebt();
+            if (\App\Models\PeriodLock::isLockedDate($order->created_at ?? now(), 'sales')) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Kỳ kế toán của đơn hàng này đã bị khóa sổ, không thể hủy!'], 422);
             }
+
+            $user = auth()->user();
+            if ($user && !$user->hasAnyPermission('orders.cancel')) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Bạn không có quyền hủy đơn hàng!'], 403);
+            }
+
+            if ($user && !$user->canViewAllOrders()) {
+                $isOwn = ((int)$order->creator_id === (int)$user->id) ||
+                         ((int)$order->sales_rep_id === (int)$user->id) ||
+                         ($order->order_creator && ($order->order_creator === $user->name || $order->order_creator === $user->code));
+                if (!$isOwn) {
+                    DB::rollBack();
+                    return response()->json(['success' => false, 'message' => 'Bạn chỉ được hủy đơn hàng do chính mình tạo hoặc phụ trách!'], 403);
+                }
+            }
+
+            if (in_array($order->status, ['Hủy', 'Đã hủy', 'Đã huỷ'])) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Đơn hàng này đã ở trạng thái hủy trước đó.'], 422);
+            }
+
+            if (in_array($order->status, ['Đã giao', 'Giao thành công'])) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Đơn hàng đã giao thành công, không thể hủy. Vui lòng lập phiếu hoàn trả nếu khách trả hàng.'], 422);
+            }
+
+            $oldStatus = $order->status;
+            $reason = trim((string)($request->input('reason') ?? $request->input('notes') ?? 'Hủy đơn hàng'));
+
+            // 1. Hoàn trả tồn kho nếu đơn đã từng bị trừ tồn
+            if ($order->stock_deducted) {
+                $this->restoreOrderStock($order);
+            }
+
+            // 2. Cập nhật trạng thái đơn
+            $order->status = 'Đã hủy';
+            if ($reason) {
+                $order->notes = ($order->notes ? $order->notes . " | " : "") . "Lý do hủy: " . $reason;
+            }
+            $order->save();
+
+            // 3. Tính lại công nợ đại lý
+            $updatedDealerDebt = null;
+            if ($order->dealer_id) {
+                $dealer = Dealer::lockForUpdate()->find($order->dealer_id);
+                if ($dealer) {
+                    $updatedDealerDebt = $dealer->recalculateCurrentDebt();
+                }
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Lỗi hủy đơn hàng: ' . $e->getMessage()], 500);
         }
 
         // 4. Ghi AuditLog & lịch sử đơn hàng
@@ -2544,70 +2630,87 @@ class OrderController extends Controller
      */
     public function deleteOrder(Request $request, $id)
     {
-        $order = Order::where('id', $id)->orWhere('order_code', $id)->first();
-        if (!$order) {
-            return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng cần xóa!'], 404);
-        }
-
         $user = auth()->user();
         if ($user && !$user->hasAnyPermission('orders.delete')) {
             return response()->json(['success' => false, 'message' => 'Bạn không có quyền xóa đơn hàng!'], 403);
         }
 
-        if ($user && !$user->canViewAllOrders()) {
-            $isOwn = ((int)$order->creator_id === (int)$user->id) ||
-                     ((int)$order->sales_rep_id === (int)$user->id) ||
-                     ($order->order_creator && ($order->order_creator === $user->name || $order->order_creator === $user->code));
-            if (!$isOwn) {
-                return response()->json(['success' => false, 'message' => 'Bạn chỉ được xóa đơn hàng do chính mình tạo hoặc phụ trách!'], 403);
-            }
-        }
-
-        $orderCode = $order->order_code;
-        $customerName = $order->customer_name;
-        $totalAmount = (float)$order->total_amount;
-        $dealerId = $order->dealer_id;
-        $performerName = $user?->name ?? 'Người dùng';
-
-        // 1. Hoàn trả tồn kho nếu đơn đã từng bị trừ tồn
-        if ($order->stock_deducted) {
-            $this->restoreOrderStock($order);
-        }
-
-        // 2. Ghi AuditLog trước khi xóa bản ghi
+        DB::beginTransaction();
         try {
-            \App\Models\AuditLog::create([
-                'timestamp'            => now()->format('Y-m-d H:i:s'),
-                'performer_name'       => $performerName,
-                'user_id'              => $user?->id,
-                'action'               => 'Xóa Đơn Hàng',
-                'module'               => 'Đơn Hàng & Bán Hàng',
-                'target_document_code' => $orderCode,
-                'field_name'           => 'Xóa chứng từ',
-                'old_value'            => $order->status,
-                'new_value'            => 'Đã xóa vĩnh viễn',
-                'notes'                => "Xóa hoàn toàn đơn hàng [{$orderCode}] của khách [{$customerName}]. Trị giá: " . number_format($totalAmount, 0, ',', '.') . " đ.",
-            ]);
-        } catch (\Throwable $e) {}
-
-        // 3. Xóa các quan hệ phụ thuộc nếu có
-        try {
-            $order->items()->delete();
-            \App\Models\DeliveryDiscrepancy::where('order_id', $order->id)->delete();
-            \App\Models\VehicleOrderTransfer::where('order_id', $order->id)->delete();
-            \App\Models\DeliveryReturn::where('order_id', $order->id)->delete();
-        } catch (\Throwable $e) {}
-
-        // 4. Xóa chính đơn hàng
-        $order->delete();
-
-        // 5. Tính toán lại công nợ đại lý
-        $updatedDealerDebt = null;
-        if ($dealerId) {
-            $dealer = Dealer::find($dealerId);
-            if ($dealer) {
-                $updatedDealerDebt = $dealer->recalculateCurrentDebt();
+            $order = Order::where(function ($q) use ($id) {
+                $q->where('id', $id)->orWhere('order_code', $id);
+            })->lockForUpdate()->first();
+            if (!$order) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng cần xóa!'], 404);
             }
+
+            if (\App\Models\PeriodLock::isLockedDate($order->created_at ?? now(), 'sales')) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Kỳ kế toán của đơn hàng này đã bị khóa sổ, không thể xóa!'], 422);
+            }
+
+            if ($user && !$user->canViewAllOrders()) {
+                $isOwn = ((int)$order->creator_id === (int)$user->id) ||
+                         ((int)$order->sales_rep_id === (int)$user->id) ||
+                         ($order->order_creator && ($order->order_creator === $user->name || $order->order_creator === $user->code));
+                if (!$isOwn) {
+                    DB::rollBack();
+                    return response()->json(['success' => false, 'message' => 'Bạn chỉ được xóa đơn hàng do chính mình tạo hoặc phụ trách!'], 403);
+                }
+            }
+
+            $orderCode = $order->order_code;
+            $customerName = $order->customer_name;
+            $totalAmount = (float)$order->total_amount;
+            $dealerId = $order->dealer_id;
+            $performerName = $user?->name ?? 'Người dùng';
+
+            // 1. Hoàn trả tồn kho nếu đơn đã từng bị trừ tồn
+            if ($order->stock_deducted) {
+                $this->restoreOrderStock($order);
+            }
+
+            // 2. Ghi AuditLog trước khi xóa bản ghi
+            try {
+                \App\Models\AuditLog::create([
+                    'timestamp'            => now()->format('Y-m-d H:i:s'),
+                    'performer_name'       => $performerName,
+                    'user_id'              => $user?->id,
+                    'action'               => 'Xóa Đơn Hàng',
+                    'module'               => 'Đơn Hàng & Bán Hàng',
+                    'target_document_code' => $orderCode,
+                    'field_name'           => 'Xóa chứng từ',
+                    'old_value'            => $order->status,
+                    'new_value'            => 'Đã xóa vĩnh viễn',
+                    'notes'                => "Xóa hoàn toàn đơn hàng [{$orderCode}] của khách [{$customerName}]. Trị giá: " . number_format($totalAmount, 0, ',', '.') . " đ.",
+                ]);
+            } catch (\Throwable $e) {}
+
+            // 3. Xóa các quan hệ phụ thuộc nếu có
+            try {
+                $order->items()->delete();
+                \App\Models\DeliveryDiscrepancy::where('order_id', $order->id)->delete();
+                \App\Models\VehicleOrderTransfer::where('order_id', $order->id)->delete();
+                \App\Models\DeliveryReturn::where('order_id', $order->id)->delete();
+            } catch (\Throwable $e) {}
+
+            // 4. Xóa chính đơn hàng
+            $order->delete();
+
+            // 5. Tính toán lại công nợ đại lý
+            $updatedDealerDebt = null;
+            if ($dealerId) {
+                $dealer = Dealer::lockForUpdate()->find($dealerId);
+                if ($dealer) {
+                    $updatedDealerDebt = $dealer->recalculateCurrentDebt();
+                }
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Lỗi xóa đơn hàng: ' . $e->getMessage()], 500);
         }
 
         self::refreshAvailabilityCache();
@@ -2635,57 +2738,76 @@ class OrderController extends Controller
             return response()->json(['success' => false, 'message' => 'Bạn không có quyền xóa đơn hàng!'], 403);
         }
 
-        if ($user && !$user->canViewAllOrders()) {
-            $isOwn = ((int)$order->creator_id === (int)$user->id) ||
-                     ((int)$order->sales_rep_id === (int)$user->id) ||
-                     ($order->order_creator && ($order->order_creator === $user->name || $order->order_creator === $user->code));
-            if (!$isOwn) {
-                return response()->json(['success' => false, 'message' => 'Bạn chỉ được xóa đơn hàng do chính mình tạo hoặc phụ trách!'], 403);
-            }
-        }
+        DB::beginTransaction();
+        try {
+            $orders = Order::where(function ($q) use ($ids) {
+                $q->whereIn('id', $ids)->orWhereIn('order_code', $ids);
+            })->lockForUpdate()->get();
 
-        $successCount = 0;
-        foreach ($ids as $id) {
-            $order = Order::where('id', $id)->orWhere('order_code', $id)->first();
-            if (!$order) continue;
-
-            if ($order->stock_deducted) {
-                $this->restoreOrderStock($order);
-            }
-
-            $orderCode = $order->order_code;
-            $dealerId = $order->dealer_id;
-
-            try {
-                \App\Models\AuditLog::create([
-                    'timestamp'            => now()->format('Y-m-d H:i:s'),
-                    'performer_name'       => $user?->name ?? 'Người dùng',
-                    'user_id'              => $user?->id,
-                    'action'               => 'Xóa Đơn Hàng Hàng Loạt',
-                    'module'               => 'Đơn Hàng & Bán Hàng',
-                    'target_document_code' => $orderCode,
-                    'field_name'           => 'Xóa chứng từ',
-                    'old_value'            => $order->status,
-                    'new_value'            => 'Đã xóa vĩnh viễn',
-                    'notes'                => "Xóa đơn hàng [{$orderCode}] trong tác vụ xóa hàng loạt.",
-                ]);
-            } catch (\Throwable $e) {}
-
-            try {
-                $order->items()->delete();
-                \App\Models\DeliveryDiscrepancy::where('order_id', $order->id)->delete();
-                \App\Models\VehicleOrderTransfer::where('order_id', $order->id)->delete();
-                \App\Models\DeliveryReturn::where('order_id', $order->id)->delete();
-            } catch (\Throwable $e) {}
-
-            $order->delete();
-
-            if ($dealerId) {
-                $dealer = Dealer::find($dealerId);
-                if ($dealer) $dealer->recalculateCurrentDebt();
+            if ($user && !$user->canViewAllOrders()) {
+                foreach ($orders as $ord) {
+                    $isOwn = ((int)$ord->creator_id === (int)$user->id) ||
+                             ((int)$ord->sales_rep_id === (int)$user->id) ||
+                             ($ord->order_creator && ($ord->order_creator === $user->name || $ord->order_creator === $user->code));
+                    if (!$isOwn) {
+                        DB::rollBack();
+                        return response()->json(['success' => false, 'message' => "Bạn chỉ được xóa đơn hàng do chính mình tạo hoặc phụ trách ({$ord->order_code})!"], 403);
+                    }
+                }
             }
 
-            $successCount++;
+            foreach ($orders as $ord) {
+                if (\App\Models\PeriodLock::isLockedDate($ord->created_at ?? now(), 'sales')) {
+                    DB::rollBack();
+                    return response()->json(['success' => false, 'message' => "Đơn hàng [{$ord->order_code}] thuộc kỳ kế toán đã khóa sổ, không thể xóa!"], 422);
+                }
+            }
+
+            $successCount = 0;
+            foreach ($orders as $order) {
+                if ($order->stock_deducted) {
+                    $this->restoreOrderStock($order);
+                }
+
+                $orderCode = $order->order_code;
+                $dealerId = $order->dealer_id;
+
+                try {
+                    \App\Models\AuditLog::create([
+                        'timestamp'            => now()->format('Y-m-d H:i:s'),
+                        'performer_name'       => $user?->name ?? 'Người dùng',
+                        'user_id'              => $user?->id,
+                        'action'               => 'Xóa Đơn Hàng Hàng Loạt',
+                        'module'               => 'Đơn Hàng & Bán Hàng',
+                        'target_document_code' => $orderCode,
+                        'field_name'           => 'Xóa chứng từ',
+                        'old_value'            => $order->status,
+                        'new_value'            => 'Đã xóa vĩnh viễn',
+                        'notes'                => "Xóa đơn hàng [{$orderCode}] trong tác vụ xóa hàng loạt.",
+                    ]);
+                } catch (\Throwable $e) {}
+
+                try {
+                    $order->items()->delete();
+                    \App\Models\DeliveryDiscrepancy::where('order_id', $order->id)->delete();
+                    \App\Models\VehicleOrderTransfer::where('order_id', $order->id)->delete();
+                    \App\Models\DeliveryReturn::where('order_id', $order->id)->delete();
+                } catch (\Throwable $e) {}
+
+                $order->delete();
+
+                if ($dealerId) {
+                    $dealer = Dealer::lockForUpdate()->find($dealerId);
+                    if ($dealer) $dealer->recalculateCurrentDebt();
+                }
+
+                $successCount++;
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Lỗi xóa hàng loạt đơn hàng: ' . $e->getMessage()], 500);
         }
 
         self::refreshAvailabilityCache();
@@ -2702,9 +2824,18 @@ class OrderController extends Controller
      */
     public function getOrderLogs($id)
     {
-        $order = Order::where('id', $id)->orWhere('order_code', $id)->first();
+        $user = auth()->user();
+        $orderQuery = Order::where(function ($q) use ($id) {
+            $q->where('id', $id)->orWhere('order_code', $id);
+        });
+        if ($user && !$user->canViewAllOrders() && !$user->hasAnyPermission('delivery_dispatch.view', 'inv_picking.view', 'inv_qc.view')) {
+            $orderQuery->where(function ($q) use ($user) {
+                $q->accessibleBy($user)->orWhere('assigned_driver_id', $user->id);
+            });
+        }
+        $order = $orderQuery->first();
         if (!$order) {
-            return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng!'], 404);
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng hoặc bạn không có quyền truy cập!'], 404);
         }
 
         // 1. Đọc nội dung file log riêng của đơn hàng (storage/logs/orders/{code}.log)

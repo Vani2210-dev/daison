@@ -379,7 +379,12 @@ class WebViewController extends Controller
             return app(\App\Http\Controllers\PromotionAdvanceController::class)->index($request);
         }
 
-        $query = Order::companyOrders()->accessibleBy()->with(['dealer', 'items', 'creator', 'assignedDriver']);
+        $orderType = $request->input('order_type');
+        $query = Order::query();
+        if (!in_array($orderType, ['consignment', 'holding_sale', 'all'], true)) {
+            $query->companyOrders();
+        }
+        $query->accessibleBy()->with(['dealer', 'items', 'creator', 'assignedDriver']);
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -796,7 +801,9 @@ class WebViewController extends Controller
     public function orderEdit($id)
     {
         $user = auth()->user();
-        $order = Order::with(['items.product', 'dealer.salesRep', 'salesRep', 'creator'])->findOrFail($id);
+        $order = Order::accessibleBy($user)
+            ->with(['items.product', 'dealer.salesRep', 'salesRep', 'creator'])
+            ->findOrFail($id);
         $dealers = Dealer::select('id', 'name', 'code', 'phone', 'address', 'tier', 'current_debt', 'credit_limit', 'tax_code')
             ->orderBy('name')
             ->get();
@@ -836,10 +843,17 @@ class WebViewController extends Controller
      */
     public function orderTracking($id)
     {
-        $order = Order::with(['items.product', 'dealer', 'creator', 'assignedDriver'])
-            ->where('id', $id)
-            ->orWhere('order_code', $id)
-            ->firstOrFail();
+        $user = auth()->user();
+        $orderQuery = Order::with(['items.product', 'dealer', 'creator', 'assignedDriver'])
+            ->where(function ($q) use ($id) {
+                $q->where('id', $id)->orWhere('order_code', $id);
+            });
+        if ($user && !$user->canViewAllOrders() && !$user->hasAnyPermission('delivery_dispatch.view', 'fleet.view', 'inv_picking.view', 'inv_qc.view')) {
+            $orderQuery->where(function ($q) use ($user) {
+                $q->accessibleBy($user)->orWhere('assigned_driver_id', $user->id);
+            });
+        }
+        $order = $orderQuery->firstOrFail();
 
         $fileLogs = $order->getOperationLogs();
         $rawFileLog = $order->getOperationLogsRaw();

@@ -559,35 +559,46 @@ class SupplierOrderController extends Controller
      */
     public function cancel(Request $request, $id)
     {
-        $order = SupplierOrder::with('supplier')->findOrFail($id);
-
-        if (in_array($order->status, ['Hoàn thành', 'Nhập một phần'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Không thể hủy đơn hàng đã nhập kho một phần hoặc hoàn thành.',
-            ], 422);
-        }
-
         DB::beginTransaction();
         try {
-            // Nếu đơn hàng có trừ nợ NCC, hoàn trả lại số tiền trừ nợ cho NCC
-            if ($order->debt_deducted_amount > 0 && $order->supplier) {
-                $supplier = $order->supplier;
-                $balanceBefore = $supplier->supplier_debt_to_company;
-                $supplier->supplier_debt_to_company += (float)$order->debt_deducted_amount;
-                $supplier->save();
+            $order = SupplierOrder::with('supplier')->lockForUpdate()->findOrFail($id);
 
-                SupplierDebtLog::create([
-                    'supplier_id'       => $supplier->id,
-                    'supplier_order_id' => $order->id,
-                    'type'              => 'refund',
-                    'amount'            => $order->debt_deducted_amount,
-                    'balance_before'    => $balanceBefore,
-                    'balance_after'     => $supplier->supplier_debt_to_company,
-                    'reason'            => "Hoàn trả nợ do hủy đơn đặt hàng {$order->code}",
-                    'created_by_id'     => Auth::id(),
-                    'created_by_name'   => Auth::user()?->name,
-                ]);
+            if (\App\Models\PeriodLock::isLockedDate($order->order_date ?? now(), 'inventory')) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kỳ kế toán đã bị khóa sổ, không thể hủy đơn đặt hàng NCC.',
+                ], 422);
+            }
+
+            if (in_array($order->status, ['Hoàn thành', 'Nhập một phần', 'Đã hủy'])) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể hủy đơn hàng đã nhập kho một phần, hoàn thành hoặc đã hủy trước đó.',
+                ], 422);
+            }
+
+            // Nếu đơn hàng có trừ nợ NCC, hoàn trả lại số tiền trừ nợ cho NCC
+            if ($order->debt_deducted_amount > 0 && $order->supplier_id) {
+                $supplier = Supplier::lockForUpdate()->find($order->supplier_id);
+                if ($supplier) {
+                    $balanceBefore = (float)$supplier->supplier_debt_to_company;
+                    $supplier->supplier_debt_to_company = $balanceBefore + (float)$order->debt_deducted_amount;
+                    $supplier->save();
+
+                    SupplierDebtLog::create([
+                        'supplier_id'       => $supplier->id,
+                        'supplier_order_id' => $order->id,
+                        'type'              => 'refund',
+                        'amount'            => $order->debt_deducted_amount,
+                        'balance_before'    => $balanceBefore,
+                        'balance_after'     => $supplier->supplier_debt_to_company,
+                        'reason'            => "Hoàn trả nợ do hủy đơn đặt hàng {$order->code}",
+                        'created_by_id'     => Auth::id(),
+                        'created_by_name'   => Auth::user()?->name,
+                    ]);
+                }
             }
 
             $order->status = 'Đã hủy';
@@ -619,15 +630,6 @@ class SupplierOrderController extends Controller
      */
     public function createReceipt(Request $request, $id)
     {
-        $order = SupplierOrder::with(['items.product', 'supplier'])->findOrFail($id);
-
-        if (in_array($order->status, ['Hoàn thành', 'Đã hủy'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Đơn hàng đã hoàn thành hoặc đã bị hủy, không thể tạo thêm phiếu nhập kho.',
-            ], 422);
-        }
-
         $request->validate([
             'warehouse_id'               => 'required|exists:warehouses,id',
             'received_items'             => 'required|array|min:1',
@@ -639,19 +641,61 @@ class SupplierOrderController extends Controller
             'received_items.required'    => 'Danh sách sản phẩm nhập kho không hợp lệ',
         ]);
 
+        if (\App\Models\PeriodLock::isLockedDate(now(), 'inventory')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kỳ kế toán kho hiện tại đang bị khóa sổ, không thể tạo phiếu nhập từ NCC.',
+            ], 422);
+        }
+
         DB::beginTransaction();
         try {
+            $order = SupplierOrder::with(['items.product', 'supplier'])->lockForUpdate()->findOrFail($id);
+
+            if (in_array($order->status, ['Chờ duyệt', 'Hoàn thành', 'Đã hủy'])) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => $order->status === 'Chờ duyệt'
+                        ? 'Đơn hàng NCC đang ở trạng thái Chờ duyệt, cần được duyệt trước khi nhập kho!'
+                        : 'Đơn hàng đã hoàn thành hoặc đã bị hủy, không thể tạo thêm phiếu nhập kho.',
+                ], 422);
+            }
+
             $warehouseId = $request->warehouse_id;
             $warehouse = Warehouse::findOrFail($warehouseId);
-            $supplier = $order->supplier;
+            $supplier = $order->supplier_id ? Supplier::lockForUpdate()->find($order->supplier_id) : null;
             $currentUser = Auth::user();
 
-            // 1. Kiểm tra tổng số lượng nhập đợt này > 0
+            // 1. Kiểm tra tổng số lượng nhập đợt này > 0 và không vượt quá số lượng còn lại (remaining_quantity)
+            $itemsMap = $order->items->keyBy('id');
             $totalReceivedThisBatch = 0;
             foreach ($request->received_items as $ri) {
-                $totalReceivedThisBatch += (float)($ri['quantity'] ?? 0);
+                $qty = (float)($ri['quantity'] ?? 0);
+                if ($qty <= 0) continue;
+
+                $orderItem = $itemsMap->get($ri['item_id'] ?? 0);
+                if (!$orderItem) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Phát hiện dòng sản phẩm không thuộc đơn đặt hàng NCC này.',
+                    ], 422);
+                }
+
+                $remaining = max(0, (float)$orderItem->remaining_quantity);
+                if ($qty > $remaining + 0.0001) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Số lượng nhập của [{$orderItem->product_name}] ({$qty}) vượt quá số lượng còn lại phải nhận ({$remaining}).",
+                    ], 422);
+                }
+
+                $totalReceivedThisBatch += $qty;
             }
             if ($totalReceivedThisBatch <= 0) {
+                DB::rollBack();
                 return response()->json([
                     'success' => false,
                     'message' => 'Vui lòng nhập số lượng nhận lớn hơn 0 cho ít nhất một sản phẩm.',
@@ -667,19 +711,18 @@ class SupplierOrderController extends Controller
                 $txCode = 'PNK-NCC-' . $today . '-' . str_pad($txCount, 4, '0', STR_PAD_LEFT);
             }
 
-            // 3. Tính toán giá trị hàng nhập kho đợt này
+            // 3. Tính toán giá trị thực nhận đợt này (theo net unit price đã trừ chiết khấu dòng hàng)
             $batchTotalAmount = 0;
-            $itemsMap = $order->items->keyBy('id');
-
             foreach ($request->received_items as $ri) {
-                $itemId = $ri['item_id'];
-                $item = $itemsMap->get($itemId);
+                $item = $itemsMap->get($ri['item_id']);
                 if (!$item) continue;
 
                 $qty = (float)($ri['quantity'] ?? 0);
                 if ($qty <= 0) continue;
 
-                $batchTotalAmount += ($qty * (float)$item->unit_price);
+                $ordQty = (float)$item->ordered_quantity;
+                $netUnitPrice = $ordQty > 0 ? ((float)$item->amount / $ordQty) : (float)$item->unit_price;
+                $batchTotalAmount += ($qty * $netUnitPrice);
             }
 
             // 4. Tạo InventoryTransaction
@@ -778,20 +821,32 @@ class SupplierOrderController extends Controller
             $order->refresh();
             $order->receipt_count = ($order->receipt_count ?? 0) + 1;
             
-            // Tổng giá trị hàng thực tế đã nhận qua các lần
-            $totalReceivedValue = 0;
+            // Tổng giá trị hàng thực tế đã nhận qua các lần (tính đúng chiết khấu từng dòng + phân bổ chiết khấu/phụ phí đơn)
+            $totalReceivedItemsNet = 0;
+            $totalOrderedItemsNet = 0;
             $totalRemainingQty = 0;
             $shortageAmount = 0;
 
             foreach ($order->items as $it) {
-                $totalReceivedValue += ((float)$it->received_quantity * (float)$it->unit_price);
-                $remaining = max(0, (float)$it->ordered_quantity - (float)$it->received_quantity);
+                $ordQty = (float)$it->ordered_quantity;
+                $recQty = (float)$it->received_quantity;
+                $netItemAmt = (float)$it->amount;
+                $netUnitPrice = $ordQty > 0 ? ($netItemAmt / $ordQty) : (float)$it->unit_price;
+
+                $totalOrderedItemsNet += $netItemAmt;
+                $totalReceivedItemsNet += ($recQty * $netUnitPrice);
+                $remaining = max(0, $ordQty - $recQty);
                 $totalRemainingQty += $remaining;
-                $shortageAmount += ($remaining * (float)$it->unit_price);
+                $shortageAmount += ($remaining * $netUnitPrice);
             }
 
+            $ratioReceived = $totalOrderedItemsNet > 0 ? min(1, $totalReceivedItemsNet / $totalOrderedItemsNet) : 0;
+            $allocatedOrderDiscount = (float)($order->discount_amount ?? 0) * $ratioReceived;
+            $otherFees = (float)($order->other_fees ?? 0);
+            $totalReceivedValue = max(0, round($totalReceivedItemsNet - $allocatedOrderDiscount + ($totalReceivedItemsNet > 0 ? $otherFees : 0), 2));
+
             $order->received_amount = $totalReceivedValue;
-            $order->shortage_amount = $shortageAmount;
+            $order->shortage_amount = max(0, round($shortageAmount, 2));
 
             $resolution = $request->input('shortage_resolution');
 

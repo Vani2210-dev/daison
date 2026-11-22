@@ -178,8 +178,16 @@ class Dealer extends Model
         $unpaidFromOrders = 0;
         foreach ($orders as $order) {
             $status = mb_strtolower(trim($order->status ?? ''));
-            // Đơn báo giá, hủy hoặc hoàn kho không tính vào công nợ
-            if (str_contains($status, 'báo giá') || str_contains($status, 'hủy') || str_contains($status, 'hoàn kho')) {
+            // Đơn báo giá, bản nháp, từ chối hạn mức, đã gộp đơn, hủy hoặc hoàn kho không tính vào công nợ
+            if (
+                str_contains($status, 'báo giá')
+                || str_contains($status, 'bản nháp')
+                || str_contains($status, 'từ chối hạn mức')
+                || str_contains($status, 'đã gộp đơn')
+                || str_contains($status, 'hủy')
+                || str_contains($status, 'huỷ')
+                || str_contains($status, 'hoàn kho')
+            ) {
                 continue;
             }
 
@@ -241,14 +249,6 @@ class Dealer extends Model
         $liveDebt = $this->getDebtExcludingOrder(null);
         $this->current_debt = $liveDebt;
         $this->save();
-
-        // Đồng bộ công nợ cho Nhân viên đại lý (gắn cho đại lý thì công nợ vào đại lý VÀ nhân viên đó luôn)
-        User::where('dealer_id', $this->id)
-            ->where(function($q) {
-                $q->whereIn('staff_type', ['brand', 'brand_staff', 'dealer_sales', 'hang'])
-                  ->orWhereNotNull('dealer_id');
-            })
-            ->update(['current_debt' => $liveDebt]);
 
         return $liveDebt;
     }
