@@ -1478,27 +1478,16 @@
                         </div>
                     </div>
 
-                    <!-- Nút Tự áp CTKM tối ưu & Bỏ chọn -->
-                    <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                    <!-- Nút Bỏ chọn -->
+                    <template x-if="getSelectedPolicies().length > 0">
                         <button type="button"
-                                x-show="!isReadonly && getSalesItemsWithProduct().length > 0"
-                                x-cloak
-                                @click="autoApplyBestPolicies()"
-                                class="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs sm:text-sm font-bold transition cursor-pointer shadow-xs active:scale-95"
-                                title="Tự động gợi ý & áp dụng gói chính sách lợi nhất không xung đột">
-                            <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
-                            <span>Tự áp CTKM tối ưu</span>
+                                @click="clearAllOrderPolicies()"
+                                class="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 hover:border-rose-300 text-xs sm:text-sm font-bold transition cursor-pointer shadow-xs shrink-0"
+                                title="Bỏ chọn tất cả chính sách">
+                            <i class="fa-solid fa-xmark text-sm"></i>
+                            <span>Bỏ chọn tất cả</span>
                         </button>
-                        <template x-if="getSelectedPolicies().length > 0">
-                            <button type="button"
-                                    @click="clearAllOrderPolicies()"
-                                    class="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 hover:border-rose-300 text-xs sm:text-sm font-bold transition cursor-pointer shadow-xs shrink-0"
-                                    title="Bỏ chọn tất cả chính sách">
-                                <i class="fa-solid fa-xmark text-sm"></i>
-                                <span>Bỏ chọn tất cả</span>
-                            </button>
-                        </template>
-                    </div>
+                    </template>
                 </div>
 
                 <!-- Danh sách các chính sách ĐANG ÁP DỤNG -->
@@ -3621,61 +3610,6 @@ function orderFormApp() {
                     return hints;
                 },
 
-                autoApplyBestPolicies() {
-                    const activeItems = (this.items || []).filter(it => !it.isPromotionalGift && it.checked !== false && it.product_id);
-                    if (activeItems.length === 0) return;
-
-                    const linePolicies = (this.salesPoliciesCatalog || []).filter(p => p.stacking_mode !== 'stackable_order');
-                    const stackPolicies = (this.salesPoliciesCatalog || []).filter(p => p.stacking_mode === 'stackable_order');
-
-                    const chosenIds = [];
-                    const usedConflicts = new Set();
-                    let remaining = [...activeItems];
-
-                    // Lặp chọn chính sáchExclusive mang lại giá trị lợi ích cao nhất (ưu tiên priority thấp hơn nếu bằng nhau)
-                    const maxIter = linePolicies.length;
-                    for (let step = 0; step < maxIter && remaining.length > 0; step++) {
-                        let best = null;
-                        for (const p of linePolicies) {
-                            if (chosenIds.includes(String(p.id))) continue;
-                            if (!this.isCustomerEligibleForPolicy(p)) continue;
-                            if (p.conflict_group && usedConflicts.has(String(p.conflict_group).trim())) continue;
-
-                            const ev = this.evaluatePolicyBenefitsOnItems(p, remaining);
-                            if (!ev.eligible || !ev.claimedItems || ev.claimedItems.length === 0) continue;
-
-                            const value = Number(ev.estimatedBenefitValue) || 0;
-                            const prio = Number(p.priority ?? 100);
-                            if (!best || value > best.value || (value === best.value && prio < best.prio)) {
-                                best = { p, ev, value, prio };
-                            }
-                        }
-                        if (!best) break;
-
-                        chosenIds.push(String(best.p.id));
-                        if (best.p.conflict_group) {
-                            usedConflicts.add(String(best.p.conflict_group).trim());
-                        }
-                        const claimedSet = new Set(best.ev.claimedItems);
-                        remaining = remaining.filter(it => !claimedSet.has(it));
-                    }
-
-                    // Áp thêm tối đa 1 chính sách cộng dồn mỗi conflict_group (nếu có)
-                    for (const sp of stackPolicies) {
-                        if (!this.isCustomerEligibleForPolicy(sp)) continue;
-                        if (sp.conflict_group && usedConflicts.has(String(sp.conflict_group).trim())) continue;
-                        const ev = this.evaluatePolicyBenefitsOnItems(sp, activeItems);
-                        if (ev.eligible) {
-                            chosenIds.push(String(sp.id));
-                            if (sp.conflict_group) usedConflicts.add(String(sp.conflict_group).trim());
-                        }
-                    }
-
-                    this.formData.sales_policy_ids = chosenIds;
-                    this.formData.sales_policy_id = chosenIds[0] || '';
-                    this.evaluateOrderPolicies();
-                },
-        
                 addPolicyById(policyId) {
                     if (!policyId) return;
                     const idStr = String(policyId);
