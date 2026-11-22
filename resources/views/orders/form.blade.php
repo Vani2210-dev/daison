@@ -811,48 +811,39 @@
     <div class="order-form-main-card bg-white p-3.5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4 sm:space-y-6">
 
         <!-- Title Block -->
-        <div class="order-form-title-bar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2 border-b border-slate-100">
-            <div>
-                <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
-                    <button type="button" @click="goBack()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition cursor-pointer shrink-0" :title="isFromPos() ? 'Quay lại Bán Hàng POS' : 'Quay lại danh sách'">
-                        <i class="fa-solid fa-arrow-left text-xs sm:text-sm"></i>
-                    </button>
-                    <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Đơn hàng</h1>
-                    <span class="hidden sm:inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200">ERP Form Standard</span>
-                    <span x-show="orderId" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300" x-text="formData.status"></span>
-                </div>
-                <p class="hidden sm:block text-xs text-slate-500 mt-1">
-                    Quản lý đơn hàng theo quy trình: Chốt đơn &bull; Soạn hàng &bull; Đang vận chuyển &bull; Đã giao &bull; Hủy
-                </p>
+        <div class="order-form-title-bar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-200">
+            <div class="flex items-center gap-3 flex-wrap">
+                <button type="button" @click="goBack()" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition cursor-pointer shrink-0 shadow-2xs" :title="isFromPos() ? 'Quay lại Bán Hàng POS' : 'Quay lại danh sách'">
+                    <i class="fa-solid fa-arrow-left text-sm"></i>
+                </button>
+                <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Đơn hàng</h1>
+                <span class="hidden sm:inline-flex px-3 py-1 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200">ERP Chuẩn</span>
+                <span x-show="orderId" class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300" x-text="formData.status"></span>
             </div>
-            <div class="shortcut-hint hidden md:flex text-xs text-slate-500 items-center gap-1.5 shrink-0">
-                <span>Phím tắt:</span>
-                <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">F9</kbd>
+            <div class="shortcut-hint hidden md:flex text-xs text-slate-500 font-semibold items-center gap-2 shrink-0">
+                <span class="text-slate-400">Phím tắt:</span>
+                <kbd class="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-xs">F9</kbd>
                 <span>Lưu đơn</span>
                 <span class="text-slate-300 mx-1">|</span>
-                <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-[10px]">F8</kbd>
+                <kbd class="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono font-bold text-slate-700 text-xs">F8</kbd>
                 <span>Thêm dòng</span>
             </div>
         </div>
 
         <!-- 3. Form Information: Row 1 & Row 2 -->
         <div class="space-y-4">
-            <!-- Thông tin chung đơn hàng: 1 hàng ngang tối ưu trên Desktop, giữ nguyên 100% Mobile -->
+            <!-- Thông tin chung đơn hàng -->
             <div class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 items-start">
-                <!-- Mã chứng từ (Ẩn trên mobile, hiện trên desktop) -->
+                <!-- Mã chứng từ -->
                 <div class="hidden md:block md:col-span-3 lg:col-span-2">
-                    <div class="h-5 flex items-center mb-1">
-                        <label class="text-[10px] sm:text-[11px] font-bold text-slate-500 tracking-wide uppercase truncate">MÃ CHỨNG TỪ</label>
-                    </div>
-                    <input type="text" readonly :value="formData.order_code || 'TỰ SINH KHI LƯU'" class="w-full px-2.5 py-1.5 sm:px-3 sm:py-2 bg-slate-100/80 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 cursor-not-allowed select-none truncate">
+                    <label class="block text-xs font-bold text-slate-600 tracking-wide uppercase mb-1.5">MÃ CHỨNG TỪ</label>
+                    <input type="text" readonly :value="formData.order_code || 'TỰ SINH KHI LƯU'" class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-xs sm:text-sm font-bold text-slate-500 cursor-not-allowed select-none truncate">
                 </div>
 
                 <!-- Loại đơn hàng -->
                 <div class="col-span-1 md:col-span-3 lg:col-span-2">
-                    <div class="h-5 flex items-center mb-1">
-                        <label class="text-xs sm:text-[11px] font-bold text-slate-500 tracking-wide uppercase truncate">LOẠI ĐƠN HÀNG</label>
-                    </div>
-                    <select x-model="formData.order_type" @change="handleOrderTypeChange()" class="w-full px-2.5 py-2 sm:px-3 sm:py-2 bg-white border border-slate-200 rounded-xl text-sm sm:text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer">
+                    <label class="block text-xs font-bold text-slate-600 tracking-wide uppercase mb-1.5">LOẠI ĐƠN HÀNG</label>
+                    <select x-model="formData.order_type" @change="handleOrderTypeChange()" class="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm font-bold text-slate-800 focus:border-sky-500 focus:outline-none cursor-pointer shadow-2xs">
                         <option value="normal">🛒 Đơn thường</option>
                         <option value="consignment">📦 Đơn gửi</option>
                         <template x-if="formData.order_type && !['normal', 'consignment'].includes(formData.order_type)">
@@ -861,7 +852,7 @@
                     </select>
                 </div>
 
-                <!-- Khách hàng (Chọn từ danh sách đại lý / khách hàng kèm phím mũi tên Lên/Xuống + Enter) -->
+                <!-- Khách hàng -->
                 <div class="col-span-1 md:col-span-6 lg:col-span-3" 
                      x-data="{ 
                          openDealerDropdown: false, 
@@ -875,9 +866,9 @@
                          }
                      }" 
                      @click.outside="openDealerDropdown = false">
-                    <div class="h-5 flex items-center justify-between mb-1 gap-1">
-                        <label class="text-xs sm:text-[11px] font-bold text-slate-500 tracking-wide uppercase truncate">KHÁCH HÀNG / ĐẠI LÝ</label>
-                        <span class="text-xs sm:text-[11px] font-medium truncate max-w-[140px]" :class="formData.customer_name ? 'text-sky-600 font-semibold' : 'text-slate-400'" x-text="formData.customer_name ? (formData.customer_code ? formData.customer_name + ' (' + formData.customer_code + ')' : (formData.customer_phone ? formData.customer_name + ' (' + formData.customer_phone + ')' : formData.customer_name)) : 'Chưa chọn khách hàng'"></span>
+                    <div class="flex items-center justify-between mb-1.5 gap-1">
+                        <label class="text-xs font-bold text-slate-600 tracking-wide uppercase truncate">KHÁCH HÀNG / ĐẠI LÝ</label>
+                        <span class="text-xs font-bold truncate max-w-[140px]" :class="formData.customer_name ? 'text-sky-600' : 'text-slate-400'" x-text="formData.customer_name ? formData.customer_name : 'Chưa chọn'"></span>
                     </div>
                     <div class="flex items-center gap-2">
                         <div class="relative flex-1 min-w-0">
@@ -913,21 +904,20 @@
                                        }
                                    "
                                    @keydown.escape.prevent="openDealerDropdown = false"
-                                   placeholder="Bấm chọn hoặc gõ tìm mã KH, tên đại lý, SĐT..." 
-                                   class="w-full pl-9 pr-8 py-2.5 sm:py-2 bg-white border border-slate-300 rounded-xl text-sm sm:text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer shadow-2xs hover:border-slate-400 transition-colors">
+                                   placeholder="Tìm tên, mã hoặc SĐT khách hàng..." 
+                                   class="w-full h-10 pl-9 pr-8 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold focus:border-sky-500 focus:outline-none cursor-pointer shadow-2xs hover:border-slate-400 transition-colors">
                             
-                            <!-- Mũi tên dropdown -->
                             <div class="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center">
                                 <button type="button" @click.stop="openDealerDropdown = !openDealerDropdown" class="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer">
-                                    <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200" :class="openDealerDropdown ? 'rotate-180 text-sky-600' : ''"></i>
+                                    <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200" :class="openDealerDropdown ? 'rotate-180 text-sky-600' : ''"></i>
                                 </button>
                             </div>
 
                             <!-- Menu Dropdown hiển thị danh sách khách hàng -->
                             <div x-show="openDealerDropdown" x-cloak class="order-customer-dropdown absolute left-0 top-full mt-1.5 z-50 bg-white rounded-xl shadow-2xl border border-slate-200 max-h-72 overflow-y-auto py-1 text-xs w-[440px] max-w-[92vw] min-w-full">
-                                <div class="px-3 py-1.5 bg-slate-50 border-b border-slate-100 text-xs sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                                    <span>Chọn khách hàng / đại lý có sẵn ({{ count($dealers) }})</span>
-                                    <span class="shortcut-hint text-sky-600 font-normal lowercase hidden md:inline">dùng phím &uarr; &darr; &bull; Enter chọn</span>
+                                <div class="px-3.5 py-2 bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                                    <span>Danh sách khách hàng ({{ count($dealers) }})</span>
+                                    <span class="text-sky-600 font-normal lowercase hidden md:inline">dùng phím &uarr; &darr; &bull; Enter</span>
                                 </div>
                                 <template x-if="openDealerDropdown">
                                     <div>
@@ -935,38 +925,34 @@
                                             <div :id="'dealer-opt-' + dIdx"
                                                  @click="selectDealer(d); openDealerDropdown = false; activeProdDropdownIndex = null; $nextTick(() => { if ($refs.customerSearchInput) $refs.customerSearchInput.blur(); })" 
                                                  @mouseenter="highlightedDealerIndex = dIdx"
-                                                 class="px-3 py-2 cursor-pointer transition-colors border-b border-slate-100 last:border-0"
+                                                 class="px-3.5 py-2.5 cursor-pointer transition-colors border-b border-slate-100 last:border-0"
                                                  :class="highlightedDealerIndex === dIdx ? 'bg-sky-50 text-sky-950 ring-1 ring-sky-300' : (formData.dealer_id == d.id ? 'bg-sky-50/80 font-bold text-sky-700' : 'hover:bg-slate-50')">
                                                 <!-- Dòng 1: Tên khách hàng & Cấp đại lý -->
                                                 <div class="flex items-center justify-between gap-2">
-                                                    <span class="font-bold text-slate-900 text-sm sm:text-xs truncate" x-text="d.name"></span>
-                                                    <span class="px-2 py-0.5 rounded-full text-xs sm:text-[10px] font-bold bg-sky-100 text-sky-800 shrink-0 whitespace-nowrap" x-text="d.tier || 'Cấp 1'"></span>
+                                                    <span class="font-bold text-slate-900 text-sm truncate" x-text="d.name"></span>
+                                                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-100 text-sky-800 shrink-0" x-text="d.tier || 'Cấp 1'"></span>
                                                 </div>
-                                                <!-- Dòng 2: MST badge, Số điện thoại (ngăn vỡ dòng), Địa chỉ -->
-                                                <div class="flex items-center gap-2 mt-1 text-xs sm:text-[11px] text-slate-500 flex-wrap">
+                                                <!-- Dòng 2: MST badge, Số điện thoại, Mã KH -->
+                                                <div class="flex items-center gap-2 mt-1 text-xs text-slate-500 flex-wrap">
                                                     <template x-if="d.tax_code && d.tax_code.trim()">
-                                                        <span class="px-1.5 py-0.5 rounded text-[11px] sm:text-[9.5px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 whitespace-nowrap" :title="'MST: ' + d.tax_code">
+                                                        <span class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0" :title="'MST: ' + d.tax_code">
                                                             ✓ MST: <span x-text="d.tax_code"></span>
                                                         </span>
                                                     </template>
                                                     <template x-if="!d.tax_code || !d.tax_code.trim()">
-                                                        <span class="px-1.5 py-0.5 rounded text-[11px] sm:text-[9.5px] font-bold shrink-0 whitespace-nowrap"
-                                                              :class="(d.orders_count || 0) >= 3 ? 'bg-rose-100 text-rose-700 border border-rose-300' : 'bg-amber-100 text-amber-800 border border-amber-300'"
-                                                              :title="(d.orders_count || 0) >= 3 ? 'Đã đạt giới hạn 3 đơn - Chặn lên đơn thứ 4 vì chưa có MST' : 'Chưa có MST (Đã lên ' + (d.orders_count || 0) + '/3 đơn)'">
+                                                        <span class="px-2 py-0.5 rounded text-xs font-bold shrink-0"
+                                                              :class="(d.orders_count || 0) >= 3 ? 'bg-rose-100 text-rose-700 border border-rose-300' : 'bg-amber-100 text-amber-800 border border-amber-300'">
                                                             Chưa MST (<span x-text="(d.orders_count || 0) + '/3'"></span>)
                                                         </span>
                                                     </template>
-                                                    <span x-show="d.code || d.phone" class="font-mono text-slate-700 font-semibold shrink-0 whitespace-nowrap flex items-center gap-1 text-xs sm:text-[11px]" :title="'Mã khách hàng: ' + (d.code || d.phone)">
-                                                        <i class="fa-solid fa-id-card text-[10px] text-slate-400"></i>
+                                                    <span x-show="d.code || d.phone" class="font-mono text-slate-700 font-semibold shrink-0 flex items-center gap-1 text-xs" :title="'Mã / SĐT: ' + (d.code || d.phone)">
+                                                        <i class="fa-solid fa-id-card text-xs text-slate-400"></i>
                                                         <span x-text="d.code || d.phone"></span>
                                                     </span>
                                                 </div>
                                             </div>
                                         </template>
-                                        <div x-show="filteredDealers(dealerSearch).length >= 60" class="px-3 py-1.5 bg-slate-50 text-[11px] text-slate-400 text-center border-t border-slate-100">
-                                            Hiển thị 60 kết quả đầu. Gõ tên, mã hoặc SĐT để tìm nhanh hơn.
-                                        </div>
-                                        <div x-show="filteredDealers(dealerSearch).length === 0" class="px-3 py-6 text-center text-slate-400 italic">
+                                        <div x-show="filteredDealers(dealerSearch).length === 0" class="px-3 py-6 text-center text-slate-400 italic text-sm">
                                             Không tìm thấy khách hàng. Bấm nút [+] để thêm mới.
                                         </div>
                                     </div>
@@ -974,25 +960,22 @@
                             </div>
                         </div>
 
-                        <!-- Nút Thêm mới khách hàng nhanh -->
-                        <button type="button" @click="showAddDealer = true" class="w-9 h-9 bg-sky-50 hover:bg-sky-100 text-sky-600 border border-sky-200 rounded-xl flex items-center justify-center font-bold text-base cursor-pointer shrink-0 transition-colors shadow-2xs" title="Thêm khách hàng / đại lý mới">
-                            <i class="fa-solid fa-plus text-xs"></i>
+                        <!-- Nút Thêm mới khách hàng -->
+                        <button type="button" @click="showAddDealer = true" class="w-10 h-10 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300 rounded-xl flex items-center justify-center font-bold text-sm cursor-pointer shrink-0 transition-colors shadow-2xs" title="Thêm khách hàng / đại lý mới">
+                            <i class="fa-solid fa-plus"></i>
                         </button>
                     </div>
                 </div>
 
                 <!-- Vị trí giao hàng -->
                 <div class="col-span-1 md:col-span-6 lg:col-span-3">
-                    <div class="h-5 flex items-center justify-between mb-1">
-                        <label class="text-[11px] font-bold text-slate-500 tracking-wide uppercase truncate">VỊ TRÍ GIAO HÀNG</label>
-                        <span class="text-[11px] text-slate-400 font-medium truncate hidden xl:inline" x-show="formData.customer_address" x-text="'Địa chỉ nhận hàng'"></span>
-                    </div>
+                    <label class="block text-xs font-bold text-slate-600 tracking-wide uppercase mb-1.5">VỊ TRÍ GIAO HÀNG</label>
                     <div class="relative">
                         <i class="fa-solid fa-location-dot absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
                         <input type="text" 
                                x-model="formData.customer_address" 
-                               placeholder="Địa chỉ giao hàng, vị trí công trình, số nhà, tuyến giao..." 
-                               class="w-full pl-9 pr-8 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors">
+                               placeholder="Số nhà, đường, công trình, vị trí nhận hàng..." 
+                               class="w-full h-10 pl-9 pr-8 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm font-medium focus:border-sky-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors">
                         <button type="button" 
                                 x-show="formData.customer_address" 
                                 @click="formData.customer_address = ''" 
@@ -1003,95 +986,85 @@
                     </div>
                 </div>
 
-                <!-- Kho dự kiến xuất (Ẩn trên mobile, hiện trên desktop) -->
+                <!-- Kho dự kiến xuất -->
                 <div class="hidden md:block md:col-span-6 lg:col-span-2">
-                    <div class="h-5 flex items-center justify-between mb-1 gap-1">
-                        <label class="text-[11px] font-bold text-slate-500 tracking-wide uppercase truncate">KHO DỰ KIẾN XUẤT</label>
-                        <span class="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 shrink-0" x-show="formData.order_type === 'consignment'" x-cloak>
-                            📦 Kho NV
-                        </span>
-                        <span class="text-[10px] font-semibold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200 shrink-0" x-show="formData.order_type === 'normal'" x-cloak>
-                            🏢 Kho cty
-                        </span>
-                    </div>
+                    <label class="block text-xs font-bold text-slate-600 tracking-wide uppercase mb-1.5">KHO XUẤT HÀNG</label>
                     <select x-model="formData.warehouse" 
                             @change="onWarehouseChange()" 
-                            class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer shadow-2xs hover:border-slate-400 transition-colors">
-                        <option value="">-- Chọn kho xuất hàng --</option>
+                            class="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold focus:border-sky-500 focus:outline-none cursor-pointer shadow-2xs hover:border-slate-400 transition-colors">
+                        <option value="">-- Chọn kho xuất --</option>
                         @foreach($warehouses as $wh)
                             <option value="{{ $wh->name }}">{{ $wh->name }}</option>
                         @endforeach
                     </select>
                 </div>
 
-                <!-- Hidden inputs để lưu trữ trạng thái và ngày mà không hiển thị ra ngoài -->
+                <!-- Hidden inputs -->
                 <input type="hidden" name="status" :value="formData.status">
                 <input type="hidden" name="order_date" :value="formData.order_date">
                 <input type="hidden" name="picking_date" :value="formData.picking_date">
                 <input type="hidden" name="delivery_date" :value="formData.delivery_date">
             </div>
 
-            <!-- Badge / Card hiển thị công nợ, hạn mức & Mã số thuế khách hàng -->
-            <div x-show="getSelectedDealer()" x-cloak class="p-2.5 rounded-xl border text-[11px] transition-all"
-                 :class="(isDebtOverLimit() || isNoTaxCodeLimitReached()) ? 'bg-rose-50 border-rose-300 text-rose-900 ring-1 ring-rose-200 shadow-xs' : (!hasTaxCode() ? 'bg-amber-50/80 border-amber-300 text-amber-900' : 'bg-slate-50 border-slate-200 text-slate-700')">
-                <div class="flex items-center justify-between gap-2 flex-wrap">
+            <!-- Card hiển thị công nợ, hạn mức & MST khách hàng -->
+            <div x-show="getSelectedDealer()" x-cloak class="p-3 sm:p-3.5 rounded-xl border text-xs sm:text-sm font-semibold transition-all shadow-2xs"
+                 :class="(isDebtOverLimit() || isNoTaxCodeLimitReached()) ? 'bg-rose-50 border-rose-300 text-rose-900 ring-1 ring-rose-200' : (!hasTaxCode() ? 'bg-amber-50/80 border-amber-300 text-amber-900' : 'bg-slate-50 border-slate-200 text-slate-700')">
+                <div class="flex items-center justify-between gap-3 flex-wrap">
                     <div class="flex items-center gap-3 flex-wrap">
-                        <span class="flex items-center gap-1.5 font-semibold">
+                        <span class="flex items-center gap-1.5 font-bold text-slate-900">
                             <i :class="(isDebtOverLimit() || isNoTaxCodeLimitReached()) ? 'fa-solid fa-triangle-exclamation text-rose-600' : 'fa-solid fa-user-check text-sky-600'"></i>
-                            <span>Khách: <b class="text-slate-900" x-text="getSelectedDealer()?.name"></b></span>
+                            <span>Khách: <span class="text-sky-900 font-extrabold" x-text="getSelectedDealer()?.name"></span></span>
                             <template x-if="getSelectedDealer()?.code">
-                                <span class="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-slate-200 text-slate-800" x-text="getSelectedDealer()?.code"></span>
+                                <span class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-slate-200 text-slate-800" x-text="getSelectedDealer()?.code"></span>
                             </template>
                         </span>
                         <span class="text-slate-300">|</span>
-                        <!-- Trạng thái Mã số thuế (MST) -->
-                        <span class="flex items-center gap-1 font-semibold">
+
+                        <!-- Trạng thái MST -->
+                        <span>
                             <template x-if="hasTaxCode()">
-                                <span class="text-emerald-700 font-mono text-[11px] flex items-center gap-1">
-                                    <i class="fa-solid fa-circle-check text-emerald-600 text-[10px]"></i>
+                                <span class="text-emerald-700 font-mono text-xs font-bold inline-flex items-center gap-1">
+                                    <i class="fa-solid fa-circle-check text-emerald-600"></i>
                                     <span>MST: <b x-text="getCustomerTaxCode()"></b></span>
                                 </span>
                             </template>
                             <template x-if="!hasTaxCode()">
-                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-bold"
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold"
                                       :class="isNoTaxCodeLimitReached() ? 'bg-rose-100 text-rose-700 border border-rose-300' : 'bg-amber-100 text-amber-800 border border-amber-300'">
                                     <i class="fa-solid" :class="isNoTaxCodeLimitReached() ? 'fa-triangle-exclamation text-rose-600' : 'fa-circle-exclamation text-amber-600'"></i>
-                                    <span x-text="isNoTaxCodeLimitReached() ? ('Chưa MST: Đã đạt 3 đơn (' + getCustomerOrdersCount() + '/3) - Chặn lên đơn!') : ('Chưa MST: Đơn thứ ' + (getCustomerOrdersCount() + 1) + '/3')"></span>
+                                    <span x-text="isNoTaxCodeLimitReached() ? ('Chặn lên đơn (Chưa MST: ' + getCustomerOrdersCount() + '/3 đơn)') : ('Chưa MST: Đơn thứ ' + (getCustomerOrdersCount() + 1) + '/3')"></span>
                                 </span>
                             </template>
                         </span>
                         <span class="text-slate-300">|</span>
-                        <span>Nợ hiện tại: <b class="font-mono text-xs font-bold text-slate-900" x-text="formatNumber(getSelectedDealer()?.current_debt || 0) + ' đ'"></b></span>
+
+                        <span>Nợ hiện tại: <b class="font-mono text-xs sm:text-sm font-bold text-slate-900" x-text="formatNumber(getSelectedDealer()?.current_debt || 0) + ' đ'"></b></span>
                         <span class="text-slate-300">|</span>
                         <span>Hạn mức: 
                             <b class="font-mono font-bold" :class="Number(getSelectedDealer()?.credit_limit) > 0 ? 'text-slate-800' : 'text-emerald-600'" x-text="Number(getSelectedDealer()?.credit_limit) > 0 ? (formatNumber(getSelectedDealer()?.credit_limit) + ' đ') : 'Không giới hạn'"></b>
                         </span>
                         <span class="text-slate-300">|</span>
-                        <span>Sau đơn này: 
+                        <span>Sau đơn: 
                             <b class="font-mono font-bold" :class="isDebtOverLimit() ? 'text-rose-700 font-black' : 'text-sky-700'" x-text="formatNumber(getProjectedDebt()) + ' đ'"></b>
                         </span>
                     </div>
+
+                    <!-- Right Alert Badge -->
                     <div class="text-right shrink-0 flex items-center gap-2">
                         <template x-if="isNoTaxCodeLimitReached()">
-                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-rose-600 text-white font-black text-[10px] tracking-wide animate-pulse shadow-xs">
+                            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-rose-600 text-white font-black text-xs tracking-wide shadow-xs animate-pulse">
                                 <i class="fa-solid fa-ban"></i>
                                 <span>CHẶN: CHƯA MST (3 ĐƠN)</span>
                             </span>
                         </template>
-                        <template x-if="isNoTaxCodeLimitReached()">
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1 animate-pulse">
-                        <i class="fa-solid fa-ban text-rose-600"></i>
-                        <span>Chưa MST (đã 3 đơn)</span>
-                    </span>
-                </template>
-                <template x-if="isDebtOverLimit()">
-                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-rose-600 text-white font-black text-[10px] tracking-wide animate-pulse">
+                        <template x-if="isDebtOverLimit()">
+                            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-rose-600 text-white font-black text-xs tracking-wide shadow-xs animate-pulse">
                                 <i class="fa-solid fa-triangle-exclamation"></i>
-                                <span>VƯỢT HẠN MỨC: +<span x-text="formatNumber(getDebtExcessAmount()) + ' đ'"></span></span>
+                                <span>VƯỢT HẠN MỨC (+<span x-text="formatNumber(getDebtExcessAmount()) + ' đ'"></span>)</span>
                             </span>
                         </template>
                         <template x-if="!isDebtOverLimit() && Number(getSelectedDealer()?.credit_limit) > 0">
-                            <span class="text-emerald-700 font-bold text-[10px] bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200">
+                            <span class="text-emerald-700 font-bold text-xs bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
                                 Còn được nợ: +<span class="font-mono" x-text="formatNumber(Math.max(0, Number(getSelectedDealer()?.credit_limit) - getProjectedDebt())) + ' đ'"></span>
                             </span>
                         </template>
@@ -1102,80 +1075,60 @@
 
         <!-- 4. Product Line Items Table (Chi Tiết Mặt Hàng) -->
         <div class="space-y-3">
-            <!-- Banners cảnh báo tổng thể (Chặn MST, Vượt hạn mức công nợ & Vượt tồn kho) -->
+            <!-- Banners cảnh báo tổng thể -->
             <div class="space-y-2" x-show="isDebtOverLimit() || getOverStockItems().length > 0 || isNoTaxCodeLimitReached() || (!hasTaxCode() && getSelectedDealer())" x-cloak>
                 <!-- 1. Chặn lên đơn khi khách chưa có MST và đã đạt giới hạn 3 đơn -->
-                <div x-show="isNoTaxCodeLimitReached()" class="p-3.5 bg-rose-50 border-2 border-rose-500 rounded-2xl flex items-start gap-3 shadow-xs">
-                    <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 font-bold">
-                        <i class="fa-solid fa-ban text-base"></i>
+                <div x-show="isNoTaxCodeLimitReached()" class="p-3.5 bg-rose-50 border-2 border-rose-500 rounded-2xl flex items-center gap-3 shadow-xs">
+                    <div class="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 font-bold text-base">
+                        <i class="fa-solid fa-ban"></i>
                     </div>
-                    <div class="text-xs leading-relaxed flex-1 text-rose-950">
-                        <div class="font-black uppercase tracking-wider text-[11px] mb-1 flex items-center gap-2 flex-wrap text-rose-800">
-                            <span>CHẶN LÊN ĐƠN: KHÁCH HÀNG CHƯA CÓ MÃ SỐ THUẾ (MST)</span>
-                            <span class="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black tracking-wide uppercase shadow-2xs">Giới hạn 3 đơn</span>
-                        </div>
-                        <p class="text-[11.5px] text-rose-900 font-bold mb-1">
-                            Khách hàng <span class="text-slate-900 underline font-black" x-text="formData.customer_name"></span> chưa có Mã số thuế (MST) và đã đạt <span class="font-black font-mono text-rose-700" x-text="getCustomerOrdersCount()"></span> đơn hàng.
-                        </p>
-                        <p class="text-[11px] text-rose-800 font-medium">
-                            ⚠️ <strong>Quy định hệ thống:</strong> Chỉ được lên tối đa <strong>3 đơn hàng</strong> đối với khách hàng chưa có MST. Đơn thứ 4 trở đi sẽ <strong>không được phép lên đơn</strong>. Vui lòng cập nhật MST cho khách hàng trước khi tiếp tục!
-                        </p>
+                    <div class="text-xs sm:text-sm flex-1 text-rose-950 font-semibold">
+                        <span class="font-black text-rose-700 uppercase mr-1">CHẶN LÊN ĐƠN:</span>
+                        Khách hàng <span class="underline font-black" x-text="formData.customer_name"></span> chưa có Mã số thuế (MST) và đã đạt tối đa 3 đơn hàng. Vui lòng cập nhật MST cho khách hàng trước khi tiếp tục.
                     </div>
                 </div>
 
                 <!-- 2. Cảnh báo khách chưa có MST (đang trong hạn mức 1-3 đơn) -->
-                <div x-show="!hasTaxCode() && getSelectedDealer() && !isNoTaxCodeLimitReached()" class="p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3 shadow-xs">
+                <div x-show="!hasTaxCode() && getSelectedDealer() && !isNoTaxCodeLimitReached()" class="p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center gap-3 shadow-xs">
                     <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 font-bold">
                         <i class="fa-solid fa-triangle-exclamation text-sm"></i>
                     </div>
-                    <div class="text-xs leading-relaxed flex-1 text-amber-950">
-                        <div class="font-black uppercase tracking-wider text-[11px] mb-0.5 flex items-center gap-2 text-amber-800">
-                            <span>CẢNH BÁO: KHÁCH HÀNG CHƯA CÓ MÃ SỐ THUẾ (MST)</span>
-                            <span class="px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px] font-bold" x-text="'Đơn thứ ' + (getCustomerOrdersCount() + 1) + '/3'"></span>
-                        </div>
-                        <span class="text-amber-900">
-                            Khách hàng <strong class="font-bold text-slate-900" x-text="formData.customer_name"></strong> chưa có MST. Hệ thống chỉ cho phép lên tối đa <strong>3 đơn hàng</strong> khi chưa có MST (đơn thứ 4 sẽ bị hệ thống chặn). Vui lòng sớm bổ sung MST cho khách hàng!
-                        </span>
-                    </div>
-                </div>
-                <!-- Cảnh báo công nợ -->
-                <div x-show="isDebtOverLimit()" class="p-3 bg-rose-50 border border-rose-300 rounded-xl flex items-start gap-3 shadow-xs">
-                    <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 font-bold">
-                        <i class="fa-solid fa-triangle-exclamation text-sm"></i>
-                    </div>
-                    <div class="text-xs text-rose-900 leading-relaxed flex-1">
-                        <div class="font-black uppercase tracking-wider text-rose-700 text-[11px] mb-0.5 flex items-center gap-1.5">
-                            <span>CẢNH BÁO VƯỢT QUÁ HẠN MỨC CÔNG NỢ</span>
-                            <span class="px-1.5 py-0.5 rounded bg-rose-200 text-rose-800 text-[10px] font-mono font-bold" x-text="'+' + formatNumber(getDebtExcessAmount()) + ' đ'"></span>
-                        </div>
-                        <span>Khách hàng <strong class="font-bold text-rose-950" x-text="formData.customer_name"></strong> có hạn mức công nợ là <b class="font-mono font-bold" x-text="formatNumber(getSelectedDealer()?.credit_limit || 0) + ' đ'"></b>. Nợ hiện tại: <b class="font-mono" x-text="formatNumber(getSelectedDealer()?.current_debt || 0) + ' đ'"></b>. Sau đơn này (giá trị <b class="font-mono" x-text="formatNumber(finalTotal) + ' đ'"></b>), tổng nợ dự kiến là <b class="font-mono font-black text-rose-700" x-text="formatNumber(getProjectedDebt()) + ' đ'"></b> (<span class="font-bold underline">vượt hạn mức +<span x-text="formatNumber(getDebtExcessAmount()) + ' đ'"></span></span>).</span>
+                    <div class="text-xs sm:text-sm text-amber-950 font-semibold flex-1">
+                        <span class="font-black text-amber-800 uppercase mr-1">CẢNH BÁO MST:</span>
+                        Khách hàng <strong class="font-bold text-slate-900" x-text="formData.customer_name"></strong> chưa có MST (<span class="font-bold" x-text="'Đơn thứ ' + (getCustomerOrdersCount() + 1) + '/3'"></span>). Hệ thống chỉ cho phép lên tối đa 3 đơn khi chưa có MST.
                     </div>
                 </div>
 
-                <!-- Cảnh báo tồn kho khả dụng & Chặn lên đơn khi hết hàng -->
-                <div x-show="getOverStockItems().length > 0" class="p-3.5 bg-rose-50 border-2 border-rose-400 rounded-2xl flex items-start gap-3 shadow-xs">
-                    <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 font-bold">
-                        <i class="fa-solid fa-ban text-base"></i>
+                <!-- Cảnh báo công nợ -->
+                <div x-show="isDebtOverLimit()" class="p-3 bg-rose-50 border border-rose-300 rounded-xl flex items-center gap-3 shadow-xs">
+                    <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 font-bold">
+                        <i class="fa-solid fa-triangle-exclamation text-sm"></i>
                     </div>
-                    <div class="text-xs leading-relaxed flex-1 text-rose-950">
-                        <div class="font-black uppercase tracking-wider text-[11px] mb-1 flex items-center gap-2 flex-wrap text-rose-800">
-                            <span>CHẶN LÊN ĐƠN: HẾT TỒN KHO KHẢ DỤNG TẠI [<span x-text="formData.warehouse || 'Kho xuất'"></span>]</span>
-                            <span class="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black tracking-wide uppercase shadow-2xs">Không được lên đơn</span>
+                    <div class="text-xs sm:text-sm text-rose-950 font-semibold flex-1">
+                        <span class="font-black text-rose-700 uppercase mr-1">VƯỢT HẠN MỨC CÔNG NỢ:</span>
+                        Nợ hiện tại: <b class="font-mono" x-text="formatNumber(getSelectedDealer()?.current_debt || 0) + ' đ'"></b>. Sau đơn này dự kiến: <b class="font-mono text-rose-700 font-black" x-text="formatNumber(getProjectedDebt()) + ' đ'"></b> (<span class="font-bold text-rose-700">vượt hạn mức +<span x-text="formatNumber(getDebtExcessAmount()) + ' đ'"></span></span>).
+                    </div>
+                </div>
+
+                <!-- Cảnh báo tồn kho khả dụng -->
+                <div x-show="getOverStockItems().length > 0" class="p-3.5 bg-rose-50 border-2 border-rose-400 rounded-2xl flex items-start gap-3 shadow-xs">
+                    <div class="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 font-bold text-base">
+                        <i class="fa-solid fa-ban"></i>
+                    </div>
+                    <div class="text-xs sm:text-sm leading-relaxed flex-1 text-rose-950">
+                        <div class="font-black uppercase tracking-wider text-xs mb-1 text-rose-800">
+                            CHẶN LÊN ĐƠN: HẾT TỒN KHO KHẢ DỤNG TẠI [<span x-text="formData.warehouse || 'Kho xuất'"></span>]
                         </div>
-                        <p class="text-[11px] text-rose-900 font-bold mb-1.5">
-                            Quy định hệ thống: <strong>Hết tồn khả dụng là không được lên đơn</strong>. Vui lòng giảm số lượng đặt về mức khả dụng hoặc chọn kho khác:
+                        <p class="text-xs text-rose-900 font-semibold mb-1.5">
+                            Vui lòng giảm số lượng đặt về mức khả dụng hoặc chọn kho khác:
                         </p>
                         <div class="space-y-1">
                             <template x-for="(it, idx) in getOverStockItems()" :key="idx">
-                                <div class="inline-block mr-2 my-0.5 px-2.5 py-1 rounded-lg border border-rose-300 bg-white font-medium text-[11px] shadow-2xs">
+                                <div class="inline-block mr-2 my-0.5 px-3 py-1 rounded-lg border border-rose-300 bg-white font-medium text-xs shadow-2xs">
                                     <span class="font-bold text-slate-900" x-text="it.name || it.sku"></span>: 
                                     đặt <span class="font-black text-rose-700" x-text="it.quantity + ' ' + (it.unit || '')"></span> 
-                                    (Khả dụng: <span class="font-bold font-mono text-emerald-800" x-text="formatNumber(getItemAvailableStockInUnit(it)) + ' ' + (it.unit || '')"></span> &bull; 
-                                    Kho thực tế: <span class="font-bold font-mono" x-text="formatNumber(getItemOnHandStockInUnit(it)) + ' ' + (it.unit || '')"></span>
-                                    <template x-if="getItemReservedStockInUnit(it) > 0">
-                                        <span> | Đang giữ: <b class="text-amber-800 font-mono" x-text="formatNumber(getItemReservedStockInUnit(it)) + ' ' + (it.unit || '')"></b></span>
-                                    </template>
-                                    &rarr; <b class="text-rose-700 underline font-black">thiếu <span x-text="formatNumber(getItemOverStockQty(it))"></span> <span x-text="it.unit || ''"></span></b>)
+                                    (Khả dụng: <span class="font-bold font-mono text-emerald-800" x-text="formatNumber(getItemAvailableStockInUnit(it)) + ' ' + (it.unit || '')"></span>)
+                                    &rarr; <b class="text-rose-700 underline font-black">thiếu <span x-text="formatNumber(getItemOverStockQty(it))"></span> <span x-text="it.unit || ''"></span></b>
                                 </div>
                             </template>
                         </div>
@@ -1235,7 +1188,7 @@
                                 :class="activeProdDropdownIndex === index ? 'relative z-30 ' : ''">
                                 <!-- STT + Checkbox -->
                                 <td class="col-stt py-2 px-3 text-center align-top">
-                                    <div class="h-8 flex items-center justify-center gap-1.5">
+                                    <div class="h-10 flex items-center justify-center gap-1.5">
                                         <input type="checkbox" x-model="item.checked" @change="evaluateOrderPolicies()" class="rounded text-sky-600 focus:ring-0 cursor-pointer">
                                         <span class="font-bold text-slate-700" x-text="index + 1"></span>
                                     </div>
@@ -1281,7 +1234,7 @@
                                                @keydown.escape.prevent="activeProdDropdownIndex = null"
                                                placeholder="Tìm mã hoặc tên sản phẩm..." 
                                                :placeholder="isMobileViewport ? 'Tìm mã hoặc tên sản phẩm...' : 'Tìm mã hoặc tên sản phẩm (phím ↑ ↓ Enter)...'" 
-                                               class="product-search-input w-full h-8 px-3 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:border-sky-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors">
+                                               class="product-search-input w-full h-10 px-3.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-800 focus:border-sky-500 focus:outline-none shadow-xs hover:border-slate-400 transition-colors">
 
                                         <!-- Menu Dropdown gợi ý sản phẩm -->
                                         <div x-show="activeProdDropdownIndex === index && getFilteredProducts(item.searchQuery, getItemIndex(item)).length > 0" 
@@ -1333,7 +1286,7 @@
                                 <td class="col-unit py-2 px-2 text-center align-top">
                                     <select x-model="item.unit" 
                                             @change="onItemUnitChange(getItemIndex(item))" 
-                                            class="w-full h-8 px-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-xs text-center font-bold text-slate-800 focus:outline-none cursor-pointer transition-colors shadow-2xs">
+                                            class="w-full h-10 px-2 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-xl text-xs sm:text-sm text-center font-bold text-slate-800 focus:outline-none cursor-pointer transition-colors shadow-xs">
                                         <template x-for="u in getItemUnits(item)" :key="u">
                                             <option :value="u" x-text="u" :selected="item.unit === u"></option>
                                         </template>
@@ -1352,7 +1305,7 @@
                                                @keydown.up.prevent="increasePrice(getItemIndex(item))"
                                                @keydown.down.prevent="decreasePrice(getItemIndex(item))"
                                                title="Phím ↑ tăng giá, phím ↓ giảm giá"
-                                               class="w-full h-8 px-2 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-right font-bold text-xs text-slate-900 focus:outline-none shadow-2xs transition-colors">
+                                               class="w-full h-10 px-2.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-xl text-right font-bold text-sm text-slate-900 focus:outline-none shadow-xs transition-colors">
                                     </div>
                                 </td>
 
@@ -1370,7 +1323,7 @@
                                                    @keydown.enter.prevent="addNewRow()"
                                                    title="Phím ↑ tăng SL, phím ↓ giảm SL"
                                                    :class="getItemStockStatus(item) === 'danger' ? 'bg-rose-50 border-2 border-rose-500 text-rose-800 ring-2 ring-rose-200 font-black' : (getItemStockStatus(item) === 'warning' ? 'bg-amber-50 border-2 border-amber-500 text-amber-900 ring-2 ring-amber-200 font-black' : 'bg-white border border-slate-300 text-slate-900 font-bold hover:border-slate-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-200')"
-                                                   class="w-full h-8 px-1 text-center text-xs shadow-2xs outline-none transition-all rounded-lg min-w-[32px]">
+                                                   class="w-full h-10 px-1 text-center text-sm sm:text-base font-black shadow-xs outline-none transition-all rounded-xl min-w-[36px]">
                                         </div>
                                         
                                         <!-- Cảnh báo thiếu tồn kho dưới ô số lượng -->
@@ -1394,7 +1347,7 @@
                                                        @input="onLineDiscountPercentChange(getItemIndex(item))" 
                                                        placeholder="%" 
                                                        title="Tỷ lệ chiết khấu (%)"
-                                                       class="w-16 h-8 px-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-center text-xs font-semibold focus:outline-none shadow-2xs transition-colors">
+                                                       class="w-16 h-10 px-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-xl text-center text-xs sm:text-sm font-bold text-slate-800 focus:outline-none shadow-xs transition-colors">
                                                 <span class="text-[10px] text-slate-400 font-bold">%</span>
                                             </div>
                                             <!-- Ô nhập Tiền Chiết Khấu (VNĐ) -->
@@ -1405,7 +1358,7 @@
                                                        @input="onLineDiscountAmountChange(getItemIndex(item))" 
                                                        placeholder="0" 
                                                        title="Số tiền chiết khấu (đ)"
-                                                       class="w-full h-8 px-1.5 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-lg text-right text-xs font-mono font-bold text-slate-800 focus:outline-none shadow-2xs transition-colors">
+                                                       class="w-full h-10 px-2 bg-white border border-slate-300 hover:border-slate-400 focus:border-sky-500 rounded-xl text-right text-xs sm:text-sm font-mono font-bold text-slate-900 focus:outline-none shadow-xs transition-colors">
                                                 <span class="text-[10px] text-slate-400 font-bold shrink-0">đ</span>
                                             </div>
                                         </div>
@@ -1440,12 +1393,12 @@
 
                                 <!-- Thành tiền -->
                                 <td class="col-amount py-2 px-3 text-right align-top">
-                                    <div class="h-8 flex items-center justify-end font-bold text-xs text-slate-900 whitespace-nowrap" x-text="formatNumber(item.amount) + ' đ'"></div>
+                                    <div class="h-10 flex items-center justify-end font-black text-sm sm:text-base text-slate-900 whitespace-nowrap" x-text="formatNumber(item.amount) + ' đ'"></div>
                                 </td>
 
                                 <!-- Nút Xóa -->
                                 <td class="col-actions py-2 px-2 text-center align-top">
-                                    <button type="button" @click="removeItem(item)" class="mx-auto w-8 h-8 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer" title="Xóa dòng">
+                                    <button type="button" @click="removeItem(item)" class="mx-auto w-9 h-9 rounded-xl text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-transparent hover:border-rose-200 flex items-center justify-center transition-colors cursor-pointer shadow-2xs" title="Xóa dòng">
                                         <i class="fa-solid fa-trash-can text-xs"></i>
                                     </button>
                                 </td>
@@ -1630,7 +1583,7 @@
                                        "
                                        @keydown.escape.prevent="activeGiftDropdownIndex = null"
                                        placeholder="Gõ mã hoặc tên SP khuyến mại..."
-                                       class="w-full h-9 px-3 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:border-emerald-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors">
+                                       class="w-full h-10 px-3.5 bg-white border border-slate-300 rounded-xl text-sm font-semibold focus:border-emerald-500 focus:outline-none shadow-xs hover:border-slate-400 transition-colors">
 
                                 <!-- Dropdown gợi ý sản phẩm trên mobile (phủ trọn chiều ngang) -->
                                 <div x-show="activeGiftDropdownIndex === gIdx && getFilteredPromoProducts(gItem.searchQuery).length > 0"
@@ -1704,7 +1657,7 @@
                 <!-- Danh sách sản phẩm khuyến mại: Desktop Table Layout -->
                 <div class="hidden md:block overflow-x-auto rounded-xl border border-emerald-200 bg-white">
                     <table class="w-full text-left border-collapse text-xs">
-                        <thead class="bg-emerald-100/70 text-emerald-950 font-bold uppercase text-[10px] tracking-wider">
+                        <thead class="bg-emerald-100/80 text-emerald-950 font-bold uppercase text-xs tracking-wider">
                             <tr>
                                 <th class="py-2.5 px-3 text-center w-12">STT</th>
                                 <th class="py-2.5 px-3">TÊN / MÃ SẢN PHẨM KHUYẾN MẠI</th>
@@ -1746,7 +1699,7 @@
                                                @keydown.escape.prevent="activeGiftDropdownIndex = null"
                                                placeholder="Tìm mã hoặc tên sản phẩm khuyến mại..."
                                                :placeholder="isMobileViewport ? 'Tìm mã hoặc tên sản phẩm khuyến mại...' : 'Tìm mã hoặc tên sản phẩm khuyến mại (phím ↑ ↓ Enter)...'"
-                                               class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:border-emerald-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors">
+                                               class="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl text-sm font-semibold focus:border-emerald-500 focus:outline-none shadow-xs hover:border-slate-400 transition-colors">
                                         
                                         <!-- Dropdown gợi ý trên desktop -->
                                         <div x-show="activeGiftDropdownIndex === gIdx && getFilteredPromoProducts(gItem.searchQuery).length > 0"
@@ -1779,7 +1732,7 @@
                                         </div>
                                     </td>
                                     <td class="py-2 px-2 text-center">
-                                        <select x-model="gItem.unit" class="w-full px-1.5 py-1 text-center font-bold text-slate-800 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none">
+                                        <select x-model="gItem.unit" class="w-full h-10 px-2 text-center font-bold text-slate-800 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm focus:outline-none">
                                             <template x-for="u in getItemUnits(gItem)" :key="u">
                                                 <option :value="u" x-text="u" :selected="gItem.unit === u"></option>
                                             </template>
@@ -1792,7 +1745,7 @@
                                                @input="gItem.gift_quantity = gItem.quantity; gItem._manualQty = true; calculateTotals()"
                                                @keydown.enter.prevent="addNewGiftRow()"
                                                min="1"
-                                               class="w-16 px-1.5 py-1 text-center font-black text-emerald-700 bg-emerald-50/60 border border-emerald-300 rounded-lg text-xs focus:bg-white focus:outline-none">
+                                               class="w-20 h-10 px-2 text-center font-black text-emerald-700 bg-emerald-50/60 border border-emerald-300 rounded-xl text-sm sm:text-base focus:bg-white focus:outline-none">
                                     </td>
                                     <td class="py-2 px-3 text-slate-600 text-[11px] font-semibold" x-text="gItem.appliedTierPolicy || gItem.price_type || 'Hàng khuyến mại'"></td>
                                     <td class="py-2 px-2 text-center">
@@ -1817,7 +1770,7 @@
                     <button type="button" 
                             @click="addNewGiftRow()" 
                             @mousedown.prevent
-                            class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer shadow-2xs active:scale-95 shrink-0">
+                            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition-colors cursor-pointer shadow-xs active:scale-95 shrink-0">
                         <i class="fa-solid fa-plus text-xs"></i>
                         <span>Hàng tặng</span>
                     </button>
@@ -1830,8 +1783,8 @@
             <!-- Left Column: Ghi chú & Alert Info -->
             <div class="lg:col-span-7 space-y-3">
                 <div>
-                    <label class="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1">GHI CHÚ</label>
-                    <textarea x-model="formData.notes" rows="3" placeholder="Nhập ghi chú đơn hàng, địa điểm giao hoặc điều khoản chiết khấu..." class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:border-sky-500 focus:outline-none"></textarea>
+                    <label class="block text-xs font-bold text-slate-600 tracking-wide uppercase mb-1.5">Ghi chú đơn hàng</label>
+                    <textarea x-model="formData.notes" rows="3" placeholder="Nhập ghi chú đơn hàng, địa điểm giao hoặc điều khoản chiết khấu..." class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-medium focus:border-sky-500 focus:outline-none shadow-xs"></textarea>
                 </div>
             </div>
 
@@ -1858,8 +1811,8 @@
                     </div>
 
                     <div class="pt-3 border-t border-slate-200 flex items-center justify-between text-sm font-black text-slate-900">
-                        <span class="text-base text-slate-900">Thành tiền</span>
-                        <span class="text-xl text-sky-600 font-black" x-text="formatNumber(finalTotal) + ' đ'"></span>
+                        <span class="text-base sm:text-lg font-black text-slate-900">Thành tiền</span>
+                        <span class="text-2xl sm:text-3xl text-sky-600 font-black" x-text="formatNumber(finalTotal) + ' đ'"></span>
                     </div>
 
                     <!-- Dòng công nợ dự kiến sau đơn -->
@@ -1886,13 +1839,13 @@
     </fieldset>
 
     <!-- 6. Floating / Sticky Action Bar (Bottom Bar: 0 MẶT HÀNG | Đóng Esc | Lưu & In Ctrl+F9 | Lưu F9) -->
-    <div class="order-form-bottom-bar fixed bottom-0 left-0 right-0 z-[9999] bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 sm:px-8 py-3 shadow-lg flex items-center justify-between gap-3">
+    <div class="order-form-bottom-bar fixed bottom-0 left-0 right-0 z-[9999] bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 sm:px-8 py-3.5 shadow-lg flex items-center justify-between gap-3">
         <!-- Left: Items count & Total -->
         <div class="flex items-center gap-3 text-sm sm:text-xs font-bold text-slate-600">
-            <span class="uppercase tracking-wider font-extrabold text-sm sm:text-xs" x-text="items.length + ' MẶT HÀNG'"></span>
+            <span class="uppercase tracking-wider font-black text-sm sm:text-base text-slate-800" x-text="items.length + ' mặt hàng'"></span>
             <span class="text-slate-300">|</span>
             <div class="flex items-center gap-3">
-                <span class="text-base sm:text-sm font-black text-sky-600" x-text="formatNumber(finalTotal) + ' đ'"></span>
+                <span class="text-lg sm:text-2xl font-black text-sky-600" x-text="formatNumber(finalTotal) + ' đ'"></span>
                 <!-- Badges cảnh báo nhanh ở thanh footer -->
                 <template x-if="isNoTaxCodeLimitReached()">
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1 animate-pulse">
@@ -1918,7 +1871,7 @@
 
         <!-- Right: Action Buttons -->
         <div class="flex items-center gap-2.5">
-            <button type="button" @click="confirmClose()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer">
+            <button type="button" @click="confirmClose()" class="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-colors flex items-center gap-2 cursor-pointer">
                 <i class="fa-solid fa-arrow-left text-xs"></i>
                 <span x-text="isFromPos() ? 'Quay lại POS' : 'Đóng'"></span>
                 <span class="shortcut-hint hidden md:inline"> (Esc)</span>
@@ -1945,7 +1898,7 @@
                 <div class="flex items-center gap-2.5">
                     <button type="button" @click="submitOrder(true)" 
                             :disabled="saving || isNoTaxCodeLimitReached() || getOverStockItems().length > 0" 
-                            class="btn-save-print hidden sm:inline-flex px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
+                            class="btn-save-print hidden sm:inline-flex h-10 px-5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl shadow-xs transition-all items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
                             :title="isNoTaxCodeLimitReached() ? 'Chặn lên đơn: Khách hàng chưa có MST và đã đạt 3 đơn' : (getOverStockItems().length > 0 ? 'Không thể lưu: Hết tồn kho khả dụng' : 'Lưu đơn và in chứng từ (Ctrl+F9)')">
                         <i class="fa-solid fa-print"></i>
                         <span>Lưu & In<span class="shortcut-hint hidden md:inline"> (Ctrl+F9)</span></span>
@@ -1953,7 +1906,7 @@
                     <button type="button" @click="submitOrder(false)" 
                             :disabled="saving || isNoTaxCodeLimitReached() || getOverStockItems().length > 0" 
                             :class="isNoTaxCodeLimitReached() || getOverStockItems().length > 0 ? 'bg-rose-600 hover:bg-rose-700' : 'bg-sky-600 hover:bg-sky-700'"
-                            class="px-6 py-2.5 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
+                            class="h-10 px-6 text-white font-black text-sm sm:text-base rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
                             :title="isNoTaxCodeLimitReached() ? 'Chặn lên đơn: Khách hàng chưa có MST và đã đạt 3 đơn' : (getOverStockItems().length > 0 ? 'Không thể lên đơn do hết tồn kho khả dụng' : 'Lưu đơn hàng (F9)')">
                         <i class="fa-solid fa-ban" x-show="!saving && (isNoTaxCodeLimitReached() || getOverStockItems().length > 0)"></i>
                         <i class="fa-solid fa-floppy-disk" x-show="!saving && !isNoTaxCodeLimitReached() && getOverStockItems().length === 0"></i>
@@ -2032,6 +1985,70 @@ for (let i = 0; i < _rawProductsCatalog.length; i++) {
 for (let i = 0; i < _rawDealersData.length; i++) {
     Object.freeze(_rawDealersData[i]);
 }
+
+
+// Global fallback helpers on window so template expressions never throw ReferenceError
+window.getSelectedPolicies = function() {
+    const el = document.querySelector('.order-form-app-wrapper');
+    if (el && window.Alpine && typeof window.Alpine.$data === 'function') {
+        const app = window.Alpine.$data(el);
+        if (app && typeof app.getSelectedPolicies === 'function') return app.getSelectedPolicies();
+    }
+    return [];
+};
+window.getAvailablePoliciesToAdd = function() {
+    const el = document.querySelector('.order-form-app-wrapper');
+    if (el && window.Alpine && typeof window.Alpine.$data === 'function') {
+        const app = window.Alpine.$data(el);
+        if (app && typeof app.getAvailablePoliciesToAdd === 'function') return app.getAvailablePoliciesToAdd();
+    }
+    return [];
+};
+window.getPolicyBenefitDescription = function(p) {
+    const el = document.querySelector('.order-form-app-wrapper');
+    if (el && window.Alpine && typeof window.Alpine.$data === 'function') {
+        const app = window.Alpine.$data(el);
+        if (app && typeof app.getPolicyBenefitDescription === 'function') return app.getPolicyBenefitDescription(p);
+    }
+    return '';
+};
+window.getPolicyAppliedProductsSummary = function(p) {
+    const el = document.querySelector('.order-form-app-wrapper');
+    if (el && window.Alpine && typeof window.Alpine.$data === 'function') {
+        const app = window.Alpine.$data(el);
+        if (app && typeof app.getPolicyAppliedProductsSummary === 'function') return app.getPolicyAppliedProductsSummary(p);
+    }
+    return '';
+};
+window.formatPolicyOptionLabel = function(p) {
+    const el = document.querySelector('.order-form-app-wrapper');
+    if (el && window.Alpine && typeof window.Alpine.$data === 'function') {
+        const app = window.Alpine.$data(el);
+        if (app && typeof app.formatPolicyOptionLabel === 'function') return app.formatPolicyOptionLabel(p);
+    }
+    return '';
+};
+window.clearAllOrderPolicies = function() {
+    const el = document.querySelector('.order-form-app-wrapper');
+    if (el && window.Alpine && typeof window.Alpine.$data === 'function') {
+        const app = window.Alpine.$data(el);
+        if (app && typeof app.clearAllOrderPolicies === 'function') app.clearAllOrderPolicies();
+    }
+};
+window.addPolicyById = function(id) {
+    const el = document.querySelector('.order-form-app-wrapper');
+    if (el && window.Alpine && typeof window.Alpine.$data === 'function') {
+        const app = window.Alpine.$data(el);
+        if (app && typeof app.addPolicyById === 'function') app.addPolicyById(id);
+    }
+};
+window.removeSelectedPolicy = function(id) {
+    const el = document.querySelector('.order-form-app-wrapper');
+    if (el && window.Alpine && typeof window.Alpine.$data === 'function') {
+        const app = window.Alpine.$data(el);
+        if (app && typeof app.removeSelectedPolicy === 'function') app.removeSelectedPolicy(id);
+    }
+};
 
 function orderFormApp() {
     return {
@@ -3065,171 +3082,59 @@ function orderFormApp() {
         },
 
         getSalesItemsWithProduct() {
-            return (this.items || []).filter(it => !it.isPromotionalGift && it.checked !== false && it.product_id);
+            return (this.items || []).filter(it => !it.isPromotionalGift && it.product_id);
         },
 
-        getSelectedPolicies() {
-            const ids = Array.isArray(this.formData.sales_policy_ids) ? this.formData.sales_policy_ids.filter(Boolean) : [];
-            return ids.map(id => this.getSalesPolicyById(id)).filter(Boolean);
-        },
-
-        getPolicyAppliedProductsSummary(policy) {
-            if (!policy) return '';
-            const claimed = (this.items || []).filter(it => it._claimedByPolicyId && String(it._claimedByPolicyId) === String(policy.id));
-            if (claimed.length > 0) {
-                const names = Array.from(new Set(claimed.map(it => it.name || it.sku || 'Sản phẩm')));
-                if (names.length <= 2) {
-                    return names.join(', ');
-                }
-                return names.slice(0, 2).join(', ') + ' và ' + (names.length - 2) + ' SP khác';
-            }
-            const pTargets = this.getNormalizedPolicyProductIds(policy);
-            if (pTargets.length > 0) {
-                const targetProds = pTargets.map(id => this.getProduct(id)?.name).filter(Boolean);
-                if (targetProds.length > 0) {
-                    return targetProds.length <= 2 ? targetProds.join(', ') : targetProds.slice(0, 2).join(', ') + '...';
-                }
-            }
-            return policy.apply_scope === 'order' ? 'Toàn đơn hàng' : 'Nhóm sản phẩm áp dụng';
-        },
-
-        getPolicyBenefitDescription(policy) {
-            if (!policy) return '';
-            if (policy.policy_type === 'quantity') {
-                const gifts = (this.items || []).filter(it => it.isPromotionalGift && String(it.promoPolicyId || '') === String(policy.id));
-                if (gifts.length > 0) {
-                    return gifts.map(g => 'Tặng +' + (g.quantity || 1) + ' ' + (g.unit || 'SP') + ' (' + (g.name || 'Quà') + ')').join('; ');
-                }
-                const ev = this.getPolicyEvaluation(policy);
-                return ev.benefitText ? `Tặng hàng (${ev.benefitText})` : 'Tặng hàng kèm';
-            }
-            if (policy.policy_type === 'percentage') {
-                const claimed = (this.items || []).filter(it => it._claimedByPolicyId && String(it._claimedByPolicyId) === String(policy.id));
-                const totalDisc = claimed.reduce((sum, it) => sum + (Number(it.discount_amount) || 0), 0);
-                const pct = Number(policy.discount_percent) || 0;
-                return totalDisc > 0
-                    ? `Chiết khấu ${pct}% (-${this.formatNumber(totalDisc)} đ)`
-                    : `Chiết khấu ${pct}%`;
-            }
-            if (policy.policy_type === 'amount') {
-                const claimed = (this.items || []).filter(it => it._claimedByPolicyId && String(it._claimedByPolicyId) === String(policy.id));
-                const totalDisc = claimed.reduce((sum, it) => sum + (Number(it.discount_amount) || 0), 0);
-                return totalDisc > 0
-                    ? `Giảm trực tiếp -${this.formatNumber(totalDisc)} đ`
-                    : `Giảm -${this.formatNumber(policy.discount_amount || 0)} đ`;
-            }
-            return 'Khuyến mại áp dụng';
-        },
-
-        getAvailablePoliciesToAdd() {
-            const selectedIds = new Set((this.formData.sales_policy_ids || []).map(id => String(id)));
-            if (this.formData.order_policy_id) selectedIds.add(String(this.formData.order_policy_id));
-
-            // Chỉ xét những sản phẩm chưa bị bất kỳ chính sách nào chiếm dụng
-            const unclaimedItems = (this.items || []).filter(it =>
-                !it.isPromotionalGift &&
-                it.checked !== false &&
-                it.product_id &&
-                !it._claimedByPolicyId
-            );
-
-            if (unclaimedItems.length === 0) return [];
-
-            const available = [];
+        getApplicableOrderPolicies() {
+            // Danh sách toàn bộ chính sách đang đủ điều kiện áp dụng cho ít nhất 1 sản phẩm hoặc toàn đơn
+            const eligibleIds = new Set();
+            const items = this.getSalesItemsWithProduct();
             (this.salesPoliciesCatalog || []).forEach(p => {
-                if (!p || selectedIds.has(String(p.id))) return;
-                if (!this.isCustomerEligibleForPolicy(p)) return;
-
-                const ev = this.evaluatePolicyBenefitsOnItems(p, unclaimedItems);
-                if (ev.eligible) {
-                    available.push(p);
+                if (p.apply_scope === 'order') {
+                    if (this.getPolicyEvaluation(p).eligible === true) eligibleIds.add(p.id);
+                } else {
+                    const anyEligible = items.some(it => this.getItemPolicyEvaluation(it, p).eligible === true);
+                    if (anyEligible) eligibleIds.add(p.id);
                 }
             });
-
-            return available;
+            return Array.from(eligibleIds).map(id => this.getSalesPolicyById(id)).filter(Boolean);
         },
 
-        addPolicyById(policyId) {
-            if (!policyId) return;
-            const idStr = String(policyId);
-            if (!Array.isArray(this.formData.sales_policy_ids)) {
-                this.formData.sales_policy_ids = [];
-            }
-            if (!this.formData.sales_policy_ids.map(String).includes(idStr)) {
-                this.formData.sales_policy_ids.push(idStr);
-            }
-            this.evaluateOrderPolicies();
-        },
-
-        removeSelectedPolicy(policyId) {
-            if (!policyId) return;
-            const idStr = String(policyId);
-            if (Array.isArray(this.formData.sales_policy_ids)) {
-                this.formData.sales_policy_ids = this.formData.sales_policy_ids.filter(id => String(id) !== idStr);
-            }
-            if (String(this.formData.order_policy_id || '') === idStr) {
-                this.formData.order_policy_id = '';
-            }
-            this.cleanupEffectsOfRemovedPolicy(idStr);
-            this.evaluateOrderPolicies();
-        },
-
-        clearAllOrderPolicies() {
-            const oldIds = Array.isArray(this.formData.sales_policy_ids) ? [...this.formData.sales_policy_ids] : [];
-            if (this.formData.order_policy_id) oldIds.push(this.formData.order_policy_id);
-
-            this.formData.order_policy_id = '';
-            this.formData.sales_policy_ids = [];
-            this.formData.sales_policy_id = '';
-
-            (this.items || []).forEach(it => {
-                if (!it.isPromotionalGift) {
-                    it._claimedByPolicyId = null;
-                    it.selected_policy_id = '';
-                    if (it._autoPromoDiscount && !it._manualDiscount) {
-                        it.discount_percent = 0;
-                        it.discount_amount = 0;
-                        it._autoPromoDiscount = false;
-                        it._appliedPromoPolicyId = null;
-                        it.amount = Math.max(0, Math.round((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0)));
-                    }
-                }
+        getOrderScopeApplicablePolicies() {
+            return (this.salesPoliciesCatalog || []).filter(p => {
+                if (p.apply_scope !== 'order') return false;
+                if (this.formData.order_policy_id && String(p.id) === String(this.formData.order_policy_id)) return true;
+                return this.getPolicyEvaluation(p).eligible === true;
             });
-
-            for (let i = this.items.length - 1; i >= 0; i--) {
-                const g = this.items[i];
-                if (g.isPromotionalGift && (g._giftKey || g.promoPolicyId)) {
-                    this.items.splice(i, 1);
-                }
-            }
-
-            if (this._autoOrderDiscount && !this._manualOrderDiscount) {
-                this.orderDiscountPercent = 0;
-                this.formData.discount_amount = 0;
-                this._autoOrderDiscount = false;
-            }
-
-            this.evaluateOrderPolicies();
         },
 
-        evaluatePolicyBenefitsOnItems(policy, availableItems) {
-            if (!policy || !this.isCustomerEligibleForPolicy(policy)) {
-                return { eligible: false, reason: 'Chỉ áp dụng đại lý chỉ định', benefitText: '', statusText: 'Không thuộc đối tượng đại lý', claimedItems: [], qualifyingGifts: [], totalFree: 0, freeProd: null, giftLabel: '', discountPct: 0, discountAmt: 0 };
+        getApplicablePoliciesForProduct(item) {
+            if (!item || !item.product_id) return [];
+            return (this.salesPoliciesCatalog || []).filter(p => {
+                // Chính sách chỉ áp dụng toàn đơn thì không đưa vào dropdown từng sản phẩm
+                if (p.apply_scope === 'order' && p.policy_type !== 'quantity') return false;
+                // Giữ lại chính sách đang được chọn trên sản phẩm này để dropdown hiển thị đúng
+                if (item.selected_policy_id && String(p.id) === String(item.selected_policy_id)) return true;
+                return this.getItemPolicyEvaluation(item, p).eligible === true;
+            });
+        },
+
+        getItemPolicyEvaluation(item, policy) {
+            if (!item || !policy) {
+                return { eligible: false, reason: 'Chưa xác định', benefitText: '', statusText: '', totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
+            }
+            if (!this.isCustomerEligibleForPolicy(policy)) {
+                return { eligible: false, reason: 'Chỉ áp dụng đại lý chỉ định', benefitText: '', statusText: 'Không thuộc đối tượng đại lý', totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
+            }
+            if (!this.isProductInPolicy(policy, item.product_id)) {
+                return { eligible: false, reason: 'SP không thuộc chính sách', benefitText: '', statusText: 'Sản phẩm không thuộc phạm vi áp dụng', totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
             }
 
-            const matchingItems = (availableItems || []).filter(it =>
-                !it.isPromotionalGift &&
-                it.checked !== false &&
-                it.product_id &&
-                this.isProductInPolicy(policy, it.product_id)
-            );
-
-            if (matchingItems.length === 0) {
-                return { eligible: false, reason: 'Chưa có SP phù hợp', benefitText: '', statusText: 'Chưa có sản phẩm phù hợp', claimedItems: [], qualifyingGifts: [], totalFree: 0, freeProd: null, giftLabel: '', discountPct: 0, discountAmt: 0 };
-            }
-
-            const pTargets = this.getNormalizedPolicyProductIds(policy);
-            const isGeneralScope = pTargets.length === 0;
+            const qty = Number(item.quantity) || 0;
+            const unitPrice = Number(item.unitPrice) || 0;
+            const lineBase = qty * unitPrice;
+            const manualDisc = (item._manualDiscount && !item._autoPromoDiscount) ? (Number(item.discount_amount) || 0) : 0;
+            const lineSubtotal = Math.max(0, lineBase - manualDisc);
 
             if (policy.policy_type === 'quantity') {
                 const buyQty = Number(policy.buy_qty) || 0;
@@ -3257,314 +3162,138 @@ function orderFormApp() {
                     }
                 }
 
-                if (isGeneralScope) {
-                    const productQtyMap = new Map();
-                    const productItemsMap = new Map();
-                    matchingItems.forEach(it => {
-                        const pid = String(it.product_id);
-                        const q = Number(it.quantity) || 0;
-                        productQtyMap.set(pid, (productQtyMap.get(pid) || 0) + q);
-                        if (!productItemsMap.has(pid)) productItemsMap.set(pid, []);
-                        productItemsMap.get(pid).push(it);
-                    });
-
-                    const qualifyingGifts = [];
-                    const claimedItems = [];
-                    let maxSingleQty = 0;
-
-                    productQtyMap.forEach((qty, pid) => {
-                        if (qty > maxSingleQty) maxSingleQty = qty;
-                        let itemFree = 0;
-                        let itemFreeProdId = freeProductId || pid;
-                        let itemGiftLabel = `[TẶNG KÈM] ${policy.name}`;
-
-                        if (sortedTiers.length > 0) {
-                            const matchedTier = sortedTiers.find(t => qty >= t.buy_qty);
-                            if (matchedTier) {
-                                const mult = Math.floor(qty / matchedTier.buy_qty);
-                                itemFree = mult * matchedTier.free_qty;
-                                if (matchedTier.free_product_id) {
-                                    itemFreeProdId = matchedTier.free_product_id;
-                                }
-                                itemGiftLabel = `[TẶNG KÈM MUA ${matchedTier.buy_qty} TẶNG ${matchedTier.free_qty}] ${policy.name}`;
-                            }
-                        } else if (buyQty > 0 && freeQty > 0 && qty >= buyQty) {
-                            const mult = Math.floor(qty / buyQty);
-                            itemFree = mult * freeQty;
-                        }
-
-                        if (itemFree > 0) {
-                            const pObj = this.getProduct(itemFreeProdId);
-                            qualifyingGifts.push({
-                                product_id: itemFreeProdId,
-                                qty: itemFree,
-                                prod: pObj,
-                                giftLabel: itemGiftLabel
-                            });
-                            const pItems = productItemsMap.get(pid) || [];
-                            pItems.forEach(it => claimedItems.push(it));
-                        }
-                    });
-
-                    const totalFree = qualifyingGifts.reduce((sum, g) => sum + g.qty, 0);
-
-                    if (totalFree <= 0 || qualifyingGifts.length === 0) {
-                        const needMore = Math.max(1, Math.ceil((minBuyRequired || 1) - maxSingleQty));
-                        return {
-                            eligible: false,
-                            reason: `Thiếu ${needMore} SP`,
-                            benefitText: '',
-                            statusText: `Chưa đạt (cần mua tối thiểu ${minBuyRequired} SP cho cùng 1 sản phẩm, hiện có tối đa ${maxSingleQty} SP)`,
-                            claimedItems: [],
-                            qualifyingGifts: [],
-                            totalFree: 0,
-                            freeProd: null,
-                            giftLabel: '',
-                            discountPct: 0,
-                            discountAmt: 0
-                        };
-                    }
-
-                    const firstGift = qualifyingGifts[0];
-                    const summaryGiftName = qualifyingGifts.length === 1 
-                        ? (firstGift.prod?.name || 'quà tặng') 
-                        : `${qualifyingGifts.length} loại quà tặng kèm`;
-
-                    return {
-                        eligible: true,
-                        reason: '',
-                        benefitText: `Tặng +${totalFree}`,
-                        statusText: `Đạt: Tặng +${totalFree} SP (${summaryGiftName})`,
-                        claimedItems,
-                        qualifyingGifts,
-                        totalFree,
-                        freeProd: firstGift.prod,
-                        giftLabel: firstGift.giftLabel,
-                        discountPct: 0,
-                        discountAmt: 0
-                    };
-                }
-
-                // Nhóm sản phẩm chỉ định cụ thể
-                const totalMatchedQty = matchingItems.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0);
                 let matchedTier = null;
                 if (sortedTiers.length > 0) {
-                    matchedTier = sortedTiers.find(t => totalMatchedQty >= t.buy_qty);
+                    matchedTier = sortedTiers.find(t => qty >= t.buy_qty);
                 }
 
                 let totalFree = 0;
                 let giftLabel = `[TẶNG KÈM] ${policy.name}`;
                 if (matchedTier) {
-                    const mult = Math.floor(totalMatchedQty / matchedTier.buy_qty);
+                    const mult = Math.floor(qty / matchedTier.buy_qty);
                     totalFree = mult * matchedTier.free_qty;
                     if (matchedTier.free_product_id) {
                         freeProductId = matchedTier.free_product_id;
                     }
                     giftLabel = `[TẶNG KÈM MUA ${matchedTier.buy_qty} TẶNG ${matchedTier.free_qty}] ${policy.name}`;
-                } else if (buyQty > 0 && freeQty > 0 && totalMatchedQty >= buyQty) {
-                    const mult = Math.floor(totalMatchedQty / buyQty);
+                } else if (buyQty > 0 && freeQty > 0 && qty >= buyQty) {
+                    const mult = Math.floor(qty / buyQty);
                     totalFree = mult * freeQty;
                 }
 
                 if (totalFree <= 0) {
-                    const needMore = Math.max(1, Math.ceil((minBuyRequired || 1) - totalMatchedQty));
+                    const needMore = Math.max(1, Math.ceil((minBuyRequired || 1) - qty));
                     return {
                         eligible: false,
                         reason: `Thiếu ${needMore} SP`,
                         benefitText: '',
-                        statusText: `Chưa đạt (cần thêm ${needMore} SP, hiện có ${this.formatNumber(totalMatchedQty)})`,
-                        claimedItems: [],
-                        qualifyingGifts: [],
+                        statusText: `Chưa đạt (cần mua tối thiểu ${minBuyRequired} SP, hiện có ${qty} SP)`,
                         totalFree: 0,
                         freeProd: null,
                         giftLabel: '',
-                        discountPct: 0,
-                        discountAmt: 0
+                        discountAmt: 0,
+                        discountPct: 0
                     };
                 }
 
                 let freeProd = null;
                 if (freeProductId) freeProd = this.getProduct(freeProductId);
                 if (!freeProd && policy.free_product) freeProd = policy.free_product;
-                if (!freeProd) {
-                    const bestItem = [...matchingItems].sort((a, b) => (Number(b.quantity) || 0) - (Number(a.quantity) || 0))[0];
-                    if (bestItem) freeProd = this.getProduct(bestItem.product_id);
-                }
+                if (!freeProd) freeProd = this.getProduct(item.product_id);
 
-                const freeName = freeProd?.name || 'quà tặng';
+                const freeName = freeProd?.name || item.name || 'quà tặng';
                 return {
                     eligible: true,
                     reason: '',
                     benefitText: `Tặng +${totalFree}`,
-                    statusText: `Đạt: Tặng +${totalFree} ${freeProd?.unit || 'SP'} (${freeName})`,
-                    claimedItems: matchingItems,
-                    qualifyingGifts: [{ product_id: freeProd?.id || matchingItems[0]?.product_id || '', qty: totalFree, prod: freeProd, giftLabel }],
+                    statusText: `Đạt: Tặng +${totalFree} ${freeProd?.unit || item.unit || 'SP'} (${freeName})`,
                     totalFree,
                     freeProd,
                     giftLabel,
-                    discountPct: 0,
-                    discountAmt: 0
+                    discountAmt: 0,
+                    discountPct: 0
                 };
             }
 
             const minVal = Number(policy.min_order_value) || 0;
             const buyQty = Number(policy.buy_qty) || 0;
 
-            let evalItems = matchingItems.filter(it => this.isItemOriginalPriceTier(it));
-            if (evalItems.length === 0) {
+            if (!this.isItemOriginalPriceTier(item)) {
                 return {
                     eligible: false,
                     reason: 'Cần SP Nguyên Giá',
                     benefitText: '',
                     statusText: 'Chỉ áp dụng cho dòng sản phẩm giá Nguyên Giá',
-                    claimedItems: [],
-                    qualifyingGifts: [],
                     totalFree: 0,
                     freeProd: null,
                     giftLabel: '',
-                    discountPct: 0,
-                    discountAmt: 0
+                    discountAmt: 0,
+                    discountPct: 0
                 };
             }
 
-            const evalQty = evalItems.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0);
-            const evalSubtotal = evalItems.reduce((sum, it) => {
-                const lineBase = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
-                const manualDisc = (it._manualDiscount && !it._autoPromoDiscount) ? (Number(it.discount_amount) || 0) : 0;
-                return sum + Math.max(0, lineBase - manualDisc);
-            }, 0);
-
-            if (buyQty > 0 && evalQty < buyQty) {
-                const needMore = Math.max(1, Math.ceil(buyQty - evalQty));
+            if (buyQty > 0 && qty < buyQty) {
+                const needMore = Math.max(1, Math.ceil(buyQty - qty));
                 return {
                     eligible: false,
                     reason: `Thiếu ${needMore} SP`,
                     benefitText: '',
-                    statusText: `Chưa đạt (cần thêm ${needMore} SP, tối thiểu ${buyQty} SP)`,
-                    claimedItems: [],
-                    qualifyingGifts: [],
+                    statusText: `Chưa đạt (cần mua tối thiểu ${buyQty} SP, hiện có ${qty} SP)`,
                     totalFree: 0,
                     freeProd: null,
                     giftLabel: '',
-                    discountPct: 0,
-                    discountAmt: 0
+                    discountAmt: 0,
+                    discountPct: 0
                 };
             }
 
-            if (minVal > 0 && evalSubtotal < minVal) {
-                const needAmt = Math.max(0, minVal - evalSubtotal);
+            if (minVal > 0 && lineSubtotal < minVal) {
+                const needAmt = Math.max(0, minVal - lineSubtotal);
                 return {
                     eligible: false,
                     reason: `Thiếu ${this.formatNumber(needAmt)}đ`,
                     benefitText: '',
-                    statusText: `Chưa đạt (cần mua thêm ${this.formatNumber(needAmt)} đ nhóm SP này)`,
-                    claimedItems: [],
-                    qualifyingGifts: [],
+                    statusText: `Chưa đạt (cần thành tiền tối thiểu ${this.formatNumber(minVal)} đ, hiện có ${this.formatNumber(lineSubtotal)} đ)`,
                     totalFree: 0,
                     freeProd: null,
                     giftLabel: '',
-                    discountPct: 0,
-                    discountAmt: 0
+                    discountAmt: 0,
+                    discountPct: 0
                 };
             }
 
             if (policy.policy_type === 'percentage') {
                 const discPct = Number(policy.discount_percent) || 0;
-                const estAmt = Math.round((evalSubtotal * discPct) / 100);
+                const estAmt = Math.round((lineSubtotal * discPct) / 100);
                 return {
-                    eligible: discPct > 0 && evalSubtotal > 0,
+                    eligible: discPct > 0 && lineSubtotal > 0,
                     reason: '',
                     benefitText: `CK -${discPct}%`,
                     statusText: `Đạt: Chiết khấu ${discPct}% (-${this.formatNumber(estAmt)} đ)`,
-                    claimedItems: evalItems,
-                    qualifyingGifts: [],
                     totalFree: 0,
                     freeProd: null,
                     giftLabel: '',
-                    discountPct: discPct,
-                    discountAmt: estAmt
+                    discountAmt: estAmt,
+                    discountPct: discPct
                 };
             }
 
             if (policy.policy_type === 'amount') {
-                const discAmt = Math.min(evalSubtotal, Number(policy.discount_amount) || 0);
+                const discAmt = Math.min(lineSubtotal, Number(policy.discount_amount) || 0);
                 return {
-                    eligible: discAmt > 0 && evalSubtotal > 0,
+                    eligible: discAmt > 0 && lineSubtotal > 0,
                     reason: '',
                     benefitText: `-${this.formatNumber(discAmt)}đ`,
                     statusText: `Đạt: Giảm trực tiếp ${this.formatNumber(discAmt)} đ`,
-                    claimedItems: evalItems,
-                    qualifyingGifts: [],
                     totalFree: 0,
                     freeProd: null,
                     giftLabel: '',
-                    discountPct: 0,
-                    discountAmt: discAmt
+                    discountAmt: discAmt,
+                    discountPct: 0
                 };
             }
 
-            return { eligible: false, reason: 'Chưa hỗ trợ', benefitText: '', statusText: 'Không hợp lệ', claimedItems: [], qualifyingGifts: [], totalFree: 0, freeProd: null, giftLabel: '', discountPct: 0, discountAmt: 0 };
-        },
-
-        formatPolicyOptionLabel(policy) {
-            if (!policy) return '';
-            const unclaimedItems = (this.items || []).filter(it =>
-                !it.isPromotionalGift &&
-                it.checked !== false &&
-                it.product_id &&
-                !it._claimedByPolicyId
-            );
-            const ev = this.evaluatePolicyBenefitsOnItems(policy, unclaimedItems);
-            const prefix = ev.eligible ? `[Đạt${ev.benefitText ? ': ' + ev.benefitText : ''}]` : `[${ev.reason}]`;
-            return `${prefix} ${policy.name}`;
-        },
-
-        getPolicyEvaluation(policy) {
-            if (!policy) {
-                return { eligible: false, reason: 'Chưa xác định', benefitText: '', statusText: '', totalMatchedQty: 0, matchedSubtotal: 0, matchingItems: [], totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
-            }
-            const activeItems = (this.items || []).filter(it => !it.isPromotionalGift && it.checked !== false && it.product_id);
-            const ev = this.evaluatePolicyBenefitsOnItems(policy, activeItems);
-            return {
-                ...ev,
-                totalMatchedQty: (ev.claimedItems || []).reduce((s, it) => s + (Number(it.quantity) || 0), 0),
-                matchingItems: ev.claimedItems || []
-            };
-        },
-
-        getItemPolicyEvaluation(item, policy) {
-            if (!item || !policy) {
-                return { eligible: false, reason: 'Chưa xác định', benefitText: '', statusText: '', totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
-            }
-            const ev = this.evaluatePolicyBenefitsOnItems(policy, [item]);
-            return {
-                ...ev,
-                totalMatchedQty: (Number(item.quantity) || 0),
-                matchingItems: [item]
-            };
-        },
-
-        getApplicableOrderPolicies() {
-            const unclaimedItems = (this.items || []).filter(it => !it.isPromotionalGift && it.checked !== false && it.product_id && !it._claimedByPolicyId);
-            return (this.salesPoliciesCatalog || []).filter(p => {
-                if (!this.isCustomerEligibleForPolicy(p)) return false;
-                return this.evaluatePolicyBenefitsOnItems(p, unclaimedItems).eligible === true;
-            });
-        },
-
-        getOrderScopeApplicablePolicies() {
-            return (this.salesPoliciesCatalog || []).filter(p => {
-                if (p.apply_scope !== 'order') return false;
-                if (this.formData.order_policy_id && String(p.id) === String(this.formData.order_policy_id)) return true;
-                return this.getPolicyEvaluation(p).eligible === true;
-            });
-        },
-
-        getApplicablePoliciesForProduct(item) {
-            if (!item || !item.product_id) return [];
-            return (this.salesPoliciesCatalog || []).filter(p => {
-                return this.getItemPolicyEvaluation(item, p).eligible === true;
-            });
+            return { eligible: false, reason: 'Chưa hỗ trợ', benefitText: '', statusText: 'Không hợp lệ', totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
         },
 
         formatItemPolicyOptionLabel(policy, item) {
@@ -3574,279 +3303,785 @@ function orderFormApp() {
             return `${prefix} ${policy.name}`;
         },
 
-        getApplicableOrderPoliciesForSlot(slotIndex) {
-            return this.getAvailablePoliciesToAdd();
-        },
-
-        getRemainingAddablePolicies() {
-            return this.getAvailablePoliciesToAdd();
-        },
-
-        getSelectedPoliciesSummary() {
-            const ids = (this.formData.sales_policy_ids || []).filter(Boolean);
-            return ids.map(id => {
-                const p = this.getSalesPolicyById(id);
-                if (!p) return null;
-                const ev = this.getPolicyEvaluation(p);
-                return {
-                    id: p.id,
-                    name: p.name,
-                    eligible: ev.eligible,
-                    statusText: ev.statusText,
-                };
-            }).filter(Boolean);
-        },
-
-        sanitizeSelectedPoliciesForCustomer() {
-            if (!Array.isArray(this.formData.sales_policy_ids)) {
-                this.formData.sales_policy_ids = [];
-            }
-            const oldIds = [...this.formData.sales_policy_ids];
-            const filtered = oldIds.filter(id => {
-                if (!id) return false;
-                const p = this.getSalesPolicyById(id);
-                return p && this.isCustomerEligibleForPolicy(p);
-            });
-            oldIds.forEach(oldId => {
-                if (oldId && !filtered.includes(oldId)) {
-                    this.cleanupEffectsOfRemovedPolicy(oldId);
-                }
-            });
-            this.formData.sales_policy_ids = filtered;
-            this.formData.sales_policy_id = filtered[0] || '';
-            this.evaluateOrderPolicies();
-        },
-
-        rebindSavedOrderPolicies() {
-            if (!this.orderId) return;
-            const ids = (this.formData.sales_policy_ids || []).filter(Boolean);
-            if (ids.length === 0) return;
-            this.evaluateOrderPolicies();
-        },
-
-        onItemPolicyChange(item, policyId) {
-            if (!item) return;
-            if (policyId) {
-                this.addPolicyById(policyId);
-            } else if (item.selected_policy_id) {
-                this.removeSelectedPolicy(item.selected_policy_id);
-            }
-        },
-
-        onOrderPolicyChange(policyId) {
-            if (policyId) {
-                this.addPolicyById(policyId);
-            } else if (this.formData.order_policy_id) {
-                this.removeSelectedPolicy(this.formData.order_policy_id);
-            }
-        },
-
-        onPrimaryOrderPolicyChange(newId) {
-            if (newId) this.addPolicyById(newId);
-        },
-
-        onExtraOrderPolicyChange(slotIndex, newId) {
-            if (newId) this.addPolicyById(newId);
-        },
-
-        addAnotherPolicySlot() {
-            // No-op kept for backwards compatibility
-        },
-
-        removePolicySlot(slotIndex) {
-            // No-op kept for backwards compatibility
-        },
-
-        cleanupEffectsOfRemovedItemPolicy(item, policyId) {
-            if (!policyId) return;
-            this.cleanupEffectsOfRemovedPolicy(policyId);
-        },
-
-        cleanupEffectsOfRemovedPolicy(policyId) {
-            if (!policyId) return;
-            const pidStr = String(policyId);
-            const p = this.getSalesPolicyById(policyId);
-
-            for (let i = this.items.length - 1; i >= 0; i--) {
-                const g = this.items[i];
-                if (g.isPromotionalGift && (String(g.promoPolicyId || '') === pidStr || (g._giftKey && g._giftKey.startsWith(`order_policy_${pidStr}`)) || (p && (g.appliedTierPolicy || '').includes(p.name)))) {
-                    this.items.splice(i, 1);
-                }
-            }
-            (this.items || []).forEach(it => {
-                if (!it.isPromotionalGift && String(it._appliedPromoPolicyId || '') === pidStr) {
-                    it.discount_percent = 0;
-                    it.discount_amount = 0;
-                    it._autoPromoDiscount = false;
-                    it._manualDiscount = false;
-                    it._appliedPromoPolicyId = null;
-                    it.amount = Math.max(0, Math.round((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0)));
-                }
-                if (String(it._claimedByPolicyId || '') === pidStr) {
-                    it._claimedByPolicyId = null;
-                }
-            });
-            if (p && p.apply_scope === 'order' && (p.policy_type === 'percentage' || p.policy_type === 'amount') && this._autoOrderDiscount) {
-                this.orderDiscountPercent = 0;
-                this.formData.discount_amount = 0;
-                this._autoOrderDiscount = false;
-            }
-        },
-
-        evaluateOrderPolicies() {
-            if (this._isApplyingOrderPolicies) return;
-            this._isApplyingOrderPolicies = true;
-
-            try {
-                const activeGiftKeys = [];
-                const salesItems = this.getSalesItemsWithProduct();
-
-                // 1. Reset trạng thái chiếm dụng và chiết khấu tự động trên các dòng hàng
-                salesItems.forEach(it => {
-                    it._claimedByPolicyId = null;
-                    if (it._autoPromoDiscount && !it._manualDiscount) {
-                        it.discount_percent = 0;
-                        it.discount_amount = 0;
-                        it._autoPromoDiscount = false;
-                        it._appliedPromoPolicyId = null;
-                        it.amount = Math.max(0, Math.round((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0)));
+        getSelectedPolicies() {
+                    const ids = Array.isArray(this.formData.sales_policy_ids) ? this.formData.sales_policy_ids.filter(Boolean) : [];
+                    return ids.map(id => this.getSalesPolicyById(id)).filter(Boolean);
+                },
+        
+                getPolicyAppliedProductsSummary(policy) {
+                    if (!policy) return '';
+                    const claimed = (this.items || []).filter(it => it._claimedByPolicyId && String(it._claimedByPolicyId) === String(policy.id));
+                    if (claimed.length > 0) {
+                        const names = Array.from(new Set(claimed.map(it => it.name || it.sku || 'Sản phẩm')));
+                        if (names.length <= 2) {
+                            return names.join(', ');
+                        }
+                        return names.slice(0, 2).join(', ') + ' và ' + (names.length - 2) + ' SP khác';
                     }
-                });
-
-                if (this._autoOrderDiscount && !this._manualOrderDiscount) {
-                    this.orderDiscountPercent = 0;
-                    this.formData.discount_amount = 0;
-                    this._autoOrderDiscount = false;
-                }
-
-                // 2. Duyệt tuần tự các chính sách được chọn để chiếm dụng sản phẩm độc quyền
-                let remainingItems = [...salesItems];
-                const validSelectedPolicyIds = [];
-                const selectedIds = Array.isArray(this.formData.sales_policy_ids) ? [...this.formData.sales_policy_ids] : [];
-
-                for (const pid of selectedIds) {
-                    const policy = this.getSalesPolicyById(pid);
-                    if (!policy) continue;
-
-                    const ev = this.evaluatePolicyBenefitsOnItems(policy, remainingItems);
-                    if (ev.eligible && ev.claimedItems && ev.claimedItems.length > 0) {
-                        validSelectedPolicyIds.push(String(policy.id));
-                        const claimedSet = new Set(ev.claimedItems);
-                        ev.claimedItems.forEach(it => {
-                            it._claimedByPolicyId = policy.id;
-                            it.selected_policy_id = policy.id;
-                        });
-                        remainingItems = remainingItems.filter(it => !claimedSet.has(it));
-
-                        if (policy.policy_type === 'quantity') {
-                            (ev.qualifyingGifts || []).forEach(gInfo => {
-                                const freeProd = gInfo.prod || this.getProduct(gInfo.product_id);
-                                const freeSku = freeProd?.sku || 'KM-SP';
-                                const freeName = freeProd?.name || 'Hàng tặng khuyến mại';
-                                const freeUnit = freeProd?.unit || 'cái';
-                                const giftKey = `order_policy_${policy.id}_${gInfo.product_id}`;
-                                activeGiftKeys.push(giftKey);
-
-                                const existing = this.items.find(g => g.isPromotionalGift && (g._giftKey === giftKey || (String(g.promoPolicyId || '') === String(policy.id) && String(g.product_id || '') === String(freeProd?.id || gInfo.product_id))));
-                                if (existing) {
-                                    existing._giftKey = giftKey;
-                                    existing.promoPolicyId = policy.id;
-                                    if (!existing._manualQty) {
-                                        existing.quantity = gInfo.qty;
-                                    }
-                                    existing.sku = freeSku;
-                                    existing.name = freeName;
-                                    existing.searchQuery = freeName;
-                                    existing.unit = freeUnit;
-                                    existing.appliedTierPolicy = gInfo.giftLabel;
-                                } else {
-                                    this.items.push({
-                                        _rowKey: 'gift-' + Date.now() + '-' + Math.random(),
-                                        id: '',
-                                        itemId: freeProd?.id ? String(freeProd.id) : String(gInfo.product_id || ''),
-                                        product_id: freeProd?.id || gInfo.product_id || '',
-                                        sku: freeSku,
-                                        name: freeName,
-                                        searchQuery: freeName,
-                                        unit: freeUnit,
-                                        quantity: gInfo.qty,
-                                        gift_quantity: 0,
-                                        unitPrice: 0,
-                                        originalPrice: 0,
-                                        costPrice: Number(freeProd?.cost_price || 0),
-                                        discount_percent: 0,
-                                        discount_amount: 0,
-                                        vat_percent: 0,
-                                        vat_amount: 0,
-                                        appliedTierPolicy: gInfo.giftLabel,
-                                        price_type: 'Khuyến mại',
-                                        amount: 0,
-                                        checked: true,
-                                        isPromotionalGift: true,
-                                        promoPolicyId: policy.id,
-                                        _giftKey: giftKey,
-                                    });
-                                }
-                                this.showPromoSection = true;
-                            });
-                        } else if (policy.policy_type === 'percentage') {
-                            ev.claimedItems.forEach(it => {
-                                if (!it._manualDiscount) {
-                                    const lineBase = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
-                                    it.discount_percent = ev.discountPct;
-                                    it.discount_amount = Math.round((lineBase * ev.discountPct) / 100);
-                                    it.amount = Math.max(0, Math.round(lineBase - it.discount_amount));
-                                    it._autoPromoDiscount = true;
-                                    it._appliedPromoPolicyId = policy.id;
-                                }
-                            });
-                        } else if (policy.policy_type === 'amount') {
-                            const totalBase = ev.claimedItems.reduce((sum, it) => sum + ((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0)), 0);
-                            let remainingDiscAmt = ev.discountAmt;
-                            ev.claimedItems.forEach((it, idx) => {
-                                if (!it._manualDiscount) {
-                                    const lineBase = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
-                                    let itemDiscAmt = 0;
-                                    if (idx === ev.claimedItems.length - 1) {
-                                        itemDiscAmt = remainingDiscAmt;
-                                    } else if (totalBase > 0) {
-                                        itemDiscAmt = Math.min(lineBase, Math.round((lineBase / totalBase) * ev.discountAmt));
-                                        remainingDiscAmt -= itemDiscAmt;
-                                    }
-                                    it.discount_amount = itemDiscAmt;
-                                    it.discount_percent = lineBase > 0 ? Math.round((itemDiscAmt / lineBase) * 100 * 10) / 10 : 0;
-                                    it.amount = Math.max(0, Math.round(lineBase - it.discount_amount));
-                                    it._autoPromoDiscount = true;
-                                    it._appliedPromoPolicyId = policy.id;
-                                }
-                            });
+                    const pTargets = this.getNormalizedPolicyProductIds(policy);
+                    if (pTargets.length > 0) {
+                        const targetProds = pTargets.map(id => this.getProduct(id)?.name).filter(Boolean);
+                        if (targetProds.length > 0) {
+                            return targetProds.length <= 2 ? targetProds.join(', ') : targetProds.slice(0, 2).join(', ') + '...';
                         }
                     }
-                }
-
-                // 3. Cập nhật mảng formData.sales_policy_ids & formData.sales_policy_id
-                this.formData.sales_policy_ids = validSelectedPolicyIds;
-                this.formData.sales_policy_id = validSelectedPolicyIds[0] || '';
-
-                // 4. Xóa các dòng quà tặng tự sinh không còn thỏa điều kiện
-                for (let i = this.items.length - 1; i >= 0; i--) {
-                    const g = this.items[i];
-                    if (g.isPromotionalGift && g._giftKey && !activeGiftKeys.includes(g._giftKey)) {
-                        this.items.splice(i, 1);
+                    return policy.apply_scope === 'order' ? 'Toàn đơn hàng' : 'Nhóm sản phẩm áp dụng';
+                },
+        
+                getPolicyBenefitDescription(policy) {
+                    if (!policy) return '';
+                    if (policy.policy_type === 'quantity') {
+                        const gifts = (this.items || []).filter(it => it.isPromotionalGift && String(it.promoPolicyId || '') === String(policy.id));
+                        if (gifts.length > 0) {
+                            return gifts.map(g => 'Tặng +' + (g.quantity || 1) + ' ' + (g.unit || 'SP') + ' (' + (g.name || 'Quà') + ')').join('; ');
+                        }
+                        const ev = this.getPolicyEvaluation(policy);
+                        return ev.benefitText ? `Tặng hàng (${ev.benefitText})` : 'Tặng hàng kèm';
                     }
-                }
-                if (this.getGiftItems().length === 0) {
-                    const hasManualPromoSection = (this.items || []).some(it => it.isPromotionalGift);
-                    if (!hasManualPromoSection) {
-                        this.showPromoSection = false;
+                    if (policy.policy_type === 'percentage') {
+                        const claimed = (this.items || []).filter(it => it._claimedByPolicyId && String(it._claimedByPolicyId) === String(policy.id));
+                        const totalDisc = claimed.reduce((sum, it) => sum + (Number(it.discount_amount) || 0), 0);
+                        const pct = Number(policy.discount_percent) || 0;
+                        return totalDisc > 0
+                            ? `Chiết khấu ${pct}% (-${this.formatNumber(totalDisc)} đ)`
+                            : `Chiết khấu ${pct}%`;
                     }
-                }
-
-                this.calculateTotals();
-            } finally {
-                this._isApplyingOrderPolicies = false;
-            }
-        },
+                    if (policy.policy_type === 'amount') {
+                        const claimed = (this.items || []).filter(it => it._claimedByPolicyId && String(it._claimedByPolicyId) === String(policy.id));
+                        const totalDisc = claimed.reduce((sum, it) => sum + (Number(it.discount_amount) || 0), 0);
+                        return totalDisc > 0
+                            ? `Giảm trực tiếp -${this.formatNumber(totalDisc)} đ`
+                            : `Giảm -${this.formatNumber(policy.discount_amount || 0)} đ`;
+                    }
+                    return 'Khuyến mại áp dụng';
+                },
+        
+                getAvailablePoliciesToAdd() {
+                    const selectedIds = new Set((this.formData.sales_policy_ids || []).map(id => String(id)));
+                    if (this.formData.order_policy_id) selectedIds.add(String(this.formData.order_policy_id));
+        
+                    // Chỉ xét những sản phẩm chưa bị bất kỳ chính sách nào chiếm dụng
+                    const unclaimedItems = (this.items || []).filter(it =>
+                        !it.isPromotionalGift &&
+                        it.checked !== false &&
+                        it.product_id &&
+                        !it._claimedByPolicyId
+                    );
+        
+                    if (unclaimedItems.length === 0) return [];
+        
+                    const available = [];
+                    (this.salesPoliciesCatalog || []).forEach(p => {
+                        if (!p || selectedIds.has(String(p.id))) return;
+                        if (!this.isCustomerEligibleForPolicy(p)) return;
+        
+                        const ev = this.evaluatePolicyBenefitsOnItems(p, unclaimedItems);
+                        if (ev.eligible) {
+                            available.push(p);
+                        }
+                    });
+        
+                    return available;
+                },
+        
+                addPolicyById(policyId) {
+                    if (!policyId) return;
+                    const idStr = String(policyId);
+                    if (!Array.isArray(this.formData.sales_policy_ids)) {
+                        this.formData.sales_policy_ids = [];
+                    }
+                    if (!this.formData.sales_policy_ids.map(String).includes(idStr)) {
+                        this.formData.sales_policy_ids.push(idStr);
+                    }
+                    this.evaluateOrderPolicies();
+                },
+        
+                removeSelectedPolicy(policyId) {
+                    if (!policyId) return;
+                    const idStr = String(policyId);
+                    if (Array.isArray(this.formData.sales_policy_ids)) {
+                        this.formData.sales_policy_ids = this.formData.sales_policy_ids.filter(id => String(id) !== idStr);
+                    }
+                    if (String(this.formData.order_policy_id || '') === idStr) {
+                        this.formData.order_policy_id = '';
+                    }
+                    this.cleanupEffectsOfRemovedPolicy(idStr);
+                    this.evaluateOrderPolicies();
+                },
+        
+                clearAllOrderPolicies() {
+                    const oldIds = Array.isArray(this.formData.sales_policy_ids) ? [...this.formData.sales_policy_ids] : [];
+                    if (this.formData.order_policy_id) oldIds.push(this.formData.order_policy_id);
+        
+                    this.formData.order_policy_id = '';
+                    this.formData.sales_policy_ids = [];
+                    this.formData.sales_policy_id = '';
+        
+                    (this.items || []).forEach(it => {
+                        if (!it.isPromotionalGift) {
+                            it._claimedByPolicyId = null;
+                            it.selected_policy_id = '';
+                            if (it._autoPromoDiscount && !it._manualDiscount) {
+                                it.discount_percent = 0;
+                                it.discount_amount = 0;
+                                it._autoPromoDiscount = false;
+                                it._appliedPromoPolicyId = null;
+                                it.amount = Math.max(0, Math.round((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0)));
+                            }
+                        }
+                    });
+        
+                    for (let i = this.items.length - 1; i >= 0; i--) {
+                        const g = this.items[i];
+                        if (g.isPromotionalGift && (g._giftKey || g.promoPolicyId)) {
+                            this.items.splice(i, 1);
+                        }
+                    }
+        
+                    if (this._autoOrderDiscount && !this._manualOrderDiscount) {
+                        this.orderDiscountPercent = 0;
+                        this.formData.discount_amount = 0;
+                        this._autoOrderDiscount = false;
+                    }
+        
+                    this.evaluateOrderPolicies();
+                },
+        
+                evaluatePolicyBenefitsOnItems(policy, availableItems) {
+                    if (!policy || !this.isCustomerEligibleForPolicy(policy)) {
+                        return { eligible: false, reason: 'Chỉ áp dụng đại lý chỉ định', benefitText: '', statusText: 'Không thuộc đối tượng đại lý', claimedItems: [], qualifyingGifts: [], totalFree: 0, freeProd: null, giftLabel: '', discountPct: 0, discountAmt: 0 };
+                    }
+        
+                    const matchingItems = (availableItems || []).filter(it =>
+                        !it.isPromotionalGift &&
+                        it.checked !== false &&
+                        it.product_id &&
+                        this.isProductInPolicy(policy, it.product_id)
+                    );
+        
+                    if (matchingItems.length === 0) {
+                        return { eligible: false, reason: 'Chưa có SP phù hợp', benefitText: '', statusText: 'Chưa có sản phẩm phù hợp', claimedItems: [], qualifyingGifts: [], totalFree: 0, freeProd: null, giftLabel: '', discountPct: 0, discountAmt: 0 };
+                    }
+        
+                    const pTargets = this.getNormalizedPolicyProductIds(policy);
+                    const isGeneralScope = pTargets.length === 0;
+        
+                    if (policy.policy_type === 'quantity') {
+                        const buyQty = Number(policy.buy_qty) || 0;
+                        const freeQty = Number(policy.free_qty) || 0;
+                        let freeProductId = policy.free_product_id || null;
+        
+                        let tiersList = policy.gift_tiers;
+                        if (typeof tiersList === 'string') {
+                            try { tiersList = JSON.parse(tiersList); } catch(e) { tiersList = []; }
+                        }
+        
+                        let sortedTiers = [];
+                        let minBuyRequired = buyQty;
+                        if (Array.isArray(tiersList) && tiersList.length > 0) {
+                            sortedTiers = [...tiersList]
+                                .map(t => ({
+                                    buy_qty: Number(t.buy_qty) || 0,
+                                    free_qty: Number(t.free_qty) || 0,
+                                    free_product_id: t.free_product_id || null
+                                }))
+                                .filter(t => t.buy_qty > 0 && t.free_qty > 0)
+                                .sort((a, b) => b.buy_qty - a.buy_qty);
+                            if (sortedTiers.length > 0) {
+                                minBuyRequired = sortedTiers[sortedTiers.length - 1].buy_qty;
+                            }
+                        }
+        
+                        if (isGeneralScope) {
+                            const productQtyMap = new Map();
+                            const productItemsMap = new Map();
+                            matchingItems.forEach(it => {
+                                const pid = String(it.product_id);
+                                const q = Number(it.quantity) || 0;
+                                productQtyMap.set(pid, (productQtyMap.get(pid) || 0) + q);
+                                if (!productItemsMap.has(pid)) productItemsMap.set(pid, []);
+                                productItemsMap.get(pid).push(it);
+                            });
+        
+                            const qualifyingGifts = [];
+                            const claimedItems = [];
+                            let maxSingleQty = 0;
+        
+                            productQtyMap.forEach((qty, pid) => {
+                                if (qty > maxSingleQty) maxSingleQty = qty;
+                                let itemFree = 0;
+                                let itemFreeProdId = freeProductId || pid;
+                                let itemGiftLabel = `[TẶNG KÈM] ${policy.name}`;
+        
+                                if (sortedTiers.length > 0) {
+                                    const matchedTier = sortedTiers.find(t => qty >= t.buy_qty);
+                                    if (matchedTier) {
+                                        const mult = Math.floor(qty / matchedTier.buy_qty);
+                                        itemFree = mult * matchedTier.free_qty;
+                                        if (matchedTier.free_product_id) {
+                                            itemFreeProdId = matchedTier.free_product_id;
+                                        }
+                                        itemGiftLabel = `[TẶNG KÈM MUA ${matchedTier.buy_qty} TẶNG ${matchedTier.free_qty}] ${policy.name}`;
+                                    }
+                                } else if (buyQty > 0 && freeQty > 0 && qty >= buyQty) {
+                                    const mult = Math.floor(qty / buyQty);
+                                    itemFree = mult * freeQty;
+                                }
+        
+                                if (itemFree > 0) {
+                                    const pObj = this.getProduct(itemFreeProdId);
+                                    qualifyingGifts.push({
+                                        product_id: itemFreeProdId,
+                                        qty: itemFree,
+                                        prod: pObj,
+                                        giftLabel: itemGiftLabel
+                                    });
+                                    const pItems = productItemsMap.get(pid) || [];
+                                    pItems.forEach(it => claimedItems.push(it));
+                                }
+                            });
+        
+                            const totalFree = qualifyingGifts.reduce((sum, g) => sum + g.qty, 0);
+        
+                            if (totalFree <= 0 || qualifyingGifts.length === 0) {
+                                const needMore = Math.max(1, Math.ceil((minBuyRequired || 1) - maxSingleQty));
+                                return {
+                                    eligible: false,
+                                    reason: `Thiếu ${needMore} SP`,
+                                    benefitText: '',
+                                    statusText: `Chưa đạt (cần mua tối thiểu ${minBuyRequired} SP cho cùng 1 sản phẩm, hiện có tối đa ${maxSingleQty} SP)`,
+                                    claimedItems: [],
+                                    qualifyingGifts: [],
+                                    totalFree: 0,
+                                    freeProd: null,
+                                    giftLabel: '',
+                                    discountPct: 0,
+                                    discountAmt: 0
+                                };
+                            }
+        
+                            const firstGift = qualifyingGifts[0];
+                            const summaryGiftName = qualifyingGifts.length === 1 
+                                ? (firstGift.prod?.name || 'quà tặng') 
+                                : `${qualifyingGifts.length} loại quà tặng kèm`;
+        
+                            return {
+                                eligible: true,
+                                reason: '',
+                                benefitText: `Tặng +${totalFree}`,
+                                statusText: `Đạt: Tặng +${totalFree} SP (${summaryGiftName})`,
+                                claimedItems,
+                                qualifyingGifts,
+                                totalFree,
+                                freeProd: firstGift.prod,
+                                giftLabel: firstGift.giftLabel,
+                                discountPct: 0,
+                                discountAmt: 0
+                            };
+                        }
+        
+                        // Nhóm sản phẩm chỉ định cụ thể
+                        const totalMatchedQty = matchingItems.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0);
+                        let matchedTier = null;
+                        if (sortedTiers.length > 0) {
+                            matchedTier = sortedTiers.find(t => totalMatchedQty >= t.buy_qty);
+                        }
+        
+                        let totalFree = 0;
+                        let giftLabel = `[TẶNG KÈM] ${policy.name}`;
+                        if (matchedTier) {
+                            const mult = Math.floor(totalMatchedQty / matchedTier.buy_qty);
+                            totalFree = mult * matchedTier.free_qty;
+                            if (matchedTier.free_product_id) {
+                                freeProductId = matchedTier.free_product_id;
+                            }
+                            giftLabel = `[TẶNG KÈM MUA ${matchedTier.buy_qty} TẶNG ${matchedTier.free_qty}] ${policy.name}`;
+                        } else if (buyQty > 0 && freeQty > 0 && totalMatchedQty >= buyQty) {
+                            const mult = Math.floor(totalMatchedQty / buyQty);
+                            totalFree = mult * freeQty;
+                        }
+        
+                        if (totalFree <= 0) {
+                            const needMore = Math.max(1, Math.ceil((minBuyRequired || 1) - totalMatchedQty));
+                            return {
+                                eligible: false,
+                                reason: `Thiếu ${needMore} SP`,
+                                benefitText: '',
+                                statusText: `Chưa đạt (cần thêm ${needMore} SP, hiện có ${this.formatNumber(totalMatchedQty)})`,
+                                claimedItems: [],
+                                qualifyingGifts: [],
+                                totalFree: 0,
+                                freeProd: null,
+                                giftLabel: '',
+                                discountPct: 0,
+                                discountAmt: 0
+                            };
+                        }
+        
+                        let freeProd = null;
+                        if (freeProductId) freeProd = this.getProduct(freeProductId);
+                        if (!freeProd && policy.free_product) freeProd = policy.free_product;
+                        if (!freeProd) {
+                            const bestItem = [...matchingItems].sort((a, b) => (Number(b.quantity) || 0) - (Number(a.quantity) || 0))[0];
+                            if (bestItem) freeProd = this.getProduct(bestItem.product_id);
+                        }
+        
+                        const freeName = freeProd?.name || 'quà tặng';
+                        return {
+                            eligible: true,
+                            reason: '',
+                            benefitText: `Tặng +${totalFree}`,
+                            statusText: `Đạt: Tặng +${totalFree} ${freeProd?.unit || 'SP'} (${freeName})`,
+                            claimedItems: matchingItems,
+                            qualifyingGifts: [{ product_id: freeProd?.id || matchingItems[0]?.product_id || '', qty: totalFree, prod: freeProd, giftLabel }],
+                            totalFree,
+                            freeProd,
+                            giftLabel,
+                            discountPct: 0,
+                            discountAmt: 0
+                        };
+                    }
+        
+                    const minVal = Number(policy.min_order_value) || 0;
+                    const buyQty = Number(policy.buy_qty) || 0;
+        
+                    let evalItems = matchingItems.filter(it => this.isItemOriginalPriceTier(it));
+                    if (evalItems.length === 0) {
+                        return {
+                            eligible: false,
+                            reason: 'Cần SP Nguyên Giá',
+                            benefitText: '',
+                            statusText: 'Chỉ áp dụng cho dòng sản phẩm giá Nguyên Giá',
+                            claimedItems: [],
+                            qualifyingGifts: [],
+                            totalFree: 0,
+                            freeProd: null,
+                            giftLabel: '',
+                            discountPct: 0,
+                            discountAmt: 0
+                        };
+                    }
+        
+                    const evalQty = evalItems.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0);
+                    const evalSubtotal = evalItems.reduce((sum, it) => {
+                        const lineBase = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
+                        const manualDisc = (it._manualDiscount && !it._autoPromoDiscount) ? (Number(it.discount_amount) || 0) : 0;
+                        return sum + Math.max(0, lineBase - manualDisc);
+                    }, 0);
+        
+                    if (buyQty > 0 && evalQty < buyQty) {
+                        const needMore = Math.max(1, Math.ceil(buyQty - evalQty));
+                        return {
+                            eligible: false,
+                            reason: `Thiếu ${needMore} SP`,
+                            benefitText: '',
+                            statusText: `Chưa đạt (cần thêm ${needMore} SP, tối thiểu ${buyQty} SP)`,
+                            claimedItems: [],
+                            qualifyingGifts: [],
+                            totalFree: 0,
+                            freeProd: null,
+                            giftLabel: '',
+                            discountPct: 0,
+                            discountAmt: 0
+                        };
+                    }
+        
+                    if (minVal > 0 && evalSubtotal < minVal) {
+                        const needAmt = Math.max(0, minVal - evalSubtotal);
+                        return {
+                            eligible: false,
+                            reason: `Thiếu ${this.formatNumber(needAmt)}đ`,
+                            benefitText: '',
+                            statusText: `Chưa đạt (cần mua thêm ${this.formatNumber(needAmt)} đ nhóm SP này)`,
+                            claimedItems: [],
+                            qualifyingGifts: [],
+                            totalFree: 0,
+                            freeProd: null,
+                            giftLabel: '',
+                            discountPct: 0,
+                            discountAmt: 0
+                        };
+                    }
+        
+                    if (policy.policy_type === 'percentage') {
+                        const discPct = Number(policy.discount_percent) || 0;
+                        const estAmt = Math.round((evalSubtotal * discPct) / 100);
+                        return {
+                            eligible: discPct > 0 && evalSubtotal > 0,
+                            reason: '',
+                            benefitText: `CK -${discPct}%`,
+                            statusText: `Đạt: Chiết khấu ${discPct}% (-${this.formatNumber(estAmt)} đ)`,
+                            claimedItems: evalItems,
+                            qualifyingGifts: [],
+                            totalFree: 0,
+                            freeProd: null,
+                            giftLabel: '',
+                            discountPct: discPct,
+                            discountAmt: estAmt
+                        };
+                    }
+        
+                    if (policy.policy_type === 'amount') {
+                        const discAmt = Math.min(evalSubtotal, Number(policy.discount_amount) || 0);
+                        return {
+                            eligible: discAmt > 0 && evalSubtotal > 0,
+                            reason: '',
+                            benefitText: `-${this.formatNumber(discAmt)}đ`,
+                            statusText: `Đạt: Giảm trực tiếp ${this.formatNumber(discAmt)} đ`,
+                            claimedItems: evalItems,
+                            qualifyingGifts: [],
+                            totalFree: 0,
+                            freeProd: null,
+                            giftLabel: '',
+                            discountPct: 0,
+                            discountAmt: discAmt
+                        };
+                    }
+        
+                    return { eligible: false, reason: 'Chưa hỗ trợ', benefitText: '', statusText: 'Không hợp lệ', claimedItems: [], qualifyingGifts: [], totalFree: 0, freeProd: null, giftLabel: '', discountPct: 0, discountAmt: 0 };
+                },
+        
+                formatPolicyOptionLabel(policy) {
+                    if (!policy) return '';
+                    const unclaimedItems = (this.items || []).filter(it =>
+                        !it.isPromotionalGift &&
+                        it.checked !== false &&
+                        it.product_id &&
+                        !it._claimedByPolicyId
+                    );
+                    const ev = this.evaluatePolicyBenefitsOnItems(policy, unclaimedItems);
+                    const prefix = ev.eligible ? `[Đạt${ev.benefitText ? ': ' + ev.benefitText : ''}]` : `[${ev.reason}]`;
+                    return `${prefix} ${policy.name}`;
+                },
+        
+                getPolicyEvaluation(policy) {
+                    if (!policy) {
+                        return { eligible: false, reason: 'Chưa xác định', benefitText: '', statusText: '', totalMatchedQty: 0, matchedSubtotal: 0, matchingItems: [], totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
+                    }
+                    const activeItems = (this.items || []).filter(it => !it.isPromotionalGift && it.checked !== false && it.product_id);
+                    const ev = this.evaluatePolicyBenefitsOnItems(policy, activeItems);
+                    return {
+                        ...ev,
+                        totalMatchedQty: (ev.claimedItems || []).reduce((s, it) => s + (Number(it.quantity) || 0), 0),
+                        matchingItems: ev.claimedItems || []
+                    };
+                },
+        
+                getItemPolicyEvaluation(item, policy) {
+                    if (!item || !policy) {
+                        return { eligible: false, reason: 'Chưa xác định', benefitText: '', statusText: '', totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
+                    }
+                    const ev = this.evaluatePolicyBenefitsOnItems(policy, [item]);
+                    return {
+                        ...ev,
+                        totalMatchedQty: (Number(item.quantity) || 0),
+                        matchingItems: [item]
+                    };
+                },
+        
+                getApplicableOrderPolicies() {
+                    const unclaimedItems = (this.items || []).filter(it => !it.isPromotionalGift && it.checked !== false && it.product_id && !it._claimedByPolicyId);
+                    return (this.salesPoliciesCatalog || []).filter(p => {
+                        if (!this.isCustomerEligibleForPolicy(p)) return false;
+                        return this.evaluatePolicyBenefitsOnItems(p, unclaimedItems).eligible === true;
+                    });
+                },
+        
+                getOrderScopeApplicablePolicies() {
+                    return (this.salesPoliciesCatalog || []).filter(p => {
+                        if (p.apply_scope !== 'order') return false;
+                        if (this.formData.order_policy_id && String(p.id) === String(this.formData.order_policy_id)) return true;
+                        return this.getPolicyEvaluation(p).eligible === true;
+                    });
+                },
+        
+                getApplicablePoliciesForProduct(item) {
+                    if (!item || !item.product_id) return [];
+                    return (this.salesPoliciesCatalog || []).filter(p => {
+                        return this.getItemPolicyEvaluation(item, p).eligible === true;
+                    });
+                },
+        
+                formatItemPolicyOptionLabel(policy, item) {
+                    if (!policy) return '';
+                    const ev = this.getItemPolicyEvaluation(item, policy);
+                    const prefix = ev.eligible ? `[Đạt${ev.benefitText ? ': ' + ev.benefitText : ''}]` : `[${ev.reason}]`;
+                    return `${prefix} ${policy.name}`;
+                },
+        
+                getApplicableOrderPoliciesForSlot(slotIndex) {
+                    return this.getAvailablePoliciesToAdd();
+                },
+        
+                getRemainingAddablePolicies() {
+                    return this.getAvailablePoliciesToAdd();
+                },
+        
+                getSelectedPoliciesSummary() {
+                    const ids = (this.formData.sales_policy_ids || []).filter(Boolean);
+                    return ids.map(id => {
+                        const p = this.getSalesPolicyById(id);
+                        if (!p) return null;
+                        const ev = this.getPolicyEvaluation(p);
+                        return {
+                            id: p.id,
+                            name: p.name,
+                            eligible: ev.eligible,
+                            statusText: ev.statusText,
+                        };
+                    }).filter(Boolean);
+                },
+        
+                sanitizeSelectedPoliciesForCustomer() {
+                    if (!Array.isArray(this.formData.sales_policy_ids)) {
+                        this.formData.sales_policy_ids = [];
+                    }
+                    const oldIds = [...this.formData.sales_policy_ids];
+                    const filtered = oldIds.filter(id => {
+                        if (!id) return false;
+                        const p = this.getSalesPolicyById(id);
+                        return p && this.isCustomerEligibleForPolicy(p);
+                    });
+                    oldIds.forEach(oldId => {
+                        if (oldId && !filtered.includes(oldId)) {
+                            this.cleanupEffectsOfRemovedPolicy(oldId);
+                        }
+                    });
+                    this.formData.sales_policy_ids = filtered;
+                    this.formData.sales_policy_id = filtered[0] || '';
+                    this.evaluateOrderPolicies();
+                },
+        
+                rebindSavedOrderPolicies() {
+                    if (!this.orderId) return;
+                    const ids = (this.formData.sales_policy_ids || []).filter(Boolean);
+                    if (ids.length === 0) return;
+                    this.evaluateOrderPolicies();
+                },
+        
+                onItemPolicyChange(item, policyId) {
+                    if (!item) return;
+                    if (policyId) {
+                        this.addPolicyById(policyId);
+                    } else if (item.selected_policy_id) {
+                        this.removeSelectedPolicy(item.selected_policy_id);
+                    }
+                },
+        
+                onOrderPolicyChange(policyId) {
+                    if (policyId) {
+                        this.addPolicyById(policyId);
+                    } else if (this.formData.order_policy_id) {
+                        this.removeSelectedPolicy(this.formData.order_policy_id);
+                    }
+                },
+        
+                onPrimaryOrderPolicyChange(newId) {
+                    if (newId) this.addPolicyById(newId);
+                },
+        
+                onExtraOrderPolicyChange(slotIndex, newId) {
+                    if (newId) this.addPolicyById(newId);
+                },
+        
+                addAnotherPolicySlot() {
+                    // No-op kept for backwards compatibility
+                },
+        
+                removePolicySlot(slotIndex) {
+                    // No-op kept for backwards compatibility
+                },
+        
+                cleanupEffectsOfRemovedItemPolicy(item, policyId) {
+                    if (!policyId) return;
+                    this.cleanupEffectsOfRemovedPolicy(policyId);
+                },
+        
+                cleanupEffectsOfRemovedPolicy(policyId) {
+                    if (!policyId) return;
+                    const pidStr = String(policyId);
+                    const p = this.getSalesPolicyById(policyId);
+        
+                    for (let i = this.items.length - 1; i >= 0; i--) {
+                        const g = this.items[i];
+                        if (g.isPromotionalGift && (String(g.promoPolicyId || '') === pidStr || (g._giftKey && g._giftKey.startsWith(`order_policy_${pidStr}`)) || (p && (g.appliedTierPolicy || '').includes(p.name)))) {
+                            this.items.splice(i, 1);
+                        }
+                    }
+                    (this.items || []).forEach(it => {
+                        if (!it.isPromotionalGift && String(it._appliedPromoPolicyId || '') === pidStr) {
+                            it.discount_percent = 0;
+                            it.discount_amount = 0;
+                            it._autoPromoDiscount = false;
+                            it._manualDiscount = false;
+                            it._appliedPromoPolicyId = null;
+                            it.amount = Math.max(0, Math.round((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0)));
+                        }
+                        if (String(it._claimedByPolicyId || '') === pidStr) {
+                            it._claimedByPolicyId = null;
+                        }
+                    });
+                    if (p && p.apply_scope === 'order' && (p.policy_type === 'percentage' || p.policy_type === 'amount') && this._autoOrderDiscount) {
+                        this.orderDiscountPercent = 0;
+                        this.formData.discount_amount = 0;
+                        this._autoOrderDiscount = false;
+                    }
+                },
+        
+                evaluateOrderPolicies() {
+                    if (this._isApplyingOrderPolicies) return;
+                    this._isApplyingOrderPolicies = true;
+        
+                    try {
+                        const activeGiftKeys = [];
+                        const salesItems = this.getSalesItemsWithProduct();
+        
+                        // 1. Reset trạng thái chiếm dụng và chiết khấu tự động trên các dòng hàng
+                        salesItems.forEach(it => {
+                            it._claimedByPolicyId = null;
+                            if (it._autoPromoDiscount && !it._manualDiscount) {
+                                it.discount_percent = 0;
+                                it.discount_amount = 0;
+                                it._autoPromoDiscount = false;
+                                it._appliedPromoPolicyId = null;
+                                it.amount = Math.max(0, Math.round((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0)));
+                            }
+                        });
+        
+                        if (this._autoOrderDiscount && !this._manualOrderDiscount) {
+                            this.orderDiscountPercent = 0;
+                            this.formData.discount_amount = 0;
+                            this._autoOrderDiscount = false;
+                        }
+        
+                        // 2. Duyệt tuần tự các chính sách được chọn để chiếm dụng sản phẩm độc quyền
+                        let remainingItems = [...salesItems];
+                        const validSelectedPolicyIds = [];
+                        const selectedIds = Array.isArray(this.formData.sales_policy_ids) ? [...this.formData.sales_policy_ids] : [];
+        
+                        for (const pid of selectedIds) {
+                            const policy = this.getSalesPolicyById(pid);
+                            if (!policy) continue;
+        
+                            const ev = this.evaluatePolicyBenefitsOnItems(policy, remainingItems);
+                            if (ev.eligible && ev.claimedItems && ev.claimedItems.length > 0) {
+                                validSelectedPolicyIds.push(String(policy.id));
+                                const claimedSet = new Set(ev.claimedItems);
+                                ev.claimedItems.forEach(it => {
+                                    it._claimedByPolicyId = policy.id;
+                                    it.selected_policy_id = policy.id;
+                                });
+                                remainingItems = remainingItems.filter(it => !claimedSet.has(it));
+        
+                                if (policy.policy_type === 'quantity') {
+                                    (ev.qualifyingGifts || []).forEach(gInfo => {
+                                        const freeProd = gInfo.prod || this.getProduct(gInfo.product_id);
+                                        const freeSku = freeProd?.sku || 'KM-SP';
+                                        const freeName = freeProd?.name || 'Hàng tặng khuyến mại';
+                                        const freeUnit = freeProd?.unit || 'cái';
+                                        const giftKey = `order_policy_${policy.id}_${gInfo.product_id}`;
+                                        activeGiftKeys.push(giftKey);
+        
+                                        const existing = this.items.find(g => g.isPromotionalGift && (g._giftKey === giftKey || (String(g.promoPolicyId || '') === String(policy.id) && String(g.product_id || '') === String(freeProd?.id || gInfo.product_id))));
+                                        if (existing) {
+                                            existing._giftKey = giftKey;
+                                            existing.promoPolicyId = policy.id;
+                                            if (!existing._manualQty) {
+                                                existing.quantity = gInfo.qty;
+                                            }
+                                            existing.sku = freeSku;
+                                            existing.name = freeName;
+                                            existing.searchQuery = freeName;
+                                            existing.unit = freeUnit;
+                                            existing.appliedTierPolicy = gInfo.giftLabel;
+                                        } else {
+                                            this.items.push({
+                                                _rowKey: 'gift-' + Date.now() + '-' + Math.random(),
+                                                id: '',
+                                                itemId: freeProd?.id ? String(freeProd.id) : String(gInfo.product_id || ''),
+                                                product_id: freeProd?.id || gInfo.product_id || '',
+                                                sku: freeSku,
+                                                name: freeName,
+                                                searchQuery: freeName,
+                                                unit: freeUnit,
+                                                quantity: gInfo.qty,
+                                                gift_quantity: 0,
+                                                unitPrice: 0,
+                                                originalPrice: 0,
+                                                costPrice: Number(freeProd?.cost_price || 0),
+                                                discount_percent: 0,
+                                                discount_amount: 0,
+                                                vat_percent: 0,
+                                                vat_amount: 0,
+                                                appliedTierPolicy: gInfo.giftLabel,
+                                                price_type: 'Khuyến mại',
+                                                amount: 0,
+                                                checked: true,
+                                                isPromotionalGift: true,
+                                                promoPolicyId: policy.id,
+                                                _giftKey: giftKey,
+                                            });
+                                        }
+                                        this.showPromoSection = true;
+                                    });
+                                } else if (policy.policy_type === 'percentage') {
+                                    ev.claimedItems.forEach(it => {
+                                        if (!it._manualDiscount) {
+                                            const lineBase = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
+                                            it.discount_percent = ev.discountPct;
+                                            it.discount_amount = Math.round((lineBase * ev.discountPct) / 100);
+                                            it.amount = Math.max(0, Math.round(lineBase - it.discount_amount));
+                                            it._autoPromoDiscount = true;
+                                            it._appliedPromoPolicyId = policy.id;
+                                        }
+                                    });
+                                } else if (policy.policy_type === 'amount') {
+                                    const totalBase = ev.claimedItems.reduce((sum, it) => sum + ((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0)), 0);
+                                    let remainingDiscAmt = ev.discountAmt;
+                                    ev.claimedItems.forEach((it, idx) => {
+                                        if (!it._manualDiscount) {
+                                            const lineBase = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
+                                            let itemDiscAmt = 0;
+                                            if (idx === ev.claimedItems.length - 1) {
+                                                itemDiscAmt = remainingDiscAmt;
+                                            } else if (totalBase > 0) {
+                                                itemDiscAmt = Math.min(lineBase, Math.round((lineBase / totalBase) * ev.discountAmt));
+                                                remainingDiscAmt -= itemDiscAmt;
+                                            }
+                                            it.discount_amount = itemDiscAmt;
+                                            it.discount_percent = lineBase > 0 ? Math.round((itemDiscAmt / lineBase) * 100 * 10) / 10 : 0;
+                                            it.amount = Math.max(0, Math.round(lineBase - it.discount_amount));
+                                            it._autoPromoDiscount = true;
+                                            it._appliedPromoPolicyId = policy.id;
+                                        }
+                                    });
+                                }
+                            }
+                        }
+        
+                        // 3. Cập nhật mảng formData.sales_policy_ids & formData.sales_policy_id
+                        this.formData.sales_policy_ids = validSelectedPolicyIds;
+                        this.formData.sales_policy_id = validSelectedPolicyIds[0] || '';
+        
+                        // 4. Xóa các dòng quà tặng tự sinh không còn thỏa điều kiện
+                        for (let i = this.items.length - 1; i >= 0; i--) {
+                            const g = this.items[i];
+                            if (g.isPromotionalGift && g._giftKey && !activeGiftKeys.includes(g._giftKey)) {
+                                this.items.splice(i, 1);
+                            }
+                        }
+                        if (this.getGiftItems().length === 0) {
+                            const hasManualPromoSection = (this.items || []).some(it => it.isPromotionalGift);
+                            if (!hasManualPromoSection) {
+                                this.showPromoSection = false;
+                            }
+                        }
+        
+                        this.calculateTotals();
+                    } finally {
+                        this._isApplyingOrderPolicies = false;
+                    }
+                },
 
         getSalesItems() {
             return (this.items || []).filter(it => !it.isPromotionalGift);
