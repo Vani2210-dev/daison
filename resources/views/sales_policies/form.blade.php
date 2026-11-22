@@ -257,7 +257,7 @@
                     </div>
                     <div x-show="formData.apply_scope === 'product'">
                         <label class="block font-bold text-slate-700 mb-1.5">
-                            Giá Trị Tối Thiểu Trên Từng Sản Phẩm (VNĐ)
+                            Giá Trị Tối Thiểu Trên Từng Sản Phẩm / Nhóm (VNĐ)
                         </label>
                         <div class="relative">
                             <input 
@@ -269,7 +269,48 @@
                             >
                             <span class="absolute right-3.5 top-2.5 font-bold text-slate-400">VNĐ</span>
                         </div>
-                        <p class="text-[11px] text-slate-400 mt-1">Giá trị của từng sản phẩm phải đạt mức này mới được hưởng mức chiết khấu</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Giá trị sản phẩm / nhóm hàng phải đạt mức này mới được hưởng mức chiết khấu</p>
+                    </div>
+                </div>
+
+                <!-- Bậc thang chiết khấu % nâng cao (VD: 2-4 SP: 18%, >=5 SP: 20%) -->
+                <div class="border border-emerald-200 rounded-xl overflow-hidden bg-emerald-50/20">
+                    <div class="bg-emerald-50 px-3.5 py-2 border-b border-emerald-200 flex items-center justify-between">
+                        <span class="font-bold text-xs text-emerald-900 flex items-center gap-1.5">
+                            <i class="fa-solid fa-stairs text-emerald-600"></i>
+                            Bậc thang chiết khấu theo SL / Doanh số (Tùy chọn)
+                        </span>
+                        <button type="button"
+                                @click="addDiscountTier('percentage')"
+                                class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer transition">
+                            <i class="fa-solid fa-plus text-[10px]"></i> Thêm bậc %
+                        </button>
+                    </div>
+                    <div x-show="formData.discount_tiers.length === 0" class="p-3 text-[11px] text-slate-500 italic">
+                        Chưa thiết lập bậc thang -> dùng 1 mức chiết khấu cố định (%) ở trên. Bấm "+ Thêm bậc %" nếu cần dạng VD: Mua 2–4 SP giảm 18%, từ 5 SP giảm 20%.
+                    </div>
+                    <div x-show="formData.discount_tiers.length > 0" class="p-3 space-y-2">
+                        <template x-for="(dt, dIdx) in formData.discount_tiers" :key="dIdx">
+                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-white p-2.5 rounded-xl border border-emerald-200 text-xs">
+                                <div class="sm:col-span-3">
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">SL tối thiểu (ĐVT gốc)</label>
+                                    <input type="number" min="0" step="1" x-model.number="dt.min_qty" placeholder="VD: 2" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg font-bold">
+                                </div>
+                                <div class="sm:col-span-4">
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Hoặc Tiền tối thiểu (VNĐ)</label>
+                                    <input type="number" min="0" step="10000" x-model.number="dt.min_amount" placeholder="VD: 600000" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg font-mono font-bold">
+                                </div>
+                                <div class="sm:col-span-4">
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Mức Chiết Khấu (%)</label>
+                                    <input type="number" min="0" max="100" step="0.1" x-model.number="dt.discount_percent" placeholder="VD: 18" class="w-full px-2.5 py-1.5 border border-emerald-300 rounded-lg font-bold text-emerald-700">
+                                </div>
+                                <div class="sm:col-span-1 flex justify-end pt-3 sm:pt-4">
+                                    <button type="button" @click="removeDiscountTier(dIdx)" class="w-7 h-7 rounded-lg text-rose-500 hover:bg-rose-50 flex items-center justify-center cursor-pointer" title="Xóa bậc">
+                                        <i class="fa-solid fa-trash-can text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -283,24 +324,30 @@
                     <div>
                         <div class="font-bold text-sky-950 text-xs">Chính sách quà tặng theo phân khúc số lượng mua (Bậc tặng quà)</div>
                         <div class="text-[11px] text-sky-800 mt-0.5 leading-relaxed">
-                            Hệ thống hỗ trợ tạo nhiều phân khúc bậc tặng (Ví dụ: <strong>Mua 10 tặng 1, Mua 20 tặng 3, Mua 50 tặng 8</strong>...). Khi lên đơn hàng, hệ thống sẽ tự động đối chiếu số lượng khách mua để áp mức tặng quà cao nhất mà khách đạt được.
+                            Hệ thống hỗ trợ tạo nhiều phân khúc bậc tặng (Ví dụ: <strong>Mua 12 tặng 1, Mua 21 tặng 2</strong>...). Khi lên đơn hàng, hệ thống sẽ tự quy đổi ĐVT (Thùng/Kiện) và tính tối ưu theo từng bậc đạt được.
                         </div>
                     </div>
                 </div>
 
-                <!-- Sản phẩm tặng kèm mặc định -->
-                <div class="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200 text-xs">
-                    <label class="block font-bold text-slate-700 mb-1.5">
-                        Sản Phẩm Tặng Kèm Chung Của Chính Sách
-                    </label>
+                <!-- Sản phẩm tặng kèm mặc định (có bộ lọc tìm nhanh) -->
+                <div class="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200 text-xs space-y-2">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <label class="font-bold text-slate-700">
+                            Sản Phẩm Tặng Kèm Chung Của Chính Sách
+                        </label>
+                        <div class="relative w-full sm:w-64">
+                            <input type="text" x-model="freeProductSearch" placeholder="Lọc nhanh SP tặng theo mã/tên..." class="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-[11px] focus:border-sky-500 focus:outline-none">
+                            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-slate-400 text-[10px]"></i>
+                        </div>
+                    </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
                         <select x-model="formData.free_product_id" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none cursor-pointer">
                             <option value="">(Tặng chính sản phẩm khách mua)</option>
-                            <template x-for="p in productsCatalog" :key="p.id">
-                                <option :value="p.id" x-text="'[' + p.sku + '] ' + p.name + ' (' + p.unit + ')'"></option>
+                            <template x-for="p in getFilteredFreeProducts()" :key="'free-common-' + p.id">
+                                <option :value="String(p.id)" :selected="String(formData.free_product_id) === String(p.id)" x-text="'[' + p.sku + '] ' + p.name + ' (' + p.unit + ')'"></option>
                             </template>
                         </select>
-                        <p class="text-[11px] text-slate-400">Để trống nếu muốn tặng cùng loại với sản phẩm khách mua (hoặc có thể chọn quà tặng riêng cho từng bậc bên dưới).</p>
+                        <p class="text-[11px] text-slate-400">Để trống nếu muốn tặng cùng loại với sản phẩm khách mua (hoặc chọn quà riêng cho từng bậc bên dưới).</p>
                     </div>
                 </div>
 
@@ -496,7 +543,7 @@
                     </div>
                     <div x-show="formData.apply_scope === 'product'">
                         <label class="block font-bold text-slate-700 mb-1.5">
-                            Giá Trị Tối Thiểu Trên Từng Sản Phẩm (VNĐ)
+                            Giá Trị Tối Thiểu Trên Từng Sản Phẩm / Nhóm (VNĐ)
                         </label>
                         <div class="relative">
                             <input 
@@ -508,7 +555,61 @@
                             >
                             <span class="absolute right-3.5 top-2.5 font-bold text-slate-400">VNĐ</span>
                         </div>
-                        <p class="text-[11px] text-slate-400 mt-1">Giá trị của từng sản phẩm phải đạt mức này mới được trừ tiền</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Giá trị của từng sản phẩm / nhóm phải đạt mức này mới được trừ tiền</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quy tắc NPP Hàng tiêu dùng (FMCG): Gom nhóm SL, Xung đột & Cộng dồn -->
+            <div class="pt-4 border-t border-slate-100 space-y-3 text-xs">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                    <h3 class="font-bold text-slate-800 uppercase tracking-wide text-[11px]">Quy Tắc Gom Nhóm & Xếp Tầng Chính Sách (NPP FMCG)</h3>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Cách gom SL đạt ngưỡng</label>
+                        <select x-model="formData.qty_group_mode" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-semibold focus:border-indigo-500 focus:outline-none">
+                            <option value="basket_mix">Cộng dồn nhóm SP áp dụng</option>
+                            <option value="per_sku">Cùng 1 mã SKU riêng lẻ</option>
+                            <option value="per_variant_group">Cùng quy cách / size (VD 100g, 170g)</option>
+                            <option value="per_brand">Cùng nhãn hàng (Brand)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Nhóm loại trừ (Conflict Group)</label>
+                        <input type="text"
+                               list="conflict-group-presets"
+                               x-model="formData.conflict_group"
+                               placeholder="VD: TRUYEN_THONG_LE_LON"
+                               class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-800 focus:border-indigo-500 focus:outline-none uppercase">
+                        <datalist id="conflict-group-presets">
+                            <option value="TRUYEN_THONG_LE_LON">
+                            <option value="TRUYEN_THONG_LE_NHO">
+                            <option value="HANG_PHAT_TRIEN">
+                            <option value="TU_VAN">
+                        </datalist>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Kiểu cộng dồn</label>
+                        <select x-model="formData.stacking_mode" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-semibold focus:border-indigo-500 focus:outline-none">
+                            <option value="exclusive_line">Độc quyền trên nhóm SP</option>
+                            <option value="stackable_order">Cộng dồn toàn đơn sau KM</option>
+                        </select>
+                    </div>
+
+                    <div class="flex flex-col justify-between gap-2">
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">Độ ưu tiên (số nhỏ ưu tiên trước)</label>
+                            <input type="number" x-model.number="formData.priority" class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl font-bold focus:border-indigo-500 focus:outline-none">
+                        </div>
+                        <label class="inline-flex items-center gap-2 cursor-pointer select-none pt-1">
+                            <input type="checkbox" x-model="formData.require_original_price" class="rounded text-indigo-600 focus:ring-indigo-500">
+                            <span class="font-bold text-slate-700">Chỉ áp cho giá Nguyên Giá</span>
+                        </label>
                     </div>
                 </div>
             </div>
@@ -531,9 +632,27 @@
                     <h3 class="font-bold text-slate-800 uppercase tracking-wide text-[11px]">3.1. Phân Khúc & Khách Hàng Áp Dụng</h3>
                 </div>
 
-                <!-- Phân khúc cấp bậc khách hàng -->
+                <!-- Kênh / Cấp đại lý động (Đại lý mới tạo thuộc cấp này tự động áp dụng) -->
+                <div class="p-3 rounded-xl bg-indigo-50/50 border border-indigo-200 space-y-2">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <span class="font-bold text-indigo-950">Áp dụng tự động theo Kênh / Cấp đại lý:</span>
+                        <button type="button" x-show="formData.target_customer_tiers.length > 0" @click="formData.target_customer_tiers = []" class="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer">Xóa lọc kênh</button>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="tierName in dealerTiersCatalog" :key="'tier-' + tierName">
+                            <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold cursor-pointer transition-colors"
+                                   :class="formData.target_customer_tiers.includes(tierName) ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300'">
+                                <input type="checkbox" :value="tierName" x-model="formData.target_customer_tiers" class="sr-only">
+                                <span x-text="tierName"></span>
+                            </label>
+                        </template>
+                    </div>
+                    <p class="text-[11px] text-indigo-700/80">Đại lý mới tạo thuộc kênh đã tick sẽ tự động áp dụng chính sách mà không cần tick lại từng khách hàng bên dưới.</p>
+                </div>
+
+                <!-- Phân khúc cấp bậc khách hàng chọn nhanh ID -->
                 <div class="flex items-center gap-1.5 flex-wrap pt-1">
-                    <span class="text-slate-500 font-semibold mr-1">Chọn nhanh theo cấp bậc:</span>
+                    <span class="text-slate-500 font-semibold mr-1">Hoặc chọn nhanh ID theo cấp:</span>
                     <template x-for="scope in availableScopes" :key="scope">
                         <button 
                             type="button" 
@@ -811,7 +930,9 @@ function salesPolicyForm() {
     return {
         isSaving: false,
         dealerSearch: '',
+        freeProductSearch: '',
         dealersCatalog: @json($dealers ?? []),
+        dealerTiersCatalog: @json($dealerTiers ?? []),
         categoriesCatalog: @json($categories ?? []),
         brandsCatalog: @json($brands ?? []),
         productsCatalog: @json($products ?? []),
@@ -834,6 +955,11 @@ function salesPolicyForm() {
             name: '{{ $policy ? addslashes($policy->name) : "" }}',
             policy_type: '{{ $policy ? ($policy->policy_type ?: "percentage") : "percentage" }}',
             apply_scope: '{{ $policy ? ($policy->apply_scope === "product" ? "product" : "order") : "order" }}',
+            qty_group_mode: '{{ $policy ? ($policy->qty_group_mode ?: "basket_mix") : "basket_mix" }}',
+            conflict_group: '{{ $policy ? addslashes($policy->conflict_group ?? "") : "" }}',
+            stacking_mode: '{{ $policy ? ($policy->stacking_mode ?: "exclusive_line") : "exclusive_line" }}',
+            require_original_price: {{ (!$policy || ($policy->require_original_price ?? true)) ? 'true' : 'false' }},
+            priority: {{ $policy && $policy->priority !== null ? (int) $policy->priority : 100 }},
             status: '{{ $policy ? ($policy->status ?: "Hoạt động") : "Hoạt động" }}',
             buy_qty: {{ $policy && $policy->buy_qty !== null ? (float)$policy->buy_qty : 'null' }},
             free_qty: {{ $policy && $policy->free_qty !== null ? (float)$policy->free_qty : 'null' }},
@@ -841,8 +967,10 @@ function salesPolicyForm() {
             gift_tiers: @json($policy && !empty($policy->gift_tiers) ? $policy->gift_tiers : []),
             discount_percent: {{ $policy && $policy->discount_percent !== null ? (float)$policy->discount_percent : 'null' }},
             discount_amount: {{ $policy && $policy->discount_amount !== null ? (float)$policy->discount_amount : 'null' }},
+            discount_tiers: @json($policy && !empty($policy->discount_tiers) ? $policy->discount_tiers : []),
             min_order_value: {{ $policy && $policy->min_order_value !== null ? (float)$policy->min_order_value : 'null' }},
             target_customer_ids: @json($policy && $policy->target_customer_ids ? array_map('strval', $policy->target_customer_ids) : []),
+            target_customer_tiers: @json($policy && $policy->target_customer_tiers ? array_map('strval', $policy->target_customer_tiers) : []),
             target_product_ids: @json($policy && $policy->target_product_ids ? array_map('strval', $policy->target_product_ids) : []),
             start_date: '{{ $policy && $policy->start_date ? (is_string($policy->start_date) ? substr($policy->start_date, 0, 10) : $policy->start_date->format("Y-m-d")) : date("Y-m-d") }}',
             end_date: '{{ $policy && $policy->end_date ? (is_string($policy->end_date) ? substr($policy->end_date, 0, 10) : $policy->end_date->format("Y-m-d")) : "" }}',
@@ -863,6 +991,40 @@ function salesPolicyForm() {
                     ];
                 }
             }
+            if (!Array.isArray(this.formData.discount_tiers)) {
+                this.formData.discount_tiers = [];
+            }
+            if (!Array.isArray(this.formData.target_customer_tiers)) {
+                this.formData.target_customer_tiers = [];
+            }
+        },
+
+        getFilteredFreeProducts() {
+            const list = this.productsCatalog || [];
+            const raw = (this.freeProductSearch || '').toLowerCase().trim();
+            if (!raw) return list;
+            const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/đ/g, 'd');
+            const cleanQ = norm(raw);
+            return list.filter(p => {
+                if (String(p.id) === String(this.formData.free_product_id)) return true;
+                return norm(p.sku).includes(cleanQ) || norm(p.name).includes(cleanQ);
+            });
+        },
+
+        addDiscountTier(mode = 'percentage') {
+            if (!Array.isArray(this.formData.discount_tiers)) {
+                this.formData.discount_tiers = [];
+            }
+            this.formData.discount_tiers.push({
+                min_qty: 2,
+                min_amount: 0,
+                discount_percent: mode === 'percentage' ? 10 : null,
+                discount_amount: mode === 'amount' ? 50000 : null,
+            });
+        },
+
+        removeDiscountTier(idx) {
+            this.formData.discount_tiers.splice(idx, 1);
         },
 
         addGiftTier() {
@@ -993,8 +1155,16 @@ function salesPolicyForm() {
             }
 
             if (this.formData.policy_type === 'percentage') {
-                if (this.formData.discount_percent === null || this.formData.discount_percent === '' || Number(this.formData.discount_percent) <= 0) {
-                    alert('Vui lòng nhập tỷ lệ chiết khấu (%) hợp lệ!');
+                const hasTiers = Array.isArray(this.formData.discount_tiers) && this.formData.discount_tiers.some(t => Number(t.discount_percent) > 0 && (Number(t.min_qty) > 0 || Number(t.min_amount) > 0));
+                if (hasTiers) {
+                    this.formData.discount_tiers = this.formData.discount_tiers
+                        .filter(t => Number(t.discount_percent) > 0 && (Number(t.min_qty) > 0 || Number(t.min_amount) > 0))
+                        .sort((a, b) => (Number(a.min_qty || 0) - Number(b.min_qty || 0)) || (Number(a.min_amount || 0) - Number(b.min_amount || 0)));
+                    if (this.formData.discount_percent === null || this.formData.discount_percent === '' || Number(this.formData.discount_percent) <= 0) {
+                        this.formData.discount_percent = this.formData.discount_tiers[0].discount_percent;
+                    }
+                } else if (this.formData.discount_percent === null || this.formData.discount_percent === '' || Number(this.formData.discount_percent) <= 0) {
+                    alert('Vui lòng nhập tỷ lệ chiết khấu (%) hợp lệ hoặc thêm bậc chiết khấu!');
                     return;
                 }
             } else if (this.formData.policy_type === 'quantity') {

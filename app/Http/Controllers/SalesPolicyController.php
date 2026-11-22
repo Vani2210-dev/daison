@@ -70,6 +70,13 @@ class SalesPolicyController extends Controller
             $customerIds = array_filter(array_map('trim', explode(',', $customerIds)));
         }
 
+        $customerTiers = $request->input('target_customer_tiers') !== null
+            ? $request->input('target_customer_tiers')
+            : ($request->input('targetCustomerTiers') ?: []);
+        if (is_string($customerTiers)) {
+            $customerTiers = json_decode($customerTiers, true) ?: array_filter(array_map('trim', explode(',', $customerTiers)));
+        }
+
         $productIds = $request->input('target_product_ids') !== null 
             ? $request->input('target_product_ids') 
             : ($request->input('targetProductIds') ?: []);
@@ -96,19 +103,39 @@ class SalesPolicyController extends Controller
             $giftTiers = json_decode($giftTiers, true);
         }
 
+        $discountTiers = $request->input('discount_tiers') ?? $request->input('discountTiers');
+        if (is_string($discountTiers)) {
+            $discountTiers = json_decode($discountTiers, true);
+        }
+
+        $qtyGroupMode = $request->input('qty_group_mode') ?: ($request->input('qtyGroupMode') ?: 'basket_mix');
+        $conflictGroup = $request->input('conflict_group') ?? $request->input('conflictGroup');
+        $stackingMode = $request->input('stacking_mode') ?: ($request->input('stackingMode') ?: 'exclusive_line');
+        $requireOrigPrice = $request->has('require_original_price')
+            ? filter_var($request->input('require_original_price'), FILTER_VALIDATE_BOOLEAN)
+            : ($request->has('requireOriginalPrice') ? filter_var($request->input('requireOriginalPrice'), FILTER_VALIDATE_BOOLEAN) : true);
+        $priority = (int) ($request->input('priority') ?? 100);
+
         $policy = SalesPolicy::create([
             'code' => $code,
             'name' => $request->input('name'),
             'policy_type' => $policyType,
             'apply_scope' => $applyScope,
+            'qty_group_mode' => $qtyGroupMode,
+            'conflict_group' => $conflictGroup ?: null,
+            'stacking_mode' => $stackingMode,
+            'require_original_price' => $requireOrigPrice,
+            'priority' => $priority,
             'buy_qty' => $buyQty !== null && $buyQty !== '' ? (float)$buyQty : null,
             'free_qty' => $freeQty !== null && $freeQty !== '' ? (float)$freeQty : null,
             'free_product_id' => $freeProductId ?: null,
             'gift_tiers' => is_array($giftTiers) ? $giftTiers : null,
             'discount_percent' => $discountPercent !== null && $discountPercent !== '' ? (float)$discountPercent : null,
             'discount_amount' => $discountAmount !== null && $discountAmount !== '' ? (float)$discountAmount : null,
+            'discount_tiers' => is_array($discountTiers) ? $discountTiers : null,
             'min_order_value' => $minOrderValue !== null && $minOrderValue !== '' ? (float)$minOrderValue : null,
             'target_customer_ids' => is_array($customerIds) ? array_values($customerIds) : [],
+            'target_customer_tiers' => is_array($customerTiers) ? array_values($customerTiers) : [],
             'target_product_ids' => is_array($productIds) ? array_values($productIds) : [],
             'start_date' => $startDate ?: null,
             'end_date' => $endDate ?: null,
@@ -142,6 +169,13 @@ class SalesPolicyController extends Controller
             $customerIds = array_filter(array_map('trim', explode(',', $customerIds)));
         }
 
+        $customerTiers = $request->has('target_customer_tiers')
+            ? $request->input('target_customer_tiers')
+            : ($request->has('targetCustomerTiers') ? $request->input('targetCustomerTiers') : $policy->target_customer_tiers);
+        if (is_string($customerTiers)) {
+            $customerTiers = json_decode($customerTiers, true) ?: array_filter(array_map('trim', explode(',', $customerTiers)));
+        }
+
         $productIds = $request->input('target_product_ids') !== null 
             ? $request->input('target_product_ids') 
             : ($request->input('targetProductIds') !== null ? $request->input('targetProductIds') : $policy->target_product_ids);
@@ -168,18 +202,38 @@ class SalesPolicyController extends Controller
             $giftTiers = json_decode($giftTiers, true);
         }
 
+        $discountTiers = $request->has('discount_tiers') ? $request->input('discount_tiers') : ($request->has('discountTiers') ? $request->input('discountTiers') : $policy->discount_tiers);
+        if (is_string($discountTiers)) {
+            $discountTiers = json_decode($discountTiers, true);
+        }
+
+        $qtyGroupMode = $request->input('qty_group_mode') ?: ($request->input('qtyGroupMode') ?: ($policy->qty_group_mode ?: 'basket_mix'));
+        $conflictGroup = $request->has('conflict_group') ? $request->input('conflict_group') : ($request->has('conflictGroup') ? $request->input('conflictGroup') : $policy->conflict_group);
+        $stackingMode = $request->input('stacking_mode') ?: ($request->input('stackingMode') ?: ($policy->stacking_mode ?: 'exclusive_line'));
+        $requireOrigPrice = $request->has('require_original_price')
+            ? filter_var($request->input('require_original_price'), FILTER_VALIDATE_BOOLEAN)
+            : ($request->has('requireOriginalPrice') ? filter_var($request->input('requireOriginalPrice'), FILTER_VALIDATE_BOOLEAN) : ($policy->require_original_price ?? true));
+        $priority = $request->has('priority') ? (int) $request->input('priority') : ($policy->priority ?? 100);
+
         $policy->update([
             'name' => $request->input('name', $policy->name),
             'policy_type' => $policyType,
             'apply_scope' => $applyScope,
+            'qty_group_mode' => $qtyGroupMode,
+            'conflict_group' => $conflictGroup ?: null,
+            'stacking_mode' => $stackingMode,
+            'require_original_price' => $requireOrigPrice,
+            'priority' => $priority,
             'buy_qty' => $buyQty !== null && $buyQty !== '' ? (float)$buyQty : null,
             'free_qty' => $freeQty !== null && $freeQty !== '' ? (float)$freeQty : null,
             'free_product_id' => $freeProductId ?: null,
             'gift_tiers' => is_array($giftTiers) ? $giftTiers : null,
             'discount_percent' => $discountPercent !== null && $discountPercent !== '' ? (float)$discountPercent : null,
             'discount_amount' => $discountAmount !== null && $discountAmount !== '' ? (float)$discountAmount : null,
+            'discount_tiers' => is_array($discountTiers) ? $discountTiers : null,
             'min_order_value' => $minOrderValue !== null && $minOrderValue !== '' ? (float)$minOrderValue : null,
             'target_customer_ids' => is_array($customerIds) ? array_values($customerIds) : [],
+            'target_customer_tiers' => is_array($customerTiers) ? array_values($customerTiers) : [],
             'target_product_ids' => is_array($productIds) ? array_values($productIds) : [],
             'start_date' => $startDate ?: null,
             'end_date' => $endDate ?: null,
@@ -230,6 +284,14 @@ class SalesPolicyController extends Controller
         $createdByName = $p->creator?->name ?: 'Ban Giám Đốc';
         $createdAt = $p->created_at ? $p->created_at->format('Y-m-d H:i:s') : null;
 
+        $targetCustomerTiers = $p->target_customer_tiers ?: [];
+        $discountTiers = $p->discount_tiers ?: [];
+        $qtyGroupMode = $p->qty_group_mode ?: 'basket_mix';
+        $conflictGroup = $p->conflict_group ?: '';
+        $stackingMode = $p->stacking_mode ?: 'exclusive_line';
+        $requireOrigPrice = $p->require_original_price ?? true;
+        $priority = $p->priority ?? 100;
+
         return [
             'id' => (string) $p->id,
             'code' => $p->code,
@@ -238,6 +300,11 @@ class SalesPolicyController extends Controller
             'policy_type' => $policyType,
             'apply_scope' => $p->apply_scope ?: (($policyType === 'quantity' || count($targetProductIds) > 0) ? 'product' : 'order'),
             'applyScope' => $p->apply_scope ?: (($policyType === 'quantity' || count($targetProductIds) > 0) ? 'product' : 'order'),
+            'qty_group_mode' => $qtyGroupMode,
+            'conflict_group' => $conflictGroup,
+            'stacking_mode' => $stackingMode,
+            'require_original_price' => (bool) $requireOrigPrice,
+            'priority' => (int) $priority,
             'buy_qty' => $buyQty,
             'free_qty' => $freeQty,
             'free_product_id' => $freeProductId,
@@ -245,8 +312,10 @@ class SalesPolicyController extends Controller
             'gift_tiers' => $p->gift_tiers ?: [],
             'discount_percent' => $discountPercent,
             'discount_amount' => $discountAmount,
+            'discount_tiers' => $discountTiers,
             'min_order_value' => $minOrderValue,
             'target_customer_ids' => $targetCustomerIds,
+            'target_customer_tiers' => $targetCustomerTiers,
             'target_product_ids' => $targetProductIds,
             'start_date' => $startDate,
             'end_date' => $endDate,

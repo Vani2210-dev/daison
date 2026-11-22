@@ -1478,16 +1478,27 @@
                         </div>
                     </div>
 
-                    <!-- Nút Bỏ chọn: To bản, dễ bấm -->
-                    <template x-if="getSelectedPolicies().length > 0">
+                    <!-- Nút Tự áp CTKM tối ưu & Bỏ chọn -->
+                    <div class="flex items-center gap-2 shrink-0 flex-wrap">
                         <button type="button"
-                                @click="clearAllOrderPolicies()"
-                                class="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 hover:border-rose-300 text-xs sm:text-sm font-bold transition cursor-pointer shadow-xs shrink-0"
-                                title="Bỏ chọn tất cả chính sách">
-                            <i class="fa-solid fa-xmark text-sm"></i>
-                            <span>Bỏ chọn tất cả</span>
+                                x-show="!isReadonly && getSalesItemsWithProduct().length > 0"
+                                x-cloak
+                                @click="autoApplyBestPolicies()"
+                                class="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs sm:text-sm font-bold transition cursor-pointer shadow-xs active:scale-95"
+                                title="Tự động gợi ý & áp dụng gói chính sách lợi nhất không xung đột">
+                            <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
+                            <span>Tự áp CTKM tối ưu</span>
                         </button>
-                    </template>
+                        <template x-if="getSelectedPolicies().length > 0">
+                            <button type="button"
+                                    @click="clearAllOrderPolicies()"
+                                    class="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 hover:border-rose-300 text-xs sm:text-sm font-bold transition cursor-pointer shadow-xs shrink-0"
+                                    title="Bỏ chọn tất cả chính sách">
+                                <i class="fa-solid fa-xmark text-sm"></i>
+                                <span>Bỏ chọn tất cả</span>
+                            </button>
+                        </template>
+                    </div>
                 </div>
 
                 <!-- Danh sách các chính sách ĐANG ÁP DỤNG -->
@@ -1500,10 +1511,14 @@
                                     <div class="flex items-center gap-2 flex-wrap">
                                         <span class="px-2 py-0.5 rounded-md text-xs font-black uppercase tracking-wider shrink-0"
                                               :class="p.policy_type === 'quantity' ? 'bg-purple-100 text-purple-800 border border-purple-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'"
-                                              x-text="p.policy_type === 'quantity' ? 'Quà tặng' : 'Chiết khấu'"></span>
+                                              x-text="p.policy_type === 'quantity' ? 'Quà tặng' : (p.stacking_mode === 'stackable_order' ? 'CK cộng dồn' : 'Chiết khấu')"></span>
                                         <span class="text-base sm:text-lg font-black leading-snug"
                                               :class="p.policy_type === 'quantity' ? 'text-purple-700' : 'text-emerald-700'"
                                               x-text="getPolicyBenefitDescription(p)"></span>
+                                        <template x-if="p.conflict_group">
+                                            <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold"
+                                                  x-text="'Nhóm: ' + p.conflict_group"></span>
+                                        </template>
                                     </div>
 
                                     <!-- Hàng 2: Tên chương trình & Sản phẩm áp dụng (Ngắn gọn, súc tích) -->
@@ -1512,6 +1527,14 @@
                                         <span class="text-slate-300">•</span>
                                         <span class="text-slate-500 font-medium" x-text="'Áp dụng: ' + getPolicyAppliedProductsSummary(p)"></span>
                                     </div>
+
+                                    <!-- Gợi ý nâng bậc tiếp theo (nếu có) -->
+                                    <template x-if="getPolicyNextTierHint(p)">
+                                        <div class="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5 inline-flex items-center gap-1 mt-0.5">
+                                            <i class="fa-solid fa-arrow-trend-up text-[10px]"></i>
+                                            <span x-text="getPolicyNextTierHint(p)"></span>
+                                        </div>
+                                    </template>
                                 </div>
 
                                 <!-- Nút Xóa: Kích thước 36x36px to rõ, dễ bấm trên cảm ứng & chuột -->
@@ -1543,7 +1566,19 @@
                     <template x-if="getAvailablePoliciesToAdd().length === 0 && getSelectedPolicies().length === 0">
                         <div class="p-4 bg-white/90 rounded-xl border border-dashed border-slate-300 text-center text-xs sm:text-sm font-semibold text-slate-500">
                             <span x-show="getSalesItemsWithProduct().length === 0">Thêm sản phẩm vào đơn để áp dụng chính sách ưu đãi.</span>
-                            <span x-show="getSalesItemsWithProduct().length > 0">Chưa có chính sách ưu đãi phù hợp với các sản phẩm hiện tại.</span>
+                            <span x-show="getSalesItemsWithProduct().length > 0">Chưa có chính sách ưu đãi nào đạt ngưỡng cho các sản phẩm hiện tại.</span>
+                        </div>
+                    </template>
+
+                    <!-- Gợi ý chính sách sắp đạt (Up-sell cho Sale) -->
+                    <template x-if="getUpcomingPolicyHints().length > 0">
+                        <div class="mt-2 flex flex-wrap gap-1.5">
+                            <template x-for="hint in getUpcomingPolicyHints()" :key="hint.policyId">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">
+                                    <i class="fa-solid fa-lightbulb text-amber-500"></i>
+                                    <span x-text="hint.text"></span>
+                                </span>
+                            </template>
                         </div>
                     </template>
                 </div>
@@ -3328,25 +3363,6 @@ function orderFormApp() {
             return Array.from(eligibleIds).map(id => this.getSalesPolicyById(id)).filter(Boolean);
         },
 
-        getOrderScopeApplicablePolicies() {
-            return (this.salesPoliciesCatalog || []).filter(p => {
-                if (p.apply_scope !== 'order') return false;
-                if (this.formData.order_policy_id && String(p.id) === String(this.formData.order_policy_id)) return true;
-                return this.getPolicyEvaluation(p).eligible === true;
-            });
-        },
-
-        getApplicablePoliciesForProduct(item) {
-            if (!item || !item.product_id) return [];
-            return (this.salesPoliciesCatalog || []).filter(p => {
-                // Chính sách chỉ áp dụng toàn đơn thì không đưa vào dropdown từng sản phẩm
-                if (p.apply_scope === 'order' && p.policy_type !== 'quantity') return false;
-                // Giữ lại chính sách đang được chọn trên sản phẩm này để dropdown hiển thị đúng
-                if (item.selected_policy_id && String(p.id) === String(item.selected_policy_id)) return true;
-                return this.getItemPolicyEvaluation(item, p).eligible === true;
-            });
-        },
-
         resolveScopedGiftProduct(explicitFreeProductId, policy, fallbackProductId = null) {
             if (explicitFreeProductId) {
                 const mapProd = this.getProduct(explicitFreeProductId);
@@ -3364,201 +3380,6 @@ function orderFormApp() {
                 return { allowed: false, prod: null };
             }
             return { allowed: true, prod: fallbackProd };
-        },
-
-        getItemPolicyEvaluation(item, policy) {
-            if (!item || !policy) {
-                return { eligible: false, reason: 'Chưa xác định', benefitText: '', statusText: '', totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
-            }
-            if (!this.isCustomerEligibleForPolicy(policy)) {
-                return { eligible: false, reason: 'Chỉ áp dụng đại lý chỉ định', benefitText: '', statusText: 'Không thuộc đối tượng đại lý', totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
-            }
-            if (!this.isProductInPolicy(policy, item.product_id)) {
-                return { eligible: false, reason: 'SP không thuộc chính sách', benefitText: '', statusText: 'Sản phẩm không thuộc phạm vi áp dụng', totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
-            }
-
-            const qty = Number(item.quantity) || 0;
-            const unitPrice = Number(item.unitPrice) || 0;
-            const lineBase = qty * unitPrice;
-            const manualDisc = (item._manualDiscount && !item._autoPromoDiscount) ? (Number(item.discount_amount) || 0) : 0;
-            const lineSubtotal = Math.max(0, lineBase - manualDisc);
-
-            if (policy.policy_type === 'quantity') {
-                const buyQty = Number(policy.buy_qty) || 0;
-                const freeQty = Number(policy.free_qty) || 0;
-                let freeProductId = policy.free_product_id || null;
-
-                let tiersList = policy.gift_tiers;
-                if (typeof tiersList === 'string') {
-                    try { tiersList = JSON.parse(tiersList); } catch(e) { tiersList = []; }
-                }
-
-                let sortedTiers = [];
-                let minBuyRequired = buyQty;
-                if (Array.isArray(tiersList) && tiersList.length > 0) {
-                    sortedTiers = [...tiersList]
-                        .map(t => ({
-                            buy_qty: Number(t.buy_qty) || 0,
-                            free_qty: Number(t.free_qty) || 0,
-                            free_product_id: t.free_product_id || null
-                        }))
-                        .filter(t => t.buy_qty > 0 && t.free_qty > 0)
-                        .sort((a, b) => b.buy_qty - a.buy_qty);
-                    if (sortedTiers.length > 0) {
-                        minBuyRequired = sortedTiers[sortedTiers.length - 1].buy_qty;
-                    }
-                }
-
-                let matchedTier = null;
-                if (sortedTiers.length > 0) {
-                    matchedTier = sortedTiers.find(t => qty >= t.buy_qty);
-                }
-
-                let totalFree = 0;
-                let giftLabel = `[TẶNG KÈM] ${policy.name}`;
-                if (matchedTier) {
-                    const mult = Math.floor(qty / matchedTier.buy_qty);
-                    totalFree = mult * matchedTier.free_qty;
-                    if (matchedTier.free_product_id) {
-                        freeProductId = matchedTier.free_product_id;
-                    }
-                    giftLabel = `[TẶNG KÈM MUA ${matchedTier.buy_qty} TẶNG ${matchedTier.free_qty}] ${policy.name}`;
-                } else if (buyQty > 0 && freeQty > 0 && qty >= buyQty) {
-                    const mult = Math.floor(qty / buyQty);
-                    totalFree = mult * freeQty;
-                }
-
-                if (totalFree <= 0) {
-                    const needMore = Math.max(1, Math.ceil((minBuyRequired || 1) - qty));
-                    return {
-                        eligible: false,
-                        reason: `Thiếu ${needMore} SP`,
-                        benefitText: '',
-                        statusText: `Chưa đạt (cần mua tối thiểu ${minBuyRequired} SP, hiện có ${qty} SP)`,
-                        totalFree: 0,
-                        freeProd: null,
-                        giftLabel: '',
-                        discountAmt: 0,
-                        discountPct: 0
-                    };
-                }
-
-                const giftRes = this.resolveScopedGiftProduct(freeProductId, policy, item.product_id);
-                if (!giftRes.allowed) {
-                    return {
-                        eligible: false,
-                        reason: 'Ngoài phạm vi NCC',
-                        benefitText: '',
-                        statusText: 'Sản phẩm tặng nằm ngoài Hãng / NCC của nhân viên',
-                        totalFree: 0,
-                        freeProd: null,
-                        giftLabel: '',
-                        discountAmt: 0,
-                        discountPct: 0
-                    };
-                }
-                const freeProd = giftRes.prod;
-
-                const freeName = freeProd?.name || item.name || 'quà tặng';
-                return {
-                    eligible: true,
-                    reason: '',
-                    benefitText: `Tặng +${totalFree}`,
-                    statusText: `Đạt: Tặng +${totalFree} ${freeProd?.unit || item.unit || 'SP'} (${freeName})`,
-                    totalFree,
-                    freeProd,
-                    giftLabel,
-                    discountAmt: 0,
-                    discountPct: 0
-                };
-            }
-
-            const minVal = Number(policy.min_order_value) || 0;
-            const buyQty = Number(policy.buy_qty) || 0;
-
-            if (!this.isItemOriginalPriceTier(item)) {
-                return {
-                    eligible: false,
-                    reason: 'Cần SP Nguyên Giá',
-                    benefitText: '',
-                    statusText: 'Chỉ áp dụng cho dòng sản phẩm giá Nguyên Giá',
-                    totalFree: 0,
-                    freeProd: null,
-                    giftLabel: '',
-                    discountAmt: 0,
-                    discountPct: 0
-                };
-            }
-
-            if (buyQty > 0 && qty < buyQty) {
-                const needMore = Math.max(1, Math.ceil(buyQty - qty));
-                return {
-                    eligible: false,
-                    reason: `Thiếu ${needMore} SP`,
-                    benefitText: '',
-                    statusText: `Chưa đạt (cần mua tối thiểu ${buyQty} SP, hiện có ${qty} SP)`,
-                    totalFree: 0,
-                    freeProd: null,
-                    giftLabel: '',
-                    discountAmt: 0,
-                    discountPct: 0
-                };
-            }
-
-            if (minVal > 0 && lineSubtotal < minVal) {
-                const needAmt = Math.max(0, minVal - lineSubtotal);
-                return {
-                    eligible: false,
-                    reason: `Thiếu ${this.formatNumber(needAmt)}đ`,
-                    benefitText: '',
-                    statusText: `Chưa đạt (cần thành tiền tối thiểu ${this.formatNumber(minVal)} đ, hiện có ${this.formatNumber(lineSubtotal)} đ)`,
-                    totalFree: 0,
-                    freeProd: null,
-                    giftLabel: '',
-                    discountAmt: 0,
-                    discountPct: 0
-                };
-            }
-
-            if (policy.policy_type === 'percentage') {
-                const discPct = Number(policy.discount_percent) || 0;
-                const estAmt = Math.round((lineSubtotal * discPct) / 100);
-                return {
-                    eligible: discPct > 0 && lineSubtotal > 0,
-                    reason: '',
-                    benefitText: `CK -${discPct}%`,
-                    statusText: `Đạt: Chiết khấu ${discPct}% (-${this.formatNumber(estAmt)} đ)`,
-                    totalFree: 0,
-                    freeProd: null,
-                    giftLabel: '',
-                    discountAmt: estAmt,
-                    discountPct: discPct
-                };
-            }
-
-            if (policy.policy_type === 'amount') {
-                const discAmt = Math.min(lineSubtotal, Number(policy.discount_amount) || 0);
-                return {
-                    eligible: discAmt > 0 && lineSubtotal > 0,
-                    reason: '',
-                    benefitText: `-${this.formatNumber(discAmt)}đ`,
-                    statusText: `Đạt: Giảm trực tiếp ${this.formatNumber(discAmt)} đ`,
-                    totalFree: 0,
-                    freeProd: null,
-                    giftLabel: '',
-                    discountAmt: discAmt,
-                    discountPct: 0
-                };
-            }
-
-            return { eligible: false, reason: 'Chưa hỗ trợ', benefitText: '', statusText: 'Không hợp lệ', totalFree: 0, freeProd: null, giftLabel: '', discountAmt: 0, discountPct: 0 };
-        },
-
-        formatItemPolicyOptionLabel(policy, item) {
-            if (!policy) return '';
-            const ev = this.getItemPolicyEvaluation(item, policy);
-            const prefix = ev.eligible ? `[Đạt${ev.benefitText ? ': ' + ev.benefitText : ''}]` : `[${ev.reason}]`;
-            return `${prefix} ${policy.name}`;
         },
 
         getSelectedPolicies() {
@@ -3599,10 +3420,14 @@ function orderFormApp() {
                     if (policy.policy_type === 'percentage') {
                         const claimed = (this.items || []).filter(it => it._claimedByPolicyId && String(it._claimedByPolicyId) === String(policy.id));
                         const totalDisc = claimed.reduce((sum, it) => sum + (Number(it.discount_amount) || 0), 0);
-                        const pct = Number(policy.discount_percent) || 0;
+                        const activePcts = Array.from(new Set(claimed.map(it => Number(it.discount_percent) || 0).filter(p => p > 0)));
+                        if (activePcts.length === 0 && policy.stacking_mode === 'stackable_order' && this.orderDiscountPercent > 0) {
+                            activePcts.push(Number(this.orderDiscountPercent));
+                        }
+                        const pctLabel = activePcts.length > 0 ? activePcts.map(v => `${v}%`).join(' / ') : `${Number(policy.discount_percent) || 0}%`;
                         return totalDisc > 0
-                            ? `Chiết khấu ${pct}% (-${this.formatNumber(totalDisc)} đ)`
-                            : `Chiết khấu ${pct}%`;
+                            ? `Chiết khấu ${pctLabel} (-${this.formatNumber(totalDisc)} đ)`
+                            : `Chiết khấu ${pctLabel}`;
                     }
                     if (policy.policy_type === 'amount') {
                         const claimed = (this.items || []).filter(it => it._claimedByPolicyId && String(it._claimedByPolicyId) === String(policy.id));
@@ -3613,33 +3438,242 @@ function orderFormApp() {
                     }
                     return 'Khuyến mại áp dụng';
                 },
-        
+
+                getItemQuantityInBaseUnit(item) {
+                    if (!item) return 0;
+                    const qty = Number(item.quantity) || 0;
+                    if (qty <= 0) return 0;
+                    const p = this.getProduct(item.product_id);
+                    if (!p || !p.conversion_unit || !(Number(p.conversion_rate) > 0)) {
+                        return qty;
+                    }
+                    const curUnit = (item.unit || '').trim().toLowerCase();
+                    const baseUnit = (p.unit || '').trim().toLowerCase();
+                    const convUnit = (p.conversion_unit || '').trim().toLowerCase();
+                    const rate = Number(p.conversion_rate);
+                    if (convUnit && curUnit === convUnit && convUnit !== baseUnit) {
+                        return this.isConvUnitLarger(p) ? (qty * rate) : (qty / rate);
+                    }
+                    return qty;
+                },
+
+                getItemVariantGroupKey(item) {
+                    if (!item || !item.product_id) return '';
+                    const prod = this.getProduct(item.product_id);
+                    const rawName = String(prod?.name || item.name || '').trim();
+                    const sizeMatch = rawName.match(/(\d+(?:[.,]\d+)?)\s*(g|gam|gr|ml|l|kg|cm)\b/i);
+                    if (sizeMatch) {
+                        const num = sizeMatch[1].replace(',', '.');
+                        const unit = sizeMatch[2].toLowerCase().replace(/^gam$|^gr$/, 'g');
+                        return `size:${num}${unit}`;
+                    }
+                    return `sku:${String(item.product_id)}`;
+                },
+
+                getEffectivePolicyGroupMode(policy) {
+                    if (!policy) return 'basket_mix';
+                    if (policy.qty_group_mode) return policy.qty_group_mode;
+                    const targets = this.getNormalizedPolicyProductIds(policy);
+                    return targets.length === 0 ? 'per_sku' : 'basket_mix';
+                },
+
+                bucketItemsByPolicyGroupMode(policy, candidateItems) {
+                    const mode = this.getEffectivePolicyGroupMode(policy);
+                    const buckets = new Map();
+                    (candidateItems || []).forEach(it => {
+                        let key = 'all';
+                        if (mode === 'per_sku') {
+                            key = `sku:${String(it.product_id)}`;
+                        } else if (mode === 'per_variant_group') {
+                            key = this.getItemVariantGroupKey(it);
+                        } else if (mode === 'per_brand') {
+                            const prod = this.getProduct(it.product_id);
+                            key = `brand:${String(prod?.brand_id || 'none')}`;
+                        }
+                        if (!buckets.has(key)) buckets.set(key, []);
+                        buckets.get(key).push(it);
+                    });
+                    return buckets;
+                },
+
+                policyRequiresOriginalPrice(policy) {
+                    if (!policy) return true;
+                    return !(policy.require_original_price === false || policy.require_original_price === 0 || policy.require_original_price === '0');
+                },
+
+                getNormalizedDiscountTiers(policy) {
+                    let list = policy?.discount_tiers;
+                    if (typeof list === 'string') {
+                        try { list = JSON.parse(list); } catch (e) { list = []; }
+                    }
+                    if (!Array.isArray(list)) return [];
+                    return list
+                        .map(t => ({
+                            min_qty: Number(t.min_qty) || 0,
+                            min_amount: Number(t.min_amount) || 0,
+                            discount_percent: (t.discount_percent !== null && t.discount_percent !== '' && t.discount_percent !== undefined) ? Number(t.discount_percent) : 0,
+                            discount_amount: (t.discount_amount !== null && t.discount_amount !== '' && t.discount_amount !== undefined) ? Number(t.discount_amount) : 0,
+                        }))
+                        .filter(t => (t.discount_percent > 0 || t.discount_amount > 0) && (t.min_qty > 0 || t.min_amount > 0));
+                },
+
+                calculateOptimalGiftGrants(qtyInBase, sortedDescTiers, fallbackBuyQty, fallbackFreeQty, defaultFreeProductId) {
+                    const grants = [];
+                    if (sortedDescTiers.length > 0) {
+                        let rem = qtyInBase;
+                        for (const t of sortedDescTiers) {
+                            if (rem >= t.buy_qty) {
+                                const count = Math.floor(rem / t.buy_qty);
+                                rem = rem % t.buy_qty;
+                                grants.push({
+                                    tier: t,
+                                    freeQty: count * t.free_qty,
+                                    explicitGiftProdId: t.free_product_id || defaultFreeProductId || null,
+                                });
+                            }
+                        }
+                    } else if (fallbackBuyQty > 0 && fallbackFreeQty > 0 && qtyInBase >= fallbackBuyQty) {
+                        const count = Math.floor(qtyInBase / fallbackBuyQty);
+                        grants.push({
+                            tier: { buy_qty: fallbackBuyQty, free_qty: fallbackFreeQty, free_product_id: defaultFreeProductId || null },
+                            freeQty: count * fallbackFreeQty,
+                            explicitGiftProdId: defaultFreeProductId || null,
+                        });
+                    }
+                    return grants;
+                },
+
+                getActiveConflictGroups(excludePolicyId = null) {
+                    const groups = new Set();
+                    (this.formData.sales_policy_ids || []).forEach(id => {
+                        if (excludePolicyId && String(id) === String(excludePolicyId)) return;
+                        const p = this.getSalesPolicyById(id);
+                        if (p && p.conflict_group) {
+                            groups.add(String(p.conflict_group).trim());
+                        }
+                    });
+                    return groups;
+                },
+
+                hasPolicyConflictWithSelected(policy, excludePolicyId = null) {
+                    if (!policy || !policy.conflict_group) return false;
+                    return this.getActiveConflictGroups(excludePolicyId).has(String(policy.conflict_group).trim());
+                },
+
                 getAvailablePoliciesToAdd() {
                     const selectedIds = new Set((this.formData.sales_policy_ids || []).map(id => String(id)));
                     if (this.formData.order_policy_id) selectedIds.add(String(this.formData.order_policy_id));
-        
-                    // Chỉ xét những sản phẩm chưa bị bất kỳ chính sách nào chiếm dụng
-                    const unclaimedItems = (this.items || []).filter(it =>
+                    const activeConflicts = this.getActiveConflictGroups();
+
+                    const activeItems = (this.items || []).filter(it =>
                         !it.isPromotionalGift &&
                         it.checked !== false &&
-                        it.product_id &&
-                        !it._claimedByPolicyId
+                        it.product_id
                     );
-        
-                    if (unclaimedItems.length === 0) return [];
-        
+                    if (activeItems.length === 0) return [];
+
+                    const unclaimedItems = activeItems.filter(it => !it._claimedByPolicyId);
                     const available = [];
                     (this.salesPoliciesCatalog || []).forEach(p => {
                         if (!p || selectedIds.has(String(p.id))) return;
                         if (!this.isCustomerEligibleForPolicy(p)) return;
-        
-                        const ev = this.evaluatePolicyBenefitsOnItems(p, unclaimedItems);
+                        if (p.conflict_group && activeConflicts.has(String(p.conflict_group).trim())) return;
+
+                        const candidatePool = p.stacking_mode === 'stackable_order' ? activeItems : unclaimedItems;
+                        if (candidatePool.length === 0) return;
+
+                        const ev = this.evaluatePolicyBenefitsOnItems(p, candidatePool);
                         if (ev.eligible) {
                             available.push(p);
                         }
                     });
-        
+
                     return available;
+                },
+
+                getPolicyNextTierHint(policy) {
+                    if (!policy) return '';
+                    return this.getPolicyEvaluation(policy).nextTierHint || '';
+                },
+
+                getUpcomingPolicyHints() {
+                    const salesItems = this.getSalesItemsWithProduct();
+                    if (salesItems.length === 0) return [];
+
+                    const selectedIds = new Set((this.formData.sales_policy_ids || []).map(id => String(id)));
+                    const activeConflicts = this.getActiveConflictGroups();
+                    const hints = [];
+
+                    for (const p of (this.salesPoliciesCatalog || [])) {
+                        if (!p || selectedIds.has(String(p.id))) continue;
+                        if (!this.isCustomerEligibleForPolicy(p)) continue;
+                        if (p.conflict_group && activeConflicts.has(String(p.conflict_group).trim())) continue;
+
+                        const matching = salesItems.filter(it => !it._claimedByPolicyId && this.isProductInPolicy(p, it.product_id));
+                        if (matching.length === 0) continue;
+
+                        const ev = this.evaluatePolicyBenefitsOnItems(p, salesItems);
+                        if (!ev.eligible && ev.upsellHint) {
+                            hints.push({ policyId: p.id, text: `${p.code || p.name}: ${ev.upsellHint}` });
+                            if (hints.length >= 3) break;
+                        }
+                    }
+                    return hints;
+                },
+
+                autoApplyBestPolicies() {
+                    const activeItems = (this.items || []).filter(it => !it.isPromotionalGift && it.checked !== false && it.product_id);
+                    if (activeItems.length === 0) return;
+
+                    const linePolicies = (this.salesPoliciesCatalog || []).filter(p => p.stacking_mode !== 'stackable_order');
+                    const stackPolicies = (this.salesPoliciesCatalog || []).filter(p => p.stacking_mode === 'stackable_order');
+
+                    const chosenIds = [];
+                    const usedConflicts = new Set();
+                    let remaining = [...activeItems];
+
+                    // Lặp chọn chính sáchExclusive mang lại giá trị lợi ích cao nhất (ưu tiên priority thấp hơn nếu bằng nhau)
+                    const maxIter = linePolicies.length;
+                    for (let step = 0; step < maxIter && remaining.length > 0; step++) {
+                        let best = null;
+                        for (const p of linePolicies) {
+                            if (chosenIds.includes(String(p.id))) continue;
+                            if (!this.isCustomerEligibleForPolicy(p)) continue;
+                            if (p.conflict_group && usedConflicts.has(String(p.conflict_group).trim())) continue;
+
+                            const ev = this.evaluatePolicyBenefitsOnItems(p, remaining);
+                            if (!ev.eligible || !ev.claimedItems || ev.claimedItems.length === 0) continue;
+
+                            const value = Number(ev.estimatedBenefitValue) || 0;
+                            const prio = Number(p.priority ?? 100);
+                            if (!best || value > best.value || (value === best.value && prio < best.prio)) {
+                                best = { p, ev, value, prio };
+                            }
+                        }
+                        if (!best) break;
+
+                        chosenIds.push(String(best.p.id));
+                        if (best.p.conflict_group) {
+                            usedConflicts.add(String(best.p.conflict_group).trim());
+                        }
+                        const claimedSet = new Set(best.ev.claimedItems);
+                        remaining = remaining.filter(it => !claimedSet.has(it));
+                    }
+
+                    // Áp thêm tối đa 1 chính sách cộng dồn mỗi conflict_group (nếu có)
+                    for (const sp of stackPolicies) {
+                        if (!this.isCustomerEligibleForPolicy(sp)) continue;
+                        if (sp.conflict_group && usedConflicts.has(String(sp.conflict_group).trim())) continue;
+                        const ev = this.evaluatePolicyBenefitsOnItems(sp, activeItems);
+                        if (ev.eligible) {
+                            chosenIds.push(String(sp.id));
+                            if (sp.conflict_group) usedConflicts.add(String(sp.conflict_group).trim());
+                        }
+                    }
+
+                    this.formData.sales_policy_ids = chosenIds;
+                    this.formData.sales_policy_id = chosenIds[0] || '';
+                    this.evaluateOrderPolicies();
                 },
         
                 addPolicyById(policyId) {
@@ -3705,322 +3739,321 @@ function orderFormApp() {
                     this.evaluateOrderPolicies();
                 },
         
+                evaluateGiftBuckets(policy, matchingItems) {
+                    const emptyRes = (reason, statusText, upsellHint = '') => ({
+                        eligible: false, reason, benefitText: '', statusText, upsellHint, nextTierHint: '',
+                        estimatedBenefitValue: 0, claimedItems: [], itemDiscounts: [], qualifyingGifts: [],
+                        totalFree: 0, freeProd: null, giftLabel: '', discountPct: 0, discountAmt: 0
+                    });
+
+                    const buyQty = Number(policy.buy_qty) || 0;
+                    const freeQty = Number(policy.free_qty) || 0;
+                    const defaultFreeProductId = policy.free_product_id || null;
+
+                    let tiersList = policy.gift_tiers;
+                    if (typeof tiersList === 'string') {
+                        try { tiersList = JSON.parse(tiersList); } catch (e) { tiersList = []; }
+                    }
+
+                    let sortedDescTiers = [];
+                    let minBuyRequired = buyQty;
+                    if (Array.isArray(tiersList) && tiersList.length > 0) {
+                        sortedDescTiers = [...tiersList]
+                            .map(t => ({
+                                buy_qty: Number(t.buy_qty) || 0,
+                                free_qty: Number(t.free_qty) || 0,
+                                free_product_id: t.free_product_id || null
+                            }))
+                            .filter(t => t.buy_qty > 0 && t.free_qty > 0)
+                            .sort((a, b) => b.buy_qty - a.buy_qty);
+                        if (sortedDescTiers.length > 0) {
+                            minBuyRequired = sortedDescTiers[sortedDescTiers.length - 1].buy_qty;
+                        }
+                    }
+
+                    const groupMode = this.getEffectivePolicyGroupMode(policy);
+                    const modeSuffix = groupMode === 'per_sku' ? ' cùng loại' : (groupMode === 'per_variant_group' ? ' cùng size' : (groupMode === 'per_brand' ? ' cùng nhãn hàng' : ''));
+                    const buckets = this.bucketItemsByPolicyGroupMode(policy, matchingItems);
+
+                    const giftsByProdId = new Map();
+                    const claimedItems = [];
+                    let minMissingQty = Infinity;
+                    let maxBucketQty = 0;
+                    let nextTierHint = '';
+                    let scopeRejected = false;
+
+                    buckets.forEach((bItems) => {
+                        const bucketQty = bItems.reduce((sum, it) => sum + this.getItemQuantityInBaseUnit(it), 0);
+                        if (bucketQty > maxBucketQty) maxBucketQty = bucketQty;
+
+                        const grants = this.calculateOptimalGiftGrants(bucketQty, sortedDescTiers, buyQty, freeQty, defaultFreeProductId);
+                        if (grants.length === 0) {
+                            if (minBuyRequired > bucketQty) {
+                                minMissingQty = Math.min(minMissingQty, Math.max(1, Math.ceil(minBuyRequired - bucketQty)));
+                            }
+                            return;
+                        }
+
+                        const bestBucketItem = [...bItems].sort((a, b) => this.getItemQuantityInBaseUnit(b) - this.getItemQuantityInBaseUnit(a))[0];
+                        let bucketGranted = false;
+
+                        grants.forEach(gr => {
+                            if (gr.freeQty <= 0) return;
+                            const giftRes = this.resolveScopedGiftProduct(gr.explicitGiftProdId, policy, bestBucketItem?.product_id);
+                            if (!giftRes.allowed || !giftRes.prod) {
+                                scopeRejected = true;
+                                return;
+                            }
+                            bucketGranted = true;
+                            const pObj = giftRes.prod;
+                            const gPid = String(pObj.id);
+                            const gLabel = sortedDescTiers.length > 0
+                                ? `[TẶNG KÈM MUA ${gr.tier.buy_qty} TẶNG ${gr.tier.free_qty}] ${policy.name}`
+                                : `[TẶNG KÈM] ${policy.name}`;
+                            if (giftsByProdId.has(gPid)) {
+                                giftsByProdId.get(gPid).qty += gr.freeQty;
+                            } else {
+                                giftsByProdId.set(gPid, { product_id: pObj.id, qty: gr.freeQty, prod: pObj, giftLabel: gLabel });
+                            }
+                        });
+
+                        if (bucketGranted) {
+                            bItems.forEach(it => claimedItems.push(it));
+                            if (!nextTierHint && sortedDescTiers.length > 1) {
+                                const sortedAsc = [...sortedDescTiers].reverse();
+                                const higher = sortedAsc.find(t => t.buy_qty > bucketQty);
+                                if (higher) {
+                                    const needMore = Math.max(1, Math.ceil(higher.buy_qty - bucketQty));
+                                    nextTierHint = `Mua thêm ${needMore} SP${modeSuffix} đạt mốc Mua ${higher.buy_qty} tặng ${higher.free_qty}`;
+                                }
+                            }
+                        }
+                    });
+
+                    const qualifyingGifts = Array.from(giftsByProdId.values());
+                    const totalFree = qualifyingGifts.reduce((sum, g) => sum + g.qty, 0);
+
+                    if (totalFree <= 0 || qualifyingGifts.length === 0) {
+                        if (scopeRejected && minMissingQty === Infinity) {
+                            return emptyRes('Ngoài phạm vi NCC', 'Sản phẩm tặng nằm ngoài Hãng / NCC của nhân viên');
+                        }
+                        const needMore = minMissingQty < Infinity ? minMissingQty : Math.max(1, Math.ceil((minBuyRequired || 1) - maxBucketQty));
+                        const unitLabel = groupMode === 'per_sku' ? 'SP cùng mã' : (groupMode === 'per_variant_group' ? 'SP cùng size' : (groupMode === 'per_brand' ? 'SP cùng hãng' : 'SP'));
+                        return emptyRes(
+                            `Thiếu ${needMore} ${unitLabel}`,
+                            `Chưa đạt (cần mua tối thiểu ${minBuyRequired} ${unitLabel}, hiện tối đa ${this.formatNumber(maxBucketQty)})`,
+                            `Thiếu ${needMore} ${unitLabel} để tặng +${sortedDescTiers[sortedDescTiers.length - 1]?.free_qty || freeQty || 1}`
+                        );
+                    }
+
+                    const estimatedBenefitValue = qualifyingGifts.reduce((sum, g) => {
+                        const unitVal = Number(g.prod?.price || g.prod?.cost_price || 0);
+                        return sum + (g.qty * unitVal);
+                    }, 0);
+                    const firstGift = qualifyingGifts[0];
+                    const summaryGiftName = qualifyingGifts.length === 1
+                        ? (firstGift.prod?.name || 'quà tặng')
+                        : `${qualifyingGifts.length} loại quà tặng kèm`;
+
+                    return {
+                        eligible: true,
+                        reason: '',
+                        benefitText: `Tặng +${totalFree}`,
+                        statusText: `Đạt: Tặng +${totalFree} SP (${summaryGiftName})`,
+                        upsellHint: '',
+                        nextTierHint,
+                        estimatedBenefitValue,
+                        claimedItems,
+                        itemDiscounts: [],
+                        qualifyingGifts,
+                        totalFree,
+                        freeProd: firstGift.prod,
+                        giftLabel: firstGift.giftLabel,
+                        discountPct: 0,
+                        discountAmt: 0
+                    };
+                },
+
+                evaluateDiscountBuckets(policy, matchingItems) {
+                    const emptyRes = (reason, statusText, upsellHint = '') => ({
+                        eligible: false, reason, benefitText: '', statusText, upsellHint, nextTierHint: '',
+                        estimatedBenefitValue: 0, claimedItems: [], itemDiscounts: [], qualifyingGifts: [],
+                        totalFree: 0, freeProd: null, giftLabel: '', discountPct: 0, discountAmt: 0
+                    });
+
+                    const requireOrig = this.policyRequiresOriginalPrice(policy);
+                    const evalItems = requireOrig ? matchingItems.filter(it => this.isItemOriginalPriceTier(it)) : matchingItems;
+                    if (evalItems.length === 0) {
+                        return emptyRes('Cần SP Nguyên Giá', 'Chỉ áp dụng cho dòng sản phẩm giá Nguyên Giá');
+                    }
+
+                    let tiers = this.getNormalizedDiscountTiers(policy);
+                    if (tiers.length === 0) {
+                        const pct = Number(policy.discount_percent) || 0;
+                        const amt = Number(policy.discount_amount) || 0;
+                        const minQ = Number(policy.buy_qty) || 0;
+                        const minA = Number(policy.min_order_value) || 0;
+                        if ((policy.policy_type === 'percentage' && pct > 0) || (policy.policy_type === 'amount' && amt > 0)) {
+                            tiers = [{ min_qty: minQ, min_amount: minA, discount_percent: pct, discount_amount: amt }];
+                        }
+                    }
+                    if (tiers.length === 0) {
+                        return emptyRes('Chưa cấu hình mức giảm', 'Chưa thiết lập % / tiền giảm cho chính sách');
+                    }
+
+                    const groupMode = this.getEffectivePolicyGroupMode(policy);
+                    const modeSuffix = groupMode === 'per_sku' ? ' cùng loại' : (groupMode === 'per_variant_group' ? ' cùng size' : (groupMode === 'per_brand' ? ' cùng nhãn hàng' : ''));
+                    const buckets = this.bucketItemsByPolicyGroupMode(policy, evalItems);
+
+                    const claimedItems = [];
+                    const itemDiscounts = [];
+                    const pctSet = new Set();
+                    let totalDiscAmt = 0;
+                    let bestMissingQty = Infinity;
+                    let bestMissingAmt = Infinity;
+                    let nextTierHint = '';
+
+                    buckets.forEach((bItems) => {
+                        const bQty = bItems.reduce((sum, it) => sum + this.getItemQuantityInBaseUnit(it), 0);
+                        const bSubtotal = bItems.reduce((sum, it) => {
+                            const lineBase = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
+                            const manualDisc = (it._manualDiscount && !it._autoPromoDiscount) ? (Number(it.discount_amount) || 0) : 0;
+                            return sum + Math.max(0, lineBase - manualDisc);
+                        }, 0);
+
+                        const matchingTiers = tiers.filter(t =>
+                            (t.min_qty <= 0 || bQty >= t.min_qty) &&
+                            (t.min_amount <= 0 || bSubtotal >= t.min_amount)
+                        );
+
+                        if (matchingTiers.length === 0) {
+                            // Tìm bậc thấp nhất để báo thiếu bao nhiêu
+                            const lowestTier = [...tiers].sort((a, b) => (a.min_qty - b.min_qty) || (a.min_amount - b.min_amount))[0];
+                            if (lowestTier) {
+                                if (lowestTier.min_qty > bQty) bestMissingQty = Math.min(bestMissingQty, Math.max(1, Math.ceil(lowestTier.min_qty - bQty)));
+                                if (lowestTier.min_amount > bSubtotal) bestMissingAmt = Math.min(bestMissingAmt, Math.max(0, lowestTier.min_amount - bSubtotal));
+                            }
+                            return;
+                        }
+
+                        // Chọn bậc mang lại mức ưu đãi cao nhất trong bucket này
+                        const chosenTier = [...matchingTiers].sort((a, b) => {
+                            const valA = policy.policy_type === 'percentage' ? a.discount_percent : a.discount_amount;
+                            const valB = policy.policy_type === 'percentage' ? b.discount_percent : b.discount_amount;
+                            return valB - valA;
+                        })[0];
+
+                        if (policy.policy_type === 'percentage' && chosenTier.discount_percent > 0 && bSubtotal > 0) {
+                            const pct = chosenTier.discount_percent;
+                            pctSet.add(pct);
+                            bItems.forEach(it => {
+                                const lineBase = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
+                                const discAmt = Math.round((lineBase * pct) / 100);
+                                totalDiscAmt += discAmt;
+                                claimedItems.push(it);
+                                itemDiscounts.push({ item: it, discountPct: pct, discountAmt: discAmt });
+                            });
+                        } else if (policy.policy_type === 'amount' && chosenTier.discount_amount > 0 && bSubtotal > 0) {
+                            const bucketAmt = Math.min(bSubtotal, chosenTier.discount_amount);
+                            let remaining = bucketAmt;
+                            bItems.forEach((it, idx) => {
+                                const lineBase = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
+                                const discAmt = (idx === bItems.length - 1) ? Math.min(lineBase, remaining) : Math.min(lineBase, Math.round((lineBase / bSubtotal) * bucketAmt));
+                                remaining -= discAmt;
+                                const effPct = lineBase > 0 ? Math.round((discAmt / lineBase) * 100 * 10) / 10 : 0;
+                                totalDiscAmt += discAmt;
+                                claimedItems.push(it);
+                                itemDiscounts.push({ item: it, discountPct: effPct, discountAmt: discAmt });
+                            });
+                        }
+
+                        // Gợi ý nâng bậc nếu bucket hiện tại còn bậc cao hơn
+                        if (!nextTierHint && tiers.length > 1) {
+                            const curVal = policy.policy_type === 'percentage' ? chosenTier.discount_percent : chosenTier.discount_amount;
+                            const higherTier = [...tiers]
+                                .filter(t => (policy.policy_type === 'percentage' ? t.discount_percent : t.discount_amount) > curVal)
+                                .sort((a, b) => (a.min_qty - b.min_qty) || (a.min_amount - b.min_amount))[0];
+                            if (higherTier) {
+                                const rewardLabel = policy.policy_type === 'percentage' ? `CK ${higherTier.discount_percent}%` : `giảm ${this.formatNumber(higherTier.discount_amount)}đ`;
+                                if (higherTier.min_qty > bQty) {
+                                    nextTierHint = `Mua thêm ${Math.ceil(higherTier.min_qty - bQty)} SP${modeSuffix} để nâng lên ${rewardLabel}`;
+                                } else if (higherTier.min_amount > bSubtotal) {
+                                    nextTierHint = `Mua thêm ${this.formatNumber(higherTier.min_amount - bSubtotal)}đ${modeSuffix} để nâng lên ${rewardLabel}`;
+                                }
+                            }
+                        }
+                    });
+
+                    if (claimedItems.length === 0 || totalDiscAmt <= 0) {
+                        const targetTier = [...tiers].sort((a, b) => (a.min_qty - b.min_qty) || (a.min_amount - b.min_amount))[0];
+                        const rewardStr = policy.policy_type === 'percentage' ? `CK ${targetTier.discount_percent}%` : `-${this.formatNumber(targetTier.discount_amount)}đ`;
+                        if (bestMissingQty < Infinity) {
+                            return emptyRes(`Thiếu ${bestMissingQty} SP${modeSuffix}`, `Chưa đạt (cần thêm ${bestMissingQty} SP${modeSuffix})`, `Thêm ${bestMissingQty} SP${modeSuffix} để đạt ${rewardStr}`);
+                        }
+                        if (bestMissingAmt < Infinity) {
+                            return emptyRes(`Thiếu ${this.formatNumber(bestMissingAmt)}đ`, `Chưa đạt (cần mua thêm ${this.formatNumber(bestMissingAmt)} đ nhóm SP này)`, `Thêm ${this.formatNumber(bestMissingAmt)}đ${modeSuffix} để đạt ${rewardStr}`);
+                        }
+                        return emptyRes('Chưa đạt ngưỡng', 'Chưa đủ điều kiện chiết khấu');
+                    }
+
+                    const pctArr = Array.from(pctSet);
+                    const primaryPct = pctArr[0] || 0;
+                    const pctLabel = pctArr.length > 0 ? pctArr.map(v => `${v}%`).join('/') : `${primaryPct}%`;
+                    const benefitText = policy.policy_type === 'percentage' ? `CK -${pctLabel}` : `-${this.formatNumber(totalDiscAmt)}đ`;
+                    const statusText = policy.policy_type === 'percentage'
+                        ? `Đạt: Chiết khấu ${pctLabel} (-${this.formatNumber(totalDiscAmt)} đ)`
+                        : `Đạt: Giảm trực tiếp ${this.formatNumber(totalDiscAmt)} đ`;
+
+                    return {
+                        eligible: true,
+                        reason: '',
+                        benefitText,
+                        statusText,
+                        upsellHint: '',
+                        nextTierHint,
+                        estimatedBenefitValue: totalDiscAmt,
+                        claimedItems,
+                        itemDiscounts,
+                        qualifyingGifts: [],
+                        totalFree: 0,
+                        freeProd: null,
+                        giftLabel: '',
+                        discountPct: primaryPct,
+                        discountAmt: totalDiscAmt
+                    };
+                },
+
                 evaluatePolicyBenefitsOnItems(policy, availableItems) {
                     if (!policy || !this.isCustomerEligibleForPolicy(policy)) {
-                        return { eligible: false, reason: 'Chỉ áp dụng đại lý chỉ định', benefitText: '', statusText: 'Không thuộc đối tượng đại lý', claimedItems: [], qualifyingGifts: [], totalFree: 0, freeProd: null, giftLabel: '', discountPct: 0, discountAmt: 0 };
+                        return { eligible: false, reason: 'Chỉ áp dụng kênh / đại lý chỉ định', benefitText: '', statusText: 'Không thuộc đối tượng đại lý', upsellHint: '', nextTierHint: '', estimatedBenefitValue: 0, claimedItems: [], itemDiscounts: [], qualifyingGifts: [], totalFree: 0, freeProd: null, giftLabel: '', discountPct: 0, discountAmt: 0 };
                     }
-        
+
                     const matchingItems = (availableItems || []).filter(it =>
                         !it.isPromotionalGift &&
                         it.checked !== false &&
                         it.product_id &&
                         this.isProductInPolicy(policy, it.product_id)
                     );
-        
+
                     if (matchingItems.length === 0) {
-                        return { eligible: false, reason: 'Chưa có SP phù hợp', benefitText: '', statusText: 'Chưa có sản phẩm phù hợp', claimedItems: [], qualifyingGifts: [], totalFree: 0, freeProd: null, giftLabel: '', discountPct: 0, discountAmt: 0 };
+                        return { eligible: false, reason: 'Chưa có SP phù hợp', benefitText: '', statusText: 'Chưa có sản phẩm phù hợp', upsellHint: '', nextTierHint: '', estimatedBenefitValue: 0, claimedItems: [], itemDiscounts: [], qualifyingGifts: [], totalFree: 0, freeProd: null, giftLabel: '', discountPct: 0, discountAmt: 0 };
                     }
-        
-                    const pTargets = this.getNormalizedPolicyProductIds(policy);
-                    const isGeneralScope = pTargets.length === 0;
-        
+
                     if (policy.policy_type === 'quantity') {
-                        const buyQty = Number(policy.buy_qty) || 0;
-                        const freeQty = Number(policy.free_qty) || 0;
-                        let freeProductId = policy.free_product_id || null;
-        
-                        let tiersList = policy.gift_tiers;
-                        if (typeof tiersList === 'string') {
-                            try { tiersList = JSON.parse(tiersList); } catch(e) { tiersList = []; }
-                        }
-        
-                        let sortedTiers = [];
-                        let minBuyRequired = buyQty;
-                        if (Array.isArray(tiersList) && tiersList.length > 0) {
-                            sortedTiers = [...tiersList]
-                                .map(t => ({
-                                    buy_qty: Number(t.buy_qty) || 0,
-                                    free_qty: Number(t.free_qty) || 0,
-                                    free_product_id: t.free_product_id || null
-                                }))
-                                .filter(t => t.buy_qty > 0 && t.free_qty > 0)
-                                .sort((a, b) => b.buy_qty - a.buy_qty);
-                            if (sortedTiers.length > 0) {
-                                minBuyRequired = sortedTiers[sortedTiers.length - 1].buy_qty;
-                            }
-                        }
-        
-                        if (isGeneralScope) {
-                            const productQtyMap = new Map();
-                            const productItemsMap = new Map();
-                            matchingItems.forEach(it => {
-                                const pid = String(it.product_id);
-                                const q = Number(it.quantity) || 0;
-                                productQtyMap.set(pid, (productQtyMap.get(pid) || 0) + q);
-                                if (!productItemsMap.has(pid)) productItemsMap.set(pid, []);
-                                productItemsMap.get(pid).push(it);
-                            });
-        
-                            const qualifyingGifts = [];
-                            const claimedItems = [];
-                            let maxSingleQty = 0;
-        
-                            productQtyMap.forEach((qty, pid) => {
-                                if (qty > maxSingleQty) maxSingleQty = qty;
-                                let itemFree = 0;
-                                let explicitGiftProdId = freeProductId || null;
-                                let itemGiftLabel = `[TẶNG KÈM] ${policy.name}`;
-        
-                                if (sortedTiers.length > 0) {
-                                    const matchedTier = sortedTiers.find(t => qty >= t.buy_qty);
-                                    if (matchedTier) {
-                                        const mult = Math.floor(qty / matchedTier.buy_qty);
-                                        itemFree = mult * matchedTier.free_qty;
-                                        if (matchedTier.free_product_id) {
-                                            explicitGiftProdId = matchedTier.free_product_id;
-                                        }
-                                        itemGiftLabel = `[TẶNG KÈM MUA ${matchedTier.buy_qty} TẶNG ${matchedTier.free_qty}] ${policy.name}`;
-                                    }
-                                } else if (buyQty > 0 && freeQty > 0 && qty >= buyQty) {
-                                    const mult = Math.floor(qty / buyQty);
-                                    itemFree = mult * freeQty;
-                                }
-        
-                                if (itemFree > 0) {
-                                    const giftRes = this.resolveScopedGiftProduct(explicitGiftProdId, policy, pid);
-                                    if (giftRes.allowed && giftRes.prod) {
-                                        qualifyingGifts.push({
-                                            product_id: giftRes.prod.id || explicitGiftProdId || pid,
-                                            qty: itemFree,
-                                            prod: giftRes.prod,
-                                            giftLabel: itemGiftLabel
-                                        });
-                                        const pItems = productItemsMap.get(pid) || [];
-                                        pItems.forEach(it => claimedItems.push(it));
-                                    }
-                                }
-                            });
-        
-                            const totalFree = qualifyingGifts.reduce((sum, g) => sum + g.qty, 0);
-        
-                            if (totalFree <= 0 || qualifyingGifts.length === 0) {
-                                const needMore = Math.max(1, Math.ceil((minBuyRequired || 1) - maxSingleQty));
-                                return {
-                                    eligible: false,
-                                    reason: `Thiếu ${needMore} SP`,
-                                    benefitText: '',
-                                    statusText: `Chưa đạt (cần mua tối thiểu ${minBuyRequired} SP cho cùng 1 sản phẩm, hiện có tối đa ${maxSingleQty} SP)`,
-                                    claimedItems: [],
-                                    qualifyingGifts: [],
-                                    totalFree: 0,
-                                    freeProd: null,
-                                    giftLabel: '',
-                                    discountPct: 0,
-                                    discountAmt: 0
-                                };
-                            }
-        
-                            const firstGift = qualifyingGifts[0];
-                            const summaryGiftName = qualifyingGifts.length === 1 
-                                ? (firstGift.prod?.name || 'quà tặng') 
-                                : `${qualifyingGifts.length} loại quà tặng kèm`;
-        
-                            return {
-                                eligible: true,
-                                reason: '',
-                                benefitText: `Tặng +${totalFree}`,
-                                statusText: `Đạt: Tặng +${totalFree} SP (${summaryGiftName})`,
-                                claimedItems,
-                                qualifyingGifts,
-                                totalFree,
-                                freeProd: firstGift.prod,
-                                giftLabel: firstGift.giftLabel,
-                                discountPct: 0,
-                                discountAmt: 0
-                            };
-                        }
-        
-                        // Nhóm sản phẩm chỉ định cụ thể
-                        const totalMatchedQty = matchingItems.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0);
-                        let matchedTier = null;
-                        if (sortedTiers.length > 0) {
-                            matchedTier = sortedTiers.find(t => totalMatchedQty >= t.buy_qty);
-                        }
-        
-                        let totalFree = 0;
-                        let giftLabel = `[TẶNG KÈM] ${policy.name}`;
-                        if (matchedTier) {
-                            const mult = Math.floor(totalMatchedQty / matchedTier.buy_qty);
-                            totalFree = mult * matchedTier.free_qty;
-                            if (matchedTier.free_product_id) {
-                                freeProductId = matchedTier.free_product_id;
-                            }
-                            giftLabel = `[TẶNG KÈM MUA ${matchedTier.buy_qty} TẶNG ${matchedTier.free_qty}] ${policy.name}`;
-                        } else if (buyQty > 0 && freeQty > 0 && totalMatchedQty >= buyQty) {
-                            const mult = Math.floor(totalMatchedQty / buyQty);
-                            totalFree = mult * freeQty;
-                        }
-        
-                        if (totalFree <= 0) {
-                            const needMore = Math.max(1, Math.ceil((minBuyRequired || 1) - totalMatchedQty));
-                            return {
-                                eligible: false,
-                                reason: `Thiếu ${needMore} SP`,
-                                benefitText: '',
-                                statusText: `Chưa đạt (cần thêm ${needMore} SP, hiện có ${this.formatNumber(totalMatchedQty)})`,
-                                claimedItems: [],
-                                qualifyingGifts: [],
-                                totalFree: 0,
-                                freeProd: null,
-                                giftLabel: '',
-                                discountPct: 0,
-                                discountAmt: 0
-                            };
-                        }
-        
-                        const bestItem = [...matchingItems].sort((a, b) => (Number(b.quantity) || 0) - (Number(a.quantity) || 0))[0];
-                        const giftRes = this.resolveScopedGiftProduct(freeProductId, policy, bestItem ? bestItem.product_id : null);
-                        if (!giftRes.allowed || !giftRes.prod) {
-                            return {
-                                eligible: false,
-                                reason: 'Ngoài phạm vi NCC',
-                                benefitText: '',
-                                statusText: 'Sản phẩm tặng nằm ngoài Hãng / NCC của nhân viên',
-                                claimedItems: [],
-                                qualifyingGifts: [],
-                                totalFree: 0,
-                                freeProd: null,
-                                giftLabel: '',
-                                discountPct: 0,
-                                discountAmt: 0
-                            };
-                        }
-                        const freeProd = giftRes.prod;
-        
-                        const freeName = freeProd?.name || 'quà tặng';
-                        return {
-                            eligible: true,
-                            reason: '',
-                            benefitText: `Tặng +${totalFree}`,
-                            statusText: `Đạt: Tặng +${totalFree} ${freeProd?.unit || 'SP'} (${freeName})`,
-                            claimedItems: matchingItems,
-                            qualifyingGifts: [{ product_id: freeProd?.id || matchingItems[0]?.product_id || '', qty: totalFree, prod: freeProd, giftLabel }],
-                            totalFree,
-                            freeProd,
-                            giftLabel,
-                            discountPct: 0,
-                            discountAmt: 0
-                        };
+                        return this.evaluateGiftBuckets(policy, matchingItems);
                     }
-        
-                    const minVal = Number(policy.min_order_value) || 0;
-                    const buyQty = Number(policy.buy_qty) || 0;
-        
-                    let evalItems = matchingItems.filter(it => this.isItemOriginalPriceTier(it));
-                    if (evalItems.length === 0) {
-                        return {
-                            eligible: false,
-                            reason: 'Cần SP Nguyên Giá',
-                            benefitText: '',
-                            statusText: 'Chỉ áp dụng cho dòng sản phẩm giá Nguyên Giá',
-                            claimedItems: [],
-                            qualifyingGifts: [],
-                            totalFree: 0,
-                            freeProd: null,
-                            giftLabel: '',
-                            discountPct: 0,
-                            discountAmt: 0
-                        };
+                    if (policy.policy_type === 'percentage' || policy.policy_type === 'amount') {
+                        return this.evaluateDiscountBuckets(policy, matchingItems);
                     }
-        
-                    const evalQty = evalItems.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0);
-                    const evalSubtotal = evalItems.reduce((sum, it) => {
-                        const lineBase = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
-                        const manualDisc = (it._manualDiscount && !it._autoPromoDiscount) ? (Number(it.discount_amount) || 0) : 0;
-                        return sum + Math.max(0, lineBase - manualDisc);
-                    }, 0);
-        
-                    if (buyQty > 0 && evalQty < buyQty) {
-                        const needMore = Math.max(1, Math.ceil(buyQty - evalQty));
-                        return {
-                            eligible: false,
-                            reason: `Thiếu ${needMore} SP`,
-                            benefitText: '',
-                            statusText: `Chưa đạt (cần thêm ${needMore} SP, tối thiểu ${buyQty} SP)`,
-                            claimedItems: [],
-                            qualifyingGifts: [],
-                            totalFree: 0,
-                            freeProd: null,
-                            giftLabel: '',
-                            discountPct: 0,
-                            discountAmt: 0
-                        };
-                    }
-        
-                    if (minVal > 0 && evalSubtotal < minVal) {
-                        const needAmt = Math.max(0, minVal - evalSubtotal);
-                        return {
-                            eligible: false,
-                            reason: `Thiếu ${this.formatNumber(needAmt)}đ`,
-                            benefitText: '',
-                            statusText: `Chưa đạt (cần mua thêm ${this.formatNumber(needAmt)} đ nhóm SP này)`,
-                            claimedItems: [],
-                            qualifyingGifts: [],
-                            totalFree: 0,
-                            freeProd: null,
-                            giftLabel: '',
-                            discountPct: 0,
-                            discountAmt: 0
-                        };
-                    }
-        
-                    if (policy.policy_type === 'percentage') {
-                        const discPct = Number(policy.discount_percent) || 0;
-                        const estAmt = Math.round((evalSubtotal * discPct) / 100);
-                        return {
-                            eligible: discPct > 0 && evalSubtotal > 0,
-                            reason: '',
-                            benefitText: `CK -${discPct}%`,
-                            statusText: `Đạt: Chiết khấu ${discPct}% (-${this.formatNumber(estAmt)} đ)`,
-                            claimedItems: evalItems,
-                            qualifyingGifts: [],
-                            totalFree: 0,
-                            freeProd: null,
-                            giftLabel: '',
-                            discountPct: discPct,
-                            discountAmt: estAmt
-                        };
-                    }
-        
-                    if (policy.policy_type === 'amount') {
-                        const discAmt = Math.min(evalSubtotal, Number(policy.discount_amount) || 0);
-                        return {
-                            eligible: discAmt > 0 && evalSubtotal > 0,
-                            reason: '',
-                            benefitText: `-${this.formatNumber(discAmt)}đ`,
-                            statusText: `Đạt: Giảm trực tiếp ${this.formatNumber(discAmt)} đ`,
-                            claimedItems: evalItems,
-                            qualifyingGifts: [],
-                            totalFree: 0,
-                            freeProd: null,
-                            giftLabel: '',
-                            discountPct: 0,
-                            discountAmt: discAmt
-                        };
-                    }
-        
-                    return { eligible: false, reason: 'Chưa hỗ trợ', benefitText: '', statusText: 'Không hợp lệ', claimedItems: [], qualifyingGifts: [], totalFree: 0, freeProd: null, giftLabel: '', discountPct: 0, discountAmt: 0 };
+
+                    return { eligible: false, reason: 'Chưa hỗ trợ', benefitText: '', statusText: 'Không hợp lệ', upsellHint: '', nextTierHint: '', estimatedBenefitValue: 0, claimedItems: [], itemDiscounts: [], qualifyingGifts: [], totalFree: 0, freeProd: null, giftLabel: '', discountPct: 0, discountAmt: 0 };
                 },
-        
+
                 formatPolicyOptionLabel(policy) {
                     if (!policy) return '';
-                    const unclaimedItems = (this.items || []).filter(it =>
-                        !it.isPromotionalGift &&
-                        it.checked !== false &&
-                        it.product_id &&
-                        !it._claimedByPolicyId
-                    );
-                    const ev = this.evaluatePolicyBenefitsOnItems(policy, unclaimedItems);
+                    const baseItems = (this.items || []).filter(it => !it.isPromotionalGift && it.checked !== false && it.product_id);
+                    const pool = policy.stacking_mode === 'stackable_order' ? baseItems : baseItems.filter(it => !it._claimedByPolicyId);
+                    const ev = this.evaluatePolicyBenefitsOnItems(policy, pool);
                     const prefix = ev.eligible ? `[Đạt${ev.benefitText ? ': ' + ev.benefitText : ''}]` : `[${ev.reason}]`;
                     return `${prefix} ${policy.name}`;
                 },
@@ -4225,109 +4258,146 @@ function orderFormApp() {
                             this._autoOrderDiscount = false;
                         }
         
-                        // 2. Duyệt tuần tự các chính sách được chọn để chiếm dụng sản phẩm độc quyền
+                        // 2. Phân tách chính sách độc quyền trên nhóm SP (Pass 1) & chính sách cộng dồn toàn đơn (Pass 2)
                         let remainingItems = [...salesItems];
                         const validSelectedPolicyIds = [];
+                        const usedConflictGroups = new Set();
                         const selectedIds = Array.isArray(this.formData.sales_policy_ids) ? [...this.formData.sales_policy_ids] : [];
-        
+                        const linePolicies = [];
+                        const stackPolicies = [];
+
                         for (const pid of selectedIds) {
                             const policy = this.getSalesPolicyById(pid);
                             if (!policy) continue;
-        
+                            if (policy.stacking_mode === 'stackable_order') {
+                                stackPolicies.push(policy);
+                            } else {
+                                linePolicies.push(policy);
+                            }
+                        }
+
+                        const syncPolicyGifts = (policy, qualifyingGifts) => {
+                            (qualifyingGifts || []).forEach(gInfo => {
+                                const freeProd = gInfo.prod || this.getProduct(gInfo.product_id);
+                                const freeSku = freeProd?.sku || 'KM-SP';
+                                const freeName = freeProd?.name || 'Hàng tặng khuyến mại';
+                                const freeUnit = freeProd?.unit || 'cái';
+                                const giftKey = `order_policy_${policy.id}_${gInfo.product_id}`;
+                                activeGiftKeys.push(giftKey);
+
+                                const existing = this.items.find(g => g.isPromotionalGift && (g._giftKey === giftKey || (String(g.promoPolicyId || '') === String(policy.id) && String(g.product_id || '') === String(freeProd?.id || gInfo.product_id))));
+                                if (existing) {
+                                    existing._giftKey = giftKey;
+                                    existing.promoPolicyId = policy.id;
+                                    if (!existing._manualQty) {
+                                        existing.quantity = gInfo.qty;
+                                    }
+                                    existing.sku = freeSku;
+                                    existing.name = freeName;
+                                    existing.searchQuery = freeName;
+                                    existing.unit = freeUnit;
+                                    existing.appliedTierPolicy = gInfo.giftLabel;
+                                } else {
+                                    this.items.push({
+                                        _rowKey: 'gift-' + Date.now() + '-' + Math.random(),
+                                        id: '',
+                                        itemId: freeProd?.id ? String(freeProd.id) : String(gInfo.product_id || ''),
+                                        product_id: freeProd?.id || gInfo.product_id || '',
+                                        sku: freeSku,
+                                        name: freeName,
+                                        searchQuery: freeName,
+                                        unit: freeUnit,
+                                        quantity: gInfo.qty,
+                                        gift_quantity: 0,
+                                        unitPrice: 0,
+                                        originalPrice: 0,
+                                        costPrice: Number(freeProd?.cost_price || 0),
+                                        discount_percent: 0,
+                                        discount_amount: 0,
+                                        vat_percent: 0,
+                                        vat_amount: 0,
+                                        appliedTierPolicy: gInfo.giftLabel,
+                                        price_type: 'Khuyến mại',
+                                        amount: 0,
+                                        checked: true,
+                                        isPromotionalGift: true,
+                                        promoPolicyId: policy.id,
+                                        _giftKey: giftKey,
+                                    });
+                                }
+                                this.showPromoSection = true;
+                            });
+                        };
+
+                        // Pass 1: Chính sách độc quyền theo nhóm SP (Tặng hàng / Chiết khấu dòng & nhóm SP)
+                        for (const policy of linePolicies) {
+                            const cGroup = policy.conflict_group ? String(policy.conflict_group).trim() : '';
+                            if (cGroup && usedConflictGroups.has(cGroup)) continue;
+
                             const ev = this.evaluatePolicyBenefitsOnItems(policy, remainingItems);
                             if (ev.eligible && ev.claimedItems && ev.claimedItems.length > 0) {
                                 validSelectedPolicyIds.push(String(policy.id));
+                                if (cGroup) usedConflictGroups.add(cGroup);
+
                                 const claimedSet = new Set(ev.claimedItems);
                                 ev.claimedItems.forEach(it => {
                                     it._claimedByPolicyId = policy.id;
                                     it.selected_policy_id = policy.id;
                                 });
                                 remainingItems = remainingItems.filter(it => !claimedSet.has(it));
-        
+
                                 if (policy.policy_type === 'quantity') {
-                                    (ev.qualifyingGifts || []).forEach(gInfo => {
-                                        const freeProd = gInfo.prod || this.getProduct(gInfo.product_id);
-                                        const freeSku = freeProd?.sku || 'KM-SP';
-                                        const freeName = freeProd?.name || 'Hàng tặng khuyến mại';
-                                        const freeUnit = freeProd?.unit || 'cái';
-                                        const giftKey = `order_policy_${policy.id}_${gInfo.product_id}`;
-                                        activeGiftKeys.push(giftKey);
-        
-                                        const existing = this.items.find(g => g.isPromotionalGift && (g._giftKey === giftKey || (String(g.promoPolicyId || '') === String(policy.id) && String(g.product_id || '') === String(freeProd?.id || gInfo.product_id))));
-                                        if (existing) {
-                                            existing._giftKey = giftKey;
-                                            existing.promoPolicyId = policy.id;
-                                            if (!existing._manualQty) {
-                                                existing.quantity = gInfo.qty;
-                                            }
-                                            existing.sku = freeSku;
-                                            existing.name = freeName;
-                                            existing.searchQuery = freeName;
-                                            existing.unit = freeUnit;
-                                            existing.appliedTierPolicy = gInfo.giftLabel;
-                                        } else {
-                                            this.items.push({
-                                                _rowKey: 'gift-' + Date.now() + '-' + Math.random(),
-                                                id: '',
-                                                itemId: freeProd?.id ? String(freeProd.id) : String(gInfo.product_id || ''),
-                                                product_id: freeProd?.id || gInfo.product_id || '',
-                                                sku: freeSku,
-                                                name: freeName,
-                                                searchQuery: freeName,
-                                                unit: freeUnit,
-                                                quantity: gInfo.qty,
-                                                gift_quantity: 0,
-                                                unitPrice: 0,
-                                                originalPrice: 0,
-                                                costPrice: Number(freeProd?.cost_price || 0),
-                                                discount_percent: 0,
-                                                discount_amount: 0,
-                                                vat_percent: 0,
-                                                vat_amount: 0,
-                                                appliedTierPolicy: gInfo.giftLabel,
-                                                price_type: 'Khuyến mại',
-                                                amount: 0,
-                                                checked: true,
-                                                isPromotionalGift: true,
-                                                promoPolicyId: policy.id,
-                                                _giftKey: giftKey,
-                                            });
-                                        }
-                                        this.showPromoSection = true;
-                                    });
-                                } else if (policy.policy_type === 'percentage') {
-                                    ev.claimedItems.forEach(it => {
-                                        if (!it._manualDiscount) {
-                                            const lineBase = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
-                                            it.discount_percent = ev.discountPct;
-                                            it.discount_amount = Math.round((lineBase * ev.discountPct) / 100);
-                                            it.amount = Math.max(0, Math.round(lineBase - it.discount_amount));
-                                            it._autoPromoDiscount = true;
-                                            it._appliedPromoPolicyId = policy.id;
-                                        }
-                                    });
-                                } else if (policy.policy_type === 'amount') {
-                                    const totalBase = ev.claimedItems.reduce((sum, it) => sum + ((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0)), 0);
-                                    let remainingDiscAmt = ev.discountAmt;
-                                    ev.claimedItems.forEach((it, idx) => {
-                                        if (!it._manualDiscount) {
-                                            const lineBase = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
-                                            let itemDiscAmt = 0;
-                                            if (idx === ev.claimedItems.length - 1) {
-                                                itemDiscAmt = remainingDiscAmt;
-                                            } else if (totalBase > 0) {
-                                                itemDiscAmt = Math.min(lineBase, Math.round((lineBase / totalBase) * ev.discountAmt));
-                                                remainingDiscAmt -= itemDiscAmt;
-                                            }
-                                            it.discount_amount = itemDiscAmt;
-                                            it.discount_percent = lineBase > 0 ? Math.round((itemDiscAmt / lineBase) * 100 * 10) / 10 : 0;
-                                            it.amount = Math.max(0, Math.round(lineBase - it.discount_amount));
-                                            it._autoPromoDiscount = true;
-                                            it._appliedPromoPolicyId = policy.id;
-                                        }
+                                    syncPolicyGifts(policy, ev.qualifyingGifts);
+                                } else if (policy.policy_type === 'percentage' || policy.policy_type === 'amount') {
+                                    const discEntries = Array.isArray(ev.itemDiscounts) && ev.itemDiscounts.length > 0
+                                        ? ev.itemDiscounts
+                                        : ev.claimedItems.map(it => {
+                                            const lb = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
+                                            return { item: it, discountPct: ev.discountPct || 0, discountAmt: Math.round((lb * (ev.discountPct || 0)) / 100) };
+                                        });
+                                    discEntries.forEach(entry => {
+                                        const it = entry.item;
+                                        if (!it || it._manualDiscount) return;
+                                        const lineBase = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
+                                        it.discount_percent = entry.discountPct;
+                                        it.discount_amount = entry.discountAmt;
+                                        it.amount = Math.max(0, Math.round(lineBase - it.discount_amount));
+                                        it._autoPromoDiscount = true;
+                                        it._appliedPromoPolicyId = policy.id;
                                     });
                                 }
                             }
+                        }
+
+                        // Pass 2: Chính sách cộng dồn cấp đơn hàng (tính trên phần thành tiền còn lại sau CK dòng)
+                        let stackedOrderDiscAmt = 0;
+                        const netOrderBase = salesItems.reduce((s, it) => s + (Number(it.amount) || 0), 0);
+                        for (const policy of stackPolicies) {
+                            const cGroup = policy.conflict_group ? String(policy.conflict_group).trim() : '';
+                            if (cGroup && usedConflictGroups.has(cGroup)) continue;
+
+                            const ev = this.evaluatePolicyBenefitsOnItems(policy, salesItems);
+                            if (!ev.eligible) continue;
+
+                            validSelectedPolicyIds.push(String(policy.id));
+                            if (cGroup) usedConflictGroups.add(cGroup);
+
+                            if (policy.policy_type === 'quantity') {
+                                syncPolicyGifts(policy, ev.qualifyingGifts);
+                            } else if ((policy.policy_type === 'percentage' || policy.policy_type === 'amount') && !this._manualOrderDiscount) {
+                                if (policy.policy_type === 'percentage') {
+                                    stackedOrderDiscAmt += Math.round((netOrderBase * (Number(ev.discountPct) || 0)) / 100);
+                                } else {
+                                    stackedOrderDiscAmt += Math.min(netOrderBase, Number(ev.discountAmt) || 0);
+                                }
+                            }
+                        }
+
+                        if (stackedOrderDiscAmt > 0 && !this._manualOrderDiscount) {
+                            const capped = Math.min(netOrderBase, stackedOrderDiscAmt);
+                            this.formData.discount_amount = capped;
+                            this.orderDiscountPercent = netOrderBase > 0 ? Math.round((capped / netOrderBase) * 100 * 10) / 10 : 0;
+                            this._autoOrderDiscount = true;
                         }
         
                         // 3. Cập nhật mảng formData.sales_policy_ids & formData.sales_policy_id
@@ -4817,12 +4887,38 @@ function orderFormApp() {
             if (!policy) return false;
             let custIds = policy.target_customer_ids;
             if (typeof custIds === 'string') {
-                try { custIds = JSON.parse(custIds); } catch(e) { custIds = []; }
+                try { custIds = JSON.parse(custIds); } catch (e) { custIds = []; }
             }
-            if (!Array.isArray(custIds) || custIds.length === 0) return true;
+            if (!Array.isArray(custIds)) custIds = [];
+
+            let custTiers = policy.target_customer_tiers;
+            if (typeof custTiers === 'string') {
+                try { custTiers = JSON.parse(custTiers); } catch (e) { custTiers = []; }
+            }
+            if (!Array.isArray(custTiers)) custTiers = [];
+            custTiers = custTiers.map(t => String(t || '').trim()).filter(Boolean);
+
+            if (custIds.length === 0 && custTiers.length === 0) return true;
+
             const curDealerId = this.formData.dealer_id;
             if (!curDealerId) return false;
-            return custIds.some(id => String(id) === String(curDealerId));
+
+            if (custIds.some(id => String(id) === String(curDealerId))) {
+                return true;
+            }
+
+            if (custTiers.length > 0) {
+                const dealer = this.getSelectedDealer();
+                const dealerTierNorm = _normalizeSearchText(dealer?.tier || '');
+                if (dealerTierNorm && custTiers.some(t => {
+                    const targetNorm = _normalizeSearchText(t);
+                    return targetNorm && (dealerTierNorm === targetNorm || dealerTierNorm.includes(targetNorm) || targetNorm.includes(dealerTierNorm));
+                })) {
+                    return true;
+                }
+            }
+
+            return false;
         },
 
         isProductInPolicy(policy, productId) {
@@ -4841,45 +4937,9 @@ function orderFormApp() {
         },
 
         isPolicyEligible(policy) {
-            if (!policy) return false;
-            if (!this.isCustomerEligibleForPolicy(policy)) return false;
-
-            const isDiscount = this.isDiscountPolicy(policy);
-            // Chính sách chiết khấu không được áp cho các loại giá khác loại Nguyên giá
-            if (isDiscount && policy.apply_scope === 'order' && !this.isOriginalPriceTier(this.formData.dealer_tier)) {
-                return false;
-            }
-
-            const minVal = Number(policy.min_order_value) || 0;
-            const orderSubtotal = this.subtotalBeforeVat || 0;
-
-            if (policy.policy_type === 'quantity') {
-                const buyQty = Number(policy.buy_qty) || 0;
-                if (buyQty <= 0) return false;
-                return this.items.some(it => 
-                    !it.isPromotionalGift && 
-                    it.product_id && 
-                    this.isProductInPolicy(policy, it.product_id) && 
-                    (Number(it.quantity) || 0) >= buyQty
-                );
-            }
-
-            if (policy.apply_scope === 'order') {
-                return orderSubtotal >= minVal && orderSubtotal > 0;
-            }
-
-            if (policy.apply_scope === 'product') {
-                return this.items.some(it => {
-                    if (it.isPromotionalGift || !it.product_id) return false;
-                    if (!this.isProductInPolicy(policy, it.product_id)) return false;
-                    // Dòng sản phẩm phải là loại giá Nguyên Giá mới được áp chiết khấu
-                    if (isDiscount && !this.isItemOriginalPriceTier(it)) return false;
-                    const lineBase = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
-                    return lineBase >= minVal && lineBase > 0;
-                });
-            }
-
-            return false;
+            if (!policy || !this.isCustomerEligibleForPolicy(policy)) return false;
+            const activeItems = (this.items || []).filter(it => !it.isPromotionalGift && it.checked !== false && it.product_id);
+            return this.evaluatePolicyBenefitsOnItems(policy, activeItems).eligible === true;
         },
 
         getPolicyConditionDesc(policy) {

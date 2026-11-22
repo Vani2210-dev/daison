@@ -606,9 +606,10 @@ class WebViewController extends Controller
         $salesPolicies = SalesPolicy::with('freeProduct:id,name,sku,unit,cost_price,price,brand_id,supplier_id')
             ->select([
                 'id', 'code', 'name', 'policy_type', 'apply_scope',
+                'qty_group_mode', 'conflict_group', 'stacking_mode', 'require_original_price', 'priority',
                 'buy_qty', 'free_qty', 'free_product_id', 'gift_tiers',
-                'discount_percent', 'discount_amount', 'min_order_value',
-                'target_customer_ids', 'target_product_ids',
+                'discount_percent', 'discount_amount', 'discount_tiers', 'min_order_value',
+                'target_customer_ids', 'target_customer_tiers', 'target_product_ids',
                 'start_date', 'end_date', 'status',
             ])
             ->where('status', 'Hoạt động')
@@ -1619,17 +1620,31 @@ class WebViewController extends Controller
     }
 
     /**
-     * Dedicated Page: Create Sales Policy
+     * Load shared data for Sales Policy form (Create & Edit)
      */
-    public function salesPolicyCreate()
+    private function getSalesPolicyFormSharedData(): array
     {
         $dealers = Dealer::select('id', 'name', 'code', 'phone', 'tier', 'address')->orderBy('name')->get();
         $categories = Category::select('id', 'name')->orderBy('name')->get();
         $brands = Brand::select('id', 'name')->orderBy('name')->get();
         $products = Product::where('is_active', true)
-            ->select('id', 'sku', 'name', 'unit', 'cost_price', 'category_id', 'brand_id')
+            ->select('id', 'sku', 'name', 'unit', 'cost_price', 'category_id', 'brand_id', 'supplier_id')
             ->orderBy('name')
             ->get();
+
+        $defaultTiers = ['GT - Khách hàng Sỉ', 'GT - Khách hàng Lẻ lớn', 'GT - Khách hàng Lẻ nhỏ', 'Đại lý Cấp 1', 'Đại lý Cấp 2'];
+        $dbTiers = Dealer::whereNotNull('tier')->where('tier', '!=', '')->distinct()->pluck('tier')->toArray();
+        $dealerTiers = array_values(array_unique(array_merge($defaultTiers, $dbTiers)));
+
+        return compact('dealers', 'categories', 'brands', 'products', 'dealerTiers');
+    }
+
+    /**
+     * Dedicated Page: Create Sales Policy
+     */
+    public function salesPolicyCreate()
+    {
+        $shared = $this->getSalesPolicyFormSharedData();
 
         $count = SalesPolicy::count() + 1;
         $nextCode = 'CSBH-' . str_pad((string)$count, 3, '0', STR_PAD_LEFT);
@@ -1638,14 +1653,10 @@ class WebViewController extends Controller
             $nextCode = 'CSBH-' . str_pad((string)$count, 3, '0', STR_PAD_LEFT);
         }
 
-        return view('sales_policies.form', [
+        return view('sales_policies.form', array_merge($shared, [
             'policy' => null,
-            'dealers' => $dealers,
-            'categories' => $categories,
-            'brands' => $brands,
-            'products' => $products,
             'nextCode' => $nextCode,
-        ]);
+        ]));
     }
 
     /**
@@ -1654,22 +1665,12 @@ class WebViewController extends Controller
     public function salesPolicyEdit($id)
     {
         $policy = SalesPolicy::with(['freeProduct', 'creator'])->findOrFail($id);
-        $dealers = Dealer::select('id', 'name', 'code', 'phone', 'tier', 'address')->orderBy('name')->get();
-        $categories = Category::select('id', 'name')->orderBy('name')->get();
-        $brands = Brand::select('id', 'name')->orderBy('name')->get();
-        $products = Product::where('is_active', true)
-            ->select('id', 'sku', 'name', 'unit', 'cost_price', 'category_id', 'brand_id')
-            ->orderBy('name')
-            ->get();
+        $shared = $this->getSalesPolicyFormSharedData();
 
-        return view('sales_policies.form', [
+        return view('sales_policies.form', array_merge($shared, [
             'policy' => $policy,
-            'dealers' => $dealers,
-            'categories' => $categories,
-            'brands' => $brands,
-            'products' => $products,
             'nextCode' => $policy->code,
-        ]);
+        ]));
     }
 
     /**
@@ -1705,6 +1706,14 @@ class WebViewController extends Controller
             $customerIds = array_filter(array_map('trim', explode(',', $customerIds)));
         } elseif (!is_array($customerIds)) {
             $customerIds = [];
+        }
+
+        $customerTiers = $request->input('target_customer_tiers');
+        if (is_string($customerTiers)) {
+            $decoded = json_decode($customerTiers, true);
+            $customerTiers = is_array($decoded) ? $decoded : array_filter(array_map('trim', explode(',', $customerTiers)));
+        } elseif (!is_array($customerTiers)) {
+            $customerTiers = [];
         }
 
         $productIds = $request->input('target_product_ids');
@@ -1760,19 +1769,66 @@ class WebViewController extends Controller
         $discountAmount = $request->input('discount_amount');
         $minOrderValue = $request->input('min_order_value');
 
+        $discountTiersInput = $request->input('discount_tiers');
+        if (is_string($discountTiersInput)) {
+            $discountTiersInput = json_decode($discountTiersInput, true);
+        }
+        $cleanedDiscountTiers = [];
+        if (is_array($discountTiersInput)) {
+            foreach ($discountTiersInput as $tier) {
+                $minQty = isset($tier['min_qty']) && $tier['min_qty'] !== '' ? (float)$tier['min_qty'] : 0;
+                $minAmt = isset($tier['min_amount']) && $tier['min_amount'] !== '' ? (float)$tier['min_amount'] : 0;
+                $dPct = isset($tier['discount_percent']) && $tier['discount_percent'] !== '' ? (float)$tier['discount_percent'] : null;
+                $dAmt = isset($tier['discount_amount']) && $tier['discount_amount'] !== '' ? (float)$tier['discount_amount'] : null;
+                if ((($dPct !== null && $dPct > 0) || ($dAmt !== null && $dAmt > 0)) && ($minQty > 0 || $minAmt > 0)) {
+                    $cleanedDiscountTiers[] = [
+                        'min_qty' => $minQty,
+                        'min_amount' => $minAmt,
+                        'discount_percent' => $dPct,
+                        'discount_amount' => $dAmt,
+                    ];
+                }
+            }
+            usort($cleanedDiscountTiers, fn($a, $b) => ($a['min_qty'] <=> $b['min_qty']) ?: ($a['min_amount'] <=> $b['min_amount']));
+        }
+        if ($policyType !== 'quantity' && !empty($cleanedDiscountTiers)) {
+            if ($policyType === 'percentage' && ($discountPercent === null || $discountPercent === '')) {
+                $discountPercent = $cleanedDiscountTiers[0]['discount_percent'] ?? null;
+            } elseif ($policyType === 'amount' && ($discountAmount === null || $discountAmount === '')) {
+                $discountAmount = $cleanedDiscountTiers[0]['discount_amount'] ?? null;
+            }
+        }
+
+        $allowedGroupModes = ['basket_mix', 'per_sku', 'per_variant_group', 'per_brand'];
+        $qtyGroupMode = in_array($request->input('qty_group_mode'), $allowedGroupModes, true)
+            ? $request->input('qty_group_mode')
+            : 'basket_mix';
+        $stackingMode = in_array($request->input('stacking_mode'), ['exclusive_line', 'stackable_order'], true)
+            ? $request->input('stacking_mode')
+            : 'exclusive_line';
+
         $data = [
             'code' => $code,
             'name' => $request->input('name'),
             'policy_type' => $policyType,
             'apply_scope' => $applyScope,
+            'qty_group_mode' => $qtyGroupMode,
+            'conflict_group' => $request->filled('conflict_group') ? trim((string) $request->input('conflict_group')) : null,
+            'stacking_mode' => $stackingMode,
+            'require_original_price' => $request->has('require_original_price')
+                ? filter_var($request->input('require_original_price'), FILTER_VALIDATE_BOOLEAN)
+                : true,
+            'priority' => (int) ($request->input('priority') ?? 100),
             'buy_qty' => ($buyQty !== null && $buyQty !== '') ? (float)$buyQty : null,
             'free_qty' => ($freeQty !== null && $freeQty !== '') ? (float)$freeQty : null,
             'free_product_id' => $freeProductId ? (int)$freeProductId : null,
             'gift_tiers' => !empty($cleanedTiers) ? $cleanedTiers : null,
             'discount_percent' => ($discountPercent !== null && $discountPercent !== '') ? (float)$discountPercent : null,
             'discount_amount' => ($discountAmount !== null && $discountAmount !== '') ? (float)$discountAmount : null,
+            'discount_tiers' => !empty($cleanedDiscountTiers) ? $cleanedDiscountTiers : null,
             'min_order_value' => ($minOrderValue !== null && $minOrderValue !== '') ? (float)$minOrderValue : null,
             'target_customer_ids' => array_values($customerIds),
+            'target_customer_tiers' => array_values(array_filter(array_map('strval', $customerTiers))),
             'target_product_ids' => array_values($productIds),
             'start_date' => $request->input('start_date') ?: null,
             'end_date' => $request->input('end_date') ?: null,

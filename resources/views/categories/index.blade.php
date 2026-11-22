@@ -1397,7 +1397,8 @@
                                           :class="p.apply_scope === 'order' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'"
                                           x-text="p.apply_scope === 'order' ? 'Giảm trên đơn' : (p.apply_scope === 'product' ? 'Giảm từng SP' : (p.apply_scope || 'Toàn hệ thống'))">
                                     </span>
-                                    <span class="text-[11px] text-slate-500" x-text="p.target_customer_ids && p.target_customer_ids.length > 0 ? (p.target_customer_ids.length + ' đại lý') : 'Toàn bộ khách'"></span>
+                                    <span class="text-[11px] text-slate-500"
+                                          x-text="(p.target_customer_tiers && p.target_customer_tiers.length > 0) ? p.target_customer_tiers.join(', ') : ((p.target_customer_ids && p.target_customer_ids.length > 0) ? (p.target_customer_ids.length + ' đại lý') : 'Toàn bộ khách')"></span>
                                 </div>
                             </td>
                             <td class="py-2.5 px-3 text-right font-bold text-emerald-600">
