@@ -153,6 +153,28 @@ class SupplierOrderController extends Controller
     }
 
     /**
+     * Mở trang chỉnh sửa đơn đặt hàng NCC ở trang riêng (Dedicated Full Page)
+     */
+    public function edit($id)
+    {
+        $order = SupplierOrder::with(['items.product', 'supplier', 'warehouse'])->findOrFail($id);
+
+        if (in_array($order->status, ['Hoàn thành', 'Nhập một phần', 'Đã hủy']) || $order->items->sum('received_quantity') > 0) {
+            return redirect()->route('supplier_orders.index')
+                ->with('error', "Đơn đặt hàng [{$order->code}] đã nhập kho hoặc đã hoàn tất/hủy, không thể chỉnh sửa.");
+        }
+
+        $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();
+        $warehouses = Warehouse::companyWarehouses()
+            ->orderByRaw("CASE WHEN type = 'Kho tổng' THEN 1 WHEN type = 'Kho chi nhánh' THEN 2 ELSE 3 END, name ASC")
+            ->get(['id', 'code', 'name', 'address']);
+        $products = $this->getCatalogProducts();
+        $selectedSupplierId = $order->supplier_id;
+
+        return view('supplier_orders.create', compact('order', 'suppliers', 'warehouses', 'products', 'selectedSupplierId'));
+    }
+
+    /**
      * Lấy danh sách sản phẩm chuẩn hóa dùng cho đặt hàng NCC (bao gồm giá bán).
      */
     private function getCatalogProducts()
@@ -410,6 +432,213 @@ class SupplierOrderController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Lỗi tạo đơn đặt hàng: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update existing Supplier Order (Cập nhật đơn đặt hàng NCC)
+     */
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'supplier_id'          => 'required|exists:suppliers,id',
+            'warehouse_id'         => 'nullable|exists:warehouses,id',
+            'order_date'           => 'required|date',
+            'expected_delivery_date'=> 'nullable|date',
+            'payment_status'       => 'required|in:Chưa thanh toán,Thanh toán 1 phần,Đã thanh toán',
+            'items'                => 'required|array|min:1',
+            'items.*.product_name' => 'required|string',
+            'items.*.ordered_quantity' => 'required|numeric|min:0.01',
+            'items.*.unit_price'   => 'required|numeric|min:0',
+            'debt_deducted_amount' => 'nullable|numeric|min:0',
+            'paid_amount'          => 'nullable|numeric|min:0',
+        ], [
+            'supplier_id.required' => 'Vui lòng chọn Nhà cung cấp',
+            'items.required'       => 'Vui lòng thêm ít nhất một sản phẩm cần đặt hàng',
+            'items.min'            => 'Vui lòng thêm ít nhất một sản phẩm cần đặt hàng',
+            'items.*.ordered_quantity.min' => 'Số lượng đặt hàng phải lớn hơn 0',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $order = SupplierOrder::with(['items', 'supplier'])->lockForUpdate()->findOrFail($id);
+
+            // 1. Kiểm tra khóa kỳ
+            if (\App\Models\PeriodLock::isLockedDate($order->order_date ?? now(), 'inventory')) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kỳ kế toán đã bị khóa sổ, không thể chỉnh sửa đơn đặt hàng NCC.',
+                ], 422);
+            }
+
+            // 2. Kiểm tra trạng thái có cho phép sửa không
+            if (in_array($order->status, ['Hoàn thành', 'Nhập một phần', 'Đã hủy']) || $order->items->sum('received_quantity') > 0) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Đơn đặt hàng đã nhập kho một phần, hoàn tất hoặc đã hủy, không thể chỉnh sửa.',
+                ], 422);
+            }
+
+            $currentUser = Auth::user();
+
+            // 3. Hoàn lại số tiền cấn trừ nợ cũ nếu trước đó đơn này có trừ nợ
+            if ($order->debt_deducted_amount > 0 && $order->supplier_id) {
+                $oldSupplier = Supplier::lockForUpdate()->find($order->supplier_id);
+                if ($oldSupplier) {
+                    $balanceBefore = (float)$oldSupplier->supplier_debt_to_company;
+                    $oldSupplier->supplier_debt_to_company = $balanceBefore + (float)$order->debt_deducted_amount;
+                    $oldSupplier->save();
+
+                    SupplierDebtLog::create([
+                        'supplier_id'       => $oldSupplier->id,
+                        'supplier_order_id' => $order->id,
+                        'type'              => 'refund',
+                        'amount'            => $order->debt_deducted_amount,
+                        'balance_before'    => $balanceBefore,
+                        'balance_after'     => $oldSupplier->supplier_debt_to_company,
+                        'reason'            => "Hoàn lại cấn trừ nợ do chỉnh sửa đơn đặt hàng {$order->code}",
+                        'created_by_id'     => $currentUser?->id,
+                        'created_by_name'   => $currentUser?->name,
+                    ]);
+                }
+            }
+
+            // 4. Lấy NCC mới
+            $newSupplier = Supplier::lockForUpdate()->findOrFail($request->supplier_id);
+
+            // 5. Tính toán tổng tiền hàng mới
+            $totalItemsAmount = 0;
+            foreach ($request->items as $it) {
+                $qty = (float)($it['ordered_quantity'] ?? 1);
+                $price = (float)($it['unit_price'] ?? 0);
+                $disc = (float)($it['discount_amount'] ?? 0);
+                $totalItemsAmount += ($qty * $price - $disc);
+            }
+
+            $discountAmount = (float)($request->discount_amount ?? 0);
+            $otherFees = (float)($request->other_fees ?? 0);
+            $totalAmount = max(0, $totalItemsAmount - $discountAmount + $otherFees);
+
+            // 6. Xử lý cấn trừ nợ mới (nếu có)
+            $debtDeductedAmount = (float)($request->debt_deducted_amount ?? 0);
+            $currentSupplierDebt = (float)$newSupplier->supplier_debt_to_company;
+
+            if ($debtDeductedAmount > 0) {
+                if ($debtDeductedAmount > $currentSupplierDebt) {
+                    $debtDeductedAmount = $currentSupplierDebt;
+                }
+                if ($debtDeductedAmount > $totalAmount) {
+                    $debtDeductedAmount = $totalAmount;
+                }
+
+                $balanceBefore = $newSupplier->supplier_debt_to_company;
+                $newSupplier->supplier_debt_to_company = max(0, $newSupplier->supplier_debt_to_company - $debtDeductedAmount);
+                $newSupplier->save();
+
+                SupplierDebtLog::create([
+                    'supplier_id'       => $newSupplier->id,
+                    'supplier_order_id' => $order->id,
+                    'type'              => 'deduct',
+                    'amount'            => $debtDeductedAmount,
+                    'balance_before'    => $balanceBefore,
+                    'balance_after'     => $newSupplier->supplier_debt_to_company,
+                    'reason'            => "Cấn trừ nợ vào đơn đặt hàng {$order->code} (cập nhật chỉnh sửa)",
+                    'created_by_id'     => $currentUser?->id,
+                    'created_by_name'   => $currentUser?->name,
+                ]);
+            }
+
+            // 7. Số tiền còn lại phải thanh toán
+            $payableAmount = max(0, $totalAmount - $debtDeductedAmount);
+
+            // 8. Số tiền thanh toán
+            $paymentStatus = $request->payment_status;
+            $paidAmount = 0;
+
+            if ($paymentStatus === 'Đã thanh toán') {
+                $paidAmount = $payableAmount;
+            } elseif ($paymentStatus === 'Chưa thanh toán') {
+                $paidAmount = 0;
+            } elseif ($paymentStatus === 'Thanh toán 1 phần') {
+                $inputPaid = (float)($request->paid_amount ?? 0);
+                $paidAmount = min($payableAmount, max(0, $inputPaid));
+                if ($paidAmount >= $payableAmount && $payableAmount > 0) {
+                    $paymentStatus = 'Đã thanh toán';
+                } elseif ($paidAmount <= 0) {
+                    $paymentStatus = 'Chưa thanh toán';
+                }
+            }
+
+            $warehouse = $request->warehouse_id ? Warehouse::find($request->warehouse_id) : null;
+
+            // 9. Cập nhật SupplierOrder
+            $order->update([
+                'supplier_id'            => $newSupplier->id,
+                'supplier_name'          => $newSupplier->name,
+                'warehouse_id'           => $warehouse?->id,
+                'warehouse_name'         => $warehouse?->name,
+                'order_date'             => $request->order_date,
+                'expected_delivery_date' => $request->expected_delivery_date,
+                'payment_status'         => $paymentStatus,
+                'total_items_amount'     => $totalItemsAmount,
+                'discount_amount'        => $discountAmount,
+                'other_fees'             => $otherFees,
+                'total_amount'           => $totalAmount,
+                'debt_deducted_amount'   => $debtDeductedAmount,
+                'payable_amount'         => $payableAmount,
+                'paid_amount'            => $paidAmount,
+                'payment_method'         => $request->payment_method ?: 'Chuyển khoản',
+                'payment_note'           => $request->payment_note,
+                'notes'                  => $request->notes,
+            ]);
+
+            // 10. Re-sync items: Xóa items cũ và tạo items mới
+            SupplierOrderItem::where('supplier_order_id', $order->id)->delete();
+
+            foreach ($request->items as $it) {
+                $qty = (float)($it['ordered_quantity'] ?? 1);
+                $price = (float)($it['unit_price'] ?? 0);
+                $discAmt = (float)($it['discount_amount'] ?? 0);
+                $discPct = (float)($it['discount_percent'] ?? 0);
+                if ($discPct > 0 && $discAmt == 0) {
+                    $discAmt = ($qty * $price) * ($discPct / 100);
+                }
+                $amount = ($qty * $price) - $discAmt;
+
+                SupplierOrderItem::create([
+                    'supplier_order_id'  => $order->id,
+                    'product_id'         => $it['product_id'] ?? null,
+                    'product_name'       => $it['product_name'],
+                    'sku'                => $it['sku'] ?? null,
+                    'unit'               => $it['unit'] ?? 'cái',
+                    'ordered_quantity'   => $qty,
+                    'received_quantity'  => 0,
+                    'remaining_quantity' => $qty,
+                    'unit_price'         => $price,
+                    'discount_percent'   => $discPct,
+                    'discount_amount'    => $discAmt,
+                    'amount'             => $amount,
+                    'notes'              => $it['notes'] ?? null,
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Cập nhật đơn đặt hàng {$order->code} thành công!",
+                'order'   => $order->fresh(['supplier', 'warehouse', 'items']),
+            ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error("SupplierOrder Update Error: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi cập nhật đơn đặt hàng: ' . $e->getMessage(),
             ], 500);
         }
     }

@@ -2,7 +2,7 @@
     $currentUser = auth()->user();
 @endphp
 
-<div class="space-y-4 font-sans text-slate-800 antialiased" x-data="supplierOrdersApp()">
+<div class="space-y-4 font-sans text-slate-800 antialiased" x-data="supplierOrdersApp()" @scroll.window="closeActionMenu()" @resize.window="closeActionMenu()">
 
     <!-- 1. Header Banner -->
     <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -322,10 +322,10 @@
                             </td>
 
                             <!-- Thao tác -->
-                            <td class="py-3 px-3.5 align-top text-right">
+                            <td class="py-3 px-3.5 align-middle text-right">
                                 <div class="flex items-center justify-end gap-1.5">
-                                    <!-- Nút Tạo phiếu nhập hàng (Mở trang riêng, không dùng modal) -->
-                                    <template x-if="['Đã duyệt', 'Đang giao hàng', 'Nhập một phần'].includes(order.status)">
+                                    <!-- Nút Tạo phiếu nhập hàng (Mở trang riêng) nếu đang chờ nhập kho -->
+                                    <template x-if="canReceive(order)">
                                         <a :href="'{{ url('/supplier-orders') }}/' + order.id + '/receipt'"
                                            class="px-2.5 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-black text-[11px] shadow-sm flex items-center gap-1 cursor-pointer transition-transform hover:scale-105 active:scale-95"
                                            title="Tạo phiếu nhập hàng về kho (Mở trang riêng)">
@@ -334,39 +334,16 @@
                                         </a>
                                     </template>
 
-                                    <!-- Xem chi tiết -->
-                                    <button type="button" @click="openDetailModal(order)"
-                                            class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center cursor-pointer transition-colors"
-                                            title="Xem chi tiết đơn hàng">
-                                        <i class="fa-regular fa-eye text-xs"></i>
+                                    <!-- Nút Chức năng (Dropdown menu gom gọn thao tác) -->
+                                    <button type="button" 
+                                            @click.stop="openActionMenu(order, $event)"
+                                            :class="activeActionOrder && activeActionOrder.id === order.id ? 'bg-sky-50 text-sky-700 border-sky-300 ring-2 ring-sky-100' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'"
+                                            class="px-3 py-1.5 rounded-xl border font-bold text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                                            title="Thao tác chức năng">
+                                        <i class="fa-solid fa-gear text-xs" :class="activeActionOrder && activeActionOrder.id === order.id ? 'text-sky-600' : 'text-slate-400'"></i>
+                                        <span>Chức năng</span>
+                                        <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200" :class="activeActionOrder && activeActionOrder.id === order.id ? 'rotate-180' : ''"></i>
                                     </button>
-
-                                    <!-- Duyệt đơn nếu Chờ duyệt -->
-                                    <template x-if="canApprove && order.status === 'Chờ duyệt'">
-                                        <button type="button" @click="openApproveModal(order)"
-                                                class="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center cursor-pointer transition-all hover:scale-105 shadow-2xs"
-                                                title="Phê duyệt đơn đặt hàng & xác nhận thanh toán">
-                                            <i class="fa-solid fa-check text-xs"></i>
-                                        </button>
-                                    </template>
-
-                                    <!-- Cập nhật thanh toán -->
-                                    <template x-if="order.payment_status !== 'Đã thanh toán' && order.status !== 'Đã hủy'">
-                                        <button type="button" @click="openPaymentModal(order)"
-                                                class="w-8 h-8 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 flex items-center justify-center cursor-pointer transition-colors"
-                                                title="Cập nhật thanh toán cho NCC">
-                                            <i class="fa-solid fa-money-bill-wave text-xs"></i>
-                                        </button>
-                                    </template>
-
-                                    <!-- Hủy đơn -->
-                                    <template x-if="['Chờ duyệt', 'Đã duyệt'].includes(order.status)">
-                                        <button type="button" @click="cancelOrder(order)"
-                                                class="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 flex items-center justify-center cursor-pointer transition-colors"
-                                                title="Hủy đơn đặt hàng">
-                                            <i class="fa-regular fa-trash-can text-xs"></i>
-                                        </button>
-                                    </template>
                                 </div>
                             </td>
                         </tr>
@@ -418,23 +395,106 @@
                                 class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 cursor-pointer">
                             <i class="fa-regular fa-eye"></i> Chi tiết
                         </button>
+                        <template x-if="canEdit(order)">
+                            <a :href="'{{ url('/supplier-orders') }}/' + order.id + '/edit'"
+                               class="px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-xs font-bold flex items-center gap-1 cursor-pointer">
+                                <i class="fa-regular fa-pen-to-square"></i> Sửa
+                            </a>
+                        </template>
                         <template x-if="canReceive(order)">
                             <button type="button" @click="redirectToReceipt(order.id)"
                                     class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer shadow-2xs">
                                 <i class="fa-solid fa-boxes-packing"></i> Nhập kho
                             </button>
                         </template>
-                        <template x-if="['Chờ duyệt', 'Đã duyệt'].includes(order.status)">
-                            <button type="button" @click="cancelOrder(order)"
-                                    class="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 flex items-center justify-center cursor-pointer"
-                                    title="Hủy đơn">
-                                <i class="fa-regular fa-trash-can text-xs"></i>
-                            </button>
-                        </template>
+                        <button type="button" @click.stop="openActionMenu(order, $event)"
+                                class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center cursor-pointer font-bold text-xs"
+                                title="Thao tác chức năng khác">
+                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                        </button>
                     </div>
                 </div>
             </template>
         </div>
+    </div>
+
+    <!-- Floating Action Menu (Dropdown Chức năng) -->
+    <div x-show="activeActionOrder" 
+         @click.outside="closeActionMenu()" 
+         x-cloak 
+         class="fixed z-[9999] w-64 bg-white rounded-2xl shadow-2xl border border-slate-200 py-1.5 text-xs select-none ring-1 ring-black/5"
+         :style="actionDropUp 
+            ? `bottom: ${actionMenuY}px; left: ${actionMenuX}px;` 
+            : `top: ${actionMenuY}px; left: ${actionMenuX}px;`">
+        <template x-if="activeActionOrder">
+            <div class="space-y-0.5">
+                <!-- Header thông tin mã đơn trong menu -->
+                <div class="px-3.5 py-2 border-b border-slate-100 mb-1 flex items-center justify-between bg-slate-50/70">
+                    <span class="text-[10px] font-black uppercase text-slate-400">Đơn Đặt Hàng</span>
+                    <span class="text-xs font-black text-sky-600 font-mono" x-text="activeActionOrder.code"></span>
+                </div>
+
+                <!-- 1. Xem chi tiết đơn -->
+                <button type="button" 
+                        @click="openDetailModal(activeActionOrder); closeActionMenu()" 
+                        class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-3 text-slate-700 transition-colors cursor-pointer">
+                    <i class="fa-regular fa-eye text-slate-500 w-4 text-center text-xs"></i>
+                    <span class="font-medium">Xem chi tiết đơn</span>
+                </button>
+
+                <!-- 2. Chỉnh sửa đơn đặt hàng -->
+                <template x-if="canEdit(activeActionOrder)">
+                    <a :href="'{{ url('/supplier-orders') }}/' + activeActionOrder.id + '/edit'" 
+                       @click="closeActionMenu()" 
+                       class="w-full text-left px-3.5 py-2 hover:bg-sky-50 flex items-center gap-3 text-sky-700 transition-colors cursor-pointer">
+                        <i class="fa-regular fa-pen-to-square text-sky-600 w-4 text-center text-xs"></i>
+                        <span class="font-bold">Chỉnh sửa đơn hàng</span>
+                    </a>
+                </template>
+
+                <!-- 3. Nhập hàng vào kho -->
+                <template x-if="canReceive(activeActionOrder)">
+                    <a :href="'{{ url('/supplier-orders') }}/' + activeActionOrder.id + '/receipt'" 
+                       @click="closeActionMenu()" 
+                       class="w-full text-left px-3.5 py-2 hover:bg-emerald-50 flex items-center gap-3 text-emerald-700 transition-colors cursor-pointer">
+                        <i class="fa-solid fa-boxes-packing text-emerald-600 w-4 text-center text-xs"></i>
+                        <span class="font-bold">Nhập hàng về kho</span>
+                    </a>
+                </template>
+
+                <!-- 4. Phê duyệt đơn nếu Chờ duyệt -->
+                <template x-if="canApprove && activeActionOrder.status === 'Chờ duyệt'">
+                    <button type="button" 
+                            @click="openApproveModal(activeActionOrder); closeActionMenu()" 
+                            class="w-full text-left px-3.5 py-2 hover:bg-emerald-50 flex items-center gap-3 text-emerald-700 transition-colors cursor-pointer">
+                        <i class="fa-solid fa-check text-emerald-600 w-4 text-center text-xs"></i>
+                        <span class="font-bold">Phê duyệt đơn hàng</span>
+                    </button>
+                </template>
+
+                <!-- 5. Cập nhật thanh toán -->
+                <template x-if="activeActionOrder.payment_status !== 'Đã thanh toán' && activeActionOrder.status !== 'Đã hủy'">
+                    <button type="button" 
+                            @click="openPaymentModal(activeActionOrder); closeActionMenu()" 
+                            class="w-full text-left px-3.5 py-2 hover:bg-amber-50 flex items-center gap-3 text-amber-700 transition-colors cursor-pointer">
+                        <i class="fa-solid fa-money-bill-wave text-amber-600 w-4 text-center text-xs"></i>
+                        <span class="font-medium">Cập nhật thanh toán</span>
+                    </button>
+                </template>
+
+                <!-- 6. Hủy đơn đặt hàng -->
+                <template x-if="['Chờ duyệt', 'Đã duyệt'].includes(activeActionOrder.status)">
+                    <div class="border-t border-slate-100 pt-1 mt-1">
+                        <button type="button" 
+                                @click="cancelOrder(activeActionOrder); closeActionMenu()" 
+                                class="w-full text-left px-3.5 py-2 hover:bg-rose-50 flex items-center gap-3 text-rose-600 transition-colors cursor-pointer">
+                            <i class="fa-regular fa-trash-can text-rose-500 w-4 text-center text-xs"></i>
+                            <span class="font-bold">Hủy đơn đặt hàng</span>
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </template>
     </div>
 
     <!-- Lưu ý: Chức năng Tạo đơn NCC và Nhập hàng đã được chuyển sang trang riêng biệt (Full Page) tại /supplier-orders/create và /supplier-orders/{id}/receipt -->
@@ -556,6 +616,12 @@
                         </template>
                     </div>
                     <div class="flex items-center gap-2">
+                        <template x-if="canEdit(detailOrder)">
+                            <a :href="'{{ url('/supplier-orders') }}/' + detailOrder?.id + '/edit'" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-black cursor-pointer flex items-center gap-1.5 shadow-sm transition-transform hover:scale-[1.02]">
+                                <i class="fa-regular fa-pen-to-square"></i>
+                                <span>Chỉnh Sửa Đơn</span>
+                            </a>
+                        </template>
                         <template x-if="canApprove && detailOrder?.status === 'Chờ duyệt'">
                             <button type="button" @click="openApproveModal(detailOrder)" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black cursor-pointer flex items-center gap-1.5 shadow-sm transition-transform hover:scale-[1.02]">
                                 <i class="fa-solid fa-check"></i>
@@ -852,6 +918,12 @@ function supplierOrdersApp() {
         showDebtModal: false,
         showPaymentModal: false,
         showApproveModal: false,
+
+        // Floating Action Menu state
+        activeActionOrder: null,
+        actionMenuX: 0,
+        actionMenuY: 0,
+        actionDropUp: false,
 
         canApprove: {{ (Auth::check() && Auth::user()->hasPermission('supplier_orders.approve')) ? 'true' : 'false' }},
 
@@ -1503,6 +1575,48 @@ function supplierOrdersApp() {
             const d = new Date(dateStr);
             if (isNaN(d.getTime())) return dateStr;
             return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear();
+        },
+
+        openActionMenu(order, e) {
+            if (this.activeActionOrder && this.activeActionOrder.id === order.id) {
+                this.activeActionOrder = null;
+                return;
+            }
+            const rect = e.currentTarget.getBoundingClientRect();
+            this.activeActionOrder = order;
+
+            const menuWidth = 256; // w-64
+            this.actionMenuX = Math.max(10, rect.right - menuWidth);
+
+            const menuHeight = 290;
+            const spaceBelow = window.innerHeight - rect.bottom;
+            if (spaceBelow < menuHeight && rect.top > menuHeight) {
+                this.actionDropUp = true;
+                this.actionMenuY = window.innerHeight - rect.top + 4;
+            } else {
+                this.actionDropUp = false;
+                this.actionMenuY = Math.min(rect.bottom + 4, window.innerHeight - menuHeight - 10);
+            }
+        },
+
+        closeActionMenu() {
+            this.activeActionOrder = null;
+        },
+
+        canReceive(order) {
+            if (!order) return false;
+            return ['Đã duyệt', 'Đang giao hàng', 'Nhập một phần'].includes(order.status);
+        },
+
+        canEdit(order) {
+            if (!order) return false;
+            if (['Hoàn thành', 'Nhập một phần', 'Đã hủy'].includes(order.status)) return false;
+            if (order.items && order.items.some(it => parseFloat(it.received_quantity) > 0)) return false;
+            return true;
+        },
+
+        redirectToReceipt(orderId) {
+            window.location.href = `{{ url('/supplier-orders') }}/${orderId}/receipt`;
         }
     }
 }

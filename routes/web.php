@@ -324,8 +324,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders/suppliers', [SupplierOrderController::class, 'index'])->middleware('permission:supplier_orders.view,suppliers.view,danhmuc.view,orders.view');
     Route::get('/supplier-orders/create', [SupplierOrderController::class, 'create'])->name('supplier_orders.create')->middleware('permission:supplier_orders.create,orders.create');
     Route::get('/orders/suppliers/create', [SupplierOrderController::class, 'create'])->middleware('permission:supplier_orders.create,orders.create');
+    Route::get('/supplier-orders/{id}/edit', [SupplierOrderController::class, 'edit'])->name('supplier_orders.edit')->middleware('permission:supplier_orders.create,supplier_orders.edit,orders.edit,orders.create');
     Route::get('/supplier-orders/{id}/receipt', [SupplierOrderController::class, 'receiptPage'])->name('supplier_orders.receipt_page')->middleware('permission:supplier_orders.create,supplier_orders.approve,inv_import.view,inv_import.create');
     Route::post('/api/supplier-orders', [SupplierOrderController::class, 'store'])->middleware('permission:supplier_orders.create');
+    Route::put('/api/supplier-orders/{id}', [SupplierOrderController::class, 'update'])->middleware('permission:supplier_orders.create,supplier_orders.edit,orders.edit,orders.create');
+    Route::post('/api/supplier-orders/{id}', [SupplierOrderController::class, 'update'])->middleware('permission:supplier_orders.create,supplier_orders.edit,orders.edit,orders.create');
     Route::get('/api/supplier-orders/{id}', [SupplierOrderController::class, 'show'])->middleware('permission:supplier_orders.view,suppliers.view');
     Route::post('/api/supplier-orders/{id}/approve', [SupplierOrderController::class, 'approve'])->middleware('permission:supplier_orders.approve');
     Route::post('/api/supplier-orders/{id}/update-payment', [SupplierOrderController::class, 'updatePayment'])->middleware('permission:supplier_orders.approve,funds.view,debt.approve');

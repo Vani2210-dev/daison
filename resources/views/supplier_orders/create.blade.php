@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Tạo Đơn Đặt Hàng Nhà Cung Cấp Mới | ERP Đại Sơn')
+@section('title', !empty($order) ? 'Chỉnh Sửa Đơn Đặt Hàng NCC: ' . $order->code . ' | ERP Đại Sơn' : 'Tạo Đơn Đặt Hàng Nhà Cung Cấp Mới | ERP Đại Sơn')
 
 @section('content')
 <style>
@@ -47,8 +47,12 @@ input[type=number] {
 
             <div>
                 <div class="flex items-center gap-2">
-                    <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Tạo Đơn Đặt Hàng Nhà Cung Cấp Mới</h1>
-                    <span class="px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 text-[11px] font-extrabold border border-sky-200">Form Lập Đơn NCC</span>
+                    <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                        {{ !empty($order) ? "Chỉnh Sửa Đơn Đặt Hàng NCC: {$order->code}" : "Tạo Đơn Đặt Hàng Nhà Cung Cấp Mới" }}
+                    </h1>
+                    <span class="px-2.5 py-0.5 rounded-full {{ !empty($order) ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-sky-100 text-sky-800 border-sky-200' }} text-[11px] font-extrabold border">
+                        {{ !empty($order) ? "Cập Nhật Đơn: {$order->code}" : "Form Lập Đơn NCC" }}
+                    </span>
                 </div>
                 <p class="text-xs text-slate-500 mt-0.5 font-medium">Đặt hàng Nhà máy Tiền Phong / NCC · Chọn trạng thái thanh toán · Cấn trừ công nợ trực tiếp</p>
             </div>
@@ -68,7 +72,7 @@ input[type=number] {
             <button type="button" @click="submitCreateOrder()" :disabled="saving" class="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-sky-600/20 cursor-pointer disabled:opacity-50" title="Lưu đơn hàng (F9 hoặc Ctrl+S)">
                 <i class="fa-solid fa-spinner animate-spin" x-show="saving"></i>
                 <i class="fa-solid fa-check" x-show="!saving"></i>
-                <span>Tạo Đơn Đặt Hàng <kbd class="px-1.5 py-0.5 bg-sky-700/80 border border-sky-500 rounded text-[10px] text-white font-mono">F9</kbd></span>
+                <span x-text="isEditMode ? 'Lưu Thay Đổi (F9)' : 'Tạo Đơn Đặt Hàng (F9)'"></span>
             </button>
         </div>
     </div>
@@ -668,7 +672,7 @@ input[type=number] {
                 <button type="button" @click="submitCreateOrder()" :disabled="saving" class="px-6 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-sky-600/20 cursor-pointer disabled:opacity-50 hover:scale-[1.02] transition-all">
                     <i class="fa-solid fa-spinner animate-spin" x-show="saving"></i>
                     <i class="fa-solid fa-check" x-show="!saving"></i>
-                    <span>Tạo Đơn Đặt Hàng NCC</span>
+                    <span x-text="isEditMode ? 'Lưu Thay Đổi Đơn Đặt Hàng' : 'Tạo Đơn Đặt Hàng NCC'"></span>
                 </button>
             </div>
         </div>
@@ -781,7 +785,7 @@ input[type=number] {
 
 </div>
 
-<!-- SCRIPT CHO TRANG TẠO ĐƠN NCC -->
+<!-- SCRIPT CHO TRANG TẠO / CHỈNH SỬA ĐƠN NCC -->
 <script>
 function supplierOrderCreateApp() {
     return {
@@ -791,6 +795,12 @@ function supplierOrderCreateApp() {
         activeProdDropdownIndex: null,
         prodHighlightIndex: 0,
 
+        isEditMode: {{ !empty($order) ? 'true' : 'false' }},
+        orderId: '{{ $order->id ?? "" }}',
+        orderCode: '{{ $order->code ?? "" }}',
+        initialSupplierId: '{{ $order->supplier_id ?? "" }}',
+        initialDebtDeducted: {{ (float)($order->debt_deducted_amount ?? 0) }},
+
         suppliers: @json($suppliers ?? []),
         warehouses: @json($warehouses ?? []),
         catalogProducts: @json($products ?? []),
@@ -799,23 +809,41 @@ function supplierOrderCreateApp() {
         owingItemsList: [],
 
         formData: {
-            supplier_id: '{{ $selectedSupplierId ?? "" }}',
-            warehouse_id: '{{ $warehouses[0]->id ?? "" }}',
-            order_date: new Date().toISOString().slice(0, 10),
-            expected_delivery_date: '',
-            payment_status: 'Chưa thanh toán',
-            paid_amount: 0,
-            payment_method: 'Chuyển khoản',
-            payment_note: '',
-            apply_debt_deduction: false,
-            debt_deducted_amount: 0,
-            discount_amount: 0,
-            other_fees: 0,
-            notes: '',
+            supplier_id: '{{ $order->supplier_id ?? ($selectedSupplierId ?? "") }}',
+            warehouse_id: '{{ $order->warehouse_id ?? ($warehouses[0]->id ?? "") }}',
+            order_date: '{{ !empty($order->order_date) ? \Carbon\Carbon::parse($order->order_date)->format("Y-m-d") : date("Y-m-d") }}',
+            expected_delivery_date: '{{ !empty($order->expected_delivery_date) ? \Carbon\Carbon::parse($order->expected_delivery_date)->format("Y-m-d") : "" }}',
+            payment_status: '{{ $order->payment_status ?? "Chưa thanh toán" }}',
+            paid_amount: {{ (float)($order->paid_amount ?? 0) }},
+            payment_method: '{{ $order->payment_method ?? "Chuyển khoản" }}',
+            payment_note: {!! json_encode($order->payment_note ?? '') !!},
+            apply_debt_deduction: {{ (!empty($order) && ($order->debt_deducted_amount ?? 0) > 0) ? 'true' : 'false' }},
+            debt_deducted_amount: {{ (float)($order->debt_deducted_amount ?? 0) }},
+            discount_amount: {{ (float)($order->discount_amount ?? 0) }},
+            other_fees: {{ (float)($order->other_fees ?? 0) }},
+            notes: {!! json_encode($order->notes ?? '') !!},
             auto_approve: false,
-            items: [
-                { product_id: '', product_name: '', sku: '', searchQuery: '', unit: 'cái', stock_quantity: 0, ordered_quantity: 1, unit_price: 0, discount_percent: 0, discount_amount: 0 }
-            ]
+            items: @if(!empty($order) && $order->items && $order->items->count() > 0)
+                @json($order->items->map(function($it) {
+                    return [
+                        'product_id' => $it->product_id,
+                        'product_name' => $it->product_name,
+                        'sku' => $it->sku,
+                        'searchQuery' => ($it->sku ? "[{$it->sku}] " : '') . $it->product_name,
+                        'unit' => $it->unit ?: 'cái',
+                        'stock_quantity' => (float)($it->product?->stock_quantity ?? 0),
+                        'ordered_quantity' => (float)$it->ordered_quantity,
+                        'unit_price' => (float)$it->unit_price,
+                        'discount_percent' => (float)$it->discount_percent,
+                        'discount_amount' => (float)$it->discount_amount,
+                        'notes' => $it->notes ?? '',
+                    ];
+                }))
+            @else
+                [
+                    { product_id: '', product_name: '', sku: '', searchQuery: '', unit: 'cái', stock_quantity: 0, ordered_quantity: 1, unit_price: 0, discount_percent: 0, discount_amount: 0 }
+                ]
+            @endif
         },
 
         init() {
@@ -823,20 +851,23 @@ function supplierOrderCreateApp() {
                 this.isMobileViewport = window.innerWidth <= 768;
             });
             if (this.formData.supplier_id) {
-                this.onSupplierChange();
+                this.onSupplierChange(this.isEditMode);
             }
+            this.recalcTotals();
             this.$nextTick(() => {
                 const firstInput = document.getElementById('row-product-input-0');
-                if (firstInput) firstInput.focus();
+                if (firstInput && !this.isEditMode) firstInput.focus();
             });
         },
 
-        onSupplierChange() {
+        onSupplierChange(isInitial = false) {
             const supId = this.formData.supplier_id;
             this.selectedSupplierDebtBalance = 0;
             this.owingItemsList = [];
-            this.formData.apply_debt_deduction = false;
-            this.formData.debt_deducted_amount = 0;
+            if (!isInitial) {
+                this.formData.apply_debt_deduction = false;
+                this.formData.debt_deducted_amount = 0;
+            }
 
             if (!supId) return;
 
@@ -844,11 +875,17 @@ function supplierOrderCreateApp() {
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        this.selectedSupplierDebtBalance = parseFloat(data.debt_balance) || 0;
+                        let currentDebt = parseFloat(data.debt_balance) || 0;
+                        if (this.isEditMode && String(supId) === String(this.initialSupplierId)) {
+                            currentDebt += (this.initialDebtDeducted || 0);
+                        }
+                        this.selectedSupplierDebtBalance = currentDebt;
                         this.owingItemsList = data.owing_items || [];
-                        if (this.selectedSupplierDebtBalance > 0) {
+                        if (!isInitial && this.selectedSupplierDebtBalance > 0) {
                             this.formData.apply_debt_deduction = true;
                             this.applyMaxDebtDeduction();
+                        } else if (isInitial) {
+                            this.recalcTotals();
                         }
                     }
                 })
@@ -1175,8 +1212,13 @@ function supplierOrderCreateApp() {
             }
 
             this.saving = true;
-            fetch('{{ url("/api/supplier-orders") }}', {
-                method: 'POST',
+            const targetUrl = this.isEditMode 
+                ? `{{ url('/api/supplier-orders') }}/${this.orderId}`
+                : '{{ url("/api/supplier-orders") }}';
+            const method = this.isEditMode ? 'PUT' : 'POST';
+
+            fetch(targetUrl, {
+                method: method,
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
@@ -1188,22 +1230,31 @@ function supplierOrderCreateApp() {
             .then(data => {
                 if (data.success) {
                     try {
-                        sessionStorage.setItem('pending_toast', JSON.stringify({
-                            title: 'Đơn đặt NCC mới chờ duyệt: ' + (data.order?.code || ''),
-                            message: `Đơn đặt hàng ${data.order?.code || ''} (NCC: ${data.order?.supplier_name || ''}) đã được gửi đến người có quyền duyệt.`,
-                            type: 'supplier_order_approval',
-                            action_url: '{{ url("/supplier-orders") }}',
-                            data: {
-                                supplier_name: data.order?.supplier_name,
-                                order_code: data.order?.code,
-                                payable_amount: data.order?.payable_amount
-                            }
-                        }));
+                        if (this.isEditMode) {
+                            sessionStorage.setItem('pending_toast', JSON.stringify({
+                                title: 'Cập nhật đơn NCC: ' + (data.order?.code || this.orderCode),
+                                message: `Đơn đặt hàng ${data.order?.code || this.orderCode} đã được lưu thay đổi thành công.`,
+                                type: 'completed',
+                                action_url: '{{ url("/supplier-orders") }}'
+                            }));
+                        } else {
+                            sessionStorage.setItem('pending_toast', JSON.stringify({
+                                title: 'Đơn đặt NCC mới chờ duyệt: ' + (data.order?.code || ''),
+                                message: `Đơn đặt hàng ${data.order?.code || ''} (NCC: ${data.order?.supplier_name || ''}) đã được gửi đến người có quyền duyệt.`,
+                                type: 'supplier_order_approval',
+                                action_url: '{{ url("/supplier-orders") }}',
+                                data: {
+                                    supplier_name: data.order?.supplier_name,
+                                    order_code: data.order?.code,
+                                    payable_amount: data.order?.payable_amount
+                                }
+                            }));
+                        }
                     } catch(e) {}
 
                     window.location.href = '{{ url("/supplier-orders") }}';
                 } else {
-                    alert(data.message || 'Lỗi tạo đơn đặt hàng');
+                    alert(data.message || (this.isEditMode ? 'Lỗi cập nhật đơn đặt hàng' : 'Lỗi tạo đơn đặt hàng'));
                 }
             })
             .catch(err => {
