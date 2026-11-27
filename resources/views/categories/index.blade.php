@@ -415,6 +415,12 @@
                 </span>
             </div>
             <div class="flex items-center gap-2">
+                <select x-model="selectedCategorySupplier" class="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="">-- Tất cả NCC --</option>
+                    <template x-for="s in suppliers" :key="s.id">
+                        <option :value="s.id" x-text="s.name"></option>
+                    </template>
+                </select>
                 <div class="relative">
                     <input type="text" x-model="search" placeholder="Tìm theo mã, tên phân loại..." class="w-48 sm:w-64 pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white">
                     <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
@@ -436,6 +442,7 @@
                         <th class="py-2.5 px-3 w-12 text-center">STT</th>
                         <th class="py-2.5 px-3">Mã Nhóm</th>
                         <th class="py-2.5 px-3">Tên Phân Loại Ngành Hàng</th>
+                        <th class="py-2.5 px-3">Nhà Cung Cấp</th>
                         <th class="py-2.5 px-3">Người Phụ Trách</th>
                         <th class="py-2.5 px-3">Mô Tả / Quy Cách</th>
                         <th class="py-2.5 px-3 text-center">Số Mặt Hàng</th>
@@ -449,6 +456,12 @@
                             <td class="py-2.5 px-3 text-center text-slate-400" x-text="index + 1"></td>
                             <td class="py-2.5 px-3 font-bold text-blue-700" x-text="c.code || ('PL-0' + (index+1))"></td>
                             <td class="py-2.5 px-3 font-semibold text-slate-900" x-text="c.name"></td>
+                            <td class="py-2.5 px-3">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded font-semibold text-xs" :class="c.supplier ? 'bg-indigo-50 text-indigo-700 border border-indigo-200/60' : 'bg-slate-100 text-slate-400'">
+                                    <i class="fa-solid fa-industry text-[10px]"></i>
+                                    <span x-text="c.supplier ? c.supplier.name : 'Chưa gán'"></span>
+                                </span>
+                            </td>
                             <td class="py-2.5 px-3 text-slate-800">
                                 <div class="flex items-center gap-1.5 font-medium">
                                     <i class="fa-solid fa-user-tie text-blue-600 text-[11px]"></i>
@@ -474,7 +487,7 @@
                     </template>
                     <template x-if="filteredCategories.length === 0">
                         <tr>
-                            <td colspan="8" class="py-8 text-center text-slate-400">
+                            <td colspan="9" class="py-8 text-center text-slate-400">
                                 <i class="fa-solid fa-layer-group text-2xl mb-1 text-slate-300 block"></i>
                                 Không tìm thấy phân loại nào phù hợp
                             </td>
@@ -493,6 +506,7 @@
                     </div>
                     <div class="font-semibold text-slate-900 text-sm" x-text="c.name"></div>
                     <div class="text-xs text-slate-600 space-y-1">
+                        <div><span class="text-slate-400">Nhà cung cấp:</span> <span class="font-bold text-indigo-700" x-text="c.supplier ? c.supplier.name : 'Chưa gán'"></span></div>
                         <div><span class="text-slate-400">Phụ trách:</span> <span class="font-medium text-slate-800" x-text="c.manager_name || 'Chưa phân công'"></span></div>
                         <div><span class="text-slate-400">Mô tả:</span> <span x-text="c.description || 'Vật tư phân phối chính hãng'"></span></div>
                         <div class="flex items-center justify-between">
@@ -2067,6 +2081,17 @@
                 <!-- 4. FORM PHÂN LOẠI -->
                 <template x-if="modalType === 'categories'">
                     <div class="space-y-3.5">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Nhà Cung Cấp Trực Thuộc <span class="text-rose-500">*</span></label>
+                            <select x-model="formData.supplier_id" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-sky-500 text-xs bg-white font-medium">
+                                <option value="">-- Chọn Nhà Cung Cấp --</option>
+                                <template x-for="s in suppliers" :key="s.id">
+                                    <option :value="s.id" :selected="formData.supplier_id == s.id" x-text="s.name + (s.code ? ' (' + s.code + ')' : '')"></option>
+                                </template>
+                            </select>
+                            <p class="text-[11px] text-slate-400 mt-1">Phân loại ngành hàng này sẽ trực thuộc Nhà Cung Cấp đã chọn</p>
+                        </div>
+
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block font-semibold text-slate-700 mb-1">Mã Nhóm Ngành <span class="text-rose-500">*</span></label>
@@ -2712,6 +2737,7 @@ function categoryManager() {
     return {
         activeTab: '{{ $activeTab ?? 'warehouses' }}',
         search: '',
+        selectedCategorySupplier: '',
         showModal: false,
         showImportModal: false,
         isImporting: false,
@@ -3080,13 +3106,16 @@ function categoryManager() {
 
         get filteredCategories() {
             const q = this.search.trim().toLowerCase();
-            if (!q) return this.categories;
-            return this.categories.filter(c => 
-                (c.code && c.code.toLowerCase().includes(q)) ||
-                (c.name && c.name.toLowerCase().includes(q)) ||
-                (c.manager_name && c.manager_name.toLowerCase().includes(q)) ||
-                (c.description && c.description.toLowerCase().includes(q))
-            );
+            const supId = this.selectedCategorySupplier;
+            return this.categories.filter(c => {
+                if (supId && c.supplier_id != supId) return false;
+                if (!q) return true;
+                return (c.code && c.code.toLowerCase().includes(q)) ||
+                    (c.name && c.name.toLowerCase().includes(q)) ||
+                    (c.supplier && c.supplier.name && c.supplier.name.toLowerCase().includes(q)) ||
+                    (c.manager_name && c.manager_name.toLowerCase().includes(q)) ||
+                    (c.description && c.description.toLowerCase().includes(q));
+            });
         },
 
         get filteredBrands() {
@@ -3292,6 +3321,7 @@ function categoryManager() {
             this.formData = {
                 id: null,
                 code: config.prefix ? `${config.prefix}-${randomSuffix}` : '',
+                supplier_id: type === 'categories' && this.selectedCategorySupplier ? Number(this.selectedCategorySupplier) : (this.suppliers.length > 0 ? this.suppliers[0].id : ''),
                 category_id: this.categories.length > 0 ? this.categories[0].id : '',
                 brand_id: '',
                 manager_name: '',

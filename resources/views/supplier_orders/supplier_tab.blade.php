@@ -22,6 +22,12 @@
 
         <!-- Action Buttons -->
         <div class="flex flex-wrap items-center gap-2">
+            <!-- Nút Cài đặt CK Loại hàng NCC -->
+            <button type="button" @click="openDiscountModal()" class="px-3 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer hover:scale-[1.02] active:scale-95" title="Cài đặt % chiết khấu mặc định cho từng loại mặt hàng theo từng Nhà cung cấp">
+                <i class="fa-solid fa-tags text-indigo-600"></i>
+                <span>CK Loại hàng NCC</span>
+            </button>
+
             <!-- Nút Sổ nợ NCC -->
             <button type="button" @click="openDebtModal()" class="px-3.5 py-2.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs flex items-center gap-2 shadow-2xs transition-all cursor-pointer">
                 <i class="fa-solid fa-hand-holding-dollar text-amber-600"></i>
@@ -441,6 +447,16 @@
                     <i class="fa-regular fa-eye text-slate-500 w-4 text-center text-xs"></i>
                     <span class="font-medium">Xem chi tiết đơn</span>
                 </button>
+
+                <!-- Cài đặt CK loại hàng cho NCC này -->
+                <template x-if="activeActionOrder.supplier_id">
+                    <button type="button" 
+                            @click="openDiscountModal(activeActionOrder.supplier_id); closeActionMenu()" 
+                            class="w-full text-left px-3.5 py-2 hover:bg-indigo-50 flex items-center gap-3 text-indigo-700 transition-colors cursor-pointer">
+                        <i class="fa-solid fa-tags text-indigo-600 w-4 text-center text-xs"></i>
+                        <span class="font-bold">Cài đặt CK Loại hàng NCC</span>
+                    </button>
+                </template>
 
                 <!-- 2. Chỉnh sửa đơn đặt hàng -->
                 <template x-if="canEdit(activeActionOrder)">
@@ -981,6 +997,233 @@
         </div>
     </div>
 
+    <!-- 10. MODAL CÀI ĐẶT CHIẾT KHẤU LOẠI HÀNG THEO NHÀ CUNG CẤP -->
+    <div x-show="showDiscountModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="closeDiscountModal()"></div>
+
+        <div class="flex min-h-full items-center justify-center p-3 sm:p-4 text-center">
+            <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all w-full max-w-4xl border border-slate-200 flex flex-col max-h-[90vh]"
+                 @click.stop>
+                
+                <!-- Modal Header -->
+                <div class="px-5 py-4 border-b border-slate-200 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-600/50 border border-indigo-400/40 text-indigo-200 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-tags"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-black text-white flex items-center gap-2">
+                                <span>Cài Đặt Chiết Khấu Loại Hàng Theo Nhà Cung Cấp</span>
+                                <span class="px-2 py-0.5 rounded-full bg-indigo-500/30 border border-indigo-400/30 text-indigo-200 text-[10px] font-bold">Tự động gợi ý khi đặt hàng</span>
+                            </h3>
+                            <p class="text-xs text-slate-300 mt-0.5">Thiết lập tỷ lệ % chiết khấu cho từng loại mặt hàng theo từng nhà cung cấp</p>
+                        </div>
+                    </div>
+                    <button type="button" @click="closeDiscountModal()" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+
+                <!-- Modal Controls Bar -->
+                <div class="p-4 bg-slate-50 border-b border-slate-200 shrink-0 space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <!-- Chọn NCC -->
+                        <div class="flex items-center gap-2 flex-1 max-w-md">
+                            <label class="text-xs font-bold text-slate-700 shrink-0">Nhà cung cấp:</label>
+                            <select x-model="discountModalSupplierId" @change="fetchSupplierCategoryDiscounts()" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white text-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+                                <template x-for="s in suppliers" :key="s.id">
+                                    <option :value="s.id" :selected="discountModalSupplierId == s.id" x-text="s.name"></option>
+                                </template>
+                            </select>
+                        </div>
+
+                        <!-- Áp dụng nhanh chiết khấu chung -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-semibold text-slate-600 shrink-0">Áp dụng nhanh:</span>
+                            <div class="relative w-24">
+                                <input type="number" min="0" max="100" step="any" x-model.number="bulkCategoryDiscount" placeholder="0" class="w-full px-2.5 py-1.5 pr-6 rounded-xl border border-slate-300 text-xs font-bold text-right outline-none focus:border-indigo-500">
+                                <span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">%</span>
+                            </div>
+                            <button type="button" @click="applyBulkCategoryDiscount()" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs shadow-xs transition-all cursor-pointer">
+                                Áp dụng tất cả
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Search / Filter category -->
+                    <div class="flex items-center justify-between gap-2 pt-1">
+                        <div class="relative flex-1 max-w-sm">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                            <input type="text" x-model="categorySearch" placeholder="Lọc loại mặt hàng..." class="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs font-medium bg-white outline-none focus:border-indigo-500">
+                        </div>
+                        <div class="text-[11px] font-bold text-slate-500">
+                            Đã thiết lập: <span class="text-indigo-600 font-extrabold" x-text="countConfiguredCategories()"></span> / <span x-text="discountCategoriesList.length"></span> loại hàng
+                        </div>
+                    </div>
+
+                    <!-- Toast success message inside modal -->
+                    <template x-if="discountSuccessMessage">
+                        <div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                            <span x-text="discountSuccessMessage"></span>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Modal Table (Scrollable) -->
+                <div class="overflow-y-auto flex-1 p-4">
+                    <template x-if="discountLoading">
+                        <div class="py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-spinner animate-spin text-2xl text-indigo-600 mb-2"></i>
+                            <p class="font-bold text-xs">Đang tải danh sách loại hàng & chiết khấu...</p>
+                        </div>
+                    </template>
+
+                    <template x-if="!discountLoading">
+                        <div class="border border-slate-200 rounded-xl overflow-hidden">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-100 text-slate-700 font-black text-[11px] uppercase tracking-wider border-b border-slate-200">
+                                        <th class="py-2.5 px-3 w-12 text-center">#</th>
+                                        <th class="py-2.5 px-3 min-w-[200px]">Loại Mặt Hàng</th>
+                                        <th class="py-2.5 px-3 w-28 text-center">Số Mặt Hàng</th>
+                                        <th class="py-2.5 px-3 w-40 text-center">Mức Chiết Khấu (%)</th>
+                                        <th class="py-2.5 px-3">Ghi Chú</th>
+                                    </tr>
+                                </thead>
+                                <template x-for="(cat, idx) in filteredDiscountCategories" :key="cat.category_id">
+                                    <tbody class="divide-y divide-slate-100 border-b border-slate-100">
+                                            <tr class="hover:bg-slate-50/80 transition-colors" :class="cat.discount_percent > 0 ? 'bg-indigo-50/20' : ''">
+                                                <td class="py-2.5 px-3 text-center text-slate-400 font-mono" x-text="idx + 1"></td>
+                                                <td class="py-2.5 px-3">
+                                                    <div class="font-bold text-slate-800" x-text="cat.category_name"></div>
+                                                    <div class="text-[10px] text-slate-400 font-mono" x-text="cat.category_code"></div>
+                                                </td>
+                                                <td class="py-2.5 px-3 text-center">
+                                                    <button type="button" 
+                                                            @click="cat._expanded = !cat._expanded" 
+                                                            class="px-2.5 py-1 rounded-full text-[10.5px] font-bold inline-flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs"
+                                                            :class="cat._expanded ? 'bg-indigo-600 text-white' : (cat.products_count > 0 ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200/60' : 'bg-slate-100 text-slate-500')"
+                                                            title="Bấm để xem/ẩn danh sách sản phẩm thuộc loại này của NCC">
+                                                        <i class="fa-solid fa-boxes-stacked text-[10px]"></i>
+                                                        <span x-text="(cat.products_count || 0) + ' SP'"></span>
+                                                        <i class="fa-solid text-[9px] transition-transform duration-200" :class="cat._expanded ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                                    </button>
+                                                </td>
+                                                <td class="py-2.5 px-3 text-center">
+                                                    <div class="flex items-center justify-center gap-1">
+                                                        <div class="relative w-28">
+                                                            <input type="number" 
+                                                                   min="0" 
+                                                                   max="100" 
+                                                                   step="any"
+                                                                   x-model.number="cat.discount_percent"
+                                                                   @focus="$event.target.select()"
+                                                                   placeholder="0" 
+                                                                   class="w-full px-2.5 py-1.5 pr-6 rounded-xl border text-xs font-bold text-right outline-none transition-colors"
+                                                                   :class="cat.discount_percent > 0 ? 'border-indigo-300 bg-white text-indigo-700 font-extrabold focus:border-indigo-500' : 'border-slate-200 bg-white text-slate-600 focus:border-slate-400'">
+                                                            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-bold"
+                                                                  :class="cat.discount_percent > 0 ? 'text-indigo-600' : 'text-slate-400'">%</span>
+                                                        </div>
+                                                        <!-- Quick reset to 0 if > 0 -->
+                                                        <button type="button" 
+                                                                x-show="cat.discount_percent > 0" 
+                                                                @click="cat.discount_percent = 0"
+                                                                class="w-6 h-6 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center cursor-pointer transition-colors"
+                                                                title="Xóa mức chiết khấu">
+                                                            <i class="fa-solid fa-xmark text-xs"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                <td class="py-2.5 px-3">
+                                                    <input type="text" 
+                                                           x-model="cat.notes" 
+                                                           placeholder="Ghi chú áp dụng..." 
+                                                           class="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs bg-white outline-none focus:border-indigo-400 text-slate-700">
+                                                </td>
+                                            </tr>
+                                            <!-- Accordion: Danh sách sản phẩm của loại hàng thuộc NCC -->
+                                            <template x-if="cat._expanded">
+                                                <tr class="bg-indigo-50/30 border-b border-indigo-100/70">
+                                                    <td colspan="5" class="p-3 pl-8">
+                                                        <div class="bg-white rounded-xl border border-indigo-100 p-3 shadow-2xs space-y-2">
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-[11px] font-extrabold text-slate-800 flex items-center gap-1.5">
+                                                                    <i class="fa-solid fa-layer-group text-indigo-600"></i>
+                                                                    <span>Cấp 3: Sản phẩm thuộc loại <span class="text-indigo-700" x-text="cat.category_name"></span> của NCC này</span>
+                                                                </span>
+                                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100" x-text="(cat.products ? cat.products.length : 0) + ' mặt hàng'"></span>
+                                                            </div>
+                                                            <template x-if="!cat.products || cat.products.length === 0">
+                                                                <p class="text-[11px] text-slate-400 italic py-2 text-center">Chưa có sản phẩm nào thuộc loại này được liên kết với nhà cung cấp hiện tại.</p>
+                                                            </template>
+                                                            <template x-if="cat.products && cat.products.length > 0">
+                                                                <div class="overflow-x-auto max-h-52 overflow-y-auto rounded-lg border border-slate-200">
+                                                                    <table class="w-full text-left text-[11px] border-collapse">
+                                                                        <thead class="bg-slate-100 text-slate-700 font-bold sticky top-0 border-b border-slate-200">
+                                                                            <tr>
+                                                                                <th class="py-1.5 px-2.5 w-10 text-center">#</th>
+                                                                                <th class="py-1.5 px-2.5 w-24">Mã SP</th>
+                                                                                <th class="py-1.5 px-2.5">Tên Sản Phẩm</th>
+                                                                                <th class="py-1.5 px-2.5 w-16 text-center">ĐVT</th>
+                                                                                <th class="py-1.5 px-2.5 w-28 text-right">Giá Nhập Gốc</th>
+                                                                                <th class="py-1.5 px-2.5 w-36 text-right">Chiết Khấu Dự Kiến</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody class="divide-y divide-slate-100 font-medium">
+                                                                            <template x-for="(p, pIdx) in cat.products" :key="p.id">
+                                                                                <tr class="hover:bg-indigo-50/40">
+                                                                                    <td class="py-1 px-2.5 text-center text-slate-400 font-mono text-[10px]" x-text="pIdx + 1"></td>
+                                                                                    <td class="py-1 px-2.5 font-bold font-mono text-slate-700 text-[10px]" x-text="p.sku"></td>
+                                                                                    <td class="py-1 px-2.5 text-slate-800" x-text="p.name"></td>
+                                                                                    <td class="py-1 px-2.5 text-center text-slate-500 font-semibold" x-text="p.unit"></td>
+                                                                                    <td class="py-1 px-2.5 text-right font-mono text-slate-700" x-text="formatMoney(p.cost_price)"></td>
+                                                                                    <td class="py-1 px-2.5 text-right font-mono font-bold text-indigo-700" x-text="cat.discount_percent > 0 ? (cat.discount_percent + '% (-' + formatMoney(p.cost_price * cat.discount_percent / 100) + ')') : '—'"></td>
+                                                                                </tr>
+                                                                            </template>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </template>
+                                    <tbody x-show="filteredDiscountCategories.length === 0">
+                                        <tr>
+                                            <td colspan="5" class="py-8 text-center text-slate-400">
+                                                Không tìm thấy loại mặt hàng phù hợp với từ khóa tìm kiếm.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                            </table>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="px-5 py-3.5 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+                    <div class="text-xs text-slate-500">
+                        <span class="font-bold text-slate-700">Lưu ý:</span> Chiết khấu cài đặt sẽ tự động điền vào cột CK (%) khi thêm sản phẩm thuộc loại hàng tương ứng trong đơn đặt hàng NCC.
+                    </div>
+                    <div class="flex items-center justify-end gap-2 shrink-0">
+                        <button type="button" @click="closeDiscountModal()" class="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold cursor-pointer transition-colors">
+                            Đóng
+                        </button>
+                        <button type="button" @click="saveSupplierCategoryDiscounts()" :disabled="discountSaving" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-md shadow-indigo-600/20 cursor-pointer transition-all flex items-center gap-1.5 disabled:opacity-50 hover:scale-[1.02] active:scale-95">
+                            <i class="fa-solid fa-spinner animate-spin" x-show="discountSaving"></i>
+                            <i class="fa-solid fa-floppy-disk" x-show="!discountSaving"></i>
+                            <span x-text="discountSaving ? 'Đang lưu...' : 'Lưu cài đặt chiết khấu'"></span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <!-- SCRIPT LOGIC CHO SUPPLIER ORDERS APP -->
@@ -996,6 +1239,8 @@ function supplierOrdersApp() {
         suppliers: @json($suppliers ?? []),
         warehouses: @json($warehouses ?? []),
         catalogProducts: @json($products ?? []),
+        categories: @json($categories ?? []),
+        allCategoryDiscounts: @json($allCategoryDiscounts ?? []),
 
         selectedStatus: '{{ request("status", "") }}',
         selectedSupplier: '{{ request("supplier_id", "") }}',
@@ -1019,6 +1264,14 @@ function supplierOrdersApp() {
         showDebtModal: false,
         showPaymentModal: false,
         showApproveModal: false,
+        showDiscountModal: false,
+        discountModalSupplierId: '',
+        discountCategoriesList: [],
+        discountLoading: false,
+        discountSaving: false,
+        bulkCategoryDiscount: '',
+        categorySearch: '',
+        discountSuccessMessage: '',
 
         // Floating Action Menu state
         activeActionOrder: null,
@@ -1123,29 +1376,11 @@ function supplierOrdersApp() {
         // LOGIC TẠO ĐƠN & CÔNG NỢ NCC
         // ===================================
         openCreateModal(supplierId = null) {
-            this.formData = {
-                supplier_id: supplierId || '',
-                warehouse_id: this.warehouses[0]?.id || '',
-                order_date: new Date().toISOString().slice(0, 10),
-                expected_delivery_date: '',
-                payment_status: 'Chưa thanh toán',
-                paid_amount: 0,
-                payment_method: 'Chuyển khoản',
-                payment_note: '',
-                apply_debt_deduction: false,
-                debt_deducted_amount: 0,
-                discount_amount: 0,
-                other_fees: 0,
-                notes: '',
-                auto_approve: false,
-                items: [
-                    { product_id: '', product_name: '', sku: '', unit: 'cái', ordered_quantity: 1, unit_price: 0, discount_percent: 0, discount_amount: 0 }
-                ]
-            };
-            this.showCreateModal = true;
+            let url = "{{ url('/supplier-orders/create') }}";
             if (supplierId) {
-                this.onSupplierChange();
+                url += '?supplier_id=' + supplierId;
             }
+            window.location.href = url;
         },
 
         closeCreateModal() {
@@ -1154,7 +1389,7 @@ function supplierOrdersApp() {
 
         createOrderForSupplier(supId) {
             this.closeDebtModal();
-            this.openCreateModal(supId);
+            window.location.href = "{{ url('/supplier-orders/create') }}?supplier_id=" + supId;
         },
 
         onSupplierChange() {
@@ -1785,6 +2020,113 @@ function supplierOrdersApp() {
 
         redirectToReceipt(orderId) {
             window.location.href = `{{ url('/supplier-orders') }}/${orderId}/receipt`;
+        },
+
+        // Category Discount Modal Methods
+        openDiscountModal(supplierId = null) {
+            if (supplierId) {
+                this.discountModalSupplierId = supplierId;
+            } else if (!this.discountModalSupplierId && this.suppliers.length > 0) {
+                this.discountModalSupplierId = this.suppliers[0].id;
+            }
+            this.showDiscountModal = true;
+            this.bulkCategoryDiscount = '';
+            this.categorySearch = '';
+            this.discountSuccessMessage = '';
+            this.fetchSupplierCategoryDiscounts();
+        },
+
+        closeDiscountModal() {
+            this.showDiscountModal = false;
+        },
+
+        fetchSupplierCategoryDiscounts() {
+            if (!this.discountModalSupplierId) return;
+            this.discountLoading = true;
+            this.discountSuccessMessage = '';
+            fetch(`{{ url('/api/suppliers') }}/${this.discountModalSupplierId}/category-discounts`)
+                .then(res => res.json())
+                .then(data => {
+                    this.discountLoading = false;
+                    if (data.success) {
+                        this.discountCategoriesList = data.categories || [];
+                    } else {
+                        alert(data.message || 'Lỗi tải dữ liệu chiết khấu');
+                    }
+                })
+                .catch(err => {
+                    this.discountLoading = false;
+                    console.error(err);
+                });
+        },
+
+        applyBulkCategoryDiscount() {
+            const val = parseFloat(this.bulkCategoryDiscount);
+            if (isNaN(val) || val < 0 || val > 100) {
+                alert('Vui lòng nhập mức % chiết khấu hợp lệ từ 0 đến 100.');
+                return;
+            }
+            this.discountCategoriesList.forEach(c => {
+                c.discount_percent = val;
+            });
+        },
+
+        countConfiguredCategories() {
+            return (this.discountCategoriesList || []).filter(c => parseFloat(c.discount_percent) > 0).length;
+        },
+
+        get filteredDiscountCategories() {
+            const q = (this.categorySearch || '').toLowerCase().trim();
+            if (!q) return this.discountCategoriesList;
+            return this.discountCategoriesList.filter(c => 
+                (c.category_name || '').toLowerCase().includes(q) ||
+                (c.category_code || '').toLowerCase().includes(q) ||
+                (c.notes || '').toLowerCase().includes(q)
+            );
+        },
+
+        saveSupplierCategoryDiscounts() {
+            if (!this.discountModalSupplierId) return;
+            this.discountSaving = true;
+            this.discountSuccessMessage = '';
+
+            const payload = {
+                discounts: this.discountCategoriesList.map(c => ({
+                    category_id: c.category_id,
+                    discount_percent: parseFloat(c.discount_percent) || 0,
+                    notes: c.notes || ''
+                }))
+            };
+
+            fetch(`{{ url('/api/suppliers') }}/${this.discountModalSupplierId}/category-discounts`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                this.discountSaving = false;
+                if (data.success) {
+                    this.discountSuccessMessage = data.message;
+                    // Update allCategoryDiscounts cache
+                    if (!this.allCategoryDiscounts) this.allCategoryDiscounts = {};
+                    this.allCategoryDiscounts[this.discountModalSupplierId] = data.category_discounts || {};
+                    setTimeout(() => {
+                        this.discountSuccessMessage = '';
+                    }, 4000);
+                } else {
+                    alert(data.message || 'Lỗi lưu chiết khấu');
+                }
+            })
+            .catch(err => {
+                this.discountSaving = false;
+                console.error(err);
+                alert('Đã xảy ra lỗi khi lưu chiết khấu');
+            });
         }
     }
 }

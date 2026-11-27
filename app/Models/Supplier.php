@@ -40,4 +40,25 @@ class Supplier extends Model
     {
         return $this->hasMany(SupplierDebtLog::class);
     }
+
+    public function categoryDiscounts()
+    {
+        return $this->hasMany(SupplierCategoryDiscount::class);
+    }
+
+    /**
+     * Danh sách loại mặt hàng trực thuộc NCC
+     */
+    public function categories()
+    {
+        return $this->hasMany(Category::class);
+    }
+
+    /**
+     * Danh sách sản phẩm của NCC
+     */
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
 }

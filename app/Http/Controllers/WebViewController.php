@@ -206,13 +206,22 @@ class WebViewController extends Controller
             $convPrice = (float)round($convPrice);
         }
 
+        $supplierId = $request->filled('supplier_id') ? (int)$request->input('supplier_id') : null;
+        $categoryId = (int)$request->input('category_id');
+        if (!$supplierId && $categoryId) {
+            $cat = Category::find($categoryId);
+            if ($cat && $cat->supplier_id) {
+                $supplierId = $cat->supplier_id;
+            }
+        }
+
         $data = [
             'sku' => trim($request->input('sku')),
             'name' => trim($request->input('name')),
             'tax_name' => trim($request->input('tax_name')) ?: trim($request->input('name')),
-            'category_id' => (int)$request->input('category_id'),
+            'category_id' => $categoryId,
             'brand_id' => $request->filled('brand_id') ? (int)$request->input('brand_id') : null,
-            'supplier_id' => $request->filled('supplier_id') ? (int)$request->input('supplier_id') : null,
+            'supplier_id' => $supplierId,
             'subcategory' => trim($request->input('subcategory', '')),
             'subcategory_id' => $request->filled('subcategory_id') ? (int)$request->input('subcategory_id') : null,
             'specification' => $spec,
@@ -1645,7 +1654,7 @@ class WebViewController extends Controller
         $warehouses = Warehouse::with('branch')->get();
         $branches = Branch::all();
         $funds = FinancialFund::all();
-        $categories = Category::withCount('products')->get();
+        $categories = Category::with('supplier')->withCount('products')->get();
         $brands = Brand::withCount('products')->get();
         $subcategories = Subcategory::with(['category', 'brand'])->withCount('products')->get();
         $routes = DeliveryRoute::all();
@@ -1958,12 +1967,14 @@ class WebViewController extends Controller
                     $data = [
                         'code' => $request->input('code') ?: ('PL-' . strtoupper(substr(uniqid(), -4))),
                         'name' => $request->input('name'),
+                        'supplier_id' => $request->input('supplier_id') ?: null,
                         'manager_name' => $request->input('manager_name'),
                         'description' => $request->input('description'),
                         'is_active' => $request->boolean('is_active', true),
                     ];
                     $item = Category::updateOrCreate(['id' => $id], $data);
                     $item->loadCount('products');
+                    $item->load('supplier');
                     break;
 
                 case 'brands':

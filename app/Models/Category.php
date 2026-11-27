@@ -10,6 +10,7 @@ class Category extends Model
     use HasFactory;
 
     protected $fillable = [
+        'supplier_id',
         'code',
         'name',
         'manager_name',
@@ -20,6 +21,14 @@ class Category extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    /**
+     * Nhà cung cấp trực thuộc
+     */
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
+    }
 
     /**
      * Mối quan hệ N-N với Thương hiệu
@@ -43,5 +52,13 @@ class Category extends Model
     public function subcategories()
     {
         return $this->hasMany(Subcategory::class);
+    }
+
+    /**
+     * Danh sách chiết khấu của các nhà cung cấp cho loại hàng này
+     */
+    public function supplierDiscounts()
+    {
+        return $this->hasMany(SupplierCategoryDiscount::class);
     }
 }

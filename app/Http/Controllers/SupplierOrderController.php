@@ -13,11 +13,14 @@ use App\Models\ProductBatch;
 use App\Models\InventoryTransaction;
 use App\Models\InventoryTransactionItem;
 use App\Models\User;
+use App\Models\Category;
+use App\Models\SupplierCategoryDiscount;
 use App\Models\SystemNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class SupplierOrderController extends Controller
 {
@@ -122,6 +125,20 @@ class SupplierOrderController extends Controller
 
         $products = $this->getCatalogProducts();
 
+        $categories = Category::where('is_active', true)
+            ->withCount('products')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name']);
+
+        $allCategoryDiscounts = Schema::hasTable('supplier_category_discounts')
+            ? SupplierCategoryDiscount::all()
+                ->groupBy('supplier_id')
+                ->map(fn($items) => $items->keyBy('category_id')->map(fn($it) => [
+                    'discount_percent' => (float)$it->discount_percent,
+                    'notes'            => $it->notes,
+                ]))
+            : collect();
+
         if ($request->wantsJson() && !$request->isMethod('get')) {
             return response()->json([
                 'success' => true,
@@ -132,7 +149,7 @@ class SupplierOrderController extends Controller
         }
 
         // Return view - can be embedded in /orders?tab=suppliers or standalone /supplier-orders
-        return view('supplier_orders.index', compact('orders', 'counts', 'stats', 'suppliers', 'warehouses', 'products'));
+        return view('supplier_orders.index', compact('orders', 'counts', 'stats', 'suppliers', 'warehouses', 'products', 'categories', 'allCategoryDiscounts'));
     }
 
     /**
@@ -147,9 +164,16 @@ class SupplierOrderController extends Controller
 
         $products = $this->getCatalogProducts();
 
+        $categories = Category::where('is_active', true)->orderBy('name')->get(['id', 'code', 'name']);
+        $allCategoryDiscounts = Schema::hasTable('supplier_category_discounts')
+            ? SupplierCategoryDiscount::all()
+                ->groupBy('supplier_id')
+                ->map(fn($items) => $items->mapWithKeys(fn($it) => [(string)$it->category_id => (float)$it->discount_percent]))
+            : collect();
+
         $selectedSupplierId = $request->input('supplier_id');
 
-        return view('supplier_orders.create', compact('suppliers', 'warehouses', 'products', 'selectedSupplierId'));
+        return view('supplier_orders.create', compact('suppliers', 'warehouses', 'products', 'selectedSupplierId', 'categories', 'allCategoryDiscounts'));
     }
 
     /**
@@ -169,9 +193,15 @@ class SupplierOrderController extends Controller
             ->orderByRaw("CASE WHEN type = 'Kho tổng' THEN 1 WHEN type = 'Kho chi nhánh' THEN 2 ELSE 3 END, name ASC")
             ->get(['id', 'code', 'name', 'address']);
         $products = $this->getCatalogProducts();
+        $categories = Category::where('is_active', true)->orderBy('name')->get(['id', 'code', 'name']);
+        $allCategoryDiscounts = Schema::hasTable('supplier_category_discounts')
+            ? SupplierCategoryDiscount::all()
+                ->groupBy('supplier_id')
+                ->map(fn($items) => $items->mapWithKeys(fn($it) => [(string)$it->category_id => (float)$it->discount_percent]))
+            : collect();
         $selectedSupplierId = $order->supplier_id;
 
-        return view('supplier_orders.create', compact('order', 'suppliers', 'warehouses', 'products', 'selectedSupplierId'));
+        return view('supplier_orders.create', compact('order', 'suppliers', 'warehouses', 'products', 'selectedSupplierId', 'categories', 'allCategoryDiscounts'));
     }
 
     /**
@@ -180,9 +210,9 @@ class SupplierOrderController extends Controller
     private function getCatalogProducts()
     {
         return Product::where('is_active', true)
-            ->with('brand:id,name')
+            ->with(['brand:id,name', 'category:id,name'])
             ->orderBy('name')
-            ->get(['id', 'sku', 'name', 'unit', 'price', 'cost_price', 'latest_cost_price', 'stock_quantity', 'brand_id'])
+            ->get(['id', 'sku', 'name', 'unit', 'price', 'cost_price', 'latest_cost_price', 'stock_quantity', 'brand_id', 'category_id', 'supplier_id'])
             ->map(fn($p) => [
                 'id'             => $p->id,
                 'sku'            => $p->sku,
@@ -192,6 +222,9 @@ class SupplierOrderController extends Controller
                 'cost_price'     => (float)($p->latest_cost_price ?: $p->cost_price ?: 0),
                 'stock_quantity' => (float)($p->stock_quantity ?? 0),
                 'brand_name'     => $p->brand?->name ?? '',
+                'category_id'    => $p->category_id,
+                'category_name'  => $p->category?->name ?? '',
+                'supplier_id'    => $p->supplier_id,
             ]);
     }
 
@@ -255,6 +288,17 @@ class SupplierOrderController extends Controller
                 $subtotal = $qty * $price;
                 $discAmt = (float)($it['discount_amount'] ?? 0);
                 $discPct = (float)($it['discount_percent'] ?? 0);
+                if ($discPct == 0 && $discAmt == 0 && !empty($it['product_id']) && Schema::hasTable('supplier_category_discounts')) {
+                    $prod = Product::find($it['product_id']);
+                    if ($prod && $prod->category_id) {
+                        $configuredDisc = SupplierCategoryDiscount::where('supplier_id', $supplier->id)
+                            ->where('category_id', $prod->category_id)
+                            ->value('discount_percent');
+                        if ($configuredDisc && (float)$configuredDisc > 0) {
+                            $discPct = (float)$configuredDisc;
+                        }
+                    }
+                }
                 if ($discPct > 0 && $discAmt == 0) {
                     $discAmt = $subtotal * ($discPct / 100);
                 }
@@ -369,6 +413,17 @@ class SupplierOrderController extends Controller
                 $subtotal = $qty * $price;
                 $discAmt = (float)($it['discount_amount'] ?? 0);
                 $discPct = (float)($it['discount_percent'] ?? 0);
+                if ($discPct == 0 && $discAmt == 0 && !empty($it['product_id']) && Schema::hasTable('supplier_category_discounts')) {
+                    $prod = Product::find($it['product_id']);
+                    if ($prod && $prod->category_id) {
+                        $configuredDisc = SupplierCategoryDiscount::where('supplier_id', $supplier->id)
+                            ->where('category_id', $prod->category_id)
+                            ->value('discount_percent');
+                        if ($configuredDisc && (float)$configuredDisc > 0) {
+                            $discPct = (float)$configuredDisc;
+                        }
+                    }
+                }
                 if ($discPct > 0 && $discAmt == 0) {
                     $discAmt = $subtotal * ($discPct / 100);
                 } elseif ($discAmt > 0 && $discPct == 0 && $subtotal > 0) {
@@ -527,6 +582,17 @@ class SupplierOrderController extends Controller
                 $subtotal = $qty * $price;
                 $discAmt = (float)($it['discount_amount'] ?? 0);
                 $discPct = (float)($it['discount_percent'] ?? 0);
+                if ($discPct == 0 && $discAmt == 0 && !empty($it['product_id']) && Schema::hasTable('supplier_category_discounts')) {
+                    $prod = Product::find($it['product_id']);
+                    if ($prod && $prod->category_id) {
+                        $configuredDisc = SupplierCategoryDiscount::where('supplier_id', $newSupplier->id)
+                            ->where('category_id', $prod->category_id)
+                            ->value('discount_percent');
+                        if ($configuredDisc && (float)$configuredDisc > 0) {
+                            $discPct = (float)$configuredDisc;
+                        }
+                    }
+                }
                 if ($discPct > 0 && $discAmt == 0) {
                     $discAmt = $subtotal * ($discPct / 100);
                 }
@@ -620,6 +686,17 @@ class SupplierOrderController extends Controller
                 $subtotal = $qty * $price;
                 $discAmt = (float)($it['discount_amount'] ?? 0);
                 $discPct = (float)($it['discount_percent'] ?? 0);
+                if ($discPct == 0 && $discAmt == 0 && !empty($it['product_id']) && Schema::hasTable('supplier_category_discounts')) {
+                    $prod = Product::find($it['product_id']);
+                    if ($prod && $prod->category_id) {
+                        $configuredDisc = SupplierCategoryDiscount::where('supplier_id', $supplier->id)
+                            ->where('category_id', $prod->category_id)
+                            ->value('discount_percent');
+                        if ($configuredDisc && (float)$configuredDisc > 0) {
+                            $discPct = (float)$configuredDisc;
+                        }
+                    }
+                }
                 if ($discPct > 0 && $discAmt == 0) {
                     $discAmt = $subtotal * ($discPct / 100);
                 } elseif ($discAmt > 0 && $discPct == 0 && $subtotal > 0) {
@@ -1223,11 +1300,123 @@ class SupplierOrderController extends Controller
             }
         }
 
+        $categoryDiscounts = Schema::hasTable('supplier_category_discounts')
+            ? SupplierCategoryDiscount::where('supplier_id', $id)->get()->mapWithKeys(fn($it) => [(string)$it->category_id => (float)$it->discount_percent])
+            : [];
+
         return response()->json([
-            'success'     => true,
-            'supplier'    => $supplier,
-            'debt_balance'=> (float)$supplier->supplier_debt_to_company,
-            'owing_items' => $owingItems,
+            'success'            => true,
+            'supplier'           => $supplier,
+            'debt_balance'       => (float)$supplier->supplier_debt_to_company,
+            'owing_items'        => $owingItems,
+            'category_discounts' => $categoryDiscounts,
+        ]);
+    }
+
+    /**
+     * Lấy danh sách cài đặt chiết khấu loại hàng của một NCC
+     */
+    public function getSupplierCategoryDiscounts($id)
+    {
+        $supplier = Supplier::findOrFail($id);
+        $categories = Category::where('is_active', true)
+            ->where(function($q) use ($id) {
+                $q->where('supplier_id', $id)
+                  ->orWhereNull('supplier_id')
+                  ->orWhereHas('products', function($pq) use ($id) {
+                      $pq->where('supplier_id', $id);
+                  });
+            })
+            ->with(['products' => function($pq) use ($id) {
+                $pq->where('supplier_id', $id)
+                   ->select('id', 'sku', 'name', 'unit', 'cost_price', 'category_id', 'supplier_id')
+                   ->orderBy('name');
+            }])
+            ->withCount(['products' => function($pq) use ($id) {
+                $pq->where('supplier_id', $id);
+            }])
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'description', 'supplier_id']);
+
+        $existingDiscounts = Schema::hasTable('supplier_category_discounts')
+            ? SupplierCategoryDiscount::where('supplier_id', $id)->get()->keyBy('category_id')
+            : collect();
+
+        $list = $categories->map(function ($cat) use ($existingDiscounts) {
+            $d = $existingDiscounts->get($cat->id);
+            return [
+                'category_id'      => $cat->id,
+                'category_code'    => $cat->code,
+                'category_name'    => $cat->name,
+                'supplier_id'      => $cat->supplier_id,
+                'products_count'   => $cat->products_count ?? 0,
+                'discount_percent' => $d ? (float)$d->discount_percent : 0,
+                'notes'            => $d ? $d->notes : '',
+                'products'         => $cat->products ? $cat->products->map(function($p) {
+                    return [
+                        'id'         => $p->id,
+                        'sku'        => $p->sku,
+                        'name'       => $p->name,
+                        'unit'       => $p->unit,
+                        'cost_price' => (float)$p->cost_price,
+                    ];
+                }) : [],
+            ];
+        });
+
+        return response()->json([
+            'success'    => true,
+            'supplier'   => $supplier,
+            'categories' => $list,
+        ]);
+    }
+
+    /**
+     * Lưu cài đặt chiết khấu loại hàng cho một NCC
+     */
+    public function saveSupplierCategoryDiscounts(Request $request, $id)
+    {
+        $supplier = Supplier::findOrFail($id);
+        $discounts = $request->input('discounts', []);
+
+        if (!is_array($discounts)) {
+            return response()->json(['success' => false, 'message' => 'Dữ liệu không hợp lệ.'], 422);
+        }
+
+        DB::transaction(function () use ($supplier, $discounts) {
+            foreach ($discounts as $item) {
+                $categoryId = $item['category_id'] ?? null;
+                if (!$categoryId) continue;
+
+                $pct = max(0, min(100, (float)($item['discount_percent'] ?? 0)));
+                $notes = isset($item['notes']) ? trim($item['notes']) : null;
+
+                if ($pct > 0 || !empty($notes)) {
+                    SupplierCategoryDiscount::updateOrCreate(
+                        [
+                            'supplier_id' => $supplier->id,
+                            'category_id' => $categoryId,
+                        ],
+                        [
+                            'discount_percent' => $pct,
+                            'notes'            => $notes,
+                        ]
+                    );
+                } else {
+                    SupplierCategoryDiscount::where('supplier_id', $supplier->id)
+                        ->where('category_id', $categoryId)
+                        ->delete();
+                }
+            }
+        });
+
+        $updated = SupplierCategoryDiscount::where('supplier_id', $supplier->id)
+            ->pluck('discount_percent', 'category_id');
+
+        return response()->json([
+            'success'            => true,
+            'message'            => "Đã cập nhật chiết khấu loại hàng cho nhà cung cấp [{$supplier->name}] thành công!",
+            'category_discounts' => $updated,
         ]);
     }
 

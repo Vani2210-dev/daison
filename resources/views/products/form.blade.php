@@ -103,10 +103,33 @@
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                <!-- Dropdown Phân Loại (Category) -->
+                <!-- 1. Dropdown Nhà Cung Cấp (Supplier) - Đặt đầu tiên theo phân cấp NCC -> Loại SP -> SP -->
                 <div>
-                    <label class="block font-bold text-slate-700 mb-1.5">
-                        Phân Loại Ngành Hàng <span class="text-rose-500">*</span>
+                    <label class="block font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded-full bg-blue-600 text-white inline-flex items-center justify-center text-[10px]">1</span>
+                        <span>Nhà Cung Cấp</span>
+                        <span class="text-rose-500">*</span>
+                    </label>
+                    <select 
+                        x-model="supplier_id" 
+                        required
+                        @change="onSupplierChange()"
+                        class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 cursor-pointer"
+                    >
+                        <option value="">-- Chọn nhà cung cấp --</option>
+                        @foreach($suppliers ?? [] as $sup)
+                            <option value="{{ $sup->id }}">{{ $sup->name }} ({{ $sup->code }})</option>
+                        @endforeach
+                    </select>
+                    <p class="text-[11px] text-slate-400 mt-1">Cấp 1: Nhà cung cấp chủ quản</p>
+                </div>
+
+                <!-- 2. Dropdown Phân Loại (Category) - Lọc theo Nhà cung cấp đã chọn -->
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded-full bg-blue-600 text-white inline-flex items-center justify-center text-[10px]">2</span>
+                        <span>Phân Loại Ngành Hàng</span>
+                        <span class="text-rose-500">*</span>
                     </label>
                     <select 
                         x-model="category_id" 
@@ -115,35 +138,18 @@
                         class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 cursor-pointer"
                     >
                         <option value="">-- Chọn phân loại ngành hàng --</option>
-                        @foreach($categories as $cat)
-                            <option value="{{ $cat->id }}">{{ $cat->name }} ({{ $cat->code }})</option>
-                        @endforeach
+                        <template x-for="cat in filteredCategories" :key="cat.id">
+                            <option :value="cat.id" x-text="cat.name + (cat.code ? (' (' + cat.code + ')') : '')"></option>
+                        </template>
                     </select>
-                    <p class="text-[11px] text-slate-400 mt-1">Liên kết trực tiếp bảng Phân loại</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Cấp 2: Lọc theo NCC đã chọn</p>
                 </div>
 
-                <!-- Dropdown Nhà Cung Cấp (Supplier) -->
+                <!-- 3. Dropdown Nhóm Nhỏ (Subcategory) - Lọc theo Phân loại -->
                 <div>
-                    <label class="block font-bold text-slate-700 mb-1.5">
-                        Nhà Cung Cấp <span class="text-rose-500">*</span>
-                    </label>
-                    <select 
-                        x-model="supplier_id" 
-                        required
-                        class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 cursor-pointer"
-                    >
-                        <option value="">-- Chọn nhà cung cấp --</option>
-                        @foreach($suppliers ?? [] as $sup)
-                            <option value="{{ $sup->id }}">{{ $sup->name }} ({{ $sup->code }})</option>
-                        @endforeach
-                    </select>
-                    <p class="text-[11px] text-slate-400 mt-1">Liên kết trực tiếp bảng Nhà cung cấp</p>
-                </div>
-
-                <!-- Dropdown Nhóm Nhỏ (Subcategory) -->
-                <div>
-                    <label class="block font-bold text-slate-700 mb-1.5">
-                        Nhóm Nhỏ / Nhóm Con
+                    <label class="block font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded-full bg-blue-600 text-white inline-flex items-center justify-center text-[10px]">3</span>
+                        <span>Nhóm Nhỏ / Nhóm Con</span>
                     </label>
                     <select 
                         x-model="subcategory_id" 
@@ -155,7 +161,7 @@
                             <option :value="sub.id" x-text="sub.name + (sub.code ? (' - ' + sub.code) : '')"></option>
                         </template>
                     </select>
-                    <p class="text-[11px] text-slate-400 mt-1">Lọc tự động theo Phân loại</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Cấp 3: Lọc theo Phân loại ngành hàng</p>
                 </div>
             </div>
         </div>
@@ -510,6 +516,7 @@
 function productForm() {
     const rawProduct = @json($product ?? null);
     const warehousesList = @json($warehouses ?? []);
+    const categoriesList = @json($categories ?? []);
     const subcategoriesList = @json($subcategories ?? []);
 
     // Initial price & conversion price
@@ -558,6 +565,7 @@ function productForm() {
         supplier_id: rawProduct?.supplier_id || '',
         subcategory_id: rawProduct?.subcategory_id || '',
         subcategory: rawProduct?.subcategory || '',
+        categoriesList: categoriesList,
         subcategoriesList: subcategoriesList,
         unit: rawProduct?.unit || 'cây',
         conversion_unit: rawProduct?.conversion_unit || '',
@@ -574,6 +582,11 @@ function productForm() {
         location: rawLoc || initWarehouse,
         is_active: rawProduct?.is_active !== undefined ? !!rawProduct.is_active : true,
         isSaving: false,
+
+        get filteredCategories() {
+            if (!this.supplier_id) return this.categoriesList;
+            return this.categoriesList.filter(c => !c.supplier_id || c.supplier_id == this.supplier_id);
+        },
 
         get filteredSubcategories() {
             if (!this.category_id) return this.subcategoriesList;
@@ -603,7 +616,23 @@ function productForm() {
             return new Intl.NumberFormat('vi-VN').format(num) + ' đ';
         },
 
+        onSupplierChange() {
+            if (this.category_id) {
+                const cat = this.categoriesList.find(c => c.id == this.category_id);
+                if (cat && cat.supplier_id && cat.supplier_id != this.supplier_id) {
+                    this.category_id = '';
+                    this.onCategoryChange();
+                }
+            }
+        },
+
         onCategoryChange() {
+            if (this.category_id) {
+                const cat = this.categoriesList.find(c => c.id == this.category_id);
+                if (cat && cat.supplier_id && !this.supplier_id) {
+                    this.supplier_id = cat.supplier_id;
+                }
+            }
             if (this.subcategory_id) {
                 const sub = this.subcategoriesList.find(s => s.id == this.subcategory_id);
                 if (sub && sub.category_id != this.category_id) {

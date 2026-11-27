@@ -96,6 +96,8 @@ Route::prefix('api')->middleware('auth')->group(function () {
     Route::post('/supplier-orders/{id}/receipt', [SupplierOrderController::class, 'createReceipt'])->middleware('permission:supplier_orders.view,inv_import.view,inv_import.create');
     Route::get('/suppliers/{id}/info', [SupplierOrderController::class, 'getSupplierInfo'])->middleware('permission:supplier_orders.view,suppliers.view');
     Route::get('/suppliers/{id}/debt-history', [SupplierOrderController::class, 'supplierDebtHistory'])->middleware('permission:supplier_orders.view,suppliers.view,debt.view');
+    Route::get('/suppliers/{id}/category-discounts', [SupplierOrderController::class, 'getSupplierCategoryDiscounts'])->middleware('permission:supplier_orders.view,suppliers.view,danhmuc.view');
+    Route::post('/suppliers/{id}/category-discounts', [SupplierOrderController::class, 'saveSupplierCategoryDiscounts'])->middleware('permission:supplier_orders.create,danhmuc.edit,danhmuc.manage');
     Route::post('/suppliers/save', [SupplierOrderController::class, 'saveSupplier'])->middleware('permission:danhmuc.edit,danhmuc.manage,supplier_orders.create');
  
     // 2.3 á»¨ng Khuyáº¿n Máº¡i (Promotion Advances APIs)
@@ -336,6 +338,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/supplier-orders/{id}/receipt', [SupplierOrderController::class, 'createReceipt'])->middleware('permission:supplier_orders.create,supplier_orders.approve,inv_import.create,inv_import.view');
     Route::get('/api/suppliers/{id}/info', [SupplierOrderController::class, 'getSupplierInfo'])->middleware('permission:supplier_orders.view,suppliers.view,danhmuc.view');
     Route::get('/api/suppliers/{id}/debt-history', [SupplierOrderController::class, 'supplierDebtHistory'])->middleware('permission:supplier_orders.view,suppliers.view,danhmuc.view');
+    Route::get('/api/suppliers/{id}/category-discounts', [SupplierOrderController::class, 'getSupplierCategoryDiscounts'])->middleware('permission:supplier_orders.view,suppliers.view,danhmuc.view');
+    Route::post('/api/suppliers/{id}/category-discounts', [SupplierOrderController::class, 'saveSupplierCategoryDiscounts'])->middleware('permission:supplier_orders.create,danhmuc.edit,danhmuc.manage');
     Route::post('/api/suppliers/save', [SupplierOrderController::class, 'saveSupplier'])->middleware('permission:supplier_orders.create,danhmuc.edit,danhmuc.manage');
 
     // Promotion Advances (á»¨ng Khuyáº¿n Máº¡i Cá»§a Kho)

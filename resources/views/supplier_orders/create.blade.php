@@ -84,8 +84,11 @@ input[type=number] {
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- Nhà Cung Cấp -->
             <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1.5">
-                    Nhà Cung Cấp <span class="text-rose-500">*</span>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                    <span>Nhà Cung Cấp <span class="text-rose-500">*</span></span>
+                    <span x-show="formData.supplier_id && Object.keys(currentSupplierDiscounts).length > 0" class="text-[10px] text-indigo-700 font-extrabold bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                        <i class="fa-solid fa-tags text-[9px] mr-0.5"></i>CK Loại hàng
+                    </span>
                 </label>
                 <select x-model="formData.supplier_id" @change="onSupplierChange()" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold bg-white text-slate-800 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none">
                     <option value="">-- Chọn Nhà Cung Cấp --</option>
@@ -215,10 +218,10 @@ input[type=number] {
                     <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-black text-[10.5px] uppercase tracking-wider">
                         <tr>
                             <th class="py-3 px-3 min-w-[260px]">Sản phẩm / Mặt hàng (gõ mã, tên tìm kiếm)</th>
-                            <th class="py-3 px-1.5 w-14 text-center">ĐVT</th>
+                            <th class="py-3 px-1.5 w-16 text-center">ĐVT</th>
                             <th class="py-3 px-1.5 w-28 text-center">Số lượng</th>
                             <th class="py-3 px-1.5 w-28 text-right">Đơn giá</th>
-                            <th class="py-3 px-2 w-28 text-right">Tiền trước CK</th>
+                            <th class="py-3 px-2 w-32 text-right">Tiền trước CK</th>
                             <th class="py-3 px-1.5 w-20 text-right">CK (%)</th>
                             <th class="py-3 px-1.5 w-28 text-right">Tiền CK</th>
                             <th class="py-3 px-2.5 w-32 text-right">Thành tiền</th>
@@ -231,7 +234,7 @@ input[type=number] {
                                 <!-- Chọn SP kiểu autocomplete như bên bán hàng -->
                                 <td class="py-2.5 px-3 align-top">
                                     <div class="relative" @click.outside="if (activeProdDropdownIndex === idx) activeProdDropdownIndex = null">
-                                        <div class="relative">
+                                        <div class="relative flex items-center">
                                             <input type="text"
                                                    autocomplete="off"
                                                    autocorrect="off"
@@ -266,12 +269,12 @@ input[type=number] {
                                                    @keydown.escape.prevent="activeProdDropdownIndex = null"
                                                    placeholder="Tìm mã hoặc tên sản phẩm..." 
                                                    :placeholder="isMobileViewport ? 'Tìm mã hoặc tên sản phẩm...' : 'Tìm mã hoặc tên sản phẩm (phím ↑ ↓ Enter hoặc gõ tự do)...'" 
-                                                   class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors pr-7">
+                                                   class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:border-sky-500 focus:outline-none shadow-2xs hover:border-slate-400 transition-colors pr-7">
 
                                             <button type="button" 
                                                     x-show="it.searchQuery" 
                                                     @click="clearProductRow(idx)" 
-                                                    class="absolute right-2.5 top-2.5 text-slate-400 hover:text-rose-500 text-xs cursor-pointer transition-colors"
+                                                    class="absolute right-2.5 text-slate-400 hover:text-rose-500 text-xs cursor-pointer transition-colors"
                                                     title="Xóa để chọn lại">
                                                 <i class="fa-solid fa-circle-xmark"></i>
                                             </button>
@@ -297,6 +300,9 @@ input[type=number] {
                                                             <span class="text-sky-600 font-mono text-xs" x-text="'[' + p.sku + ']'"></span>
                                                             <span x-text="p.name"></span>
                                                             <span x-show="p.brand_name" class="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[10px] font-normal" x-text="p.brand_name"></span>
+                                                            <template x-if="getSupplierDiscountForCategory(p.category_id, p.supplier_id) > 0">
+                                                                <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold" x-text="'CK ' + getSupplierDiscountForCategory(p.category_id, p.supplier_id) + '%'"></span>
+                                                            </template>
                                                         </div>
                                                         <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
                                                             <span class="font-semibold text-slate-700" x-text="'ĐVT: ' + (p.unit || 'cái')"></span>
@@ -328,7 +334,7 @@ input[type=number] {
                                            autocorrect="off"
                                            spellcheck="false"
                                            x-model="it.unit" 
-                                           class="w-full px-1.5 py-2 rounded-xl border border-slate-300 text-xs text-center font-bold outline-none focus:border-sky-500">
+                                           class="w-full h-9 px-1.5 rounded-xl border border-slate-300 text-xs text-center font-bold outline-none focus:border-sky-500">
                                 </td>
 
                                 <!-- Số lượng đặt (hỗ trợ phím ↑ ↓ và Enter sang dòng mới) -->
@@ -366,12 +372,13 @@ input[type=number] {
                                            @keydown.down.prevent="decreasePrice(idx)"
                                            @keydown.enter.prevent="onEnterPrice(idx)"
                                            min="0" step="any" 
-                                           class="w-full h-9 px-2 py-1.5 rounded-xl border border-slate-300 text-xs font-black text-right outline-none focus:border-sky-500 focus:bg-sky-50/50"
+                                           class="w-full h-9 px-2 rounded-xl border border-slate-300 text-xs font-black text-right outline-none focus:border-sky-500 focus:bg-sky-50/50"
                                            title="Phím ↑ tăng 1.000đ, phím ↓ giảm 1.000đ">
                                 </td>
 
                                 <!-- Tổng tiền trước CK (Số lượng * Đơn giá) -->
-                                <td class="py-2.5 px-2 text-right font-black text-slate-800 text-xs align-top pt-3.5" x-text="formatMoney(calcItemSubtotal(it))">
+                                <td class="py-2.5 px-2 text-right align-top">
+                                    <div class="h-9 flex items-center justify-end font-black text-slate-800 text-xs" x-text="formatMoney(calcItemSubtotal(it))"></div>
                                 </td>
 
                                 <!-- Chiết khấu % -->
@@ -386,7 +393,7 @@ input[type=number] {
                                            @input="onItemDiscountPercentChange(it)" 
                                            @keydown.enter.prevent="addNewRowFrom(idx)"
                                            min="0" max="100" step="any"
-                                           class="w-full h-9 px-1.5 py-1.5 rounded-xl border border-slate-300 text-xs text-right font-bold outline-none focus:border-sky-500"
+                                           class="w-full h-9 px-1.5 rounded-xl border border-slate-300 text-xs text-right font-bold outline-none focus:border-sky-500"
                                            placeholder="0">
                                 </td>
 
@@ -402,19 +409,22 @@ input[type=number] {
                                            @input="onItemDiscountAmountChange(it)" 
                                            @keydown.enter.prevent="addNewRowFrom(idx)"
                                            min="0" step="any"
-                                           class="w-full h-9 px-1.5 py-1.5 rounded-xl border border-slate-300 text-xs text-right font-bold text-rose-600 outline-none focus:border-sky-500"
+                                           class="w-full h-9 px-1.5 rounded-xl border border-slate-300 text-xs text-right font-bold text-rose-600 outline-none focus:border-sky-500"
                                            placeholder="0">
                                 </td>
 
                                 <!-- Thành tiền (sau CK) -->
-                                <td class="py-2.5 px-2.5 text-right font-black text-sky-700 text-xs align-top pt-3.5" x-text="formatMoney(calcItemAmount(it))">
+                                <td class="py-2.5 px-2.5 text-right align-top">
+                                    <div class="h-9 flex items-center justify-end font-black text-sky-700 text-xs" x-text="formatMoney(calcItemAmount(it))"></div>
                                 </td>
 
                                 <!-- Xóa dòng -->
-                                <td class="py-2.5 px-1.5 text-center align-top pt-3">
-                                    <button type="button" @click="removeItemRow(idx)" class="w-8 h-8 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-700 flex items-center justify-center cursor-pointer transition-colors" title="Xóa dòng này" x-show="formData.items.length > 1">
-                                        <i class="fa-regular fa-trash-can text-xs"></i>
-                                    </button>
+                                <td class="py-2.5 px-1.5 text-center align-top">
+                                    <div class="h-9 flex items-center justify-center">
+                                        <button type="button" @click="removeItemRow(idx)" class="w-8 h-8 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-700 flex items-center justify-center cursor-pointer transition-colors" title="Xóa dòng này" x-show="formData.items.length > 1">
+                                            <i class="fa-regular fa-trash-can text-xs"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </template>
@@ -926,6 +936,9 @@ function supplierOrderCreateApp() {
         suppliers: @json($suppliers ?? []),
         warehouses: @json($warehouses ?? []),
         catalogProducts: @json($products ?? []),
+        categories: @json($categories ?? []),
+        allCategoryDiscounts: @json($allCategoryDiscounts ?? []),
+        currentSupplierDiscounts: {},
 
         selectedSupplierDebtBalance: 0,
         owingItemsList: [],
@@ -952,6 +965,10 @@ function supplierOrderCreateApp() {
             window.addEventListener('resize', () => {
                 this.isMobileViewport = window.innerWidth <= 768;
             });
+            const supId = this.formData.supplier_id;
+            if (supId && this.allCategoryDiscounts) {
+                this.currentSupplierDiscounts = this.allCategoryDiscounts[supId] || this.allCategoryDiscounts[String(supId)] || {};
+            }
             if (this.formData.supplier_id) {
                 this.onSupplierChange(this.isEditMode);
             }
@@ -960,6 +977,34 @@ function supplierOrderCreateApp() {
                 const firstInput = document.getElementById('row-product-input-0');
                 if (firstInput && !this.isEditMode) firstInput.focus();
             });
+        },
+
+        getSupplierDiscountForCategory(catId, supId = null) {
+            if (!catId) return 0;
+            const targetSupId = supId || this.formData.supplier_id;
+            let val = null;
+
+            if (this.currentSupplierDiscounts) {
+                val = this.currentSupplierDiscounts[catId] ?? this.currentSupplierDiscounts[String(catId)];
+            }
+
+            if (val === undefined || val === null) {
+                if (targetSupId && this.allCategoryDiscounts) {
+                    const supMap = this.allCategoryDiscounts[targetSupId] || this.allCategoryDiscounts[String(targetSupId)];
+                    if (supMap) {
+                        val = supMap[catId] ?? supMap[String(catId)];
+                    }
+                }
+            }
+
+            if (val !== undefined && val !== null) {
+                if (typeof val === 'object' && val !== null) {
+                    val = val.discount_percent;
+                }
+                const num = parseFloat(val);
+                return (!isNaN(num) && num > 0) ? num : 0;
+            }
+            return 0;
         },
 
         onSupplierChange(isInitial = false) {
@@ -971,18 +1016,54 @@ function supplierOrderCreateApp() {
                 this.formData.debt_deducted_amount = 0;
             }
 
-            if (!supId) return;
+            if (!supId) {
+                this.currentSupplierDiscounts = {};
+                return;
+            }
+
+            // Gán chiết khấu loại hàng từ cache nếu có sẵn và cập nhật ngay lập tức các dòng SP
+            if (this.allCategoryDiscounts && (this.allCategoryDiscounts[supId] || this.allCategoryDiscounts[String(supId)])) {
+                this.currentSupplierDiscounts = this.allCategoryDiscounts[supId] || this.allCategoryDiscounts[String(supId)] || {};
+                if (!isInitial && this.formData.items.length > 0) {
+                    this.formData.items.forEach(it => {
+                        if (!it.product_id) return;
+                        const p = this.catalogProducts.find(cp => cp.id == it.product_id);
+                        if (p && p.category_id) {
+                            const discPct = this.getSupplierDiscountForCategory(p.category_id, supId);
+                            it.discount_percent = discPct;
+                            this.onItemDiscountPercentChange(it);
+                        }
+                    });
+                }
+            }
 
             fetch(`{{ url('/api/suppliers') }}/${supId}/info`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
+                        if (data.category_discounts) {
+                            this.currentSupplierDiscounts = data.category_discounts;
+                        }
                         let currentDebt = parseFloat(data.debt_balance) || 0;
                         if (this.isEditMode && String(supId) === String(this.initialSupplierId)) {
                             currentDebt += (this.initialDebtDeducted || 0);
                         }
                         this.selectedSupplierDebtBalance = currentDebt;
                         this.owingItemsList = data.owing_items || [];
+
+                        // Cập nhật lại chiết khấu cho các sản phẩm đã có trong đơn khi thay đổi NCC
+                        if (!isInitial && this.formData.items.length > 0) {
+                            this.formData.items.forEach(it => {
+                                if (!it.product_id) return;
+                                const p = this.catalogProducts.find(cp => cp.id == it.product_id);
+                                if (p && p.category_id) {
+                                    const discPct = this.getSupplierDiscountForCategory(p.category_id, supId);
+                                    it.discount_percent = discPct;
+                                    this.onItemDiscountPercentChange(it);
+                                }
+                            });
+                        }
+
                         if (!isInitial && this.selectedSupplierDebtBalance > 0) {
                             this.formData.apply_debt_deduction = true;
                             this.applyMaxDebtDeduction();
@@ -1018,7 +1099,15 @@ function supplierOrderCreateApp() {
                 }
             });
 
-            const list = (this.catalogProducts || []).filter(p => !selectedIds.has(String(p.id)));
+            let list = (this.catalogProducts || []).filter(p => !selectedIds.has(String(p.id)));
+            // Lọc theo Nhà Cung Cấp đang được chọn trên đơn nếu có
+            if (this.formData.supplier_id) {
+                const supId = this.formData.supplier_id;
+                const supplierProds = list.filter(p => p.supplier_id == supId);
+                if (supplierProds.length > 0) {
+                    list = supplierProds;
+                }
+            }
             if (!query || !query.trim()) {
                 return list.slice(0, 35);
             }
@@ -1043,17 +1132,27 @@ function supplierOrderCreateApp() {
             const it = this.formData.items[index];
             if (!it) return;
 
+            // Nếu đơn chưa chọn NCC mà sản phẩm có supplier_id, tự động gán NCC cho đơn
+            if (!this.formData.supplier_id && p.supplier_id) {
+                this.formData.supplier_id = String(p.supplier_id);
+                this.onSupplierChange();
+            }
+
             it.product_id = p.id;
             it.sku = p.sku;
             it.product_name = p.name;
             it.searchQuery = `[${p.sku}] ${p.name}`;
             it.unit = p.unit || 'cái';
             it.stock_quantity = p.stock_quantity || 0;
-            it.unit_price = p.price || 0;
+            it.unit_price = (parseFloat(p.price) > 0) ? parseFloat(p.price) : (parseFloat(p.cost_price) || 0);
             it.ordered_quantity = (parseFloat(it.ordered_quantity) > 0) ? it.ordered_quantity : 1;
 
+            // Tự động gán mức chiết khấu theo loại mặt hàng của NCC nếu có cài đặt
+            const discPct = this.getSupplierDiscountForCategory(p.category_id, p.supplier_id || this.formData.supplier_id);
+            it.discount_percent = discPct;
+
             this.activeProdDropdownIndex = null;
-            this.onItemQtyOrPriceChange(it);
+            this.onItemDiscountPercentChange(it);
 
             // Tự động focus sang ô số lượng và bôi đen toàn bộ để nhập nhanh
             this.$nextTick(() => {
