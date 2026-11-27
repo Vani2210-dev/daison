@@ -252,8 +252,14 @@ class SupplierOrderController extends Controller
             foreach ($request->items as $it) {
                 $qty = (float)($it['ordered_quantity'] ?? 1);
                 $price = (float)($it['unit_price'] ?? 0);
-                $disc = (float)($it['discount_amount'] ?? 0);
-                $totalItemsAmount += ($qty * $price - $disc);
+                $subtotal = $qty * $price;
+                $discAmt = (float)($it['discount_amount'] ?? 0);
+                $discPct = (float)($it['discount_percent'] ?? 0);
+                if ($discPct > 0 && $discAmt == 0) {
+                    $discAmt = $subtotal * ($discPct / 100);
+                }
+                $discAmt = min($discAmt, $subtotal);
+                $totalItemsAmount += ($subtotal - $discAmt);
             }
 
             $discountAmount = (float)($request->discount_amount ?? 0);
@@ -360,12 +366,16 @@ class SupplierOrderController extends Controller
             foreach ($request->items as $it) {
                 $qty = (float)($it['ordered_quantity'] ?? 1);
                 $price = (float)($it['unit_price'] ?? 0);
+                $subtotal = $qty * $price;
                 $discAmt = (float)($it['discount_amount'] ?? 0);
                 $discPct = (float)($it['discount_percent'] ?? 0);
                 if ($discPct > 0 && $discAmt == 0) {
-                    $discAmt = ($qty * $price) * ($discPct / 100);
+                    $discAmt = $subtotal * ($discPct / 100);
+                } elseif ($discAmt > 0 && $discPct == 0 && $subtotal > 0) {
+                    $discPct = round(($discAmt / $subtotal) * 100, 2);
                 }
-                $amount = ($qty * $price) - $discAmt;
+                $discAmt = min($discAmt, $subtotal);
+                $amount = max(0, $subtotal - $discAmt);
 
                 SupplierOrderItem::create([
                     'supplier_order_id'  => $order->id,
@@ -514,8 +524,14 @@ class SupplierOrderController extends Controller
             foreach ($request->items as $it) {
                 $qty = (float)($it['ordered_quantity'] ?? 1);
                 $price = (float)($it['unit_price'] ?? 0);
-                $disc = (float)($it['discount_amount'] ?? 0);
-                $totalItemsAmount += ($qty * $price - $disc);
+                $subtotal = $qty * $price;
+                $discAmt = (float)($it['discount_amount'] ?? 0);
+                $discPct = (float)($it['discount_percent'] ?? 0);
+                if ($discPct > 0 && $discAmt == 0) {
+                    $discAmt = $subtotal * ($discPct / 100);
+                }
+                $discAmt = min($discAmt, $subtotal);
+                $totalItemsAmount += ($subtotal - $discAmt);
             }
 
             $discountAmount = (float)($request->discount_amount ?? 0);
@@ -601,12 +617,16 @@ class SupplierOrderController extends Controller
             foreach ($request->items as $it) {
                 $qty = (float)($it['ordered_quantity'] ?? 1);
                 $price = (float)($it['unit_price'] ?? 0);
+                $subtotal = $qty * $price;
                 $discAmt = (float)($it['discount_amount'] ?? 0);
                 $discPct = (float)($it['discount_percent'] ?? 0);
                 if ($discPct > 0 && $discAmt == 0) {
-                    $discAmt = ($qty * $price) * ($discPct / 100);
+                    $discAmt = $subtotal * ($discPct / 100);
+                } elseif ($discAmt > 0 && $discPct == 0 && $subtotal > 0) {
+                    $discPct = round(($discAmt / $subtotal) * 100, 2);
                 }
-                $amount = ($qty * $price) - $discAmt;
+                $discAmt = min($discAmt, $subtotal);
+                $amount = max(0, $subtotal - $discAmt);
 
                 SupplierOrderItem::create([
                     'supplier_order_id'  => $order->id,

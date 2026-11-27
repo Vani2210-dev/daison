@@ -214,20 +214,22 @@ input[type=number] {
                 <table class="w-full text-left text-xs">
                     <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-black text-[10.5px] uppercase tracking-wider">
                         <tr>
-                            <th class="py-3 px-3.5 min-w-[320px]">Sản phẩm / Mặt hàng (gõ mã, tên để tìm kiếm)</th>
-                            <th class="py-3 px-2 w-20 text-center">ĐVT</th>
-                            <th class="py-3 px-2 w-36 text-center">Số lượng đặt</th>
-                            <th class="py-3 px-2 w-36 text-right">Đơn giá</th>
-                            <th class="py-3 px-2 w-24 text-right">CK (%)</th>
-                            <th class="py-3 px-3 w-36 text-right">Thành tiền</th>
-                            <th class="py-3 px-2 w-10 text-center"></th>
+                            <th class="py-3 px-3 min-w-[260px]">Sản phẩm / Mặt hàng (gõ mã, tên tìm kiếm)</th>
+                            <th class="py-3 px-1.5 w-14 text-center">ĐVT</th>
+                            <th class="py-3 px-1.5 w-28 text-center">Số lượng</th>
+                            <th class="py-3 px-1.5 w-28 text-right">Đơn giá</th>
+                            <th class="py-3 px-2 w-28 text-right">Tiền trước CK</th>
+                            <th class="py-3 px-1.5 w-20 text-right">CK (%)</th>
+                            <th class="py-3 px-1.5 w-28 text-right">Tiền CK</th>
+                            <th class="py-3 px-2.5 w-32 text-right">Thành tiền</th>
+                            <th class="py-3 px-1.5 w-10 text-center"></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         <template x-for="(it, idx) in formData.items" :key="idx">
                             <tr class="hover:bg-slate-50/60 transition-colors">
                                 <!-- Chọn SP kiểu autocomplete như bên bán hàng -->
-                                <td class="py-2.5 px-3.5 align-top">
+                                <td class="py-2.5 px-3 align-top">
                                     <div class="relative" @click.outside="if (activeProdDropdownIndex === idx) activeProdDropdownIndex = null">
                                         <div class="relative">
                                             <input type="text"
@@ -320,19 +322,19 @@ input[type=number] {
                                 </td>
 
                                 <!-- ĐVT -->
-                                <td class="py-2.5 px-2 text-center align-top">
+                                <td class="py-2.5 px-1.5 text-center align-top">
                                     <input type="text" 
                                            autocomplete="off"
                                            autocorrect="off"
                                            spellcheck="false"
                                            x-model="it.unit" 
-                                           class="w-full px-2 py-2 rounded-xl border border-slate-300 text-xs text-center font-bold outline-none focus:border-sky-500">
+                                           class="w-full px-1.5 py-2 rounded-xl border border-slate-300 text-xs text-center font-bold outline-none focus:border-sky-500">
                                 </td>
 
                                 <!-- Số lượng đặt (hỗ trợ phím ↑ ↓ và Enter sang dòng mới) -->
-                                <td class="py-2.5 px-2 align-top">
+                                <td class="py-2.5 px-1.5 align-top">
                                     <div class="flex items-center">
-                                        <button type="button" @click="decreaseQty(idx)" class="w-7 h-9 flex items-center justify-center bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 rounded-l-xl border border-r-0 border-slate-300 font-black text-xs select-none cursor-pointer shrink-0" title="Giảm (Phím ↓)">-</button>
+                                        <button type="button" @click="decreaseQty(idx)" class="w-6 h-9 flex items-center justify-center bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 rounded-l-xl border border-r-0 border-slate-300 font-black text-xs select-none cursor-pointer shrink-0" title="Giảm (Phím ↓)">-</button>
                                         <input type="number" 
                                                :id="'row-qty-input-' + idx"
                                                autocomplete="off"
@@ -340,18 +342,18 @@ input[type=number] {
                                                spellcheck="false"
                                                data-lpignore="true"
                                                x-model="it.ordered_quantity" 
-                                               @input="recalcTotals()" 
+                                               @input="onItemQtyOrPriceChange(it)" 
                                                @keydown.up.prevent="increaseQty(idx)"
                                                @keydown.down.prevent="decreaseQty(idx)"
                                                @keydown.enter.prevent="onEnterQty(idx)"
                                                min="0.01" step="any" 
-                                               class="w-full h-9 px-2 border-y border-slate-300 text-xs font-black text-center outline-none focus:border-sky-500 focus:bg-sky-50/50">
-                                        <button type="button" @click="increaseQty(idx)" class="w-7 h-9 flex items-center justify-center bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 rounded-r-xl border border-l-0 border-slate-300 font-black text-xs select-none cursor-pointer shrink-0" title="Tăng (Phím ↑)">+</button>
+                                               class="w-full h-9 px-1 border-y border-slate-300 text-xs font-black text-center outline-none focus:border-sky-500 focus:bg-sky-50/50">
+                                        <button type="button" @click="increaseQty(idx)" class="w-6 h-9 flex items-center justify-center bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 rounded-r-xl border border-l-0 border-slate-300 font-black text-xs select-none cursor-pointer shrink-0" title="Tăng (Phím ↑)">+</button>
                                     </div>
                                 </td>
 
                                 <!-- Đơn giá nhập (hỗ trợ phím ↑ ↓ tăng giảm 1.000đ) -->
-                                <td class="py-2.5 px-2 text-right align-top">
+                                <td class="py-2.5 px-1.5 text-right align-top">
                                     <input type="number" 
                                            :id="'row-price-input-' + idx"
                                            autocomplete="off"
@@ -359,17 +361,21 @@ input[type=number] {
                                            spellcheck="false"
                                            data-lpignore="true"
                                            x-model="it.unit_price" 
-                                           @input="recalcTotals()" 
+                                           @input="onItemQtyOrPriceChange(it)" 
                                            @keydown.up.prevent="increasePrice(idx)"
                                            @keydown.down.prevent="decreasePrice(idx)"
                                            @keydown.enter.prevent="onEnterPrice(idx)"
                                            min="0" step="any" 
-                                           class="w-full h-9 px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs font-black text-right outline-none focus:border-sky-500 focus:bg-sky-50/50"
+                                           class="w-full h-9 px-2 py-1.5 rounded-xl border border-slate-300 text-xs font-black text-right outline-none focus:border-sky-500 focus:bg-sky-50/50"
                                            title="Phím ↑ tăng 1.000đ, phím ↓ giảm 1.000đ">
                                 </td>
 
+                                <!-- Tổng tiền trước CK (Số lượng * Đơn giá) -->
+                                <td class="py-2.5 px-2 text-right font-black text-slate-800 text-xs align-top pt-3.5" x-text="formatMoney(calcItemSubtotal(it))">
+                                </td>
+
                                 <!-- Chiết khấu % -->
-                                <td class="py-2.5 px-2 text-right align-top">
+                                <td class="py-2.5 px-1.5 text-right align-top">
                                     <input type="number" 
                                            :id="'row-ck-input-' + idx"
                                            autocomplete="off"
@@ -377,18 +383,35 @@ input[type=number] {
                                            spellcheck="false"
                                            data-lpignore="true"
                                            x-model="it.discount_percent" 
-                                           @input="recalcTotals()" 
+                                           @input="onItemDiscountPercentChange(it)" 
                                            @keydown.enter.prevent="addNewRowFrom(idx)"
-                                           min="0" max="100" 
-                                           class="w-full h-9 px-2 py-1.5 rounded-xl border border-slate-300 text-xs text-right font-bold outline-none focus:border-sky-500">
+                                           min="0" max="100" step="any"
+                                           class="w-full h-9 px-1.5 py-1.5 rounded-xl border border-slate-300 text-xs text-right font-bold outline-none focus:border-sky-500"
+                                           placeholder="0">
                                 </td>
 
-                                <!-- Thành tiền -->
-                                <td class="py-2.5 px-3 text-right font-black text-slate-900 text-xs align-top pt-3.5" x-text="formatMoney(calcItemAmount(it))">
+                                <!-- Tiền CK -->
+                                <td class="py-2.5 px-1.5 text-right align-top">
+                                    <input type="number" 
+                                           :id="'row-ck-amt-input-' + idx"
+                                           autocomplete="off"
+                                           autocorrect="off"
+                                           spellcheck="false"
+                                           data-lpignore="true"
+                                           x-model="it.discount_amount" 
+                                           @input="onItemDiscountAmountChange(it)" 
+                                           @keydown.enter.prevent="addNewRowFrom(idx)"
+                                           min="0" step="any"
+                                           class="w-full h-9 px-1.5 py-1.5 rounded-xl border border-slate-300 text-xs text-right font-bold text-rose-600 outline-none focus:border-sky-500"
+                                           placeholder="0">
+                                </td>
+
+                                <!-- Thành tiền (sau CK) -->
+                                <td class="py-2.5 px-2.5 text-right font-black text-sky-700 text-xs align-top pt-3.5" x-text="formatMoney(calcItemAmount(it))">
                                 </td>
 
                                 <!-- Xóa dòng -->
-                                <td class="py-2.5 px-2 text-center align-top pt-3">
+                                <td class="py-2.5 px-1.5 text-center align-top pt-3">
                                     <button type="button" @click="removeItemRow(idx)" class="w-8 h-8 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-700 flex items-center justify-center cursor-pointer transition-colors" title="Xóa dòng này" x-show="formData.items.length > 1">
                                         <i class="fa-regular fa-trash-can text-xs"></i>
                                     </button>
@@ -396,6 +419,20 @@ input[type=number] {
                             </tr>
                         </template>
                     </tbody>
+                    <tfoot class="bg-slate-50/90 border-t-2 border-slate-300 font-black text-xs text-slate-800">
+                        <tr>
+                            <td colspan="2" class="py-3 px-3 text-left text-slate-600 uppercase text-[11px] tracking-wider">
+                                Tổng cộng (<span x-text="formData.items.length"></span> dòng)
+                            </td>
+                            <td class="py-3 px-1.5 text-center text-sky-700 font-black" x-text="formatNumber(calcTotalOrderedQuantity())"></td>
+                            <td class="py-3 px-1.5 text-right text-slate-400 font-normal">—</td>
+                            <td class="py-3 px-2 text-right text-slate-800 font-black" x-text="formatMoney(calcItemsTotalBeforeDiscount())"></td>
+                            <td class="py-3 px-1.5 text-right text-slate-400 font-normal">—</td>
+                            <td class="py-3 px-1.5 text-right text-rose-600 font-black" x-text="formatMoney(calcItemsTotalDiscount())"></td>
+                            <td class="py-3 px-2.5 text-right text-sky-700 font-black text-sm" x-text="formatMoney(calcItemsTotal())"></td>
+                            <td class="py-3 px-1.5"></td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
 
@@ -422,10 +459,6 @@ input[type=number] {
                                        x-model="it.searchQuery" 
                                        @focus="activeProdDropdownIndex = idx; prodHighlightIndex = 0"
                                        @input="activeProdDropdownIndex = idx; prodHighlightIndex = 0; onSearchInput(idx)"
-                                       @keydown.arrow-down.prevent="navigateDropdown(1)"
-                                       @keydown.arrow-up.prevent="navigateDropdown(-1)"
-                                       @keydown.enter.prevent="selectHighlightedProduct(idx)"
-                                       @keydown.escape="activeProdDropdownIndex = null"
                                        placeholder="Gõ mã hoặc tên SP..." 
                                        class="w-full h-9 px-3 rounded-xl border border-slate-300 text-xs font-medium outline-none focus:border-sky-500">
                                 
@@ -436,16 +469,16 @@ input[type=number] {
                                         <div class="p-3 text-xs text-slate-400 text-center">Không tìm thấy sản phẩm phù hợp</div>
                                     </template>
                                     <template x-for="(p, pIdx) in getFilteredProducts(it.searchQuery)" :key="p.id">
-                                        <div @click="selectProduct(idx, p)"
-                                             :class="{'bg-sky-50 text-sky-800': prodHighlightIndex === pIdx, 'hover:bg-slate-50 text-slate-700': prodHighlightIndex !== pIdx}"
-                                             class="p-2.5 text-xs cursor-pointer border-b border-slate-100 last:border-0 flex items-center justify-between">
+                                        <div @mousedown.prevent="selectProductForRow(idx, p)"
+                                             @click="selectProductForRow(idx, p)"
+                                             class="p-2.5 text-xs cursor-pointer border-b border-slate-100 last:border-0 flex items-center justify-between hover:bg-sky-50">
                                             <div>
-                                                <div class="font-bold" x-text="p.name"></div>
-                                                <div class="text-[10px] text-slate-400" x-text="'Mã: ' + p.code + ' | ĐVT: ' + (p.unit || '---')"></div>
+                                                <div class="font-bold text-slate-800" x-text="p.name"></div>
+                                                <div class="text-[10px] text-slate-400" x-text="'Mã: ' + p.sku + ' | ĐVT: ' + (p.unit || 'cái')"></div>
                                             </div>
                                             <div class="text-right">
-                                                <div class="font-black text-sky-600" x-text="formatMoney(p.cost_price || p.purchase_price || p.price || 0)"></div>
-                                                <div class="text-[10px] text-slate-400" x-text="'Tồn: ' + (p.stock || 0)"></div>
+                                                <div class="font-black text-sky-600" x-text="formatMoney(p.price || 0)"></div>
+                                                <div class="text-[10px] text-slate-400" x-text="'Tồn: ' + formatNumber(p.stock_quantity || 0)"></div>
                                             </div>
                                         </div>
                                     </template>
@@ -457,43 +490,75 @@ input[type=number] {
                         <div class="grid grid-cols-3 gap-2">
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-500 mb-1">ĐVT</label>
-                                <div class="h-8 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 text-center truncate" x-text="it.unit || '---'"></div>
+                                <input type="text" x-model="it.unit" class="w-full h-8 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 text-center">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-500 mb-1">Số lượng</label>
                                 <input type="number" 
-                                       x-model="it.quantity" 
-                                       @input="recalcTotals()" 
-                                       min="1" 
+                                       x-model="it.ordered_quantity" 
+                                       @input="onItemQtyOrPriceChange(it)" 
+                                       min="0.01" step="any"
                                        class="w-full h-8 px-2 py-1 rounded-lg border border-slate-300 text-xs text-center font-bold outline-none focus:border-sky-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 mb-1">Đơn giá</label>
+                                <input type="number" 
+                                       x-model="it.unit_price" 
+                                       @input="onItemQtyOrPriceChange(it)" 
+                                       min="0" step="any"
+                                       class="w-full h-8 px-2 py-1 rounded-lg border border-slate-300 text-xs text-right font-bold outline-none focus:border-sky-500">
+                            </div>
+                        </div>
+
+                        <!-- Tiền trước CK, CK (%), Tiền CK -->
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 mb-1">Trước CK</label>
+                                <div class="h-8 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 text-right truncate" x-text="formatMoney(calcItemSubtotal(it))"></div>
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-500 mb-1">CK (%)</label>
                                 <input type="number" 
                                        x-model="it.discount_percent" 
-                                       @input="recalcTotals()" 
-                                       min="0" max="100" 
-                                       class="w-full h-8 px-2 py-1 rounded-lg border border-slate-300 text-xs text-right font-bold outline-none focus:border-sky-500">
+                                       @input="onItemDiscountPercentChange(it)" 
+                                       min="0" max="100" step="any"
+                                       class="w-full h-8 px-2 py-1 rounded-lg border border-slate-300 text-xs text-right font-bold outline-none focus:border-sky-500"
+                                       placeholder="0">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 mb-1">Tiền CK</label>
+                                <input type="number" 
+                                       x-model="it.discount_amount" 
+                                       @input="onItemDiscountAmountChange(it)" 
+                                       min="0" step="any"
+                                       class="w-full h-8 px-2 py-1 rounded-lg border border-slate-300 text-xs text-right font-bold text-rose-600 outline-none focus:border-sky-500"
+                                       placeholder="0">
                             </div>
                         </div>
 
-                        <!-- Đơn giá & Thành tiền -->
-                        <div class="flex items-center justify-between pt-1">
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Đơn giá</label>
-                                <input type="number" 
-                                       x-model="it.price" 
-                                       @input="recalcTotals()" 
-                                       min="0" 
-                                       class="w-32 h-8 px-2 py-1 rounded-lg border border-slate-300 text-xs text-right font-bold outline-none focus:border-sky-500">
-                            </div>
-                            <div class="text-right">
-                                <span class="block text-[10px] text-slate-400 uppercase font-bold">Thành tiền</span>
-                                <span class="text-sm font-black text-sky-700" x-text="formatMoney(calcItemAmount(it))"></span>
-                            </div>
+                        <!-- Thành tiền sau CK -->
+                        <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+                            <span class="text-xs text-slate-500 font-bold uppercase">Thành tiền (sau CK):</span>
+                            <span class="text-sm font-black text-sky-700" x-text="formatMoney(calcItemAmount(it))"></span>
                         </div>
                     </div>
                 </template>
+
+                <!-- Mobile Tổng hợp chân bảng -->
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-1.5 text-xs">
+                    <div class="flex items-center justify-between text-slate-600">
+                        <span>Tổng tiền trước CK:</span>
+                        <span class="font-bold text-slate-800" x-text="formatMoney(calcItemsTotalBeforeDiscount())">0 đ</span>
+                    </div>
+                    <div class="flex items-center justify-between text-rose-600" x-show="calcItemsTotalDiscount() > 0">
+                        <span>Tổng tiền chiết khấu:</span>
+                        <span class="font-bold">-<span x-text="formatMoney(calcItemsTotalDiscount())">0 đ</span></span>
+                    </div>
+                    <div class="flex items-center justify-between text-sky-700 font-black pt-1 border-t border-slate-200">
+                        <span>Tổng tiền sau CK:</span>
+                        <span class="text-sm" x-text="formatMoney(calcItemsTotal())">0 đ</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -586,12 +651,22 @@ input[type=number] {
                 <div class="font-black text-slate-800 uppercase tracking-wider mb-2">Tóm Tắt Thanh Toán</div>
 
                 <div class="flex items-center justify-between text-slate-600 py-1.5 border-b border-slate-200/60">
-                    <span>Tổng tiền hàng:</span>
-                    <span class="font-bold text-slate-800 text-xs" x-text="formatMoney(calcItemsTotal())">0 đ</span>
+                    <span>Tổng tiền trước CK:</span>
+                    <span class="font-bold text-slate-800 text-xs" x-text="formatMoney(calcItemsTotalBeforeDiscount())">0 đ</span>
+                </div>
+
+                <div class="flex items-center justify-between py-1.5 border-b border-slate-200/60" :class="calcItemsTotalDiscount() > 0 ? 'text-rose-600 font-semibold' : 'text-slate-500'">
+                    <span>Tổng tiền chiết khấu (từng SP):</span>
+                    <span class="font-bold text-xs" x-text="'-' + formatMoney(calcItemsTotalDiscount())">0 đ</span>
+                </div>
+
+                <div class="flex items-center justify-between text-slate-700 py-1.5 border-b border-slate-200/60 font-semibold">
+                    <span>Tổng tiền hàng sau CK:</span>
+                    <span class="font-black text-sky-800 text-xs" x-text="formatMoney(calcItemsTotal())">0 đ</span>
                 </div>
 
                 <div class="flex items-center justify-between text-slate-600 py-1.5 border-b border-slate-200/60">
-                    <span>Chiết khấu đơn:</span>
+                    <span>Chiết khấu toàn đơn:</span>
                     <input type="number" 
                            autocomplete="off"
                            autocorrect="off"
@@ -600,7 +675,7 @@ input[type=number] {
                            x-model="formData.discount_amount" 
                            @input="recalcTotals()" 
                            min="0" 
-                           class="w-32 px-2.5 py-1 rounded-lg border border-slate-300 text-xs text-right font-bold">
+                           class="w-32 px-2.5 py-1 rounded-lg border border-slate-300 text-xs text-right font-bold text-rose-600">
                 </div>
 
                 <div class="flex items-center justify-between text-slate-600 py-1.5 border-b border-slate-200/60">
@@ -805,6 +880,16 @@ input[type=number] {
         $initialOrderItems = $order->items->map(function($it) {
             $sku = $it->sku ?? '';
             $pName = $it->product_name ?? '';
+            $qty = (float)$it->ordered_quantity;
+            $price = (float)$it->unit_price;
+            $sub = $qty * $price;
+            $discPct = (float)($it->discount_percent ?? 0);
+            $discAmt = (float)($it->discount_amount ?? 0);
+            if ($discPct > 0 && $discAmt == 0 && $sub > 0) {
+                $discAmt = round($sub * ($discPct / 100));
+            } elseif ($discAmt > 0 && $discPct == 0 && $sub > 0) {
+                $discPct = round(($discAmt / $sub) * 100, 2);
+            }
             return [
                 'product_id' => $it->product_id,
                 'product_name' => $pName,
@@ -812,10 +897,10 @@ input[type=number] {
                 'searchQuery' => ($sku ? '[' . $sku . '] ' : '') . $pName,
                 'unit' => $it->unit ?: 'cái',
                 'stock_quantity' => (float)($it->product?->stock_quantity ?? 0),
-                'ordered_quantity' => (float)$it->ordered_quantity,
-                'unit_price' => (float)$it->unit_price,
-                'discount_percent' => (float)$it->discount_percent,
-                'discount_amount' => (float)$it->discount_amount,
+                'ordered_quantity' => $qty,
+                'unit_price' => $price,
+                'discount_percent' => $discPct,
+                'discount_amount' => $discAmt,
                 'notes' => $it->notes ?? '',
             ];
         })->values()->toArray();
@@ -968,7 +1053,7 @@ function supplierOrderCreateApp() {
             it.ordered_quantity = (parseFloat(it.ordered_quantity) > 0) ? it.ordered_quantity : 1;
 
             this.activeProdDropdownIndex = null;
-            this.recalcTotals();
+            this.onItemQtyOrPriceChange(it);
 
             // Tự động focus sang ô số lượng và bôi đen toàn bộ để nhập nhanh
             this.$nextTick(() => {
@@ -1021,28 +1106,28 @@ function supplierOrderCreateApp() {
             const it = this.formData.items[idx];
             if (!it) return;
             it.ordered_quantity = (parseFloat(it.ordered_quantity) || 0) + 1;
-            this.recalcTotals();
+            this.onItemQtyOrPriceChange(it);
         },
 
         decreaseQty(idx) {
             const it = this.formData.items[idx];
             if (!it) return;
             it.ordered_quantity = Math.max(1, (parseFloat(it.ordered_quantity) || 1) - 1);
-            this.recalcTotals();
+            this.onItemQtyOrPriceChange(it);
         },
 
         increasePrice(idx) {
             const it = this.formData.items[idx];
             if (!it) return;
             it.unit_price = (parseFloat(it.unit_price) || 0) + 1000;
-            this.recalcTotals();
+            this.onItemQtyOrPriceChange(it);
         },
 
         decreasePrice(idx) {
             const it = this.formData.items[idx];
             if (!it) return;
             it.unit_price = Math.max(0, (parseFloat(it.unit_price) || 0) - 1000);
-            this.recalcTotals();
+            this.onItemQtyOrPriceChange(it);
         },
 
         onEnterQty(idx) {
@@ -1160,19 +1245,80 @@ function supplierOrderCreateApp() {
             }
         },
 
-        calcItemAmount(it) {
+        calcItemSubtotal(it) {
             const qty = parseFloat(it.ordered_quantity) || 0;
             const price = parseFloat(it.unit_price) || 0;
-            const discPct = parseFloat(it.discount_percent) || 0;
-            let discAmt = parseFloat(it.discount_amount) || 0;
-            if (discPct > 0 && discAmt === 0) {
-                discAmt = (qty * price) * (discPct / 100);
+            return qty * price;
+        },
+
+        calcItemDiscount(it) {
+            const sub = this.calcItemSubtotal(it);
+            if (sub <= 0) return 0;
+            const amt = parseFloat(it.discount_amount) || 0;
+            const pct = parseFloat(it.discount_percent) || 0;
+            if (amt > 0) {
+                return Math.min(amt, sub);
             }
-            return Math.max(0, (qty * price) - discAmt);
+            if (pct > 0) {
+                return Math.round(sub * (pct / 100));
+            }
+            return 0;
+        },
+
+        calcItemAmount(it) {
+            const sub = this.calcItemSubtotal(it);
+            const disc = this.calcItemDiscount(it);
+            return Math.max(0, sub - disc);
+        },
+
+        onItemDiscountPercentChange(it) {
+            const sub = this.calcItemSubtotal(it);
+            const pct = parseFloat(it.discount_percent) || 0;
+            if (pct > 0 && sub > 0) {
+                it.discount_amount = Math.round(sub * (pct / 100));
+            } else if (pct === 0) {
+                it.discount_amount = 0;
+            }
+            this.recalcTotals();
+        },
+
+        onItemDiscountAmountChange(it) {
+            const sub = this.calcItemSubtotal(it);
+            const amt = parseFloat(it.discount_amount) || 0;
+            if (amt > 0 && sub > 0) {
+                it.discount_percent = Math.round((amt / sub) * 10000) / 100;
+            } else if (amt === 0) {
+                it.discount_percent = 0;
+            }
+            this.recalcTotals();
+        },
+
+        onItemQtyOrPriceChange(it) {
+            const sub = this.calcItemSubtotal(it);
+            const pct = parseFloat(it.discount_percent) || 0;
+            const amt = parseFloat(it.discount_amount) || 0;
+            if (pct > 0) {
+                it.discount_amount = Math.round(sub * (pct / 100));
+            } else if (amt > 0 && sub > 0) {
+                it.discount_percent = Math.round((amt / sub) * 10000) / 100;
+            }
+            this.recalcTotals();
+        },
+
+        calcTotalOrderedQuantity() {
+            return (this.formData.items || []).reduce((sum, it) => sum + (parseFloat(it.ordered_quantity) || 0), 0);
+        },
+
+        calcItemsTotalBeforeDiscount() {
+            return (this.formData.items || []).reduce((sum, it) => sum + this.calcItemSubtotal(it), 0);
+        },
+
+        calcItemsTotalDiscount() {
+            return (this.formData.items || []).reduce((sum, it) => sum + this.calcItemDiscount(it), 0);
         },
 
         calcItemsTotal() {
-            return this.formData.items.reduce((sum, it) => sum + this.calcItemAmount(it), 0);
+            return (this.formData.items || []).reduce((sum, it) => sum + this.calcItemAmount(it), 0);
         },
 
         calcOrderTotal() {
