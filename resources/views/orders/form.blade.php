@@ -1996,11 +1996,11 @@
                         <span class="shrink-0" title="Chiết khấu đơn hàng">CK</span>
                         <div class="flex items-center justify-end gap-1.5 min-w-0 flex-1 sm:flex-initial">
                             <div class="flex items-center gap-0.5 shrink-0">
-                                <input type="number" min="0" max="100" step="any" x-model.number="orderDiscountPercent" @input="onOrderDiscountPercentChange()" placeholder="%" class="w-14 sm:w-20 px-1.5 sm:px-2 py-1 bg-white border border-slate-200 rounded text-center text-xs focus:outline-none font-semibold">
+                                <input type="number" min="0" max="100" step="any" x-model.number="orderDiscountPercent" @focus="$event.target.select()" @input="onOrderDiscountPercentChange()" placeholder="%" class="w-14 sm:w-20 px-1.5 sm:px-2 py-1 bg-white border border-slate-200 rounded text-center text-xs focus:outline-none font-semibold">
                                 <span class="text-[10px] text-slate-400 shrink-0">%</span>
                             </div>
                             <div class="flex items-center gap-1 min-w-0 flex-1 sm:flex-initial">
-                                <input type="text" inputmode="numeric" x-money="formData.discount_amount" @input="onOrderDiscountAmountChange()" placeholder="Tiền CK" class="w-full sm:w-28 min-w-0 px-2 py-1 bg-white border border-slate-200 rounded text-right text-xs font-bold focus:border-sky-500 focus:outline-none">
+                                <input type="text" inputmode="numeric" x-money="formData.discount_amount" @focus="$event.target.select()" @input="onOrderDiscountAmountChange()" placeholder="Tiền CK" class="w-full sm:w-28 min-w-0 px-2 py-1 bg-white border border-slate-200 rounded text-right text-xs font-bold focus:border-sky-500 focus:outline-none">
                                 <span class="text-slate-400 shrink-0">đ</span>
                             </div>
                         </div>
@@ -2319,6 +2319,7 @@ function orderFormApp() {
         _isApplyingOrderPolicies: false,
         _autoOrderDiscount: false,
         _manualOrderDiscount: false,
+        _discountByPercent: {{ $orderDiscPct > 0 ? 'true' : 'false' }},
         activeProdDropdownIndex: null,
         prodHighlightIndex: 0,
         showPromoSection: false,
@@ -2346,6 +2347,7 @@ function orderFormApp() {
                 title: '{{ $order ? ($order->order_code ?: "Phiếu đơn hàng") : "Phiếu 1" }}',
                 orderId: '{{ $order ? $order->id : "" }}',
                 orderDiscountPercent: {{ $orderDiscPct }},
+                _discountByPercent: {{ $orderDiscPct > 0 ? 'true' : 'false' }},
                 bulkDiscountPercent: '',
                 subtotalBeforeVat: 0,
                 totalVat: 0,
@@ -2540,6 +2542,7 @@ function orderFormApp() {
                 this.items = t.items;
                 this.orderId = t.orderId || '';
                 this.orderDiscountPercent = t.orderDiscountPercent || 0;
+                this._discountByPercent = t._discountByPercent !== undefined ? t._discountByPercent : (Number(this.orderDiscountPercent) > 0);
                 this.bulkDiscountPercent = t.bulkDiscountPercent !== undefined ? t.bulkDiscountPercent : '';
             }
         },
@@ -2558,6 +2561,7 @@ function orderFormApp() {
                 title: 'Phiếu ' + this.ticketCounter,
                 orderId: '',
                 orderDiscountPercent: 0,
+                _discountByPercent: false,
                 subtotalBeforeVat: 0,
                 totalVat: 0,
                 totalWithVat: 0,
@@ -4790,22 +4794,29 @@ function orderFormApp() {
         },
 
         onOrderDiscountPercentChange() {
+            this._discountByPercent = true;
             this._manualOrderDiscount = true;
             this._autoOrderDiscount = false;
             const pct = Math.max(0, Math.min(100, Number(this.orderDiscountPercent) || 0));
             this.orderDiscountPercent = pct;
-            this.formData.discount_amount = Math.round((Math.max(0, Number(this.totalWithVat) || 0) * pct) / 100);
+            const currentTotal = Number(this.totalWithVat) || 0;
+            if (currentTotal > 0) {
+                this.formData.discount_amount = Math.round((currentTotal * pct) / 100);
+            } else {
+                this.formData.discount_amount = 0;
+            }
             this.calculateTotals();
         },
 
         onOrderDiscountAmountChange() {
+            this._discountByPercent = false;
             this._manualOrderDiscount = true;
             this._autoOrderDiscount = false;
-            const maxAmt = Math.max(0, Number(this.totalWithVat) || 0);
-            const amt = Math.max(0, Math.min(maxAmt, Number(this.formData.discount_amount) || 0));
+            const amt = Math.max(0, Number(this.formData.discount_amount) || 0);
             this.formData.discount_amount = amt;
-            if (maxAmt > 0) {
-                this.orderDiscountPercent = Math.round((amt / maxAmt) * 100 * 10) / 10;
+            const currentTotal = Number(this.totalWithVat) || 0;
+            if (currentTotal > 0) {
+                this.orderDiscountPercent = Math.round((Math.min(currentTotal, amt) / currentTotal) * 100 * 10) / 10;
             } else {
                 this.orderDiscountPercent = 0;
             }
@@ -5335,7 +5346,13 @@ function orderFormApp() {
             this.totalVat = 0;
             this.totalWithVat = this.subtotalBeforeVat;
 
-            const overallDiscount = Number(this.formData.discount_amount) || 0;
+            if (this._discountByPercent && Number(this.orderDiscountPercent) > 0) {
+                this.formData.discount_amount = Math.round((this.totalWithVat * Number(this.orderDiscountPercent)) / 100);
+            } else if (!this._discountByPercent && this.totalWithVat > 0 && Number(this.formData.discount_amount) > 0) {
+                this.orderDiscountPercent = Math.round((Math.min(this.totalWithVat, Number(this.formData.discount_amount)) / this.totalWithVat) * 100 * 10) / 10;
+            }
+
+            const overallDiscount = Math.min(this.totalWithVat, Math.max(0, Number(this.formData.discount_amount) || 0));
             this.finalTotal = Math.max(0, this.totalWithVat - overallDiscount);
 
             this.subtotal = this.subtotalBeforeVat;
@@ -5350,6 +5367,7 @@ function orderFormApp() {
                 curT.finalTotal = this.finalTotal;
                 curT.orderDiscountPercent = this.orderDiscountPercent;
                 curT.bulkDiscountPercent = this.bulkDiscountPercent;
+                curT._discountByPercent = this._discountByPercent;
             }
 
 
@@ -5481,9 +5499,9 @@ function orderFormApp() {
                 status: this.formData.status,
                 notes: this.formData.notes,
                 subtotal: this.subtotal,
-                discountAmount: this.formData.discount_amount,
+                discountAmount: Math.min(this.totalWithVat, Math.max(0, Number(this.formData.discount_amount) || 0)),
                 discountPercent: this.orderDiscountPercent,
-                discount_amount: this.formData.discount_amount,
+                discount_amount: Math.min(this.totalWithVat, Math.max(0, Number(this.formData.discount_amount) || 0)),
                 discount_percent: this.orderDiscountPercent,
                 salesPolicyId: cleanPolicyIds[0] || null,
                 sales_policy_id: cleanPolicyIds[0] || null,
