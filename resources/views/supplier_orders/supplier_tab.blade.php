@@ -507,7 +507,7 @@
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="closeDetailModal()"></div>
 
         <div class="flex min-h-full items-center justify-center p-3 sm:p-4 text-center">
-            <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all w-full max-w-4xl border border-slate-200 my-8">
+            <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all w-full max-w-5xl border border-slate-200 my-8">
                 
                 <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
                     <div class="flex items-center gap-3">
@@ -528,7 +528,7 @@
                 </div>
 
                 <div class="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto" x-if="detailOrder">
-                    <!-- Thông tin cơ bản & Tài chính -->
+                    <!-- Thông tin cơ bản & Tài chính nhanh -->
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs">
                         <div>
                             <span class="text-[10px] text-slate-400 font-bold block uppercase">Ngày đặt hàng</span>
@@ -550,34 +550,135 @@
 
                     <!-- Danh sách sản phẩm -->
                     <div class="space-y-1.5">
-                        <div class="text-xs font-black text-slate-800 uppercase tracking-wider">Danh Sách Mặt Hàng Đặt</div>
-                        <div class="border border-slate-200 rounded-xl overflow-hidden">
-                            <table class="w-full text-left text-xs">
-                                <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-black text-[10px]">
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs font-black text-slate-800 uppercase tracking-wider">Danh Sách Mặt Hàng Đặt (<span x-text="detailOrder?.items ? detailOrder.items.length : 0"></span> SP)</div>
+                        </div>
+                        <div class="border border-slate-200 rounded-xl overflow-x-auto shadow-2xs">
+                            <table class="w-full text-left text-xs min-w-[760px]">
+                                <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-black text-[10.5px] uppercase tracking-wider">
                                     <tr>
-                                        <th class="py-2 px-3">Tên sản phẩm</th>
-                                        <th class="py-2 px-2 text-center w-16">ĐVT</th>
-                                        <th class="py-2 px-2 text-right w-24">SL Đặt</th>
-                                        <th class="py-2 px-2 text-right w-24">SL Đã nhận</th>
-                                        <th class="py-2 px-2 text-right w-24">SL Còn thiếu</th>
-                                        <th class="py-2 px-3 text-right w-28">Đơn giá</th>
-                                        <th class="py-2 px-3 text-right w-32">Thành tiền</th>
+                                        <th class="py-2.5 px-3 min-w-[200px]">Tên sản phẩm</th>
+                                        <th class="py-2.5 px-2 text-center w-14">ĐVT</th>
+                                        <th class="py-2.5 px-2 text-center w-16">SL Đặt</th>
+                                        <th class="py-2.5 px-2 text-center w-16">Đã nhận</th>
+                                        <th class="py-2.5 px-2 text-center w-16">Còn thiếu</th>
+                                        <th class="py-2.5 px-2 text-right w-24">Đơn giá</th>
+                                        <th class="py-2.5 px-2 text-right w-24">Trước CK</th>
+                                        <th class="py-2.5 px-1.5 text-right w-16">CK (%)</th>
+                                        <th class="py-2.5 px-2 text-right w-24">Tiền CK</th>
+                                        <th class="py-2.5 px-3 text-right w-28">Thành tiền</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
                                     <template x-for="item in detailOrder?.items" :key="item.id">
                                         <tr class="hover:bg-slate-50/50">
-                                            <td class="py-2 px-3 font-bold text-slate-800" x-text="item.product_name"></td>
-                                            <td class="py-2 px-2 text-center text-slate-500" x-text="item.unit"></td>
-                                            <td class="py-2 px-2 text-right font-black text-slate-800" x-text="item.ordered_quantity"></td>
-                                            <td class="py-2 px-2 text-right font-black text-emerald-600" x-text="item.received_quantity"></td>
-                                            <td class="py-2 px-2 text-right font-black" :class="item.remaining_quantity > 0 ? 'text-rose-600' : 'text-slate-400'" x-text="item.remaining_quantity"></td>
-                                            <td class="py-2 px-3 text-right text-slate-600" x-text="formatMoney(item.unit_price)"></td>
-                                            <td class="py-2 px-3 text-right font-black text-slate-900" x-text="formatMoney(item.amount)"></td>
+                                            <td class="py-2.5 px-3 align-middle">
+                                                <div class="font-bold text-slate-900" x-text="item.product_name"></div>
+                                                <div class="text-[10.5px] font-mono text-sky-700 font-semibold" x-show="item.sku" x-text="'[' + item.sku + ']'"></div>
+                                            </td>
+                                            <td class="py-2.5 px-2 text-center text-slate-600 font-semibold align-middle" x-text="item.unit"></td>
+                                            <td class="py-2.5 px-2 text-center font-black text-slate-800 align-middle" x-text="formatNumber(item.ordered_quantity)"></td>
+                                            <td class="py-2.5 px-2 text-center font-black text-emerald-600 align-middle" x-text="formatNumber(item.received_quantity)"></td>
+                                            <td class="py-2.5 px-2 text-center font-black align-middle" :class="parseFloat(item.remaining_quantity) > 0 ? 'text-rose-600' : 'text-slate-400'" x-text="formatNumber(item.remaining_quantity)"></td>
+                                            <td class="py-2.5 px-2 text-right text-slate-700 font-bold align-middle" x-text="formatMoney(item.unit_price)"></td>
+                                            <td class="py-2.5 px-2 text-right text-slate-800 font-black align-middle" x-text="formatMoney(calcDetailItemSubtotal(item))"></td>
+                                            <td class="py-2.5 px-1.5 text-right text-slate-600 font-semibold align-middle" x-text="formatNumber(item.discount_percent || 0) + '%'"></td>
+                                            <td class="py-2.5 px-2 text-right font-black align-middle" :class="calcDetailItemDiscount(item) > 0 ? 'text-rose-600' : 'text-slate-400'" x-text="calcDetailItemDiscount(item) > 0 ? formatMoney(calcDetailItemDiscount(item)) : '0 đ'"></td>
+                                            <td class="py-2.5 px-3 text-right font-black text-sky-700 align-middle" x-text="formatMoney(calcDetailItemAmount(item))"></td>
                                         </tr>
                                     </template>
                                 </tbody>
+                                <tfoot class="bg-slate-50/90 border-t-2 border-slate-300 font-black text-[11px] text-slate-800">
+                                    <tr>
+                                        <td colspan="2" class="py-2.5 px-3 uppercase text-slate-600">
+                                            Tổng cộng (<span x-text="detailOrder?.items ? detailOrder.items.length : 0"></span> dòng)
+                                        </td>
+                                        <td class="py-2.5 px-2 text-center text-slate-900 font-black" x-text="formatNumber(calcDetailTotalOrderedQty())"></td>
+                                        <td class="py-2.5 px-2 text-center text-emerald-700 font-black" x-text="formatNumber(calcDetailTotalReceivedQty())"></td>
+                                        <td class="py-2.5 px-2 text-center text-rose-600 font-black" x-text="formatNumber(calcDetailTotalRemainingQty())"></td>
+                                        <td class="py-2.5 px-2 text-right text-slate-400 font-normal">—</td>
+                                        <td class="py-2.5 px-2 text-right text-slate-900 font-black" x-text="formatMoney(calcDetailTotalBeforeDiscount())"></td>
+                                        <td class="py-2.5 px-1.5 text-right text-slate-400 font-normal">—</td>
+                                        <td class="py-2.5 px-2 text-right text-rose-600 font-black" x-text="formatMoney(calcDetailTotalDiscount())"></td>
+                                        <td class="py-2.5 px-3 text-right text-sky-700 font-black text-xs" x-text="formatMoney(calcDetailTotalAfterDiscount())"></td>
+                                    </tr>
+                                </tfoot>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- Tóm tắt thanh toán & Thông tin phụ -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                        <!-- Cột trái: Thông tin giao hàng & Ghi chú -->
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs space-y-2">
+                            <div class="font-black text-slate-800 uppercase tracking-wider mb-1">Thông Tin Giao Nhận & Ghi Chú</div>
+                            <div class="flex items-center justify-between text-slate-600 py-1 border-b border-slate-200/60">
+                                <span>Kho nhập hàng:</span>
+                                <span class="font-bold text-slate-800" x-text="detailOrder?.warehouse_name || 'Chưa phân kho'"></span>
+                            </div>
+                            <div class="flex items-center justify-between text-slate-600 py-1 border-b border-slate-200/60">
+                                <span>Hẹn ngày giao:</span>
+                                <span class="font-bold text-slate-800" x-text="detailOrder?.expected_delivery_date ? formatDate(detailOrder?.expected_delivery_date) : 'Không có'"></span>
+                            </div>
+                            <div class="flex items-center justify-between text-slate-600 py-1 border-b border-slate-200/60">
+                                <span>Người lập đơn:</span>
+                                <span class="font-bold text-slate-800" x-text="detailOrder?.creator_name || '—'"></span>
+                            </div>
+                            <div class="flex items-center justify-between text-slate-600 py-1 border-b border-slate-200/60" x-show="detailOrder?.approver_name">
+                                <span>Người duyệt:</span>
+                                <span class="font-bold text-slate-800" x-text="detailOrder?.approver_name"></span>
+                            </div>
+                            <div class="flex items-center justify-between text-slate-600 py-1 border-b border-slate-200/60">
+                                <span>Phương thức thanh toán:</span>
+                                <span class="font-bold text-slate-800" x-text="detailOrder?.payment_method || 'Chuyển khoản'"></span>
+                            </div>
+                            <div class="pt-1" x-show="detailOrder?.notes">
+                                <span class="text-[11px] font-bold text-slate-500 block mb-0.5">Ghi chú đơn hàng:</span>
+                                <p class="text-slate-700 bg-white p-2.5 rounded-xl border border-slate-200 whitespace-pre-line" x-text="detailOrder?.notes"></p>
+                            </div>
+                        </div>
+
+                        <!-- Cột phải: Bảng chi tiết tài chính & Chiết khấu -->
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs space-y-1.5">
+                            <div class="font-black text-slate-800 uppercase tracking-wider mb-1">Tóm Tắt Thanh Toán</div>
+                            <div class="flex items-center justify-between text-slate-600 py-1 border-b border-slate-200/60">
+                                <span>Tổng tiền trước CK:</span>
+                                <span class="font-bold text-slate-800" x-text="formatMoney(calcDetailTotalBeforeDiscount())">0 đ</span>
+                            </div>
+                            <div class="flex items-center justify-between py-1 border-b border-slate-200/60" :class="calcDetailTotalDiscount() > 0 ? 'text-rose-600 font-semibold' : 'text-slate-500'">
+                                <span>Tổng tiền chiết khấu (từng SP):</span>
+                                <span class="font-bold" x-text="'-' + formatMoney(calcDetailTotalDiscount())">0 đ</span>
+                            </div>
+                            <div class="flex items-center justify-between text-slate-700 font-semibold py-1 border-b border-slate-200/60">
+                                <span>Tổng tiền hàng sau CK:</span>
+                                <span class="font-black text-sky-800" x-text="formatMoney(detailOrder?.total_items_amount || calcDetailTotalAfterDiscount())">0 đ</span>
+                            </div>
+                            <div class="flex items-center justify-between text-slate-600 py-1 border-b border-slate-200/60" x-show="parseFloat(detailOrder?.discount_amount) > 0">
+                                <span>Chiết khấu toàn đơn:</span>
+                                <span class="font-bold text-rose-600">-<span x-text="formatMoney(detailOrder?.discount_amount)">0 đ</span></span>
+                            </div>
+                            <div class="flex items-center justify-between text-slate-600 py-1 border-b border-slate-200/60" x-show="parseFloat(detailOrder?.other_fees) > 0">
+                                <span>Phí vận chuyển / khác:</span>
+                                <span class="font-bold text-slate-800">+<span x-text="formatMoney(detailOrder?.other_fees)">0 đ</span></span>
+                            </div>
+                            <div class="flex items-center justify-between text-slate-800 font-bold py-1.5 border-b border-slate-200">
+                                <span>Tổng giá trị đơn hàng:</span>
+                                <span class="font-black text-slate-900 text-sm" x-text="formatMoney(detailOrder?.total_amount)">0 đ</span>
+                            </div>
+                            <template x-if="parseFloat(detailOrder?.debt_deducted_amount) > 0">
+                                <div class="flex items-center justify-between text-amber-800 bg-amber-100/60 px-2.5 py-1.5 rounded-lg border border-amber-200 font-bold">
+                                    <span>Trừ công nợ NCC nợ:</span>
+                                    <span class="font-black text-amber-900">-<span x-text="formatMoney(detailOrder?.debt_deducted_amount)"></span></span>
+                                </div>
+                            </template>
+                            <div class="flex items-center justify-between py-1.5 border-t-2 border-slate-300 font-black">
+                                <span class="text-slate-900 text-xs">SỐ TIỀN CẦN THANH TOÁN:</span>
+                                <span class="text-sky-700 text-base" x-text="formatMoney(detailOrder?.payable_amount)">0 đ</span>
+                            </div>
+                            <div class="flex items-center justify-between text-slate-600 text-[11px]">
+                                <span>Đã thanh toán cho NCC:</span>
+                                <span class="font-black text-emerald-700 text-xs" x-text="formatMoney(detailOrder?.paid_amount)">0 đ</span>
+                            </div>
                         </div>
                     </div>
 
@@ -1568,6 +1669,60 @@ function supplierOrdersApp() {
         formatMoney(amount) {
             const val = parseFloat(amount) || 0;
             return new Intl.NumberFormat('vi-VN').format(val) + ' đ';
+        },
+
+        formatNumber(val) {
+            const num = parseFloat(val) || 0;
+            return new Intl.NumberFormat('vi-VN').format(num);
+        },
+
+        calcDetailItemSubtotal(item) {
+            const qty = parseFloat(item?.ordered_quantity) || 0;
+            const price = parseFloat(item?.unit_price) || 0;
+            return qty * price;
+        },
+
+        calcDetailItemDiscount(item) {
+            const sub = this.calcDetailItemSubtotal(item);
+            if (sub <= 0) return 0;
+            const amt = parseFloat(item?.discount_amount) || 0;
+            const pct = parseFloat(item?.discount_percent) || 0;
+            if (amt > 0) return Math.min(amt, sub);
+            if (pct > 0) return Math.round(sub * (pct / 100));
+            return 0;
+        },
+
+        calcDetailItemAmount(item) {
+            if (item?.amount !== undefined && item?.amount !== null && parseFloat(item.amount) > 0) {
+                return parseFloat(item.amount);
+            }
+            const sub = this.calcDetailItemSubtotal(item);
+            const disc = this.calcDetailItemDiscount(item);
+            return Math.max(0, sub - disc);
+        },
+
+        calcDetailTotalOrderedQty() {
+            return (this.detailOrder?.items || []).reduce((sum, it) => sum + (parseFloat(it.ordered_quantity) || 0), 0);
+        },
+
+        calcDetailTotalReceivedQty() {
+            return (this.detailOrder?.items || []).reduce((sum, it) => sum + (parseFloat(it.received_quantity) || 0), 0);
+        },
+
+        calcDetailTotalRemainingQty() {
+            return (this.detailOrder?.items || []).reduce((sum, it) => sum + (parseFloat(it.remaining_quantity) || 0), 0);
+        },
+
+        calcDetailTotalBeforeDiscount() {
+            return (this.detailOrder?.items || []).reduce((sum, it) => sum + this.calcDetailItemSubtotal(it), 0);
+        },
+
+        calcDetailTotalDiscount() {
+            return (this.detailOrder?.items || []).reduce((sum, it) => sum + this.calcDetailItemDiscount(it), 0);
+        },
+
+        calcDetailTotalAfterDiscount() {
+            return (this.detailOrder?.items || []).reduce((sum, it) => sum + this.calcDetailItemAmount(it), 0);
         },
 
         formatDate(dateStr) {
