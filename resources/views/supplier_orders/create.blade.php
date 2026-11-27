@@ -785,6 +785,43 @@ input[type=number] {
 
 </div>
 
+@php
+    $initialOrderItems = [
+        [
+            'product_id' => '',
+            'product_name' => '',
+            'sku' => '',
+            'searchQuery' => '',
+            'unit' => 'cái',
+            'stock_quantity' => 0,
+            'ordered_quantity' => 1,
+            'unit_price' => 0,
+            'discount_percent' => 0,
+            'discount_amount' => 0,
+            'notes' => '',
+        ]
+    ];
+    if (!empty($order) && $order->items && $order->items->count() > 0) {
+        $initialOrderItems = $order->items->map(function($it) {
+            $sku = $it->sku ?? '';
+            $pName = $it->product_name ?? '';
+            return [
+                'product_id' => $it->product_id,
+                'product_name' => $pName,
+                'sku' => $sku,
+                'searchQuery' => ($sku ? '[' . $sku . '] ' : '') . $pName,
+                'unit' => $it->unit ?: 'cái',
+                'stock_quantity' => (float)($it->product?->stock_quantity ?? 0),
+                'ordered_quantity' => (float)$it->ordered_quantity,
+                'unit_price' => (float)$it->unit_price,
+                'discount_percent' => (float)$it->discount_percent,
+                'discount_amount' => (float)$it->discount_amount,
+                'notes' => $it->notes ?? '',
+            ];
+        })->values()->toArray();
+    }
+@endphp
+
 <!-- SCRIPT CHO TRANG TẠO / CHỈNH SỬA ĐƠN NCC -->
 <script>
 function supplierOrderCreateApp() {
@@ -823,27 +860,7 @@ function supplierOrderCreateApp() {
             other_fees: {{ (float)($order->other_fees ?? 0) }},
             notes: {!! json_encode($order->notes ?? '') !!},
             auto_approve: false,
-            items: @if(!empty($order) && $order->items && $order->items->count() > 0)
-                @json($order->items->map(function($it) {
-                    return [
-                        'product_id' => $it->product_id,
-                        'product_name' => $it->product_name,
-                        'sku' => $it->sku,
-                        'searchQuery' => ($it->sku ? "[{$it->sku}] " : '') . $it->product_name,
-                        'unit' => $it->unit ?: 'cái',
-                        'stock_quantity' => (float)($it->product?->stock_quantity ?? 0),
-                        'ordered_quantity' => (float)$it->ordered_quantity,
-                        'unit_price' => (float)$it->unit_price,
-                        'discount_percent' => (float)$it->discount_percent,
-                        'discount_amount' => (float)$it->discount_amount,
-                        'notes' => $it->notes ?? '',
-                    ];
-                }))
-            @else
-                [
-                    { product_id: '', product_name: '', sku: '', searchQuery: '', unit: 'cái', stock_quantity: 0, ordered_quantity: 1, unit_price: 0, discount_percent: 0, discount_amount: 0 }
-                ]
-            @endif
+            items: @json($initialOrderItems)
         },
 
         init() {
