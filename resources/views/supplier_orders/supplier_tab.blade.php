@@ -651,7 +651,7 @@
                             </div>
                             <div class="flex items-center justify-between text-slate-700 font-semibold py-1 border-b border-slate-200/60">
                                 <span>Tổng tiền hàng sau CK:</span>
-                                <span class="font-black text-sky-800" x-text="formatMoney(detailOrder?.total_items_amount || calcDetailTotalAfterDiscount())">0 đ</span>
+                                <span class="font-black text-sky-800" x-text="formatMoney(calcDetailTotalAfterDiscount())">0 đ</span>
                             </div>
                             <div class="flex items-center justify-between text-slate-600 py-1 border-b border-slate-200/60" x-show="parseFloat(detailOrder?.discount_amount) > 0">
                                 <span>Chiết khấu toàn đơn:</span>
@@ -663,7 +663,7 @@
                             </div>
                             <div class="flex items-center justify-between text-slate-800 font-bold py-1.5 border-b border-slate-200">
                                 <span>Tổng giá trị đơn hàng:</span>
-                                <span class="font-black text-slate-900 text-sm" x-text="formatMoney(detailOrder?.total_amount)">0 đ</span>
+                                <span class="font-black text-slate-900 text-sm" x-text="formatMoney(calcDetailOrderTotal())">0 đ</span>
                             </div>
                             <template x-if="parseFloat(detailOrder?.debt_deducted_amount) > 0">
                                 <div class="flex items-center justify-between text-amber-800 bg-amber-100/60 px-2.5 py-1.5 rounded-lg border border-amber-200 font-bold">
@@ -673,7 +673,7 @@
                             </template>
                             <div class="flex items-center justify-between py-1.5 border-t-2 border-slate-300 font-black">
                                 <span class="text-slate-900 text-xs">SỐ TIỀN CẦN THANH TOÁN:</span>
-                                <span class="text-sky-700 text-base" x-text="formatMoney(detailOrder?.payable_amount)">0 đ</span>
+                                <span class="text-sky-700 text-base" x-text="formatMoney(calcDetailPayableAmount())">0 đ</span>
                             </div>
                             <div class="flex items-center justify-between text-slate-600 text-[11px]">
                                 <span>Đã thanh toán cho NCC:</span>
@@ -1723,6 +1723,19 @@ function supplierOrdersApp() {
 
         calcDetailTotalAfterDiscount() {
             return (this.detailOrder?.items || []).reduce((sum, it) => sum + this.calcDetailItemAmount(it), 0);
+        },
+
+        calcDetailOrderTotal() {
+            const itemsAfterDisc = this.calcDetailTotalAfterDiscount();
+            const orderDisc = parseFloat(this.detailOrder?.discount_amount) || 0;
+            const otherFees = parseFloat(this.detailOrder?.other_fees) || 0;
+            return Math.max(0, itemsAfterDisc - orderDisc + otherFees);
+        },
+
+        calcDetailPayableAmount() {
+            const orderTotal = this.calcDetailOrderTotal();
+            const debtDeduct = parseFloat(this.detailOrder?.debt_deducted_amount) || 0;
+            return Math.max(0, orderTotal - debtDeduct);
         },
 
         formatDate(dateStr) {
