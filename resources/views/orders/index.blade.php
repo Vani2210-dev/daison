@@ -3306,8 +3306,8 @@ ${this.buildMsoXmlHeader('Bang_ke_don_hang')}
                 `;
 
                 giftTableHtml = `
-                    <div style="margin-top: 12px; page-break-inside: avoid;">
-                        <div style="font-size: 12px; font-weight: bold; text-transform: uppercase; background-color: #dfdfdf; padding: 4px 8px; border: 1px solid #111; border-bottom: none; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                    <div style="margin-top: 12px;">
+                        <div style="font-size: 12px; font-weight: bold; text-transform: uppercase; background-color: #dfdfdf; padding: 4px 8px; border: 1px solid #111; border-bottom: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; page-break-after: avoid; break-after: avoid;">
                             Hàng tặng
                         </div>
                         <table class="product-table" style="margin-top: 0; width: 100%; border-collapse: collapse;">
@@ -3330,7 +3330,7 @@ ${this.buildMsoXmlHeader('Bang_ke_don_hang')}
             }
 
             return `
-                <div class="order-page" style="page-break-inside: avoid; margin-bottom: 20px;">
+                <div class="order-page" style="margin-bottom: 20px;">
                     <!-- Header Doanh Nghiệp (Ẩn khi in không TĐ - no_price) -->
                     ${hasCompanyHeader ? `
                     <table style="width: 100%; border: none; border-bottom: 2px solid #1b4a8c; padding-bottom: 6px; margin-bottom: 12px; border-collapse: collapse;">
@@ -3438,8 +3438,8 @@ ${this.buildMsoXmlHeader('Bang_ke_don_hang')}
                     </table>
 
                     <!-- Bảng 1: Danh Sách Sản Phẩm -->
-                    <div style="page-break-inside: avoid;">
-                        <div style="font-size: 12px; font-weight: bold; text-transform: uppercase; background-color: #dfdfdf; padding: 4px 8px; border: 1px solid #111; border-bottom: none; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                    <div>
+                        <div style="font-size: 12px; font-weight: bold; text-transform: uppercase; background-color: #dfdfdf; padding: 4px 8px; border: 1px solid #111; border-bottom: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; page-break-after: avoid; break-after: avoid;">
                             Danh sách sản phẩm
                         </div>
                         <table class="product-table" style="margin-top: 0; width: 100%; border-collapse: collapse;">
@@ -3579,6 +3579,23 @@ ${this.buildMsoXmlHeader('Bang_ke_don_hang')}
                             width: 100%; 
                             border-collapse: collapse; 
                         }
+                        .product-table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            page-break-inside: auto;
+                            break-inside: auto;
+                        }
+                        .product-table thead {
+                            display: table-header-group;
+                        }
+                        .product-table tbody {
+                            page-break-inside: auto;
+                            break-inside: auto;
+                        }
+                        .product-table tr {
+                            page-break-inside: avoid;
+                            break-inside: avoid;
+                        }
                         .product-table th { 
                             background-color: #f1f5f9; 
                             border: 1px solid #111; 
@@ -3598,6 +3615,10 @@ ${this.buildMsoXmlHeader('Bang_ke_don_hang')}
                         @media print {
                             body { padding: 0; }
                             .no-print { display: none !important; }
+                            .order-page { page-break-inside: auto !important; break-inside: auto !important; }
+                            .product-table { page-break-inside: auto !important; break-inside: auto !important; }
+                            .product-table thead { display: table-header-group !important; }
+                            .product-table tr { page-break-inside: avoid !important; break-inside: avoid !important; }
                         }
                     </style>
                 </head>
