@@ -1464,6 +1464,7 @@
                                 <th class="border border-slate-300 py-1.5 px-2 w-16 text-center">ĐVT</th>
                                 <th class="border border-slate-300 py-1.5 px-2 w-14 text-right">SL</th>
                                 <th class="border border-slate-300 py-1.5 px-2 w-24 text-right whitespace-nowrap">Đơn giá</th>
+                                <th class="border border-slate-300 py-1.5 px-2 w-24 text-right whitespace-nowrap">Tiền trước CK</th>
                                 <th class="border border-slate-300 py-1.5 px-2 w-16 text-right whitespace-nowrap">C.khấu</th>
                                 <th class="border border-slate-300 py-1.5 px-2 w-24 text-right whitespace-nowrap">Tiền CK</th>
                                 <th class="border border-slate-300 py-1.5 px-2 w-28 text-right whitespace-nowrap">Thành tiền</th>
@@ -1481,30 +1482,35 @@
                                     <td class="border border-slate-300 py-1.5 px-2 text-center" x-text="it.unit"></td>
                                     <td class="border border-slate-300 py-1.5 px-2 text-right font-semibold whitespace-nowrap" x-text="formatNumber(it.display_quantity ?? it.sold_quantity ?? it.quantity)"></td>
                                     <td class="border border-slate-300 py-1.5 px-2 text-right whitespace-nowrap" x-text="formatNumber(it.unit_price)"></td>
+                                    <td class="border border-slate-300 py-1.5 px-2 text-right whitespace-nowrap" x-text="formatNumber(getLineBeforeDiscount(it))"></td>
                                     <td class="border border-slate-300 py-1.5 px-2 text-right whitespace-nowrap" x-text="getDiscountDisplay(it)"></td>
                                     <td class="border border-slate-300 py-1.5 px-2 text-right whitespace-nowrap" x-text="getDiscountAmountDisplay(it)"></td>
                                     <td class="border border-slate-300 py-1.5 px-2 text-right font-bold text-slate-900 whitespace-nowrap" x-text="formatNumber(it.total || it.amount)"></td>
                                 </tr>
                             </template>
                             <tr x-show="getRegularPrintItems().length === 0">
-                                <td colspan="9" class="text-center py-3 text-slate-500 italic">Không có sản phẩm bán</td>
+                                <td colspan="10" class="text-center py-3 text-slate-500 italic">Không có sản phẩm bán</td>
                             </tr>
                         </tbody>
                         <tfoot class="bg-white font-bold text-slate-900">
+                            <!-- Hàng tổng cộng các cột -->
+                            <tr class="border-b border-slate-300 bg-slate-50/70">
+                                <td colspan="4" class="border border-slate-300 py-1.5 px-2 text-center font-bold uppercase">Tổng cộng</td>
+                                <td class="border border-slate-300 py-1.5 px-2 text-right font-bold whitespace-nowrap" x-text="formatNumber(getRegularItemsTotalQty())"></td>
+                                <td class="border border-slate-300 py-1.5 px-2"></td>
+                                <td class="border border-slate-300 py-1.5 px-2 text-right font-bold whitespace-nowrap" x-text="formatNumber(getRegularItemsTotalBeforeDiscount())"></td>
+                                <td class="border border-slate-300 py-1.5 px-2"></td>
+                                <td class="border border-slate-300 py-1.5 px-2 text-right font-bold whitespace-nowrap" x-text="formatNumber(getRegularItemsTotalDiscount())"></td>
+                                <td class="border border-slate-300 py-1.5 px-2 text-right font-bold whitespace-nowrap" x-text="formatNumber(getRegularItemsTotal())"></td>
+                            </tr>
                             <template x-if="Number(printOrderData?.extra_discount || 0) > 0">
                                 <tr class="border-b border-slate-300">
-                                    <td colspan="8" class="border border-slate-300 py-1.5 px-3 text-right font-bold whitespace-nowrap">Tổng tiền hàng</td>
-                                    <td class="border border-slate-300 py-1.5 px-2 text-right font-bold whitespace-nowrap" x-text="formatNumber(getRegularItemsTotal()) + ' VND'"></td>
-                                </tr>
-                            </template>
-                            <template x-if="Number(printOrderData?.extra_discount || 0) > 0">
-                                <tr class="border-b border-slate-300">
-                                    <td colspan="8" class="border border-slate-300 py-1.5 px-3 text-right font-bold whitespace-nowrap">Chiết khấu đơn</td>
+                                    <td colspan="9" class="border border-slate-300 py-1.5 px-3 text-right font-bold whitespace-nowrap">Chiết khấu đơn</td>
                                     <td class="border border-slate-300 py-1.5 px-2 text-right font-bold text-rose-700 whitespace-nowrap" x-text="'-' + formatNumber(printOrderData?.extra_discount) + ' VND'"></td>
                                 </tr>
                             </template>
                             <tr class="border-b border-slate-300 bg-slate-50">
-                                <td colspan="8" class="border border-slate-300 py-1.5 px-3 text-right font-bold whitespace-nowrap">Tổng thanh toán</td>
+                                <td colspan="9" class="border border-slate-300 py-1.5 px-3 text-right font-bold whitespace-nowrap">Tổng thanh toán</td>
                                 <td class="border border-slate-300 py-1.5 px-2 text-right font-black whitespace-nowrap" x-text="formatNumber(printOrderData?.final_total || getRegularItemsTotal()) + ' VND'"></td>
                             </tr>
                         </tfoot>
@@ -3098,9 +3104,31 @@ ${this.buildMsoXmlHeader('Bang_ke_don_hang')}
             return gifts;
         },
 
+        getLineBeforeDiscount(it) {
+            if (!it) return 0;
+            const q = Number(it.display_quantity ?? it.sold_quantity ?? it.quantity ?? 0);
+            const p = Number(it.unit_price || 0);
+            return (p > 0 && q > 0) ? (p * q) : (Number(it.total ?? it.amount ?? 0) + this.getDiscountAmountValue(it));
+        },
+
         getRegularItemsTotal(order = null) {
             const items = this.getRegularPrintItems(order);
             return items.reduce((sum, it) => sum + Number(it.total ?? it.amount ?? 0), 0);
+        },
+
+        getRegularItemsTotalQty(order = null) {
+            const items = this.getRegularPrintItems(order);
+            return items.reduce((sum, it) => sum + Number(it.display_quantity ?? it.sold_quantity ?? it.quantity ?? 0), 0);
+        },
+
+        getRegularItemsTotalBeforeDiscount(order = null) {
+            const items = this.getRegularPrintItems(order);
+            return items.reduce((sum, it) => sum + this.getLineBeforeDiscount(it), 0);
+        },
+
+        getRegularItemsTotalDiscount(order = null) {
+            const items = this.getRegularPrintItems(order);
+            return items.reduce((sum, it) => sum + this.getDiscountAmountValue(it), 0);
         },
 
         getGiftItemsTotal(order = null) {
@@ -3182,6 +3210,10 @@ ${this.buildMsoXmlHeader('Bang_ke_don_hang')}
                         </tr>
                     `;
                 } else {
+                    const lineBeforeDiscount = (Number(it.unit_price || 0) > 0 && qtyVal > 0) 
+                        ? (Number(it.unit_price) * qtyVal) 
+                        : (Number(it.total || it.amount || 0) + this.getDiscountAmountValue(it));
+
                     regularTableRows += `
                         <tr>
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${idx + 1}</td>
@@ -3190,6 +3222,7 @@ ${this.buildMsoXmlHeader('Bang_ke_don_hang')}
                             <td style="text-align:center;padding:5px 6px;border:1px solid #111;">${it.unit || ''}</td>
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;font-size:12.5px;white-space:nowrap;">${this.formatNumber(qtyVal)}</td>
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;white-space:nowrap;">${this.formatNumber(it.unit_price)}</td>
+                            <td style="text-align:right;padding:5px 6px;border:1px solid #111;white-space:nowrap;">${this.formatNumber(lineBeforeDiscount)}</td>
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;white-space:nowrap;">${discText}</td>
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;white-space:nowrap;">${discAmtText}</td>
                             <td style="text-align:right;padding:5px 6px;border:1px solid #111;font-weight:bold;white-space:nowrap;">${this.formatNumber(it.total || it.amount)}</td>
@@ -3200,6 +3233,13 @@ ${this.buildMsoXmlHeader('Bang_ke_don_hang')}
 
             const regularTotalAmount = this.getRegularItemsTotal(o);
             const regularTotalQty = regularItems.reduce((s, it) => s + Number(it.display_quantity ?? it.sold_quantity ?? it.quantity ?? 0), 0);
+            const regularTotalBeforeDiscount = regularItems.reduce((s, it) => {
+                const q = Number(it.display_quantity ?? it.sold_quantity ?? it.quantity ?? 0);
+                const p = Number(it.unit_price || 0);
+                const before = (p > 0 && q > 0) ? (p * q) : (Number(it.total || it.amount || 0) + this.getDiscountAmountValue(it));
+                return s + before;
+            }, 0);
+            const regularTotalDiscount = regularItems.reduce((s, it) => s + this.getDiscountAmountValue(it), 0);
 
             let regularSummaryHtml = '';
             if (isSplitVat) {
@@ -3213,11 +3253,15 @@ ${this.buildMsoXmlHeader('Bang_ke_don_hang')}
                 if (Number(o.extra_discount || 0) > 0) {
                     regularSummaryHtml = `
                         <tr>
-                            <td colspan="8" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Cộng tiền hàng (chưa thuế GTGT)</td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(totalNetAll)} VND</td>
-                            <td style="border:1px solid #111;"></td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(totalVatAll)} VND</td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(regularTotalAmount)} VND</td>
+                            <td colspan="4" style="text-align:center;font-weight:bold;padding:5px 6px;border:1px solid #111;text-transform:uppercase;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">Tổng cộng</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(regularTotalQty)}</td>
+                            <td style="border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></td>
+                            <td style="border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(regularTotalDiscount)}</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(totalNetAll)} VND</td>
+                            <td style="border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(totalVatAll)} VND</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(regularTotalAmount)} VND</td>
                         </tr>
                         <tr>
                             <td colspan="11" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Chiết khấu đơn</td>
@@ -3231,11 +3275,15 @@ ${this.buildMsoXmlHeader('Bang_ke_don_hang')}
                 } else {
                     regularSummaryHtml = `
                         <tr>
-                            <td colspan="8" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Cộng tiền hàng (chưa thuế GTGT)</td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(totalNetAll)} VND</td>
-                            <td style="border:1px solid #111;"></td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(totalVatAll)} VND</td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;">${this.formatNumber(regularTotalAmount)} VND</td>
+                            <td colspan="4" style="text-align:center;font-weight:bold;padding:5px 6px;border:1px solid #111;text-transform:uppercase;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">Tổng cộng</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(regularTotalQty)}</td>
+                            <td style="border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></td>
+                            <td style="border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(regularTotalDiscount)}</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(totalNetAll)} VND</td>
+                            <td style="border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(totalVatAll)} VND</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(regularTotalAmount)} VND</td>
                         </tr>
                         <tr>
                             <td colspan="11" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">Tổng tiền thanh toán đã có thuế GTGT</td>
@@ -3247,22 +3295,36 @@ ${this.buildMsoXmlHeader('Bang_ke_don_hang')}
                 if (Number(o.extra_discount || 0) > 0) {
                     regularSummaryHtml = `
                         <tr>
-                            <td colspan="8" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Tổng tiền hàng</td>
-                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;white-space:nowrap;">${this.formatNumber(regularTotalAmount)} VND</td>
+                            <td colspan="4" style="text-align:center;font-weight:bold;padding:5px 6px;border:1px solid #111;text-transform:uppercase;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">Tổng cộng</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(regularTotalQty)}</td>
+                            <td style="border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(regularTotalBeforeDiscount)}</td>
+                            <td style="border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(regularTotalDiscount)}</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(regularTotalAmount)}</td>
                         </tr>
                         <tr>
-                            <td colspan="8" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Chiết khấu đơn</td>
+                            <td colspan="9" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;white-space:nowrap;">Chiết khấu đơn</td>
                             <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:13px;white-space:nowrap;">-${this.formatNumber(o.extra_discount)} VND</td>
                         </tr>
                         <tr>
-                            <td colspan="8" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">Tổng thanh toán</td>
+                            <td colspan="9" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">Tổng thanh toán</td>
                             <td style="text-align:right;font-weight:900;padding:5px 6px;border:1px solid #111;font-size:13.5px;color:#000;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">${this.formatNumber(o.final_total || Math.max(0, regularTotalAmount - Number(o.extra_discount)))} VND</td>
                         </tr>
                     `;
                 } else {
                     regularSummaryHtml = `
                         <tr>
-                            <td colspan="8" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">Tổng thanh toán</td>
+                            <td colspan="4" style="text-align:center;font-weight:bold;padding:5px 6px;border:1px solid #111;text-transform:uppercase;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">Tổng cộng</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(regularTotalQty)}</td>
+                            <td style="border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(regularTotalBeforeDiscount)}</td>
+                            <td style="border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(regularTotalDiscount)}</td>
+                            <td style="text-align:right;font-weight:bold;padding:5px 6px;border:1px solid #111;font-size:12.5px;white-space:nowrap;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${this.formatNumber(regularTotalAmount)}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="9" style="text-align:right;font-weight:bold;padding:5px 8px;border:1px solid #111;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">Tổng thanh toán</td>
                             <td style="text-align:right;font-weight:900;padding:5px 6px;border:1px solid #111;font-size:13px;background-color:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:nowrap;">${this.formatNumber(o.final_total || regularTotalAmount)} VND</td>
                         </tr>
                     `;
@@ -3469,20 +3531,21 @@ ${this.buildMsoXmlHeader('Bang_ke_don_hang')}
                                     </tr>
                                 ` : `
                                     <tr>
-                                        <th style="width: 34px;">TT</th>
-                                        <th style="width: 82px; text-align: left; padding-left: 6px;">Mã SP</th>
+                                        <th style="width: 32px;">TT</th>
+                                        <th style="width: 78px; text-align: left; padding-left: 6px;">Mã SP</th>
                                         <th style="text-align: left; padding-left: 6px;">Tên sản phẩm</th>
-                                        <th style="width: 48px;">ĐVT</th>
-                                        <th style="width: 44px;">SL</th>
-                                        <th style="width: 82px;">Đơn giá</th>
-                                        <th style="width: 56px;">C.khấu</th>
-                                        <th style="width: 80px;">Tiền CK</th>
-                                        <th style="width: 96px;">Thành tiền</th>
+                                        <th style="width: 44px;">ĐVT</th>
+                                        <th style="width: 42px;">SL</th>
+                                        <th style="width: 78px;">Đơn giá</th>
+                                        <th style="width: 82px;">Tiền trước CK</th>
+                                        <th style="width: 52px;">C.khấu</th>
+                                        <th style="width: 76px;">Tiền CK</th>
+                                        <th style="width: 88px;">Thành tiền</th>
                                     </tr>
                                 `)}
                             </thead>
                             <tbody>
-                                ${regularTableRows || `<tr><td colspan="${isNoPrice ? 5 : (isSplitVat ? 12 : 9)}" style="text-align:center;padding:8px;font-style:italic;color:#666;border:1px solid #111;">Không có sản phẩm bán</td></tr>`}
+                                ${regularTableRows || `<tr><td colspan="${isNoPrice ? 5 : (isSplitVat ? 12 : 10)}" style="text-align:center;padding:8px;font-style:italic;color:#666;border:1px solid #111;">Không có sản phẩm bán</td></tr>`}
                                 ${regularSummaryHtml}
                             </tbody>
                         </table>
